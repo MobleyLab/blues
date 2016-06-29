@@ -20,6 +20,7 @@ def rand_rotation_matrix(deflection=1.0, randnums=None):
     randnums: 3 random numbers in the range [0, 1]. If `None`, they will be auto-generated.
     """
     # from http://www.realtimerendering.com/resources/GraphicsGems/gemsiii/rand_rotation.c
+    # and http://blog.lostinmyterminal.com/python/2015/05/12/random-rotation-matrix.html
     
     if randnums is None:
         randnums = np.random.uniform(size=(3,))
@@ -115,75 +116,45 @@ class testintegrator:
         return total_mass, mass_list
 
     def calculate_com(self, total_mass, mass_list, pos_state, firstres=None, lastres=None):
+        """
+        This controls the ability to run a ncmc simulation with MD
+
+        Arguments
+        ---------
+        total_mass: simtk.unit.quantity.Quantity in units daltons, contains the total masses of the particles for COM calculation
+        mass_list:  nx1 np.array in units daltons, contains the masses of the particles for COM calculation
+        pos_state:  nx3 np. array in units.nanometers, returned from state.getPositions
+        firstres:   int, first residue of ligand
+        lastres:    int, last residue of ligand
+ 
+        Returns
+        -------
+        rotation : nx3 np.array in units.nm
+            positions of ligand after random rotation
+
+        """
         if firstres == None:
             firstres = self.firstres
         if lastres == None:
             lastres = self.lastres
-
-#        print total_mass
-#        print mass_list, np.size(mass_list)
-        #print pos_state
-        #find ligand com coordinates
+        #choose ligand indicies
         lig_coord = pos_state[firstres:lastres]
-#        print lig_coord.value_in_unit(unit.nanometers)
-#        print 'final output'
         lig_coord = lig_coord.value_in_unit(unit.nanometers)*unit.nanometers
         copy_coord = copy.deepcopy(lig_coord)
-#        print lig_coord
-        #print pos_state[firstres:lastres], np.shape(pos_state[firstres:lastres])
-#        print 'mass_list / total mass'
-#        print mass_list / total_mass
+        #mass corrected coordinates (to find COM)
         mass_corrected = mass_list / total_mass * copy_coord
-        print(mass_corrected)
-        print('test')
-#        for index, entry in enumerate(mass_list):
-#            print entry
-#            print mass_list[0]
-#            print total_mass
-#            print( mass_list[0] / total_mass)
-        #mass corrected is the com coordinates
-#        mass_corrected.sum(axis=0)
-        print('summed mass')
-        #subtract from original coordinates to find translated com coordinates
-#        print lig_coord
-#        help(mass_corrected)
         sum_coord = mass_corrected.sum(axis=0).value_in_unit(unit.nanometers)
-#        help(sum_coord)
         temp_coord = [0.0, 0.0, 0.0]*unit.nanometers
+        #units are funky, so do this step to get them to behave right
         for index in range(3):
             temp_coord[index] = sum_coord[index]*unit.nanometers
-            print temp_coord
-
-        print('sumcoord', sum_coord)
-#        new_coord = (temp_coord*unit.nanometers).value_in_unit(unit.nanometers)
-#        print('new_coord', new_coord)
-        #print test
-        #temp_coord = temp_coord.value_in_unit(unit.nanometers)*unit.nanometers
-#        print temp_coord
-        #print('tempcoord', temp_coord)
-        
-
-        print('before', lig_coord)
+        #remove COM from ligand coordinates to then perform rotation
         for index in range(3):
-            print(lig_coord[:,index])
-            print(sum_coord, np.shape(sum_coord))
-#            lig_coord[:,index] = lig_coord[:,index] - sum_coord[index]
             lig_coord[:,index] = lig_coord[:,index] - temp_coord[index]
-            
-#        print('after', lig_coord)
-#        print('rotation')
-#        print lig_coord
-#        print rand_rotation_matrix()*unit.nanometers
-        xy = rand_rotation_matrix()*unit.nanometers
-#        print 'xy', xy
-#        print 'lig_coord', lig_coord
+        #multiply lig coordinates by rot matrix and add back COM translation from origin
         rotation =  np.dot(lig_coord.value_in_unit(unit.nanometers), rand_rotation_matrix())*unit.nanometers
-#        print 'rotation, before', rotation
         rotation = rotation + temp_coord
-#        print 'rotation, after', rotation
-        #print 'original lig point', lig_coord + sum_coord
         return rotation    
-        #print(mass_corrected.sum(axis=0))
 
 
     def testintegrator(self, md_simulation, nc_context, nc_integrator,  nstepsNC=25, nstepsMD=1000, niter=10, verbose=False, firstres=None, lastres=None):
@@ -191,25 +162,20 @@ class testintegrator:
             firstres = self.firstres
         if lastres == None:
             lastres = self.lastres
-
+        #set up initial counters/ inputs
         accCounter = 0
         otherCounter = 0
-        lowest_difference = 1000000
         nc_stateinfo = nc_context.getState(True, False, False, False, False, False)
         tempPos = nc_stateinfo.getPositions(asNumpy=True)
 
-        #oldPos = stateinfo.getPositions()
         last_x, last_y = np.shape(tempPos)
         ncmc_frame = (np.reshape(tempPos, (1, last_x, last_y))).value_in_unit(unit.nanometers)
-#        print 'ncmc_frame start', ncmc_frame
 
         for stepsdone in range(niter):
-#            ncmc_frame = (np.reshape(tempPos, (1, last_x, last_y))).value_in_unit(unit.nanometers)
 
             #get original state info, no periodic boundries
             nc_stateinfo = nc_context.getState(True, True, False, True, True, False)
             oldPos = nc_stateinfo.getPositions(asNumpy=True)
-#            print 'oldPos', oldPos[firstres:lastres]
             oldVel = nc_stateinfo.getVelocities(asNumpy=True)
             #set original position
             md_simulation.context.setPositions(oldPos)
@@ -220,16 +186,12 @@ class testintegrator:
 
 #            oldPos[2634:2649] = self.calculate_com(total_mass=self.total_mass, mass_list=self.mass_list, pos_state=oldPos, firstres=2634, lastres=2649)
             if 1:
+            #if active, performs the rotation of the ligand
                 rot_output = self.calculate_com(total_mass=self.total_mass, mass_list=self.mass_list, pos_state=oldPos, firstres=firstres, lastres=lastres)
-#               print 'output', np.shape(output)
-#               print 'oldPos after', np.shape(oldPos[firstres:lastres])
                 rot_output = rot_output.value_in_unit(unit.nanometers)
                 rotPos = oldPos.value_in_unit(unit.nanometers)
-#               print 'rotPos', rotPos[firstres:lastres]
-#               print 'rot_output', rot_output
                 rotPos[firstres:lastres] = rot_output
                 rotPos=rotPos*unit.nanometers
-#               print 'final oldPos', rotPos
                 nc_context.setPositions(rotPos)
 
 
@@ -241,23 +203,18 @@ class testintegrator:
             original_energy = oldPE + oldKE
 #            nc_integrator.getEnergyBeforeRotation(nc_context, original_energy)
 #            print 'original energy'
-#            print nc_integrator.getGlobalVariableByName('Eorig')
             if verbose == True:
                 log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
                 print('before ncmc move log_ncmc', log_ncmc, np.isnan(log_ncmc))
 
             for stepscarried in range(nstepsNC):
                 #get original state info, no periodic boundries
-    #            stateinfo = nc_context.getState(True, True, False, False, False, False)
-    #            oldPos = stateinfo.getPositions(asNumpy=True)
-    #            oldVel = stateinfo.getVelocities(asNumpy=True)
                 try:
                     nc_integrator.step(1)
                 except:
                     print('nan, breaking')
                     break
  
-            #    st =  ncmc_integrator.getstep()
                 if verbose == True:
                     log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
                     print('log_ncmc', log_ncmc, stepscarried, np.isnan(log_ncmc))
@@ -270,7 +227,6 @@ class testintegrator:
                     print('correction', correction)
                     ######
                     print nc_integrator.getGlobalVariableByName('lambda')
-                    #print nc_integrator.getGlobalVariableByName('lambda_sterics')
 
 
 
@@ -290,29 +246,13 @@ class testintegrator:
             log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
             newinfo = nc_context.getState(True, True, False, True, True, False)
             newPos = newinfo.getPositions(asNumpy=True)
-#            print newPos[1]
             newVel = newinfo.getVelocities(asNumpy=True)
-
-
-#            correction = computeAlchemicalCorrection(testsystem.system, nc_context.getSystem(), oldPos, newPos, direction='insert')
-#            print('correction', correction)
-
-        #    enOld, enNew = ncmc_integrator.getEnergy(context)
-        #    print('Energy:', enOld, enNew)
             randnum =  math.log(np.random.random())
             print(log_ncmc, randnum)
-#            if log_ncmc > randnum and newinfo.getPotentialEnergy()/unit.kilocalorie_per_mole < 0:
-            log_ncmc_edit = nc_integrator.getLogAcceptanceProbabilityEdit(nc_context)
-
             if log_ncmc > randnum:
                 print('ncmc move accepted!')
-                print 'Eorig', nc_integrator.getGlobalVariableByName('Eorig')
-                print 'ncmc PE', newinfo.getPotentialEnergy()
-                print 'ncmc KE', newinfo.getKineticEnergy()
-                print 'old PE', oldPE
-                print 'old KE', oldKE
+                print 'ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE
                 print newinfo.getPotentialEnergy() + newinfo.getKineticEnergy()
-                print oldKE + oldPE
                 total_diff =  ((newinfo.getPotentialEnergy() + newinfo.getKineticEnergy() - (oldKE + oldPE))/nc_integrator.kT)
                 PE_diff = newinfo.getPotentialEnergy() - oldPE                 
                 print 'PE_diff', PE_diff
@@ -321,7 +261,6 @@ class testintegrator:
                     print nc_integrator.kT
                     al_correction = factory._checkEnergyIsFinite(full_alchemical_system, newPos)*(1/nc_integrator.kT)
                     print 'al_correction', al_correction
-
 
                 randnum1 =  math.log(np.random.random())
                 log_afterRot = -1.0*PE_diff / nc_integrator.kT
@@ -334,7 +273,6 @@ class testintegrator:
                     print('move accepted!')
                     accCounter = accCounter + 1.0
                     print('accCounter', float(accCounter)/float(stepsdone+1), accCounter)
-#                   print('correction', correction)
     
                     nc_stateinfo = nc_context.getState(True, True, False, False, False, False)
     
@@ -343,50 +281,10 @@ class testintegrator:
                 else:
                     print 'bummer', log_afterRot, '<', randnum1
                     #TODO may want to think about velocity switching on rejection
-
-                  
-
-
-
-                
-                
-
- 
-#            if log_ncmc_edit > randnum and newinfo.getPotentialEnergy()/unit.kilocalorie_per_mole < 0:
             else:
                 print('move rejected, reversing velocities')
                 nc_context.setPositions(oldPos)
                 nc_context.setVelocities(-oldVel)
-        #        stateinfo = nc_context.getState(False, True)
-        #        velinfo = -stateinfo.getVelocities(asNumpy=True)
-#            print 'total work', log_ncmc
-#            log_ncmc_edit = nc_integrator.getLogAcceptanceProbabilityEdit(nc_context)
-#
-#            print 'total work_edit', log_ncmc_edit
-#            print 'log original energy =', nc_integrator.getLogAcceptanceProbabilityOrig(nc_context)
-#            
-#            print 'ncmc PE', newinfo.getPotentialEnergy()
-#            print 'ncmc KE', newinfo.getKineticEnergy()
-#            print 'old PE', oldPE
-#            print 'old KE', oldKE
-#            print newinfo.getPotentialEnergy() + newinfo.getKineticEnergy()
-#            print oldKE + oldPE
-#            total_diff =  ((newinfo.getPotentialEnergy() + newinfo.getKineticEnergy() - (oldKE + oldPE))/nc_integrator.kT)
-#            print 'total_diff', total_diff
-#            if np.isnan(total_diff) == False:
-#                print factory._checkEnergyIsFinite(full_alchemical_system, newPos)
-#                print nc_integrator.kT
-#                al_correction = factory._checkEnergyIsFinite(full_alchemical_system, newPos)*(1/nc_integrator.kT)
-#                print 'al_correction', al_correction
-            
-            
-#            if  total_diff < lowest_difference and newinfo.getPotentialEnergy()/unit.kilocalorie_per_mole < 0:
-#                lowest_difference = total_diff
-#            print 'lowest_difference', lowest_difference
-#            if newinfo.getPotentialEnergy() + newinfo.getKineticEnergy() < oldKE + oldPE:
-#                otherCounter = otherCounter + 1
-#            print 'otherCounter', otherCounter
-#            print log_ncmc
 
             nc_integrator.reset()
             md_simulation.context.setPositions(oldPos)
@@ -442,16 +340,20 @@ class testintegrator:
 
 
 print rand_rotation_matrix()
-if 1:
+if 0:
      # Create a reference system.
      from openmmtools import testsystems
      testsystem = testsystems.LysozymeImplicit()
+     print type(testsystem)
      [reference_system, positions] = [testsystem.system, testsystem.positions]
      # Create a factory to produce alchemical intermediates.
      receptor_atoms = range(0,2603) # T4 lysozyme L99A
      ligand_atoms = range(2603,2621) # p-xylene
      factory = AbsoluteAlchemicalFactory(reference_system, ligand_atoms=ligand_atoms)
      full_alchemical_system = factory.createPerturbedSystem(AlchemicalState(lambda_electrostatics=1, lambda_sterics=1))
+     firstres = 2603
+     lastres  = 2621
+
 
      # Get the default protocol for 'denihilating' in complex in explicit solvent.
 #     protocol = factory.defaultComplexProtocolImplicit()
@@ -462,13 +364,20 @@ if 0: #if alanine test system
     alchemical_atoms = [0,1,2,3] # terminal methyl group
     factory = AbsoluteAlchemicalFactory(testsystem.system, ligand_atoms=alchemical_atoms, alchemical_torsions=True, alchemical_angles=True, annihilate_sterics=True, annihilate_electrostatics=True)
     alchemical_system = factory.createPerturbedSystem()
-if 0: #if cluster test system
+if 1: #if cluster test system
     prmtop = openmm.app.AmberPrmtopFile('Cluster1.prmtop')
     inpcrd = openmm.app.AmberInpcrdFile('Cluster1.inpcrd')
-    testsystem = prmtop.createSystem(nonbondedMethod=openmm.app.PME, nonbondedCutoff=1*unit.nanometer, constraints=openmm.app.HBonds)
+    temp_system = prmtop.createSystem(nonbondedMethod=openmm.app.PME, nonbondedCutoff=1*unit.nanometer, constraints=openmm.app.HBonds)
+    testsystem = testsystems.TestSystem
+    testsystem.system = temp_system 
+    testsystem.topology = prmtop.topology
+    testsystem.positions = inpcrd.positions
+    firstres = 2634
+    lastres  = 2649
+
     ligand_atoms = range(2634, 2649)
     recepotr_atoms = range(0,2634)
-    factory = AbsoluteAlchemicalFactory(testsystem, ligand_atoms=ligand_atoms, annihilate_sterics=True, annihilate_electrostatics=True)
+    factory = AbsoluteAlchemicalFactory(testsystem.system, ligand_atoms=ligand_atoms, annihilate_sterics=True, annihilate_electrostatics=True)
     full_alchemical_system = factory.createPerturbedSystem(AlchemicalState(lambda_electrostatics=1, lambda_sterics=1))
 
     #factory = AbsoluteAlchemicalFactory(testsystem, ligand_atoms=ligand_atoms, alchemical_torsions=True, alchemical_angles=True, annihilate_sterics=True, annihilate_electrostatics=True)
@@ -476,14 +385,17 @@ if 0: #if cluster test system
 #    particle_mass(2634, 2649, alchemical_system)
  
 # Create an NCMC switching integrator.
+
+###set values here
 temperature = 300.0 * unit.kelvin
-nstepsNC = 200
+nstepsNC = 20
 #functions = { 'lambda_sterics' : 'lambda', 'lambda_electrostatics' : 'lambda^0.5', 'lambda_torsions' : 'lambda', 'lambda_angles' : '0.9*(lambda^2) + 0.1' }
 functions = { 'lambda_sterics' : 'lambda', 'lambda_electrostatics' : 'lambda^0.5'}
 #functions = { 'lambda_sterics' : '1', 'lambda_electrostatics' : '1'}
 
 #functions = { 'lambda_sterics' : '0.5*lambda + 0.5', 'lambda_electrostatics' : '0.5*(lambda^0.5) + 0.5'}
 
+###
 
 #nc_integrator = NCMCVVAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='delete')
 nc_integrator = NCMCVVAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='insert', timestep=0.001*unit.picoseconds)
@@ -496,29 +408,21 @@ print 'kt', nc_integrator.kT
 md_integrator = openmm.openmm.LangevinIntegrator(temperature, 1/unit.picosecond, 0.002*unit.picoseconds)
 md_simulation = openmm.app.simulation.Simulation(topology=testsystem.topology, system=testsystem.system, integrator=md_integrator)
 md_simulation.context.setPositions(testsystem.positions)
+openmm.LocalEnergyMinimizer.minimize(md_simulation.context)
 md_simulation.context.setVelocitiesToTemperature(temperature)
 print('Equilibrationg...')
 md_simulation.step(1000)
 md_info = md_simulation.context.getState(True, False, False, False, False, False)
 equilPos = md_info.getPositions(asNumpy=True)
-md_simulation.reporters.append(openmm.app.pdbreporter.PDBReporter('youtput_debug1.pdb', 10000))
-md_simulation.reporters.append(HDF5Reporter('youtput_debug1.h5', 10000))
+md_simulation.reporters.append(openmm.app.pdbreporter.PDBReporter('youtput_debug1.pdb', 5000))
+md_simulation.reporters.append(HDF5Reporter('youtput_debug1.h5', 5000))
 nc_context = openmm.Context(alchemical_system, nc_integrator)
 nc_context.setPositions(equilPos)
 
-#md_simulation.reporters.append(openmm.app.dcdreporter.DCDReporter('output.dcd', 1000))
-
-# Minimize
-openmm.LocalEnergyMinimizer.minimize(nc_context)
-# Run the integrator
-#ncmc_integrator.step(nsteps)
-# Retrieve the log acceptance probability
-#log_ncmc = ncmc_integrator.getLogAcceptanceProbability(context)
-accCounter = 0.0
 numIter = 10
 test_class = testintegrator()
-test_class.set_res(2603, 2621)
-test_class.get_particle_masses(alchemical_system, 2603, 2621)
+test_class.set_res(firstres, lastres)
+test_class.get_particle_masses(alchemical_system, firstres, lastres)
 test_class.testintegrator(md_simulation, nc_context, nc_integrator, nstepsNC=nstepsNC, nstepsMD=1000, niter=10000, verbose=False)
     
 
