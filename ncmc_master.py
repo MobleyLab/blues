@@ -6,11 +6,18 @@ import math
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 import numpy as np
 from mdtraj.reporters import HDF5Reporter
-def fix_units(np_array, unit_type):
-    for x in np.nditer(np_array, op_flags=['readwrite']):
-        x[...] = np.sum(x).value_in_unit(unit_type)
-        return np_array
-        
+
+def get_lig_residues(lig_resname, coord_file, top_file=None):
+    if top_file == None:
+        traj = md.load(coord_file)
+    else:
+        traj = md.load(coord_file, top=top_file)
+
+    lig_atoms = traj.top.select(("resname =~ %s") % lig_resname)
+    first_res = min(lig_atoms)
+    last_res = max(lig_atoms)
+    return first_res, last_res, lig_atoms
+
 def rand_rotation_matrix(deflection=1.0, randnums=None):
     """
     Creates a random rotation matrix.
@@ -157,7 +164,7 @@ class testintegrator:
         return rotation    
 
 
-    def testintegrator(self, md_simulation, nc_context, nc_integrator,  nstepsNC=25, nstepsMD=1000, niter=10, verbose=False, firstres=None, lastres=None):
+    def testintegrator(self, md_simulation, nc_context, nc_integrator,  nstepsNC=25, nstepsMD=1000, niter=10, verbose=False, firstres=None, lastres=None, alchemical_correction=False):
         if firstres == None:
             firstres = self.firstres
         if lastres == None:
@@ -244,6 +251,13 @@ class testintegrator:
 
         # Retrieve the log acceptance probability
             log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
+            if np.isnan(total_diff) == False and alchemical_correction == True:
+                print factory._checkEnergyIsFinite(full_alchemical_system, newPos)
+                print nc_integrator.kT
+                al_correction = factory._checkEnergyIsFinite(full_alchemical_system, newPos)*(1/nc_integrator.kT)
+                print 'al_correction', al_correction
+                loc_ncmc = log_ncmc + al_correction
+
             newinfo = nc_context.getState(True, True, False, True, True, False)
             newPos = newinfo.getPositions(asNumpy=True)
             newVel = newinfo.getVelocities(asNumpy=True)
@@ -256,14 +270,12 @@ class testintegrator:
                 total_diff =  ((newinfo.getPotentialEnergy() + newinfo.getKineticEnergy() - (oldKE + oldPE))/nc_integrator.kT)
                 PE_diff = newinfo.getPotentialEnergy() - oldPE                 
                 print 'PE_diff', PE_diff
-                if np.isnan(total_diff) == False:
-                    print factory._checkEnergyIsFinite(full_alchemical_system, newPos)
-                    print nc_integrator.kT
-                    al_correction = factory._checkEnergyIsFinite(full_alchemical_system, newPos)*(1/nc_integrator.kT)
-                    print 'al_correction', al_correction
+
 
                 randnum1 =  math.log(np.random.random())
                 log_afterRot = -1.0*PE_diff / nc_integrator.kT
+                if alchemical_correction == True:
+                    log_afterRot = log_afterRot + al_correction
                 print 'log_afterRot', log_afterRot
                 otherCounter = otherCounter + 1
                 print 'otherCounter', otherCounter
@@ -291,7 +303,8 @@ class testintegrator:
             md_simulation.context.setVelocities(oldVel)
             try:
                 md_simulation.step(nstepsMD)
-            except:
+            except Exception as e:
+                print(e)
                 stateinfo = md_simulation.context.getState(True, True, False, False, False, False)
                 #oldPos = stateinfo.getPositions()
                 print oldPos
@@ -365,17 +378,17 @@ if 0: #if alanine test system
     factory = AbsoluteAlchemicalFactory(testsystem.system, ligand_atoms=alchemical_atoms, alchemical_torsions=True, alchemical_angles=True, annihilate_sterics=True, annihilate_electrostatics=True)
     alchemical_system = factory.createPerturbedSystem()
 if 1: #if cluster test system
-    prmtop = openmm.app.AmberPrmtopFile('Cluster1.prmtop')
-    inpcrd = openmm.app.AmberInpcrdFile('Cluster1.inpcrd')
+    coord_file = 'Cluster1.inpcrd'
+    top_file =   'Cluster1.prmtop'
+    prmtop = openmm.app.AmberPrmtopFile(top_file)
+    inpcrd = openmm.app.AmberInpcrdFile(coord_file)
     temp_system = prmtop.createSystem(nonbondedMethod=openmm.app.PME, nonbondedCutoff=1*unit.nanometer, constraints=openmm.app.HBonds)
     testsystem = testsystems.TestSystem
     testsystem.system = temp_system 
     testsystem.topology = prmtop.topology
     testsystem.positions = inpcrd.positions
-    firstres = 2634
-    lastres  = 2649
-
-    ligand_atoms = range(2634, 2649)
+    firstres, lastres, lig_atoms = get_lig_residues(lig_resname='LIG', coord_file=coord_file, top_file=top_file)
+    ligand_atoms = lig_atoms
     recepotr_atoms = range(0,2634)
     factory = AbsoluteAlchemicalFactory(testsystem.system, ligand_atoms=ligand_atoms, annihilate_sterics=True, annihilate_electrostatics=True)
     full_alchemical_system = factory.createPerturbedSystem(AlchemicalState(lambda_electrostatics=1, lambda_sterics=1))
@@ -388,7 +401,7 @@ if 1: #if cluster test system
 
 ###set values here
 temperature = 300.0 * unit.kelvin
-nstepsNC = 20
+nstepsNC = 400
 #functions = { 'lambda_sterics' : 'lambda', 'lambda_electrostatics' : 'lambda^0.5', 'lambda_torsions' : 'lambda', 'lambda_angles' : '0.9*(lambda^2) + 0.1' }
 functions = { 'lambda_sterics' : 'lambda', 'lambda_electrostatics' : 'lambda^0.5'}
 #functions = { 'lambda_sterics' : '1', 'lambda_electrostatics' : '1'}
@@ -423,7 +436,7 @@ numIter = 10
 test_class = testintegrator()
 test_class.set_res(firstres, lastres)
 test_class.get_particle_masses(alchemical_system, firstres, lastres)
-test_class.testintegrator(md_simulation, nc_context, nc_integrator, nstepsNC=nstepsNC, nstepsMD=1000, niter=10000, verbose=False)
+test_class.testintegrator(md_simulation, nc_context, nc_integrator, nstepsNC=nstepsNC, nstepsMD=1000, niter=10000, verbose=False, alchemical_correction=False)
     
 
 
