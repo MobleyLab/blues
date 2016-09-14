@@ -5,6 +5,22 @@ from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 import numpy as np
 
 def get_lig_residues(lig_resname, coord_file, top_file=None):
+    """
+    This controls the ability to run a ncmc simulation with MD
+
+    Arguments
+    ---------
+    lig_resname: str, resname that you want to get the atom indicies for (ex. 'LIG')
+    coord_file:  file, cooridnate file (.pdb, .gro, .h5 etc)
+    top_file: file, if topology isn't innately included in coordinates, include topology here
+
+    Returns
+    -------
+    rotation : nx3 np.array in units.nm
+        positions of ligand after random rotation
+
+    """
+
     if top_file == None:
         traj = md.load(coord_file)
     else:
@@ -58,6 +74,10 @@ def rand_rotation_matrix(deflection=1.0, randnums=None):
     M = (np.outer(V, V) - np.eye(3)).dot(R)
     return M
 class md_reporter:
+    """
+    class to handle error reporting
+    """
+
     def __init__(self):
         self.traj = None
         self.shape = None
@@ -199,16 +219,15 @@ class testintegrator:
 
     def calculate_com(self, total_mass, mass_list, pos_state, residueList=None, rotate=True):
         """
-        This controls the ability to run a ncmc simulation with MD
+        This function calculates the com of specified residues and optionally rotates them around the center of mass
 
         Arguments
         ---------
         total_mass: simtk.unit.quantity.Quantity in units daltons, contains the total masses of the particles for COM calculation
         mass_list:  nx1 np.array in units daltons, contains the masses of the particles for COM calculation
         pos_state:  nx3 np. array in units.nanometers, returned from state.getPositions
-        firstres:   int, first residue of ligand
-        lastres:    int, last residue of ligand
- 
+        residueList: list of int, index of atoms which you'll calculate the total com for 
+        rotate: boolean, if True, rotates center of mass by random rotation matrix
         Returns
         -------
         rotation : nx3 np.array in units.nm

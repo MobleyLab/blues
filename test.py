@@ -87,7 +87,7 @@ if 0: #if cluster test system implicit
 if 1: #if cluster test system
     periodic=False
     pdb = PDBFile('./systems/circle.pdb')
-    forcefield = ForceField('systems/circle.xml')
+    forcefield = ForceField('./systems/circle.xml')
     system = forcefield.createSystem(pdb.topology,
              constraints=HBonds)
     print 'removing', system.getForce(0)
@@ -265,19 +265,6 @@ if 0:
     md_simulation.reporters.append(HDF5Reporter('youtput_debug1.h5', 500))
     md_simulation.reporters.append(openmm.app.statedatareporter.StateDataReporter('info.csv', 500, step=True, potentialEnergy=True, kineticEnergy=True, totalEnergy=True, temperature=True))
     md_simulation.step(1)
-
-#    zero_masses(alchemical_system, firstres, lastres)
-#    reslist = ['151', '153', '132', '116', '135', '112', '144', '104', '102', '88', '89', '111', '110', '113', '103', '82', '83', '80', '81', '86', '87', '84', '85', '123', '106', '164', '105', '107', '2', '5', '97', '6', '128', '96', '115', '145', '122', '137', '120', '119', '148', '149', '77', '76', '108', '74', '73', '125', '129', '91', '90', '100', '101', '95', '94', '79', '78', '118', '99', '121', '98', '117', '131', '109', '114', '124', '152']
-
-#    reslist = [int(i) for i in reslist]
-#    reslist = range(165)
-#    all_res = selectres(reslist, inpcrd=coord_file, prmtop=top_file)
-#    print all_res
-#    all_res.extend(range(firstres, lastres))
-#    print 'new', all_res
-#    zero_masses(alchemical_system, firstres, lastres)
-#    zero_allother_masses(alchemical_system, all_res)
-
     firstres = 141
     lastres  = 143
     lastres = lastres + 1
@@ -327,9 +314,9 @@ if 1:
     for i in range(5000):
         md_info = md_simulation.context.getState(True, False, False, False, False, periodic)
         origPos = md_info.getPositions(asNumpy=True)
-        dboard.justdartmove(md_simulation.context)
-        test_class.testintegrator(md_simulation, nc_context, nc_integrator, dummy_simulation, nstepsNC=nstepsNC, nstepsMD=500, niter=1, periodic=False, verbose=False, alchemical_correction=True, ncmc_report=False, rot_report=False, origPos=origPos)
-        md_simulation.step(2500)
-
+        dboard.dartmove(md_simulation.context)
+        md_simulation.step(500)
+#Note
+#resid 125 or resid 128 or resid 131 or resid 134 or resid 126 or resid 129 or resid 132 or resid 135
 
 

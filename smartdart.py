@@ -39,8 +39,6 @@ class SmartDarting(object):
         beta = 1.0 / kT
         self.beta = beta
         self.residueList = residueList
-#        self.firstres = ligList[0]
-#        self.lastres = ligList[-1]
         self.total_mass = 0
         self.mass_list = None
         self.acceptance = 0
@@ -104,9 +102,6 @@ class SmartDarting(object):
         lig_coord = lig_coord*unit.nanometers
         copy_coord = copy.deepcopy(lig_coord)
         #mass corrected coordinates (to find COM)
-#        print('mass_list', mass_list)
-#        print('total_mass', total_mass)
-#        print('copy_coord', copy_coord)
         mass_corrected = mass_list / total_mass * copy_coord
         sum_coord = mass_corrected.sum(axis=0).value_in_unit(unit.nanometers)
         com_coord = [0.0, 0.0, 0.0]*unit.nanometers
@@ -126,25 +121,19 @@ class SmartDarting(object):
         diffList = []
         indexList = []
         for dart in self.dartboard:
-#            diff = dart - com
             diff = com - dart
 
             print 'diff, dart, com', diff, dart, com
             dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
-#            print 'dist', dist
             distList.append(dist)
             diffList.append(diff)
         selected = []
         for index, entry in enumerate(distList):
-#            print distList
-#            print type(distList)
             if entry <= self.dart_size:
                 selected.append(entry)
                 diff = diffList[index]
                 indexList.append(index)
-#            if entry._value > 2.5:
-#                print('bugged')
-#                exit()
+
         if len(selected) == 1:
             return selected[0], diffList[indexList[0]]
         elif len(selected) == 0:
@@ -156,10 +145,7 @@ class SmartDarting(object):
     def redart(self, changevec):
         dartindex = np.random.randint(len(self.dartboard))
         dvector = self.dartboard[dartindex]
-#        chboard = dvector + diff   #EDIT!!!!!!! should be dvector + diff
-        #chboard is the new dart location () moved by the changevector
         chboard = dvector + changevec   
-#        chboard = dvector
         print 'chboard', chboard
         return chboard
 
@@ -179,30 +165,9 @@ class SmartDarting(object):
         #basically where it's final displacement location
             newDartPos = copy.deepcopy(oldDartPos)
             comMove = self.redart(changevec)
-            print('comMove', comMove)
-            print('center', center)
             vecMove = comMove - center
-            print('vecMove', vecMove)
-#            print('vecMove*2', vecMove/2)
-#            print('tile', np.reshape(np.tile(vecMove, (lastres-firstres)),(-1,3) ) )
-#            tiled_vector = np.reshape(np.tile(vecMove, (len(residueList))), (-1,3))
-#            print('tiledvec', tiled_vector)
-#            print('selectedres', newDartPos[firstres:lastres])
-#            print('add', newDartPos[firstres:lastres] + tiled_vector)
-#            print newDartPos._value 
-            #newDartPos = newDartPos._value
-
             for residue in residueList:
                 newDartPos[residue] = newDartPos[residue] + vecMove
-#            newDartPos[firstres:lastres] = (newDartPos[firstres:lastres] + tiled_vector)
-#            print('newDartpos', newDartPos)
-            print 'worked'
-
-    #        print('dartmove', dartmove)
-    #        print('changevec', changevec)
-            #print dartmove
-            print newDartPos
-            #newDartPos[firstres:lastres] = dartmove
             context.setPositions(newDartPos)
             newDartInfo = context.getState(True, True, False, True, True, False)
             newDartPE = newDartInfo.getPotentialEnergy()
@@ -240,26 +205,10 @@ class SmartDarting(object):
             print('center', center)
             vecMove = comMove - center
             print('vecMove', vecMove)
-#            print('vecMove*2', vecMove/2)
-#            print('tile', np.reshape(np.tile(vecMove, (lastres-firstres)),(-1,3) ) )
-#            tiled_vector = np.reshape(np.tile(vecMove, (len(residueList))), (-1,3))
-#            print('tiledvec', tiled_vector)
-#            print('selectedres', newDartPos[firstres:lastres])
-#            print('add', newDartPos[firstres:lastres] + tiled_vector)
-#            print newDartPos._value 
-            #newDartPos = newDartPos._value
-
             for residue in residueList:
                 newDartPos[residue] = newDartPos[residue] + vecMove
-#            newDartPos[firstres:lastres] = (newDartPos[firstres:lastres] + tiled_vector)
-#            print('newDartpos', newDartPos)
             print 'worked'
-
-    #        print('dartmove', dartmove)
-    #        print('changevec', changevec)
-            #print dartmove
             print newDartPos
-            #newDartPos[firstres:lastres] = dartmove
             context.setPositions(newDartPos)
             newDartInfo = context.getState(True, True, False, True, True, False)
             newDartPE = newDartInfo.getPotentialEnergy()
