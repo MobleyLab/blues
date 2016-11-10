@@ -1,6 +1,6 @@
 from simtk.openmm.app import *
 from simtk.openmm import *
-from ncmc_switching import *
+from blues.ncmc_switching import *
 import simtk.unit as unit
 import mdtraj as md
 import math
@@ -163,7 +163,7 @@ class SimNCMC(object):
         niter:    int, number of iterations of NC/MD to perform in total
         """
         super().__init__(**kwds)
-        print('testing1')
+#        print('testing1')
 
         self.total_mass = 0
         self.mass_list = None
@@ -182,7 +182,6 @@ class SimNCMC(object):
         self.beta = beta
 #        if storage is not None:
 #            self._storage = NetCDFStorageView(storage, modname=self.__class__.__name__)
-        self.write_ncmc_interval = write_ncmc_interval
 
 
 
@@ -195,7 +194,7 @@ class SimNCMC(object):
         mass_list = []
         total_mass = 0*unit.dalton
         for index in residueList:
-            mass = system.getParticleMass(index)
+            mass = system.getParticleMass(int(index))
             total_mass = total_mass + mass
             print('mass', mass, 'total_mass', total_mass)
             mass_list.append([mass])
@@ -238,10 +237,12 @@ class SimNCMC(object):
             residueList = self.residueList
         if mass_list == None:
             mass_list = self.mass_list
+        if mass_list == None:
+#            self.get_particle_masses(system=self.md_simulation.system)
+            mass_list = self.mass_list
+
         if total_mass == None:
             total_mass = self.total_mass
-        if mass_list == None:
-            mass_list = self.mass_list
 
         #choose ligand indicies
         copy_orig = copy.deepcopy(pos_state)
@@ -263,7 +264,7 @@ class SimNCMC(object):
         if rotate ==True:
             for index in range(3):
                 lig_coord[:,index] = lig_coord[:,index] - com_coord[index]
-                print('lig_coord')
+#                print('lig_coord')
             #multiply lig coordinates by rot matrix and add back COM translation from origin
             rotation =  np.dot(lig_coord.value_in_unit(unit.nanometers), rand_rotation_matrix())*unit.nanometers
             rotation = rotation + com_coord
@@ -411,7 +412,7 @@ class SimNCMC(object):
                 try:
 
                     nc_integrator.step(1)
-                    if write_ncmc_interval % stepscarried = 0:
+                    if write_ncmc_interval % stepscarried == 0:
                         positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
                         dummy_simulation.context.setPositions(positions)
                         h5reporter.report(dummy_simulation, dummy_simulation.context.getState(True, True))

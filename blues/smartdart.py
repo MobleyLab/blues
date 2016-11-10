@@ -4,7 +4,7 @@ from simtk.unit import *
 from sys import stdout
 import simtk.unit as unit
 import numpy as np
-from ncmc import SimNCMC
+from blues.ncmc import SimNCMC
 def zero_masses( system, firstres, lastres):
     for index in range(firstres, lastres):
         system.setParticleMass(index, 0*daltons)
