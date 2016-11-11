@@ -19,14 +19,15 @@ def get_lig_residues(lig_resname, coord_file, top_file=None):
     lig_resname: str 
         resname that you want to get the atom indicies for (ex. 'LIG')
     coord_file:  str 
-        coordinate file (.pdb, .gro, .h5 etc)
+        path of coordinate file (.pdb, .gro, .h5 etc)
     top_file: file, optional, default=None
-        if topology isn't innately included in coordinates, include topology here
+        path of topology file. Include if the topology is not included
+        in the coord_file
 
     Returns
     -------
-    rotation : nx3 np.array in units.nm
-        positions of ligand after random rotation
+    lig_atoms : list of ints
+        list of atoms in the coordinate file matching lig_resname
 
     """
 
