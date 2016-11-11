@@ -20,7 +20,7 @@ def get_lig_residues(lig_resname, coord_file, top_file=None):
         resname that you want to get the atom indicies for (ex. 'LIG')
     coord_file:  str 
         path of coordinate file (.pdb, .gro, .h5 etc)
-    top_file: file, optional, default=None
+    top_file: str, optional, default=None
         path of topology file. Include if the topology is not included
         in the coord_file
 
