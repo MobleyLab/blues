@@ -131,7 +131,7 @@ def rand_rotation_matrix():
     Creates a uniform random rotation matrix
 
     Returns
-    –––––––
+    -------
     matrix_out: 3x3 np.array
         random rotation matrix
     """
@@ -171,7 +171,7 @@ class SimNCMC(object):
         residueList: list of ints 
             residue numbers that specify all the ligand atoms
         """
-        super().__init__(**kwds)
+        super(SimNCMC, self).__init__(**kwds)
 
         self.total_mass = 0
         self.mass_list = None
@@ -507,7 +507,7 @@ class SimNCMC(object):
                 try:
 
                     nc_integrator.step(1)
-                    if write_ncmc_interval % stepscarried == 0:
+                    if write_ncmc_interval % stepscarried+1 == 0:
                         positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
                         dummy_simulation.context.setPositions(positions)
                         h5reporter.report(dummy_simulation, dummy_simulation.context.getState(True, True))
