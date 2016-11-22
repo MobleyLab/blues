@@ -44,6 +44,7 @@ The class SimNCMC in `blues/ncmc.py` serves as a wrapper for running ncmc simula
 
 ## Example Use
 The following is an example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move.
+This example can also be found in 'examples/example.py'
 ```
 from simtk.openmm.app import *
 from simtk.openmm import *
