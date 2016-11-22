@@ -856,8 +856,8 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
         """
         super(NCMCAlchemicalIntegrator, self).__init__(timestep)
 
-        if direction not in ['insert', 'delete']:
-            raise Exception("'direction' must be one of ['insert', 'delete']; was '%s' instead" % direction)
+        if direction not in ['insert', 'delete', 'flux']:
+            raise Exception("'direction' must be one of ['insert', 'delete', 'flux']; was '%s' instead" % direction)
         self.direction = direction
 
         # Compute kT in natural openmm units.
@@ -887,6 +887,8 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
             self.addComputeGlobal('lambda', '0.0')
         elif self.direction == 'delete':
             self.addComputeGlobal('lambda', '1.0')
+        elif self.direction == 'flux':
+            self.addComputeGlobal('lambda', '1.0')
 
         # Update all slaved alchemical parameters
         self.addUpdateAlchemicalParametersStep()
@@ -902,12 +904,17 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
                 self.addComputeGlobal('lambda', '1.0')
             elif self.direction == 'delete':
                 self.addComputeGlobal('lambda', '0.0')
+            elif self.direction == 'flux':
+                self.addComputeGlobal('lambda', '1.0')
+
         else:
             # Use fractional state
             if self.direction == 'insert':
                 self.addComputeGlobal('lambda', '(step+1)/nsteps')
             elif self.direction == 'delete':
                 self.addComputeGlobal('lambda', '(nsteps - step - 1)/nsteps')
+            elif self.direction == 'flux':
+                self.addComputeGlobal('lambda', '(step+1)/nsteps')
 
         # Update all slaved alchemical parameters
         self.addUpdateAlchemicalParametersStep()
