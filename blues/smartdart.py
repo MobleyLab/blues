@@ -32,8 +32,11 @@ def getEnergyDecomposition(context, forcegroups):
     return energies
 
 class SmartDarting(SimNCMC):
+    """
+    Class for performing smart darting moves during an NCMC simulation.
+    """
     def __init__(self, **kwds):
-        super().__init__(**kwds)
+        super(SmartDarting, self).__init__(**kwds)
         self.dartboard = []
         self.dart_size = 0.2*unit.nanometers
 
