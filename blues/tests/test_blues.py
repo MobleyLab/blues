@@ -11,7 +11,8 @@ def test_basic_ncmc():
     test_temp = 300*unit.kelvins
     test_res_list=[1]
     ncmc_test = blues.ncmc.SimNCMC(temperature=test_temp, residueList=test_res_list)
-    # Need to add a test here that something is true about the output -- this just checks that it runs, but it would be good to check that the output is valid somehow or something
+    # Need to add a test here that something is true about the output -- this just checks that it runs, but it would be good to check that the output is valid somehow or something. Pytest likes to use assert, i.e.
+    # assert ncmc_test == 2
 
 def test_basic_integrator():
     """Test that integrator loads properly."""
