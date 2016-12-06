@@ -13,7 +13,8 @@ from openmmtools import testsystems
 
 def get_lig_residues(lig_resname, coord_file, top_file=None):
     """
-    Helper function to get atom indices of a ligand from a coordinate and/or topology file.
+    Helper function to get atom indices of a ligand from a coordinate 
+    and/or topology file.
     Arguments
     ---------
     lig_resname: str 
@@ -158,7 +159,6 @@ def zero_allother_masses( system, indexlist):
         else:
             system.setParticleMass(index, 0*unit.daltons)
 
-
 class SimNCMC(object):
     def __init__(self, temperature, residueList, **kwds):
         """
@@ -196,7 +196,7 @@ class SimNCMC(object):
         for index in residueList:
             mass = system.getParticleMass(int(index))
             total_mass = total_mass + mass
-            print('mass', mass, 'total_mass', total_mass)
+#            print('mass', mass, 'total_mass', total_mass)
             mass_list.append([mass])
         total_mass = np.sum(mass_list)
         mass_list = np.asarray(mass_list)
@@ -227,7 +227,8 @@ class SimNCMC(object):
 
     def calculate_com(self,  pos_state, total_mass=None, mass_list=None, residueList=None, rotate=False):
         """
-        This function calculates the com of specified residues and optionally rotates them around the center of mass.
+        This function calculates the com of specified residues and optionally 
+        rotates them around the center of mass.
 
         Arguments
         ---------
@@ -240,7 +241,8 @@ class SimNCMC(object):
         residueList: list of int, 
             list of atom indicies which you'll calculate the total com for 
         rotate: boolean
-            if True, rotates center of mass by random rotation matrix, else returns center of mass coordiantes
+            if True, rotates center of mass by random rotation matrix, 
+            else returns center of mass coordiantes
         Returns
         -------
         if rotate==True
