@@ -4,7 +4,8 @@ from simtk.unit import *
 from sys import stdout
 import simtk.unit as unit
 import numpy as np
-from blues.ncmc import SimNCMC
+from blues.ncmc import SimNCMC, get_lig_residues
+import mdtraj as md
 def zero_masses( system, firstres, lastres):
     for index in range(firstres, lastres):
         system.setParticleMass(index, 0*daltons)
@@ -31,49 +32,124 @@ def getEnergyDecomposition(context, forcegroups):
         energies[f] = context.getState(getEnergy=True, groups=2**i).getPotentialEnergy()
     return energies
 
-class SmartDarting(SimNCMC):
+class PoseDart(SimNCMC):
     """
     Class for performing smart darting moves during an NCMC simulation.
     """
-    def __init__(self, **kwds):
+    def __init__(self, pdb_files, fit_atoms, **kwds):
         super(SmartDarting, self).__init__(**kwds)
         self.dartboard = []
-        self.particle_pairs = []
-        self.particle_weights = []
+        self.ligand_atoms = []
         self.dart_size = 0.2*unit.nanometers
-        self.virtual_particles = []
+        self.binding_mode_traj = []
+        self.fit_atoms = fit_atoms
+        for pdb_file in pdb_files:
+            traj = md.load(pdb_file)[0]
+            self.binding_mode_traj.append(copy.deepcopy(traj))
+        self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
 
-    def setDartUpdates(self, particle_pairs, particle_weights):
-        self.particle_pairs = particle_pairs
-        self.particle_weights = particle_weights
 
-    def get_particle_masses(self, system, residueList=None):
-        if residueList == None:
-            residueList = self.residueList
-        mass_list = []
-        total_mass = 0*unit.dalton
-        for index in residueList:
-            mass = system.getParticleMass(index)
-            total_mass = total_mass + mass
-            print('mass', mass, 'total_mass', total_mass)
-            mass_list.append([mass])
-        total_mass = np.sum(mass_list)
-        mass_list = np.asarray(mass_list)
-        mass_list.reshape((-1,1))
-        total_mass = np.array(total_mass)
-        total_mass = np.sum(mass_list)
-        temp_list = np.zeros((len(residueList), 1))
-        for index in range(len(residueList)):
-            mass_list[index] = (np.sum(mass_list[index])).value_in_unit(unit.daltons)
-        mass_list =  mass_list*unit.daltons
-        self.total_mass = total_mass
-        self.mass_list = mass_list
-        return total_mass, mass_list
 
+
+
+
+    def setDartUpdates(self, ligand_atoms):
+        self.ligand_atoms = ligand_atoms
+
+    def defineLigandAtomsFromFile(lig_resname, coord_file, top_file=None):
+        self.ligand_atoms = get_lig_residues(lig_resname, 
+                                    coord_file, 
+                                    top_file)
 
 
     def add_dart(self, dart):
         self.dartboard.append(dart)
+
+    def dist_from_dart_center(self, sim_atom_pos, binding_mode_atom_pos):
+
+
+        distList = []
+        diffList = []
+        indexList = []
+        #Find the distances of the center to each dart, appending 
+        #the results to distList
+        for index, dart in enumerate(binding_mode_atom_pos):
+            diff = sim_atom_pos[index] - dart
+            dist = np.sqrt(np.sum((diff)*(diff)))
+#            dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
+
+            distList.append(dist)
+            diffList.append(diff)
+        selected = []
+        #Find the dart(s) less than self.dart_size
+        #for index, entry in enumerate(distList):
+        #    if entry <= self.dart_size:
+        #        selected.append(entry)
+        #        diff = diffList[index]
+        #        indexList.append(index)
+        return dist_list, diff_list
+        #Dart error checking
+        #to ensure reversibility the center should only be 
+        #within self.dart_size of one dart
+        #if len(selected) == 1:
+        #    return selected[0], diffList[indexList[0]]
+        #elif len(selected) == 0:
+        #    return None, diff
+        #elif len(selected) >= 2:
+        #    print(selected)
+            #COM should never be within two different darts
+        #    raise ValueError('sphere size overlap, check darts')
+
+
+    def poseDart(self, context=None, ligand_atoms=None):
+        if context == None:
+        context = self.nc_context
+        if ligand_atoms == None:
+            ligand_atoms = self.ligand_atoms
+        total_diff_list = []
+        total_dist_list = []
+        nc_pos = context.getState(getPositions=True).getPositions()
+        #update sim_traj positions for superposing binding modes
+        self.sim_traj.xyz = nc_pos._value
+        #make a temp_pos to specify dart centers to compare
+        #distances between each dart and binding mode reference
+        temp_pos = []
+
+        for atom in ligand_atoms:
+            temp_pos.append(nc_pos[atom])
+        for pose in binding_mode_traj:
+            pose = pose.superpose(reference=self.sim_traj,
+                            atom_indices=fit_atoms)
+            pose_coord = pose.xyz[0]
+            binding_mode_pos = []
+            for atom in lig_atoms:
+                binding_mode_pos.append(pose_coord)
+                temp_dist, temp_dif = dist_from_dart_center(temp_pos, binding_mode_pos)
+            total_diff_list.append(temp_diff)
+            total_dist_list.append(temp_dist)
+        selected = []
+        for index, single_pose in enumerate(total_dist_list):
+            for dist in single_pose:
+                counter = 0
+                if dist <= self.dart_size._value:
+                    counter += 1
+                if counter = len(ligand_atoms):
+                    selected.append(index)
+        if len(selected) == 1:
+            return selected[0], total_diff_list[selected[0]]
+        elif len(selected) == 0:
+            return None, diff
+        elif len(selected) >= 2:
+            print(selected)
+            #COM should never be within two different darts
+            raise ValueError('sphere size overlap, check darts')
+
+
+
+
+
+
+
 
     def findDart(self, particle_pairs=None, particle_weights=None):
         """ 
@@ -156,37 +232,6 @@ class SmartDarting(SimNCMC):
         return dart_list
 
 
-    def calc_from_center(self, com):
-
-
-        distList = []
-        diffList = []
-        indexList = []
-        #Find the distances of the COM to each dart, appending 
-        #the results to distList
-        for dart in self.dartboard:
-            diff = com - dart
-            dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
-            distList.append(dist)
-            diffList.append(diff)
-        selected = []
-        #Find the dart(s) less than self.dart_size
-        for index, entry in enumerate(distList):
-            if entry <= self.dart_size:
-                selected.append(entry)
-                diff = diffList[index]
-                indexList.append(index)
-        #Dart error checking
-        #to ensure reversibility the COM should only be 
-        #within self.dart_size of one dart
-        if len(selected) == 1:
-            return selected[0], diffList[indexList[0]]
-        elif len(selected) == 0:
-            return None, diff
-        elif len(selected) >= 2:
-            print(selected)
-            #COM should never be within two different darts
-            raise ValueError('sphere size overlap, check darts')
 
 
     def reDart(self, changevec):
