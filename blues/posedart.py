@@ -37,12 +37,12 @@ class PoseDart(SimNCMC):
     Class for performing smart darting moves during an NCMC simulation.
     """
     def __init__(self, pdb_files, fit_atoms, **kwds):
-        super(SmartDarting, self).__init__(**kwds)
+        super(PoseDart, self).__init__(**kwds)
         self.dartboard = []
-        self.ligand_atoms = []
         self.dart_size = 0.2*unit.nanometers
         self.binding_mode_traj = []
         self.fit_atoms = fit_atoms
+        self.ligand_pos = None
         for pdb_file in pdb_files:
             traj = md.load(pdb_file)[0]
             self.binding_mode_traj.append(copy.deepcopy(traj))
@@ -53,11 +53,11 @@ class PoseDart(SimNCMC):
 
 
 
-    def setDartUpdates(self, ligand_atoms):
-        self.ligand_atoms = ligand_atoms
+    def setDartUpdates(self, residueList):
+        self.residueList = residueList
 
     def defineLigandAtomsFromFile(lig_resname, coord_file, top_file=None):
-        self.ligand_atoms = get_lig_residues(lig_resname, 
+        self.residueList = get_lig_residues(lig_resname, 
                                     coord_file, 
                                     top_file)
 
@@ -67,82 +67,164 @@ class PoseDart(SimNCMC):
 
     def dist_from_dart_center(self, sim_atom_pos, binding_mode_atom_pos):
 
+        num_lig_atoms = len(self.residueList)
 
-        distList = []
-        diffList = []
+        dist_list = np.zeros((num_lig_atoms, 1))
+        diff_list = np.zeros((num_lig_atoms, 3))
         indexList = []
         #Find the distances of the center to each dart, appending 
-        #the results to distList
+        #the results to dist_list
+        #TODO change to handle np.arrays instead
+
         for index, dart in enumerate(binding_mode_atom_pos):
             diff = sim_atom_pos[index] - dart
             dist = np.sqrt(np.sum((diff)*(diff)))
 #            dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
+            print('binding_mode_atom_pos', binding_mode_atom_pos)
+            print('sim_atom_pos', sim_atom_pos[index])
+            print('dart', dart)
+            print('diff', diff)
+            diff_list[index] = diff
+            dist_list[index] = dist
+            print('diff_list', diff_list[index])
+            print('dist_list', dist_list[index])
 
-            distList.append(dist)
-            diffList.append(diff)
-        selected = []
-        #Find the dart(s) less than self.dart_size
-        #for index, entry in enumerate(distList):
-        #    if entry <= self.dart_size:
-        #        selected.append(entry)
-        #        diff = diffList[index]
-        #        indexList.append(index)
+
         return dist_list, diff_list
-        #Dart error checking
-        #to ensure reversibility the center should only be 
-        #within self.dart_size of one dart
-        #if len(selected) == 1:
-        #    return selected[0], diffList[indexList[0]]
-        #elif len(selected) == 0:
-        #    return None, diff
-        #elif len(selected) >= 2:
-        #    print(selected)
-            #COM should never be within two different darts
-        #    raise ValueError('sphere size overlap, check darts')
 
 
-    def poseDart(self, context=None, ligand_atoms=None):
+    def poseDart(self, context=None, residueList=None):
+        """check whether molecule is within a pose, and
+        if it is, return the dart vectors for it's atoms
+        """
         if context == None:
-        context = self.nc_context
-        if ligand_atoms == None:
-            ligand_atoms = self.ligand_atoms
+            context = self.nc_context
+        if residueList == None:
+            residueList = self.residueList
         total_diff_list = []
         total_dist_list = []
         nc_pos = context.getState(getPositions=True).getPositions()
         #update sim_traj positions for superposing binding modes
+        #might need to make self.sim_traj.xyz = nc_pos._value into
+        #self.sim_traj.xyz = [nc_pos._value] or np.array
         self.sim_traj.xyz = nc_pos._value
         #make a temp_pos to specify dart centers to compare
         #distances between each dart and binding mode reference
         temp_pos = []
+        num_lig_atoms = len(self.residueList)
+        temp_pos = np.zeros((num_lig_atoms, 3))
 
-        for atom in ligand_atoms:
-            temp_pos.append(nc_pos[atom])
-        for pose in binding_mode_traj:
+
+        for index, atom in enumerate(residueList):
+            print('temp_pos', temp_pos[index])
+            print('nc_pos', nc_pos[atom])
+            #keep track of units
+            temp_pos[index] = nc_pos[atom]._value
+
+        #fit different binding modes to current protein
+        #to remove rotational changes
+        for pose in self.binding_mode_traj:
+            print('pose', pose.xyz)
             pose = pose.superpose(reference=self.sim_traj,
-                            atom_indices=fit_atoms)
+                            atom_indices=self.fit_atoms,
+                            ref_atom_indices=self.fit_atoms)
+#            pose.save('temp.pdb')
             pose_coord = pose.xyz[0]
+            print('pose_coord', pose.xyz[0])
+#            help(pose.superpose)
             binding_mode_pos = []
-            for atom in lig_atoms:
-                binding_mode_pos.append(pose_coord)
-                temp_dist, temp_dif = dist_from_dart_center(temp_pos, binding_mode_pos)
-            total_diff_list.append(temp_diff)
-            total_dist_list.append(temp_dist)
+            #find the dart vectors and distances to each protein
+            #append the list to a storage list
+            temp_binding_mode_pos = np.zeros((num_lig_atoms, 3))
+            temp_binding_mode_diff = np.zeros((num_lig_atoms, 3))
+            temp_binding_mode_dist = np.zeros((num_lig_atoms, 1))
+
+            for index, atom in enumerate(residueList):
+                temp_binding_mode_pos[index] = pose_coord[atom]
+
+            for index, atom in enumerate(residueList):
+                temp_dist, temp_diff = self.dist_from_dart_center(temp_pos, temp_binding_mode_pos)
+                total_diff_list.append(temp_diff)
+                total_dist_list.append(temp_dist)
+#                total_dist_list.append(temp_binding_mode_dist)
+        print('total_diff_list', total_diff_list)
+        print('total_dist_list', total_dist_list)
         selected = []
+        #check to see which poses fall within the dart size
         for index, single_pose in enumerate(total_dist_list):
             for dist in single_pose:
                 counter = 0
                 if dist <= self.dart_size._value:
                     counter += 1
-                if counter = len(ligand_atoms):
+                if counter == len(residueList):
                     selected.append(index)
         if len(selected) == 1:
+            #returns binding mode index, and the diff_list
+            #diff_list will be used to dart
             return selected[0], total_diff_list[selected[0]]
         elif len(selected) == 0:
-            return None, diff
+            return None, total_diff_list
         elif len(selected) >= 2:
             print(selected)
             #COM should never be within two different darts
             raise ValueError('sphere size overlap, check darts')
+
+        #use diff list to redart
+
+    def poseRedart(self, changevec, binding_mode_pos, binding_mode_index, nc_pos, residueList=None):
+        """
+        Helper function to choose a random pose and determine the vector
+        that would translate the current particles to that dart center
+        Arguments
+        ----------
+        changevec: list
+            The change in vector that you want to apply,
+            typically supplied by poseDart
+        """ 
+        if residueList == None:
+            residueList = self.residueList
+            changed_pos = copy.deepcopy(nc_pos)
+        for index, atom in enumerate(residueList):
+            dartindex = binding_mode_index
+            print('binding_mode_pos', binding_mode_pos)
+            print('binding_mode_pos.xyz', (binding_mode_pos[dartindex].xyz))
+
+            dart_origin = (binding_mode_pos[dartindex].xyz)[0][atom]
+            print('dart_origin', dart_origin)
+            print('changevec', changevec)
+            print('changevec[index]', changevec[index])
+            dart_change = dart_origin + changevec[index]
+            changed_pos[atom] = dart_change*unit.nanometers
+            print('dart_change', dart_change)
+            print('dart_before', nc_pos[atom])
+            print('dart_after', changed_pos[atom])
+
+
+            return changed_pos
+
+
+
+        #select another binding pose and then for each atom
+        #use poseRedart() for each atom position
+
+
+
+    def poseMove(self, context=None, residueList=None):
+        if residueList == None:
+            residueList = self.residueList
+        if context == None:
+            context = self.nc_context
+        stateinfo = context.getState(True, True, False, True, True, False)
+        oldDartPos = stateinfo.getPositions(asNumpy=True)
+        selected_pose, diff_list = self.poseDart()
+        if selected_pose == None:
+            print('no pose found')
+        else:
+            new_pos = self.poseRedart(changevec=diff_list, 
+                binding_mode_pos=self.binding_mode_traj, 
+                binding_mode_index=selected_pose, 
+                nc_pos=oldDartPos)
+            context.setPositions(new_pos)
 
 
 
@@ -240,7 +322,7 @@ class PoseDart(SimNCMC):
         that would translate the COM to that dart center
         """ 
         dartindex = np.random.randint(len(self.dartboard))
-        dvector = self.dartboard[dartindex]
+        dart_origin = self.dartboard[dartindex]
         chboard = dvector + changevec   
         print('chboard', chboard)
         return chboard
