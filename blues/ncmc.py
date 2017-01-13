@@ -661,7 +661,7 @@ class SimNCMC(object):
                     print(oldPE)
                     print(oldKE)
 
-                    last_top = md.Topology.from_openmm(testsystem.topology)
+                    last_top = md.Topology.from_openmm(md_simulation.topology)
                     broken_frame = md.Trajectory(xyz=reshape, topology=last_top)
                     broken_frame.save_pdb('broken.pdb')
                     print('np.shape', np.shape(broken_frame))
