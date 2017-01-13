@@ -13,6 +13,46 @@ This also provides a prototype and validation of the SMIRFF SMIRKS-based force f
 
 ## Prerequisites
 
+Install [miniconda](http://conda.pydata.org/miniconda.html) first. On `osx` with `bash`, just run:
+```
+bash Miniconda3-latest-MacOSX-x86_64.sh
+```
+from the command-line after downloading.
+
+Install other conda dependencies, after adding the omnia channel:
+```
+conda config add --channels omnia
+conda install --yes omnia mdtraj
+conda install --yes omnia openmmtools
+conda install --yes omnia alchemy
+```
+
+
+## Installation
+
+Install `blues` from the `blues/` directory with:
+```bash
+pip install .
+```
+
+## Documentation
+
+### BLUES using NCMC
+# `BLUES`: Binding modes of Ligands Using Enhanced Sampling
+
+This package takes advantage of non-candidate equilibrium monte carlo moves (NCMC) to help sample between different ligand binding modes.
+
+This also provides a prototype and validation of the SMIRFF SMIRKS-based force field format, along with classes to parameterize OpenMM systems given [SMIRFF `.ffxml` format files](https://github.com/open-forcefield-group/smarty/blob/master/The-SMIRFF-force-field-format.md) as provided here.
+
+## Manifest
+
+* `utils/` - some helper scripts for various things (not directly associated with BLUES)
+* `blues/` - simple toolkit illustrating the use of RJMCMC to sample over SMARTS-specified atom types; also contains forcefield.py for handling SMIRFF forcefield format.
+* `run_scripts/` - example scripts to run blues
+* `systems/` - some example systems to run blues on.
+
+## Prerequisites
+
 Install [miniconda](http://conda.pydata.org/miniconda.html) first. On `osx` with `bash`, this is:
 ```
 

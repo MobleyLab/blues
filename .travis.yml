@@ -1,0 +1,39 @@
+language: python
+sudo: false
+
+branches:
+  only:
+    - master
+
+install:
+  - source devtools/travis-ci/install.sh
+  - export PYTHONUNBUFFERED=true
+
+script:
+  # Add omnia channel
+  - conda config --add channels ${ORGNAME}
+  # Create and activate test environment
+  - conda create --yes -n test python=$python
+  - source activate test
+  # Build the recipe
+  - conda build devtools/conda-recipe
+  # Install
+  - conda install --yes --use-local blues
+  # Run tests
+  - conda install --yes pytest
+  #- cd devtools && nosetests -vv --nocapture --with-timer $PACKAGENAME && cd ..
+  - cd blues/tests && pytest
+
+env:
+  matrix:
+    - python=2.7  CONDA_PY=27
+    #- python=3.4  CONDA_PY=34
+    - python=3.5  CONDA_PY=35
+
+  global:
+    - ORGNAME="omnia"
+    - PACKAGENAME="blues"
+
+#after_success:
+#  - echo "after_success"
+#  - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then ./devtools/travis-ci/after_success.sh; fi
