@@ -38,8 +38,14 @@ class SmartDarting(SimNCMC):
     def __init__(self, **kwds):
         super(SmartDarting, self).__init__(**kwds)
         self.dartboard = []
+        self.particle_pairs = []
+        self.particle_weights = []
         self.dart_size = 0.2*unit.nanometers
+        self.virtual_particles = []
 
+    def setDartUpdates(self, particle_pairs, particle_weights):
+        self.particle_pairs = particle_pairs
+        self.particle_weights = particle_weights
 
     def get_particle_masses(self, system, residueList=None):
         if residueList == None:
@@ -69,33 +75,125 @@ class SmartDarting(SimNCMC):
     def add_dart(self, dart):
         self.dartboard.append(dart)
 
+    def findDart(self, particle_pairs=None, particle_weights=None):
+        """ 
+        For dynamically updating dart positions based on positions
+        of other particles.
+        This takes the weighted average of the specified particles
+        and changes the dartboard of the object
+        
+        Arguments
+        ---------
+        particle_pairs: list of list of ints
+            each list defines the pairs to define darts
+        particle_weights: list of list of floats
+            each list defines the weights assigned to each particle positions
+        Returns
+        -------
+        dart_list list of 1x3 np.arrays in units.nm
+            new dart positions calculated from the particle_pairs
+            and particle_weights
+
+        """
+        if particle_pairs == None:
+            particle_pairs = self.particle_pairs
+        if particle_weights == None:
+            particle_weights = self.particle_weights
+        #make sure there's an equal number of particle pair lists 
+        #and particle weight lists
+        assert len(particle_pairs) == len(particle_weights)
+
+        dart_list = []
+        state_info = self.nc_context.getState(True, True, False, True, True, False)
+        temp_pos = state_info.getPositions(asNumpy=True)
+        #find particles positions and multiply by weights
+        for i, ppair in enumerate(particle_pairs):
+            temp_array = np.array([0, 0, 0]) * unit.nanometers
+            #weighted average
+            temp_wavg = 0
+            for j, particle in enumerate(ppair):
+                print('temp_pos', particle, temp_pos[particle])
+                temp_array += (temp_pos[particle] * float(particle_weights[i][j]))
+                temp_wavg += float(particle_weights[i][j])
+                print(temp_array)
+            #divide by total number of particles in a list and append 
+            #calculated postion to dart_list
+            dart_list.append(temp_array[:] / temp_wavg)
+        self.dartboard = dart_list[:]
+        return dart_list
+
+    def virtualDart(self, virtual_particles=None):
+        """ 
+        For dynamically updating dart positions based on positions
+        of other particles.
+        This takes the weighted average of the specified particles
+        and changes the dartboard of the object
+        
+        Arguments
+        ---------
+        virtual_particles: list of ints
+            Each int in the list specifies a particle
+        particle_weights: list of list of floats
+            each list defines the weights assigned to each particle positions
+        Returns
+        -------
+        dart_list list of 1x3 np.arrays in units.nm
+            new dart positions calculated from the particle_pairs
+            and particle_weights
+
+        """
+        if virtual_particles == None:
+            virtual_particles = self.virtual_particles
+
+        dart_list = []
+        state_info = self.nc_context.getState(True, True, False, True, True, False)
+        temp_pos = state_info.getPositions(asNumpy=True)
+        #find virtual particles positions and add to dartboard
+        for particle in virtual_particles:
+            print('temp_pos', particle, temp_pos[particle])
+            dart_list.append(temp_pos[particle])
+        self.dartboard = dart_list[:]
+        return dart_list
+
+
     def calc_from_center(self, com):
+
+
         distList = []
         diffList = []
         indexList = []
+        #Find the distances of the COM to each dart, appending 
+        #the results to distList
         for dart in self.dartboard:
             diff = com - dart
-
-#            print('diff, dart, com', diff, dart, com)
             dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
             distList.append(dist)
             diffList.append(diff)
         selected = []
+        #Find the dart(s) less than self.dart_size
         for index, entry in enumerate(distList):
             if entry <= self.dart_size:
                 selected.append(entry)
                 diff = diffList[index]
                 indexList.append(index)
-
+        #Dart error checking
+        #to ensure reversibility the COM should only be 
+        #within self.dart_size of one dart
         if len(selected) == 1:
             return selected[0], diffList[indexList[0]]
         elif len(selected) == 0:
             return None, diff
         elif len(selected) >= 2:
-            print('sphere size overlap, check darts')
-            exit()
+            print(selected)
+            #COM should never be within two different darts
+            raise ValueError('sphere size overlap, check darts')
 
-    def redart(self, changevec):
+
+    def reDart(self, changevec):
+        """
+        Helper function to choose a random dart and determine the vector
+        that would translate the COM to that dart center
+        """ 
         dartindex = np.random.randint(len(self.dartboard))
         dvector = self.dartboard[dartindex]
         chboard = dvector + changevec   
@@ -103,6 +201,9 @@ class SmartDarting(SimNCMC):
         return chboard
 
     def dartmove(self, context=None, residueList=None):
+        """
+        Obsolete function kept for reference. 
+        """
         if residueList == None:
             residueList = self.residueList
         if context == None:
@@ -116,10 +217,11 @@ class SmartDarting(SimNCMC):
         print('changevec', changevec)
         if selectedboard != None:
         #notes
-        #comMove is where the com ends up after accounting from where it was from the original dart center
-        #basically where it's final displacement location
+        #comMove is where the com ends up after accounting from where 
+        #it was from the original dart center
+        #basically it's final displacement location
             newDartPos = copy.deepcopy(oldDartPos)
-            comMove = self.redart(changevec)
+            comMove = self.reDart(changevec)
             vecMove = comMove - center
             for residue in residueList:
                 newDartPos[residue] = newDartPos[residue] + vecMove
@@ -141,13 +243,16 @@ class SmartDarting(SimNCMC):
             return newDartInfo.getPositions(asNumpy=True)
 
     def justdartmove(self, context=None, residueList=None):
+        """
+        Function for performing smart darting move with fixed coordinate darts
+        """
         if residueList == None:
             residueList = self.residueList
         if context == None:
-            self.nc_context
+            context = self.nc_context
 
 
-        stateinfo = self.nc_context.getState(True, True, False, True, True, False)
+        stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
         oldDartPE = stateinfo.getPotentialEnergy()
         center = self.calculate_com(oldDartPos)
@@ -156,11 +261,8 @@ class SmartDarting(SimNCMC):
         print('changevec', changevec)
         print('centermass', center)
         if selectedboard != None:
-        #notes
-        #comMove is where the com ends up after accounting from where it was from the original dart center
-        #basically where it's final displacement location
             newDartPos = copy.deepcopy(oldDartPos)
-            comMove = self.redart(changevec)
+            comMove = self.reDart(changevec)
             print('comMove', comMove)
             print('center', center)
             vecMove = comMove - center
@@ -169,9 +271,87 @@ class SmartDarting(SimNCMC):
                 newDartPos[residue] = newDartPos[residue] + vecMove
             print('worked')
             print(newDartPos)
-            self.nc_context.setPositions(newDartPos)
-            newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
-            newDartPE = newDartInfo.getPotentialEnergy()
+            context.setPositions(newDartPos)
+            newDartInfo = context.getState(True, True, False, True, True, False)
+#            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
+
+    def updateDartMove(self, context=None, residueList=None):
+        """
+        Function for performing smart darting move with darts that 
+        depend on particle positions in the system
+        """
+
+        if residueList == None:
+            residueList = self.residueList
+        if context == None:
+            context = self.nc_context
+
+
+        stateinfo = context.getState(True, True, False, True, True, False)
+        oldDartPos = stateinfo.getPositions(asNumpy=True)
+        oldDartPE = stateinfo.getPotentialEnergy()
+        self.findDart()
+        center = self.calculate_com(oldDartPos)
+        selectedboard, changevec = self.calc_from_center(com=center)
+        print('selectedboard', selectedboard)
+        print('changevec', changevec)
+        print('centermass', center)
+        if selectedboard != None:
+            newDartPos = copy.deepcopy(oldDartPos)
+            comMove = self.reDart(changevec)
+            print('comMove', comMove)
+            print('center', center)
+            vecMove = comMove - center
+            print('vecMove', vecMove)
+            for residue in residueList:
+                newDartPos[residue] = newDartPos[residue] + vecMove
+            print('worked')
+            print(newDartPos)
+            context.setPositions(newDartPos)
+            newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
+#            newDartPE = newDartInfo.getPotentialEnergy()
+
+            return newDartInfo.getPositions(asNumpy=True)
+
+    def virtualDartMove(self, context=None, residueList=None):
+        """
+        Function for performing smart darting move with darts that 
+        depend on particle positions in the system
+        """
+
+        if residueList == None:
+            residueList = self.residueList
+        if context == None:
+            context = self.nc_context
+
+
+        stateinfo = context.getState(True, True, False, True, True, False)
+        oldDartPos = stateinfo.getPositions(asNumpy=True)
+        oldDartPE = stateinfo.getPotentialEnergy()
+        self.virtualDart()
+        center = self.calculate_com(oldDartPos)
+        selectedboard, changevec = self.calc_from_center(com=center)
+        print('selectedboard', selectedboard)
+        print('changevec', changevec)
+        print('centermass', center)
+        if selectedboard != None:
+            newDartPos = copy.deepcopy(oldDartPos)
+            comMove = self.reDart(changevec)
+            print('comMove', comMove)
+            print('center', center)
+            vecMove = comMove - center
+            print('vecMove', vecMove)
+            for residue in residueList:
+                newDartPos[residue] = newDartPos[residue] + vecMove
+            print('worked')
+            print(newDartPos)
+            context.setPositions(newDartPos)
+            newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
+#            newDartPE = newDartInfo.getPotentialEnergy()
+
+            return newDartInfo.getPositions(asNumpy=True)
+
+
 

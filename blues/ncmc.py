@@ -7,13 +7,11 @@ import math
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 import numpy as np
 from openmmtools import testsystems
-#from storage import NetCDFStorageView
-
-
 
 def get_lig_residues(lig_resname, coord_file, top_file=None):
     """
-    Helper function to get atom indices of a ligand from a coordinate and/or topology file.
+    Helper function to get atom indices of a ligand from a coordinate 
+    and/or topology file.
     Arguments
     ---------
     lig_resname: str 
@@ -23,12 +21,10 @@ def get_lig_residues(lig_resname, coord_file, top_file=None):
     top_file: str, optional, default=None
         path of topology file. Include if the topology is not included
         in the coord_file
-
     Returns
     -------
     lig_atoms : list of ints
         list of atoms in the coordinate file matching lig_resname
-
     """
 
     if top_file == None:
@@ -124,12 +120,10 @@ class md_reporter:
             broken_ncmc.save_dcd(output_name)
         except ValueError:
             print('couldnt output', output_name, 'values too large')
-
          
 def rand_rotation_matrix():
     """
     Creates a uniform random rotation matrix
-
     Returns
     -------
     matrix_out: 3x3 np.array
@@ -158,12 +152,10 @@ def zero_allother_masses( system, indexlist):
         else:
             system.setParticleMass(index, 0*unit.daltons)
 
-
 class SimNCMC(object):
     def __init__(self, temperature, residueList, **kwds):
         """
         Stores parameters and methods relevant to NCMC and runs NCMC simulations.
-
         Arguments
         ---------
         temperature: simtk.unit.kelvin 
@@ -183,6 +175,7 @@ class SimNCMC(object):
         self.nc_integrator = None
         self.nc_pos = None
         self._storage = None
+        self.temperature = temperature
         kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
         kT = kB * temperature
         beta = 1.0 / kT
@@ -196,7 +189,7 @@ class SimNCMC(object):
         for index in residueList:
             mass = system.getParticleMass(int(index))
             total_mass = total_mass + mass
-            print('mass', mass, 'total_mass', total_mass)
+#            print('mass', mass, 'total_mass', total_mass)
             mass_list.append([mass])
         total_mass = np.sum(mass_list)
         mass_list = np.asarray(mass_list)
@@ -227,8 +220,8 @@ class SimNCMC(object):
 
     def calculate_com(self,  pos_state, total_mass=None, mass_list=None, residueList=None, rotate=False):
         """
-        This function calculates the com of specified residues and optionally rotates them around the center of mass.
-
+        This function calculates the com of specified residues and optionally 
+        rotates them around the center of mass.
         Arguments
         ---------
         total_mass: simtk.unit.quantity.Quantity in units daltons
@@ -240,7 +233,8 @@ class SimNCMC(object):
         residueList: list of int, 
             list of atom indicies which you'll calculate the total com for 
         rotate: boolean
-            if True, rotates center of mass by random rotation matrix, else returns center of mass coordiantes
+            if True, rotates center of mass by random rotation matrix, 
+            else returns center of mass coordiantes
         Returns
         -------
         if rotate==True
@@ -249,7 +243,6 @@ class SimNCMC(object):
         if rotate==False
         com_coord: 1x3 np.array in units.nm
             position of the center of mass coordinate
-
         """
         if residueList == None:
             residueList = self.residueList
@@ -290,7 +283,6 @@ class SimNCMC(object):
     def create_alchemicalSystem(self, coord_file, top_file, residueList=None):
         """
         Helper function to create alchemical system.
-
         Arguments
         ---------
         coord_file: str
@@ -304,8 +296,6 @@ class SimNCMC(object):
         ---------    
         alchemical_system: simtk.openmm.System
             The alchemically transformed system
-
-
         """
 
         if residueList == None:
@@ -325,7 +315,6 @@ class SimNCMC(object):
     def create_normalSystem(self, coord_file, top_file):
         """
         Helper function to create normal system.
-
         Arguments
         ---------
         coord_file: str
@@ -337,7 +326,6 @@ class SimNCMC(object):
         ---------    
         system: simtk.openmm.System
             The normal system
-
         """
 
         prmtop = openmm.app.AmberPrmtopFile(top_file)
@@ -362,13 +350,10 @@ class SimNCMC(object):
         """
         Function to be used in movekey. Performs a rotation around the center of mass
         of the ligand.
-
         Arguments
         ---------
         generally none
         """    
-
-
 
         if residueList == None:
             residueList = self.residueList
@@ -382,15 +367,7 @@ class SimNCMC(object):
         rotPos[:] = rotPos*unit.nanometers
         self.nc_context.setPositions(rotPos)
 
-
-
-
-
-
-
-
-
-    def runSim(self, md_simulation, nc_context, nc_integrator, dummy_simulation, movekey=None, nstepsNC=25, nstepsMD=1000, niter=10, periodic=True, verbose=False, residueList=None, alchemical_correction=False, ncmc_storage='out_ncmc.h5', write_ncmc_interval=None, origPos=None):
+    def runSim(self, md_simulation, nc_context, nc_integrator, dummy_simulation, movekey=None, nstepsNC=25, nstepsMD=1000, niter=10, periodic=True, verbose=False, residueList=None, alchemical_correction=False, ncmc_storage='out_ncmc.h5', write_ncmc_interval=None):
         """
         Runs a ncmc+MD simulation
         Arguments
@@ -423,10 +400,6 @@ class SimNCMC(object):
         write_ncmc_interval: int or None, optional, default=None
             If int is used, specifies the interval which NCMC positions are written.
             Also writes out after every function applied by movekey
-
-
-
-
         """
         if residueList == None:
             residueList = self.residueList
@@ -435,10 +408,11 @@ class SimNCMC(object):
         self.nc_context = nc_context
         self.nc_integrator = nc_integrator
         if type(write_ncmc_interval) == int:
-            h5reporter = md.reporters.HDF5Reporter(file=ncmc_storage, reportInterval=100, coordinates=True, time=False, cell=False, potentialEnergy=False, kineticEnergy=False, temperature=False, velocities=False, atomSubset=None)
+            h5reporter = md.reporters.HDF5Reporter(file=ncmc_storage, reportInterval=100, 
+                coordinates=True, time=False, cell=False, potentialEnergy=False, kineticEnergy=False, 
+                temperature=False, velocities=False, atomSubset=None)
         #set up initial counters/ inputs
         accCounter = 0
-        otherCounter = 0
         nc_stateinfo = nc_context.getState(True, False, False, False, False, periodic)
         tempPos = nc_stateinfo.getPositions(asNumpy=True)
 
@@ -456,12 +430,7 @@ class SimNCMC(object):
         nc_context.setPositions(oldPos)
         self.nc_pos = oldPos
         nc_context.setVelocities(oldVel)
-        #TODO
-        
         first_ncmc = (np.reshape(tempPos, (1, last_x, last_y))).value_in_unit(unit.nanometers)
-
-
-
 
         for stepsdone in range(niter):
             print('performing ncmc step')
@@ -469,85 +438,51 @@ class SimNCMC(object):
             mdinfo = md_simulation.context.getState(True, True, False, True, True, periodic)
             oldPE =  mdinfo.getPotentialEnergy()
             oldKE =  mdinfo.getKineticEnergy()
-            if verbose == True:
-                log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
-                print('before ncmc move log_ncmc', log_ncmc, np.isnan(log_ncmc))
-            prev = np.random.randint(2)
-            if prev == 1:
-                nc_context.setVelocities(-oldVel)
-#            if 0:
-#                if self._storage and self.write_ncmc_interval:
-#                    positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-#                    self._storage.write_configuration('positions', positions, md_simulation.topology, iteration=stepsdone, frame=0, nframes=(nstepsNC+1))
+            if alchemical_correction == True:
+                alc_oldPE = nc_context.getState(True, True, False, True, True, periodic).getPotentialEnergy()
 
             for stepscarried in range(nstepsNC):
-
-
                 if movekey != None:
                     for func in movekey:
                         if stepscarried in func[1]:
                             print('doing the move')
+                            print('before step', nc_integrator.getGlobalVariableByName('lambda'))
+
                             func[0]()
                             if write_ncmc_interval:
                                 positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
                                 dummy_simulation.context.setPositions(positions)
                                 h5reporter.report(dummy_simulation, dummy_simulation.context.getState(True, True))
 
-
-#                tempTraj = np.array(())
-                if verbose == True and stepscarried == 0:
-                    tempPos = nc_stateinfo.getPositions(asNumpy=True)
-                    last_x, last_y = np.shape(tempPos)
-                    tempTraj = (np.reshape(tempPos, (1, last_x, last_y))).value_in_unit(unit.nanometers)
-                    first_ncmc = np.concatenate((first_ncmc, tempTraj))
-
-#                    tempTraj = np.concatenate((tempTraj, temp_frame))
-
-
                 try:
+                    if verbose:
+                        print('work_before', nc_integrator.getGlobalVariableByName("total_work"))
+                        print('lambda_before', nc_integrator.getGlobalVariableByName("lambda"))
+                        print('shadow_before', nc_integrator.getGlobalVariableByName("shadow_work"))
+                        print('protocol_before', nc_integrator.getGlobalVariableByName("protocol_work"))
+                        print('Epert_before', nc_integrator.getGlobalVariableByName("Epert"))
 
-                    nc_integrator.step(1)
-                    if write_ncmc_interval % stepscarried+1 == 0:
+                    if write_ncmc_interval and (stepscarried+1) % write_ncmc_interval == 0:
+                        if verbose:
+                            print('writing coordinates')
                         positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
                         dummy_simulation.context.setPositions(positions)
                         h5reporter.report(dummy_simulation, dummy_simulation.context.getState(True, True))
 
-
-
-
+                    nc_integrator.step(1)
+                    if verbose:
+                        print('work_after', nc_integrator.getGlobalVariableByName("total_work"))
+                        print('lambda_after', nc_integrator.getGlobalVariableByName("lambda"))
+                        print('shadow_after', nc_integrator.getGlobalVariableByName("shadow_work"))
+                        print('protocol_after', nc_integrator.getGlobalVariableByName("protocol_work"))
+                        print('Eold', nc_integrator.getGlobalVariableByName("Eold"))
+                        print('Enew', nc_integrator.getGlobalVariableByName("Enew"))
+                        print('Epert_after', nc_integrator.getGlobalVariableByName("Epert"))
 
                 except Exception as e:
                     if str(e) == "Particle coordinate is nan":
                         print('nan, breaking')
-                        break
-
-                if verbose == True:
-                    log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
-                    print('log_ncmc', log_ncmc, stepscarried, np.isnan(log_ncmc))
-                    nc_stateinfo = nc_context.getState(True, False, False, False, False, periodic)
-##                    tempPos = nc_stateinfo.getPositions(asNumpy=True)
-                    #connected
-                    newinfo = nc_context.getState(True, True, False, True, True, periodic)
-                    newPos = newinfo.getPositions(asNumpy=True)
-                    #correction = computeAlchemicalCorrection(testsystem, nc_context.getSystem(), oldPos, newPos, direction='insert')
-                    #print('correction', correction)
-                    ######
-##                    last_x, last_y = np.shape(tempPos)
-#                    print np.reshape(tempPos, (1, last_x, last_y))
-                    temp_frame = (np.reshape(tempPos, (1, last_x, last_y))).value_in_unit(unit.nanometers)
-                    if True not in np.isnan(temp_frame) and stepscarried != 0:
-#                        ncmc_frame = np.vstack((ncmc_frame, temp_frame))
-                        tempTraj = np.concatenate((tempTraj, temp_frame))
-
-
-                    if np.isnan(log_ncmc) == True:
-                        print('nan, breaking')
-                        break
-                
-
-        # Retrieve the log acceptance probability
-##            if verbose == True:
-##                ncmc_frame = np.concatenate((ncmc_frame, tempTraj))
+                        break                
 
             log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
             newinfo = nc_context.getState(True, True, False, True, True, periodic)
@@ -555,82 +490,50 @@ class SimNCMC(object):
             newVel = newinfo.getVelocities(asNumpy=True)
             randnum =  math.log(np.random.random())
             if alchemical_correction == True and np.isnan(log_ncmc) == False:
-                print('performing correction')
-                dummy_simulation.context.setPositions(oldPos)
-                dummy_simulation.context.setVelocities(oldVel)
-                dummy_info = dummy_simulation.context.getState(True, True, False, True, True, False)#*might want to make this periodic
-                md_simulation.context.setPositions(newPos)
-                md_simulation.context.setVelocities(newVel)
-                md_info_new = md_simulation.context.getState(True, True, False, True, True, False)#*might want to make this periodic
-
-                print('md_energy_orig', oldPE)
-
-                print('md_energy', md_info_new.getPotentialEnergy())               
-                print('dummy_energy', dummy_info.getPotentialEnergy())
-
+                alc_newPE = newinfo.getPotentialEnergy()
                 dummy_simulation.context.setPositions(newPos)
-                reshape = (np.reshape(oldPos, (1, last_x, last_y))).value_in_unit(unit.nanometers)
-                dummy_simulation.context.setVelocities(newVel)
-                dummy_info = dummy_simulation.context.getState(True, True, False, True, True, False)#*might want to make this periodic
-                print('dummy_energy', dummy_info.getPotentialEnergy())
-                print('difference', (-newinfo.getPotentialEnergy() + md_info_new.getPotentialEnergy())*(1/nc_integrator.kT))
-                log_ncmc = log_ncmc + (-newinfo.getPotentialEnergy() + md_info_new.getPotentialEnergy())*(1/nc_integrator.kT)
+                dummy_info = dummy_simulation.context.getState(True, True, False, True, True, periodic)
+                norm_newPE = dummy_info.getPotentialEnergy()
+                correction_factor = -1.0*((norm_newPE - alc_newPE) - (oldPE - alc_oldPE))*(1/nc_integrator.kT)
+                print('correction_factor', correction_factor)
+                log_ncmc = log_ncmc + correction_factor
 
-            print(log_ncmc, randnum)
-            yesAccept = False
             if log_ncmc > randnum:
-                print('ncmc move accepted!')
-                print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
-                print(newinfo.getPotentialEnergy() + newinfo.getKineticEnergy())
-                PE_diff = newinfo.getPotentialEnergy() - oldPE                 
-                print('PE_diff', PE_diff)
-
-
-                randnum1 =  math.log(np.random.random())
-                if alchemical_correction == True:
-                    log_afterRot = -1.0*(md_info_new.getPotentialEnergy() - oldPE)/nc_integrator.kT
-                else:
-                    log_afterRot = -1.0*PE_diff / nc_integrator.kT
-                print('log_afterRot', log_afterRot)
-                otherCounter = otherCounter + 1
-                print('otherCounter', otherCounter)
-
-                if log_afterRot > randnum1:
-                    print('its cool!', log_afterRot, '>', randnum1)
-                    print('move accepted!')
-                    accCounter = accCounter + 1.0
-                    print('accCounter', float(accCounter)/float(stepsdone+1), accCounter)
-                    yesAccept = True
+                print('ncmc move accepted')
+                if verbose:
+                    print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
+                    print('ncmc Total energy', newinfo.getPotentialEnergy() + newinfo.getKineticEnergy())
+                    PE_diff = newinfo.getPotentialEnergy() - oldPE                 
+                    print('PE_diff', PE_diff)
+                print('accepted since', log_ncmc, '>', randnum)
+                print('log_ncmc > randnum')
+                print('move accepted')
+                accCounter = accCounter + 1.0
+                print('accCounter', float(accCounter)/float(stepsdone+1), accCounter)
     
-                    nc_stateinfo = nc_context.getState(True, True, False, False, False, periodic)
+                nc_stateinfo = nc_context.getState(True, True, False, False, False, periodic)
     
-                    oldPos = newPos[:]
-                    oldVel = newVel[:]
-                else:
-                    print('bummer', log_afterRot, '<', randnum1)
-                    #TODO may want to think about velocity switching on rejection
+                oldPos = newPos[:]
+                oldVel = newVel[:]
             else:
-                print('move rejected, reversing velocities')
+                print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
+                print('rejected', log_ncmc, '<', randnum)
+                print('log_ncmc > randnum')
+                print('move rejected')
                 nc_context.setPositions(oldPos)
                 nc_context.setVelocities(-oldVel)
-            if prev == 1:
-                oldVel = -oldVel
-            if yesAccept==False and origPos != None:
-                oldPos = origPos
 
-            print('accCounter:', accCounter, 'otherCounter:', otherCounter, 'iter:', stepsdone)
+            print('accCounter:', accCounter,  'iter:', stepsdone+1)
             nc_integrator.reset()
             md_simulation.context.setPositions(oldPos)
             md_simulation.context.setVelocities(oldVel)
-#            md_simulation.context.setVelocitiesToTemperature(100)
+            md_simulation.context.setVelocitiesToTemperature(self.temperature)
             if nstepsMD > 0:
                 try:
                     md_simulation.step(nstepsMD)
                 except Exception as e:
                     print('Error:', e)
                     stateinfo = md_simulation.context.getState(True, True, False, False, False, periodic)
-                    #oldPos = stateinfo.getPositions()
-
                     print(oldPos)
                     last_x, last_y = np.shape(oldPos)
                     print(np.reshape(oldPos, (1, last_x, last_y)))
@@ -641,7 +544,7 @@ class SimNCMC(object):
                     print(oldPE)
                     print(oldKE)
 
-                    last_top = md.Topology.from_openmm(testsystem.topology)
+                    last_top = md.Topology.from_openmm(md_simulation.topology)
                     broken_frame = md.Trajectory(xyz=reshape, topology=last_top)
                     broken_frame.save_pdb('broken.pdb')
                     print('np.shape', np.shape(broken_frame))
@@ -659,24 +562,17 @@ class SimNCMC(object):
                     except ValueError:
                 
                         print('couldnt output pdb, values too large')
-
                     exit()
-
-
 
             md_stateinfo = md_simulation.context.getState(True, True, False, False, False, periodic)
             oldPos = md_stateinfo.getPositions(asNumpy=True)
             oldVel = md_stateinfo.getVelocities(asNumpy=True)
-            nc_integrator.reset() #TODO
+            nc_integrator.reset()
             nc_context.setPositions(oldPos)
             self.nc_pos = oldPos
             nc_context.setVelocities(oldVel)
             
-
-
         acceptRatio = accCounter/float(niter)
         print(acceptRatio)
-        print(otherCounter)
-
         print('numsteps ', nstepsNC)
         return oldPos
