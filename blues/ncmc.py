@@ -407,6 +407,7 @@ class SimNCMC(object):
         self.dummy_simulation = dummy_simulation
         self.nc_context = nc_context
         self.nc_integrator = nc_integrator
+        self.get_particle_masses(self.md_simulation.system)
         if type(write_ncmc_interval) == int:
             h5reporter = md.reporters.HDF5Reporter(file=ncmc_storage, reportInterval=100, 
                 coordinates=True, time=False, cell=False, potentialEnergy=False, kineticEnergy=False, 
