@@ -2,7 +2,7 @@ import simtk.openmm.app as app
 import simtk.openmm as mm
 import simtk.unit as unit
 from simtk.openmm.app import Simulation
-from openmmtools.testsystems import TestSystem
+#from openmmtools.testsystems import TestSystem
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 
 from blues.ncmc import *
@@ -34,13 +34,9 @@ def runNCMC(options):
     top_file =   'eqToluene.prmtop'
     prmtop = app.AmberPrmtopFile(top_file)
     inpcrd = app.AmberInpcrdFile(coord_file)
-    temp_system = prmtop.createSystem(nonbondedMethod=app.PME,
+    testsystem = prmtop.createSystem(nonbondedMethod=app.PME,
                                       nonbondedCutoff=1*unit.nanometer,
                                       constraints=app.HBonds)
-    testsystem = TestSystem()
-    testsystem.system = temp_system
-    testsystem.topology = prmtop.topology
-    testsystem.positions = inpcrd.positions
 
     # helper function to get list of ligand atoms
     lig_atoms = get_lig_residues(lig_resname='LIG',
@@ -48,7 +44,7 @@ def runNCMC(options):
                                  top_file=top_file)
 
     # create alchemical system using alchemy functions
-    factory = AbsoluteAlchemicalFactory(testsystem.system,
+    factory = AbsoluteAlchemicalFactory(testsystem,
                                         ligand_atoms=lig_atoms,
                                         annihilate_sterics=True,
                                         annihilate_electrostatics=True)
@@ -63,19 +59,19 @@ def runNCMC(options):
     md_integrator = mm.LangevinIntegrator(temperature, friction, dt)
     dummy_integrator = mm.LangevinIntegrator(temperature, friction, dt)
 
-    md_sim = Simulation(topology=testsystem.topology,
-                        system=testsystem.system,
+    md_sim = Simulation(topology=prmtop.topology,
+                        system=testsystem,
                         integrator=md_integrator,
                         platform=platform)
 
     # dummy_simulation is used to perform alchemical corrections and serves as a reporter for ncmc moves
-    dummy_sim = Simulation(topology=testsystem.topology,
-                           system=testsystem.system,
+    dummy_sim = Simulation(topology=prmtop.topology,
+                           system=testsystem,
                            integrator=dummy_integrator,
                            platform=platform)
 
 
-    md_sim.context.setPositions(testsystem.positions)
+    md_sim.context.setPositions(inpcrd.positions)
     md_sim.context.setVelocitiesToTemperature(temperature)
     if inpcrd.boxVectors is not None:
         md_sim.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
@@ -111,7 +107,7 @@ def runNCMC(options):
     ncmove = [[practice_run.rotationalMove, [49]]]
 
     # actually run
-    practice_run.get_particle_masses(testsystem.system, residueList=lig_atoms)
+    practice_run.get_particle_masses(testsystem, residueList=lig_atoms)
     practice_run.runSim(md_sim, nc_context, nc_integrator,
                         dummy_sim, movekey=ncmove,
                         niter=numIter, nstepsNC=nstepsNC, nstepsMD=nstepsMD,
