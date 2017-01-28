@@ -1,3 +1,5 @@
+#benchmarking functions originally by Peter Eastman
+#adapted from https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 from simtk import unit, openmm
 from simtk.openmm import app
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
