@@ -1,3 +1,15 @@
+"""
+example.py: Provides an example script to run BLUES and
+benchmark the run on a given platform
+
+Authors: Samuel C. Gill
+Contributors: Nathan M. Lim, David L. Mobley
+
+* Benchmarking related code adapted from:
+https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
+(Authors: Peter Eastmen)
+"""
+
 from simtk import unit, openmm
 from simtk.openmm import app
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
@@ -15,6 +27,7 @@ from datetime import datetime
 from optparse import OptionParser
 
 def timeIntegration(context, steps, initialSteps):
+    # Adapated from OpenMM benchmark.py
     """Integrate a Context for a specified number of steps, then return how many seconds it took."""
     context.getIntegrator().step(initialSteps) # Make sure everything is fully initialized
     context.getState(getEnergy=True)
@@ -91,19 +104,20 @@ def runNCMC(options):
     nc_context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     # Initialize BLUES engine
-    blues_run = ncmc.SimNCMC(temperature, residueList=ligand_atoms)
+    blues_run = ncmc.SimNCMC(temperature, ligand_atoms)
 
     #during the ncmc move, perform a rotation around the center of mass at the start of step 49 (again to maintain symmetry of ncmc move
     rot_step = (nstepsNC/2) -1
     nc_move = [[blues_run.rotationalMove, [rot_step]]]
 
     # actually run
-    blues_run.get_particle_masses(system, residueList=ligand_atoms)
+    blues_run.get_particle_masses(system, ligand_atoms)
     blues_run.runSim(md_sim, nc_context, nc_integrator,
                     alch_sim, movekey=nc_move,
                     niter=numIter, nstepsNC=nstepsNC, nstepsMD=nstepsMD,
                     alchemical_correction=True)
 
+    # Adapted from OpenMM benchmark.py
     nc_time = timeIntegration(nc_context, nstepsNC, 5)
     md_time = timeIntegration(md_sim.context, nstepsMD, 25)
 
