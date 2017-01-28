@@ -180,30 +180,16 @@ class SimNCMC(object):
         kT = kB * temperature
         beta = 1.0 / kT
         self.beta = beta
+        
+    def get_particle_masses(self, system, atomsIdx):
+        masses = unit.Quantity(np.zeros([len(atomsIdx),1],np.float32), unit.dalton)
+        #system = context.getSystem()
+        for ele, idx in enumerate(atomsIdx):
+            masses[ele] = system.getParticleMass(idx)
+        self.total_mass = masses.sum()
+        self.mass_list = masses
+        return self.total_mass, self.mass_list
 
-    def get_particle_masses(self, system, residueList=None):
-        if residueList == None:
-            residueList = self.residueList
-        mass_list = []
-        total_mass = 0*unit.dalton
-        for index in residueList:
-            mass = system.getParticleMass(int(index))
-            total_mass = total_mass + mass
-#            print('mass', mass, 'total_mass', total_mass)
-            mass_list.append([mass])
-        total_mass = np.sum(mass_list)
-        mass_list = np.asarray(mass_list)
-        mass_list.reshape((-1,1))
-        total_mass = np.array(total_mass)
-        total_mass = np.sum(mass_list)
-        temp_list = np.zeros((len(residueList), 1))
-        for index in range(len(residueList)):
-            mass_list[index] = (np.sum(mass_list[index])).value_in_unit(unit.daltons)
-        mass_list =  mass_list*unit.daltons
-        self.total_mass = total_mass
-        self.mass_list = mass_list
-        return total_mass, mass_list
-            
     def zero_masses(self, system, atomList=None):
         """
         Zeroes the masses of specified atoms to constrain certain degrees of freedom
@@ -227,7 +213,7 @@ class SimNCMC(object):
         total_mass: simtk.unit.quantity.Quantity in units daltons
             contains the total masses of the particles for COM calculation
         mass_list:  nx1 np.array in units daltons, 
-            contains the masses of the particles for COM calculation
+            contains the masses of the particles for COM calslculation
         pos_state:  nx3 np. array in units.nanometers 
             returned from state.getPositions
         residueList: list of int, 
