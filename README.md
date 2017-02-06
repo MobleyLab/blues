@@ -18,7 +18,8 @@ This also provides a prototype and validation of the SMIRFF SMIRKS-based force f
 ### Package dependencies
 Install the required packages into a new environment
 
-```conda create -c omnia -c omnia/label/dev -n blues python=3.5 openmm==7.0.1 openmmtools alchemy mdtraj
+```
+conda create -c omnia -c omnia/label/dev -n blues python=3.5 openmm==7.0.1 openmmtools alchemy mdtraj
 ```
 
 Then, in the new environment install the BLUES package.
