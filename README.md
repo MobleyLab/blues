@@ -17,17 +17,21 @@ This also provides a prototype and validation of the SMIRFF SMIRKS-based force f
 
 ### Package dependencies
 Install the required packages into a new environment
+
 ```conda create -c omnia -c omnia/label/dev -n blues python=3.5 openmm==7.0.1 openmmtools alchemy mdtraj
 ```
 
 Then, in the new environment install the BLUES package.
+
 ```
 source activate blues
 pip install -e .
 ```
+
 ### Example Usage
 An example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move can be found in `examples/example.py`
 Simply execute the script within the directory for a specified platform.
+
 ```
 cd examples
 python example.py --platform 'OpenCL'
