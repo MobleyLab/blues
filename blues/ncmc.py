@@ -173,7 +173,6 @@ class SimNCMC(object):
         self.dummy_simulation = None
         self.nc_context = None
         self.nc_integrator = None
-        self.nc_pos = None
         self._storage = None
         self.temperature = temperature
         kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
@@ -350,7 +349,7 @@ class SimNCMC(object):
 #        self.md_simulation = openmm.app.simulation.Simulation(topology=self.normalsystem.topology, system=self.normalsystem.system, integrator=self.md_integrator)
 #        self.dummy_simulation = openmm.app.simulation.Simulation(topology=self.normalsystem.topology, system=self.normalsystem.system, integrator=self.dummy_integrator)
 
-    def rotationalMove(self, residueList=None):
+    def rotationalMove(self, context=None, residueList=None,):
         """
         Function to be used in movekey. Performs a rotation around the center of mass
         of the ligand.
@@ -361,7 +360,9 @@ class SimNCMC(object):
 
         if residueList == None:
             residueList = self.residueList
-        before_rot_pos = self.nc_context.getState(getPositions=True).getPositions(asNumpy=True)
+        if context == None:
+            context = self.nc_context
+        before_rot_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         rot_output = self.calculate_com(total_mass=self.total_mass, mass_list=self.mass_list, pos_state=before_rot_pos, residueList=residueList, rotate=True)
         rot_output = rot_output[:].value_in_unit(unit.nanometers)
         print(rot_output, 'rot_output')
@@ -370,7 +371,7 @@ class SimNCMC(object):
             print(rotPos[resnum], rot_output[index])
             rotPos[resnum] = rot_output[index]
         rotPos[:] = rotPos*unit.nanometers
-        self.nc_context.setPositions(rotPos)
+        context.setPositions(rotPos)
 
     def runSim(self, md_simulation, nc_context, nc_integrator, dummy_simulation, movekey=None, nstepsNC=25, nstepsMD=1000, niter=10, periodic=True, verbose=False, residueList=None, alchemical_correction=False, ncmc_storage='out_ncmc.h5', write_ncmc_interval=None):
         """
@@ -427,7 +428,6 @@ class SimNCMC(object):
         oldPE =  md_stateinfo.getPotentialEnergy()
         oldKE =  md_stateinfo.getKineticEnergy()
         nc_context.setPositions(oldPos)
-        self.nc_pos = oldPos
         nc_context.setVelocities(oldVel)
         nc_stateinfo = nc_context.getState(True, False, False, False, False, periodic)
 
@@ -548,7 +548,6 @@ class SimNCMC(object):
             oldVel = md_stateinfo.getVelocities(asNumpy=True)
             nc_integrator.reset()
             nc_context.setPositions(oldPos)
-            self.nc_pos = oldPos
             nc_context.setVelocities(oldVel)
 
         acceptRatio = accCounter/float(niter)
