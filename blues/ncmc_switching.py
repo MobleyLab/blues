@@ -1,3 +1,14 @@
+"""
+ncmc_switching.py: Provides an classes for controlling the primary NCMC engine,
+and related alchemical functions.
+
+*Adapted from source code:
+#https://github.com/choderalab/perses/blob/master/perses/annihilation/ncmc_switching.py
+
+Authors: Patrick B. Grinaway, Julie M. Behr, and John D. Chodera
+Contributors: Samuel C. Gill
+"""
+
 from __future__ import print_function
 import numpy as np
 import copy

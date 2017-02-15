@@ -1,3 +1,15 @@
+"""
+example.py: Provides an example script to run BLUES and
+benchmark the run on a given platform
+
+Authors: Samuel C. Gill
+Contributors: Nathan M. Lim, David L. Mobley
+
+* Benchmarking related code adapted from:
+https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
+(Authors: Peter Eastmen)
+"""
+
 from simtk import unit, openmm
 from simtk.openmm import app
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
@@ -13,17 +25,6 @@ import mdtraj as md
 from mdtraj.reporters import HDF5Reporter
 from datetime import datetime
 from optparse import OptionParser
-
-def timeIntegration(context, steps, initialSteps):
-    """Integrate a Context for a specified number of steps, then return how many seconds it took."""
-    context.getIntegrator().step(initialSteps) # Make sure everything is fully initialized
-    context.getState(getEnergy=True)
-    start = datetime.now()
-    context.getIntegrator().step(steps)
-    context.getState(getEnergy=True)
-    end = datetime.now()
-    elapsed = end -start
-    return elapsed.seconds + elapsed.microseconds*1e-6
 
 def runNCMC(options):
     # Define some constants
@@ -60,6 +61,14 @@ def runNCMC(options):
     md_sim.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     # Add reporters for MD simulation
+    from sys import stdout
+    progress_reporter = app.StateDataReporter(stdout, separator="\t",
+                                            reportInterval=10,
+                                            totalSteps=nstepsMD,
+                                            time=True, speed=True, progress=True,
+                                            elapsedTime=True, remainingTime=True)
+
+    md_sim.reporters.append(progress_reporter)
     md_sim.reporters.append(app.dcdreporter.DCDReporter('traj.dcd', nstepsMD))
     md_sim.reporters.append(HDF5Reporter('traj.h5', nstepsMD))
 
@@ -91,30 +100,18 @@ def runNCMC(options):
     nc_context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     # Initialize BLUES engine
-    blues_run = ncmc.SimNCMC(temperature, residueList=ligand_atoms)
+    blues_run = ncmc.SimNCMC(temperature, ligand_atoms)
 
     #during the ncmc move, perform a rotation around the center of mass at the start of step 49 (again to maintain symmetry of ncmc move
     rot_step = (nstepsNC/2) -1
     nc_move = [[blues_run.rotationalMove, [rot_step]]]
 
     # actually run
-    blues_run.get_particle_masses(system, residueList=ligand_atoms)
+    blues_run.get_particle_masses(system, ligand_atoms)
     blues_run.runSim(md_sim, nc_context, nc_integrator,
                     alch_sim, movekey=nc_move,
                     niter=numIter, nstepsNC=nstepsNC, nstepsMD=nstepsMD,
                     alchemical_correction=True)
-
-    nc_time = timeIntegration(nc_context, nstepsNC, 5)
-    md_time = timeIntegration(md_sim.context, nstepsMD, 25)
-
-    nc_steps = int(nstepsNC*1.0/nc_time)
-    md_steps = int(nstepsMD*1.0/md_time)
-
-    print('NC: Integrated %d steps in %g seconds' % (nstepsNC, nc_time))
-    print('MD: Integrated %d steps in %g seconds' % (nstepsMD, md_time))
-
-    print('NC: %g ns/day' % (dt/2*nstepsNC*86400/nc_time).value_in_unit(unit.nanoseconds))
-    print('MD: %g ns/day' % (dt*nstepsMD*86400/nc_time).value_in_unit(unit.nanoseconds))
 
 parser = OptionParser()
 platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]

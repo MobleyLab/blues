@@ -1,3 +1,10 @@
+"""
+utils.py: Provides a host of utility functions for the BLUES engine.
+
+Authors: Samuel C. Gill
+Contributors: Nathan M. Lim, David L. Mobley
+"""
+
 from __future__ import print_function
 import os
 

@@ -1,3 +1,11 @@
+"""
+smartdart.py: Provides the class for performing smart darting moves
+during an NCMC simulation.
+
+Authors: Samuel C. Gill
+Contributors: David L. Mobley
+"""
+
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
@@ -76,12 +84,12 @@ class SmartDarting(SimNCMC):
         self.dartboard.append(dart)
 
     def findDart(self, particle_pairs=None, particle_weights=None):
-        """ 
+        """
         For dynamically updating dart positions based on positions
         of other particles.
         This takes the weighted average of the specified particles
         and changes the dartboard of the object
-        
+
         Arguments
         ---------
         particle_pairs: list of list of ints
@@ -99,7 +107,7 @@ class SmartDarting(SimNCMC):
             particle_pairs = self.particle_pairs
         if particle_weights == None:
             particle_weights = self.particle_weights
-        #make sure there's an equal number of particle pair lists 
+        #make sure there's an equal number of particle pair lists
         #and particle weight lists
         assert len(particle_pairs) == len(particle_weights)
 
@@ -116,19 +124,19 @@ class SmartDarting(SimNCMC):
                 temp_array += (temp_pos[particle] * float(particle_weights[i][j]))
                 temp_wavg += float(particle_weights[i][j])
                 print(temp_array)
-            #divide by total number of particles in a list and append 
+            #divide by total number of particles in a list and append
             #calculated postion to dart_list
             dart_list.append(temp_array[:] / temp_wavg)
         self.dartboard = dart_list[:]
         return dart_list
 
     def virtualDart(self, virtual_particles=None):
-        """ 
+        """
         For dynamically updating dart positions based on positions
         of other particles.
         This takes the weighted average of the specified particles
         and changes the dartboard of the object
-        
+
         Arguments
         ---------
         virtual_particles: list of ints
@@ -162,7 +170,7 @@ class SmartDarting(SimNCMC):
         distList = []
         diffList = []
         indexList = []
-        #Find the distances of the COM to each dart, appending 
+        #Find the distances of the COM to each dart, appending
         #the results to distList
         for dart in self.dartboard:
             diff = com - dart
@@ -177,7 +185,7 @@ class SmartDarting(SimNCMC):
                 diff = diffList[index]
                 indexList.append(index)
         #Dart error checking
-        #to ensure reversibility the COM should only be 
+        #to ensure reversibility the COM should only be
         #within self.dart_size of one dart
         if len(selected) == 1:
             return selected[0], diffList[indexList[0]]
@@ -193,16 +201,16 @@ class SmartDarting(SimNCMC):
         """
         Helper function to choose a random dart and determine the vector
         that would translate the COM to that dart center
-        """ 
+        """
         dartindex = np.random.randint(len(self.dartboard))
         dvector = self.dartboard[dartindex]
-        chboard = dvector + changevec   
+        chboard = dvector + changevec
         print('chboard', chboard)
         return chboard
 
     def dartmove(self, context=None, residueList=None):
         """
-        Obsolete function kept for reference. 
+        Obsolete function kept for reference.
         """
         if residueList == None:
             residueList = self.residueList
@@ -217,7 +225,7 @@ class SmartDarting(SimNCMC):
         print('changevec', changevec)
         if selectedboard != None:
         #notes
-        #comMove is where the com ends up after accounting from where 
+        #comMove is where the com ends up after accounting from where
         #it was from the original dart center
         #basically it's final displacement location
             newDartPos = copy.deepcopy(oldDartPos)
@@ -279,7 +287,7 @@ class SmartDarting(SimNCMC):
 
     def updateDartMove(self, context=None, residueList=None):
         """
-        Function for performing smart darting move with darts that 
+        Function for performing smart darting move with darts that
         depend on particle positions in the system
         """
 
@@ -317,7 +325,7 @@ class SmartDarting(SimNCMC):
 
     def virtualDartMove(self, context=None, residueList=None):
         """
-        Function for performing smart darting move with darts that 
+        Function for performing smart darting move with darts that
         depend on particle positions in the system
         """
 
@@ -352,6 +360,3 @@ class SmartDarting(SimNCMC):
 #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
-
-
-
