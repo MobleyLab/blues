@@ -27,5 +27,5 @@ setup(
         "Topic :: Utilities",
     ],
 #    entry_points={'console_scripts': ['smarty = smarty.cli_smarty:main', 'smirky = smarty.cli_smirky:main']},
-#    package_data={'smarty': find_package_data('smarty/data', 'smarty')},
+    package_data={'blues': find_package_data('blues/data', 'blues')},
 )
