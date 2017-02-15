@@ -7,9 +7,9 @@ from blues.ncmc_switching import *
 from blues.utils import get_data_filename
 
 def test_runSim():
-''' Tests whether a very short SimNCMC.runSim() simulation goes to completion
+    ''' Tests whether a very short SimNCMC.runSim() simulation goes to completion
     without error.
-'''
+    '''
     ###sets up system
     temperature = 300*unit.kelvin
     periodic=False
@@ -74,9 +74,9 @@ def test_runSim():
 
 
 def test_rotationalMove():
-''' Tests whether a very short SimNCMC.runSim() simulation with a
+    ''' Tests whether a very short SimNCMC.runSim() simulation with a
     goes to completion without error.
-'''
+    '''
     ###sets up system
     temperature = 300*unit.kelvin
     periodic=False
