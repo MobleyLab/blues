@@ -9,7 +9,7 @@ from blues.utils import get_data_filename
 
 
 def test_getMasses():
-    pdb_file = 'squareB2.pdb' 
+    pdb_file = get_data_filename('squareB2.pdb')
     if 1: #if cluster test system
         periodic=False
         pdb = PDBFile(pdb_file)
