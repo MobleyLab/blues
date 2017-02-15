@@ -5,13 +5,15 @@ import simtk.unit as unit
 #from ncmc_switching import *
 import numpy as np
 from blues.ncmc import *
+from blues.utils import get_data_filename                                       
+
 
 def test_getMasses():
     pdb_file = 'squareB2.pdb' 
     if 1: #if cluster test system
         periodic=False
         pdb = PDBFile(pdb_file)
-        forcefield = ForceField('circle.xml')
+        forcefield = ForceField(get_data_filename('circle.xml'))
         system = forcefield.createSystem(pdb.topology,
                  constraints=HBonds)
 
@@ -31,11 +33,11 @@ def test_getMasses():
     np.testing.assert_almost_equal(total_mass._value, (constant_mass*3)._value, decimal=4)
 
 def test_getCOM():
-    pdb_file = 'squareB2.pdb' 
+    pdb_file = get_data_filename('squareB2.pdb')
     if 1: #if cluster test system
         periodic=False
         pdb = PDBFile(pdb_file)
-        forcefield = ForceField('circle.xml')
+        forcefield = ForceField(get_data_filename('circle.xml'))
         system = forcefield.createSystem(pdb.topology,
                  constraints=HBonds)
 

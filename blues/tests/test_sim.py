@@ -6,13 +6,14 @@ import simtk.unit as unit
 import numpy as np
 from blues.ncmc import *
 from blues.ncmc_switching import *
+from blues.utils import get_data_filename
 
 def test_runSim():
         temperature = 300*unit.kelvin
         periodic=False
-        pdb_file = 'squareB2.pdb'
+        pdb_file = get_data_filename('squareB2.pdb')
         pdb = PDBFile(pdb_file)
-        forcefield = ForceField('circle.xml')
+        forcefield = ForceField(get_data_filename('circle.xml'))
         system = forcefield.createSystem(pdb.topology,
                  constraints=HBonds)
         system.removeForce(1)
@@ -70,9 +71,9 @@ def test_runSim():
 def test_rotationalMove():
         temperature = 300*unit.kelvin
         periodic=False
-        pdb_file = 'squareB2.pdb'
+        pdb_file = get_data_filename('squareB2.pdb')
         pdb = PDBFile(pdb_file)
-        forcefield = ForceField('circle.xml')
+        forcefield = ForceField(get_data_filename('circle.xml'))
         system = forcefield.createSystem(pdb.topology,
                  constraints=HBonds)
         system.removeForce(1)
