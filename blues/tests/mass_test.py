@@ -61,7 +61,3 @@ def test_getCOM():
     for i in range(3):
         np.testing.assert_almost_equal(np.asarray(r_com_coord._value)[i], np.asarray(com_coord._value)[i], decimal=4)
 
-test_getMasses()
-test_getCOM()
-
-

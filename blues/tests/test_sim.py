@@ -129,8 +129,4 @@ def test_rotationalMove():
         assert type(results) == type(pdb.positions)
 
 
-test_runSim()
-test_rotationalMove()
-
-
 
