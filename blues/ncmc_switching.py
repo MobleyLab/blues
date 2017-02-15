@@ -1,3 +1,5 @@
+#Original code written by Patrick B. Grinaway, Julie M. Behr, and John D. Chodera
+#https://github.com/choderalab/perses/blob/master/perses/annihilation/ncmc_switching.py
 from __future__ import print_function
 import numpy as np
 import copy
