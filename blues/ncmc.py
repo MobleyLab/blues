@@ -56,7 +56,7 @@ def quantity_is_finite(quantity):
 
 class md_reporter:
     """
-    class to handle error reporting
+    Class to handle error reporting. Currently obselete.
     """
 
     def __init__(self):
@@ -180,7 +180,22 @@ class SimNCMC(object):
         beta = 1.0 / kT
         self.beta = beta
 
-    def get_particle_masses(self, system, set_self=True, residueList=None):
+    def get_particle_masses(self, system, residueList=None, set_self=True):
+        """
+        Finds the mass of each particle given by residueList and returns
+        a list of those particle masses as well as the total mass. If
+        set_self=True, sets corresponding SimNCMC attributes as well as
+        returning them.
+        Arguments
+        ---------
+        system: simtk.openmm.system
+            Openmm system object containing the particles of interest
+        residueList: list of ints
+            particle indices to find the masses of
+        set_self: boolean
+            if true, sets self.total_mass and self.mass_list to the
+            outputs of this function
+        """
         if residueList == None:
             residueList = self.residueList
         mass_list = []
@@ -188,7 +203,6 @@ class SimNCMC(object):
         for index in residueList:
             mass = system.getParticleMass(int(index))
             total_mass = total_mass + mass
-#            print('mass', mass, 'total_mass', total_mass)
             mass_list.append([mass])
         total_mass = np.sum(mass_list)
         mass_list = np.asarray(mass_list)
@@ -206,7 +220,7 @@ class SimNCMC(object):
 
     def zero_masses(self, system, atomList=None):
         """
-        Zeroes the masses of specified atoms to constrain certain degrees of freedom
+        Zeroes the masses of specified atoms to constrain certain degrees of freedom.
         Arguments
         ---------
         system: simtk.openmm.system
@@ -263,9 +277,6 @@ class SimNCMC(object):
         lig_coord = lig_coord*unit.nanometers
         copy_coord = copy.deepcopy(lig_coord)
         #mass corrected coordinates (to find COM)
-        print('mass_list', mass_list)
-        print('total_mass', total_mass)
-        print('copy_coord', copy_coord)
         mass_corrected = mass_list / total_mass * copy_coord
         sum_coord = mass_corrected.sum(axis=0).value_in_unit(unit.nanometers)
         com_coord = [0.0, 0.0, 0.0]*unit.nanometers
@@ -341,21 +352,21 @@ class SimNCMC(object):
         self.normalsystem = testsystem
         return self.normalsystem
 
-#    def createNormalSimulation(self, friction=1/unit.picosecond, timestep=0.002*unit.picoseconds, temperature=None):
-#        if temperature == None:
-#            temperature = self.temperature
-#        self.md_integrator = openmm.openmm.LangevinIntegrator(temperature, friction, timestep)
-#        self.dummy_integrator = openmm.openmm.LangevinIntegrator(temperature, friction, timestep)
-#        self.md_simulation = openmm.app.simulation.Simulation(topology=self.normalsystem.topology, system=self.normalsystem.system, integrator=self.md_integrator)
-#        self.dummy_simulation = openmm.app.simulation.Simulation(topology=self.normalsystem.topology, system=self.normalsystem.system, integrator=self.dummy_integrator)
-
-    def rotationalMove(self, context=None, residueList=None,):
+    def rotationalMove(self, context=None, residueList=None):
         """
         Function to be used in movekey. Performs a rotation around the center of mass
-        of the ligand.
+        of the ligand. Generally no arguments are specified, since this takes the
+        context and residueList attributes from the SimNCMC class.
+
         Arguments
         ---------
-        generally none
+        context: openmm.context
+            variable referring to the ncmc context. If none are
+            specified uses the context in self.nc_context
+        residueList: list of ints
+            Indices of ligand atoms for alchemical transformation. If none are
+            specified uses the residueList in self.residueList
+
         """
 
         if residueList == None:
@@ -365,10 +376,8 @@ class SimNCMC(object):
         before_rot_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         rot_output = self.calculate_com(total_mass=self.total_mass, mass_list=self.mass_list, pos_state=before_rot_pos, residueList=residueList, rotate=True)
         rot_output = rot_output[:].value_in_unit(unit.nanometers)
-        print(rot_output, 'rot_output')
         rotPos = before_rot_pos.value_in_unit(unit.nanometers)
         for index, resnum in enumerate(residueList):
-            print(rotPos[resnum], rot_output[index])
             rotPos[resnum] = rot_output[index]
         rotPos[:] = rotPos*unit.nanometers
         context.setPositions(rotPos)
@@ -509,11 +518,10 @@ class SimNCMC(object):
                 print('move accepted')
                 accCounter = accCounter + 1.0
                 print('accCounter', float(accCounter)/float(stepsdone+1), accCounter)
-
                 nc_stateinfo = nc_context.getState(True, True, False, False, False, periodic)
-
                 oldPos = newPos[:]
                 oldVel = newVel[:]
+
             else:
                 print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
                 print('rejected', log_ncmc, '<', randnum)
@@ -527,6 +535,7 @@ class SimNCMC(object):
             md_simulation.context.setPositions(oldPos)
             md_simulation.context.setVelocities(oldVel)
             md_simulation.context.setVelocitiesToTemperature(self.temperature)
+
             if nstepsMD > 0:
                 try:
                     md_simulation.step(nstepsMD)
@@ -535,8 +544,8 @@ class SimNCMC(object):
                     stateinfo = md_simulation.context.getState(True, True, False, False, False, periodic)
                     last_x, last_y = np.shape(oldPos)
                     reshape = (np.reshape(oldPos, (1, last_x, last_y))).value_in_unit(unit.nanometers)
-                    print(oldPE)
-                    print(oldKE)
+                    print('potential energy before NCMC', oldPE)
+                    print('kinetic energy before NCMC', oldKE)
 
                     last_top = md.Topology.from_openmm(md_simulation.topology)
                     broken_frame = md.Trajectory(xyz=reshape, topology=last_top)
@@ -551,6 +560,6 @@ class SimNCMC(object):
             nc_context.setVelocities(oldVel)
 
         acceptRatio = accCounter/float(niter)
-        print(acceptRatio)
+        print('acceptance ratio', acceptRatio)
         print('numsteps ', nstepsNC)
         return oldPos
