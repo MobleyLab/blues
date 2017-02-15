@@ -20,7 +20,7 @@ setup(
     license = "GNU Lesser General Public License (LGPL), Version 3",
     keywords = "Nonequilibrium candidate Monte Carlo sampling of ligand binding modes",
     url = "https://github.com/MobleyLab/ligand_ncmc",
-    packages=['blues', 'run_scripts', 'utils', 'systems'],
+    packages=['blues', 'blues/tests', 'blues/data', 'run_scripts', 'utils', 'systems'],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 1 - Alpha",
