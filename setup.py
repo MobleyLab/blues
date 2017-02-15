@@ -19,7 +19,7 @@ setup(
     description = ("NCMC moves in OpenMM to enhance ligand sampling"),
     license = "GNU Lesser General Public License (LGPL), Version 3",
     keywords = "Nonequilibrium candidate Monte Carlo sampling of ligand binding modes",
-    url = "https://github.com/MobleyLab/ligand_ncmc",
+    url = "https://github.com/MobleyLab/blues",
     packages=['blues', 'blues/tests', 'blues/data', 'run_scripts', 'utils', 'systems'],
     long_description=read('README.md'),
     classifiers=[

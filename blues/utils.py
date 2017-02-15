@@ -24,9 +24,11 @@ def atomIndexfromTop(resname, topology):
 
 def get_data_filename(relative_path):
     """Get the full path to one of the reference files in testsystems.
-    In the source distribution, these files are in ``smarty/data/``,
+    In the source distribution, these files are in ``blues/data/``,
     but on installation, they're moved to somewhere in the user's python
     site-packages directory.
+    Adapted from:
+    https://github.com/open-forcefield-group/smarty/blob/master/smarty/utils.py
     Parameters
     ----------
     name : str
