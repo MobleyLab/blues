@@ -29,7 +29,7 @@ def test_runSim():
     md_simulation.context.setPositions(test_system.positions)
     md_simulation.context.setVelocitiesToTemperature(temperature)
     results = test_run.runSim(md_simulation, nc_context, nc_integrator, dummy_simulation, nstepsNC=2, nstepsMD=2, niter=1, alchemical_correction=True)
-    assert type(results) == type(pdb.positions)
+    assert type(results) == type(test_system.positions)
 
 
 def test_rotationalMove():
@@ -56,6 +56,7 @@ def test_rotationalMove():
     nc_move = [[test_run.rotationalMove, [1]]]
     #see if simulation runs
     results = test_run.runSim(md_simulation, nc_context, nc_integrator, dummy_simulation, nstepsNC=2, nstepsMD=2, niter=1, alchemical_correction=True, movekey=nc_move)
-    assert type(results) == type(pdb.positions)
+    assert type(results) == type(test_system.positions)
+test_runSim()
 
 
