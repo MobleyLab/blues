@@ -196,7 +196,7 @@ class SimNCMC(object):
             if true, sets self.total_mass and self.mass_list to the
             outputs of this function
         """
-        if residueList == None:
+        if type(residueList) == type(None):
             residueList = self.residueList
         mass_list = []
         total_mass = 0*unit.dalton
@@ -258,12 +258,12 @@ class SimNCMC(object):
         com_coord: 1x3 np.array in units.nm
             position of the center of mass coordinate
         """
-        if residueList == None:
+        if type(residueList) == type(None):
             residueList = self.residueList
         if mass_list == None:
             mass_list = self.mass_list
         if mass_list == None:
-#            self.get_particle_masses(system=self.md_simulation.system)
+            self.get_particle_masses(system=self.md_simulation.system)
             mass_list = self.mass_list
 
         if total_mass == None:
@@ -369,7 +369,7 @@ class SimNCMC(object):
 
         """
 
-        if residueList == None:
+        if type(residueList) == type(None):
             residueList = self.residueList
         if context == None:
             context = self.nc_context
@@ -416,7 +416,7 @@ class SimNCMC(object):
             If int is used, specifies the interval which NCMC positions are written.
             Also writes out after every function applied by movekey
         """
-        if residueList == None:
+        if type(residueList) == type(None):
             residueList = self.residueList
         self.md_simulation = md_simulation
         self.dummy_simulation = dummy_simulation
@@ -430,7 +430,7 @@ class SimNCMC(object):
         #set up initial counters/ inputs
         accCounter = 0
         #set inital conditions
-        md_stateinfo = md_simulation.context.getState(getPositions=True, getVelocities=True)
+        md_stateinfo = md_simulation.context.getState(getPositions=True, getVelocities=True, getEnergy=True)
         oldPos = md_stateinfo.getPositions(asNumpy=True)
         oldVel = md_stateinfo.getVelocities(asNumpy=True)
 
@@ -443,7 +443,7 @@ class SimNCMC(object):
         for stepsdone in range(niter):
             print('performing ncmc step')
             print('accCounter =', accCounter)
-            mdinfo = md_simulation.context.getState(getPositions=True, getVelocities=True)
+            mdinfo = md_simulation.context.getState(getPositions=True, getVelocities=True, getEnergy=True)
             oldPE =  mdinfo.getPotentialEnergy()
             oldKE =  mdinfo.getKineticEnergy()
             if alchemical_correction == True:
