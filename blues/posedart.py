@@ -113,53 +113,40 @@ class PoseDart(SimNCMC):
             print('diff_list', diff_list[index])
             print('dist_list', dist_list[index])
 
-        for index, dart in enumerate(binding_mode_atom_pos):
-            #make temporary pos to compare distances with
-            #loop over symmetric groups
-            for symm_group in symmetric_atoms:
-                compare_diff =[]
-                compare_dist =[]
-                #find the original index, which correspods with the position in temp_sim_pos
-                original_index = [residueList.index(x) for x in symm_group]
-                #create permutations of the symmetric atom indices
-                iter_symm = itertools.permutations(original_index)
-                dist_subset = [dist_list[x] for x in original_index]
-                for x in iter_symm:
-                    for i, atom in enumerate(x):
-                        #i is the index, atom is the original_atom index
-                        #switch original_index with permutation
-                        temp_sim_pos = sim_atom_pos[:]
-                        temp_sim_pos[original_index[i]] = sim_atom_pos[atom[i]]
-                        diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
-                        dist = np.sqrt(np.sum((diff)*(diff)))
-                        compare_diff.append(diff)
-                        compare_dist.append(dist)
-                    if np.sum(compare_dist) < np.sum(dist_subset):
-                        print('better symmetric equivalent found')
-                        #replace changed variables
-                        sim_atom_pos = temp_atom_pos[:]
-                        #replace diff_list and dist_list with updated values
-                        diff_list[]
+        if symmetric_atoms != None:
+            for index, dart in enumerate(binding_mode_atom_pos):
+                #make temporary pos to compare distances with
+                #loop over symmetric groups
+                for symm_group in symmetric_atoms:
+                    compare_diff =[]
+                    compare_dist =[]
+                    #find the original index, which correspods with the position in temp_sim_pos
+                    original_index = [residueList.index(x) for x in symm_group]
+                    #create permutations of the symmetric atom indices
+                    iter_symm = itertools.permutations(original_index)
+                    dist_subset = [dist_list[x] for x in original_index]
+                    for x in iter_symm:
+                        for i, atom in enumerate(x):
+                            #i is the index, atom is the original_atom index
+                            #switch original_index with permutation
+                            temp_sim_pos = sim_atom_pos[:]
+                            temp_sim_pos[original_index[i]] = sim_atom_pos[atom[i]]
+                            diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
+                            dist = np.sqrt(np.sum((diff)*(diff)))
+                            compare_diff.append(diff)
+                            compare_dist.append(dist)
+                        if np.sum(compare_dist) < np.sum(dist_subset):
+                            print('better symmetric equivalent found')
+                            #replace changed variables
+                            sim_atom_pos = temp_sim_pos[:]
+                            #replace diff_list and dist_list with updated values
+                            for i, atom in enumerate(x):
+                                diff_list[atom] = compare_diff[i]
+                                dist_list[atom] = compare_dist[i]
+                                #TODO might wanna trade velocities too
 
 
-
-
-
-
-            diff = sim_atom_pos[index] - dart
-            dist = np.sqrt(np.sum((diff)*(diff)))
-            print('binding_mode_atom_pos', binding_mode_atom_pos)
-            print('sim_atom_pos', sim_atom_pos[index])
-            print('dart', dart)
-            print('diff', diff)
-            diff_list[index] = diff
-            dist_list[index] = dist
-            print('diff_list', diff_list[index])
-            print('dist_list', dist_list[index])
-
-
-
-        return dist_list, diff_list, symm_dist_list, symm_diff_list
+        return dist_list, diff_list
 
 
     def poseDart(self, context=None, residueList=None):
