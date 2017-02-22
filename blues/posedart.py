@@ -6,31 +6,6 @@ import simtk.unit as unit
 import numpy as np
 from blues.ncmc import SimNCMC, get_lig_residues
 import mdtraj as md
-def zero_masses( system, firstres, lastres):
-    for index in range(firstres, lastres):
-        system.setParticleMass(index, 0*daltons)
-
-def beta(temperature):
-    kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
-    kT = kB * temperature
-    beta = 1.0 / kT
-    return beta
-
-
-
-def forcegroupify(system):
-    forcegroups = {}
-    for i in range(system.getNumForces()):
-        force = system.getForce(i)
-        force.setForceGroup(i)
-        forcegroups[force] = i
-    return forcegroups
-
-def getEnergyDecomposition(context, forcegroups):
-    energies = {}
-    for f, i in forcegroups.items():
-        energies[f] = context.getState(getEnergy=True, groups=2**i).getPotentialEnergy()
-    return energies
 
 class PoseDart(SimNCMC):
     """
@@ -63,11 +38,6 @@ class PoseDart(SimNCMC):
             self.binding_mode_traj.append(copy.deepcopy(traj))
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
 
-
-
-
-
-
     def setDartUpdates(self, residueList):
         self.residueList = residueList
 
@@ -75,7 +45,6 @@ class PoseDart(SimNCMC):
         self.residueList = get_lig_residues(lig_resname,
                                     coord_file,
                                     top_file)
-
 
     def add_dart(self, dart):
         self.dartboard.append(dart)
@@ -296,6 +265,10 @@ class PoseDart(SimNCMC):
         ###
 
         print('total residues', residueList)
+        #get matching binding mode pose and get rotation/translation to that pose
+        binding_mode_pos[binding_mode_index]
+        #use rot and translation to dart to another pose
+
         for index, atom in enumerate(residueList):
             #index refers to where in list
             #atom refers to atom#
