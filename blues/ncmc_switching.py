@@ -890,7 +890,6 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
         self.addComputeSum('kinetic', '0.5 * m * v^2')
         self.addComputeGlobal("Enew", "energy + kinetic")
         self.addComputeGlobal("shadow_work", "shadow_work + (Enew-Eold)/kT")
-        self.addComputeGlobal("Epert", "energy")
 
     def addGHMCStep(self):
         """
@@ -949,6 +948,8 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
         #
         self.addComputeGlobal("naccept", "naccept + accept")
         self.addComputeGlobal("ntrials", "ntrials + 1")
+        #self.addComputeGlobal("Epert", "energy")
+
 
     def get_step(self):
         return self.getGlobalVariableByName("step")
@@ -961,6 +962,7 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
         self.setGlobalVariableByName("lambda", 0.0)
         self.setGlobalVariableByName("total_work", 0.0)
         self.setGlobalVariableByName("protocol_work", 0.0)
+        self.setGlobalVariableByName("Epert", 0.0)
         self.setGlobalVariableByName("shadow_work", 0.0)
         self.setGlobalVariableByName("initial_reduced_potential", 0.0)
         self.setGlobalVariableByName("final_reduced_potential", 0.0)
@@ -1131,18 +1133,20 @@ class NCMCVVAlchemicalIntegrator(NCMCAlchemicalIntegrator):
             # Initial step only
             self.beginIfBlock('step = 0')
             # Constrain initial positions and velocities
-            self.addComputeGlobal("Epert", "energy")
             self.addConstrainPositions()
             self.addConstrainVelocities()
             # Initialize alchemical state
             self.addWorkResetStep()
             self.addAlchemicalResetStep()
+            self.addComputeGlobal("Epert", "energy")
             # Execute propagation steps.
             self.addComputeGlobal('pstep', '0')
             self.beginWhileBlock('pstep < psteps')
             self.addVelocityVerletStep()
             self.addComputeGlobal('pstep', 'pstep+1')
             self.endBlock()
+
+            self.addComputeGlobal("Epert", "energy")
             # End block
             self.endBlock()
 
@@ -1160,6 +1164,8 @@ class NCMCVVAlchemicalIntegrator(NCMCAlchemicalIntegrator):
             self.addComputeGlobal('step', 'step+1')
             # Compute total work
             self.addComputeTotalWorkStep()
+            self.addComputeGlobal("Epert", "energy")
+
             # End block
             self.endBlock()
 
@@ -1246,11 +1252,11 @@ class NCMCGHMCAlchemicalIntegrator(NCMCAlchemicalIntegrator):
             self.addWorkResetStep()
             self.addAlchemicalResetStep()
             # Execute initial propagation steps for symmetry
-            #self.addComputeGlobal('pstep', '0')
-            #self.beginWhileBlock('pstep < psteps')
+            self.addComputeGlobal('pstep', '0')
+            self.beginWhileBlock('pstep < psteps')
             self.addGHMCStep()
-            #self.addComputeGlobal('pstep', 'pstep+1')
-            #self.endBlock()
+            self.addComputeGlobal('pstep', 'pstep+1')
+            self.endBlock()
             # End block
             self.endBlock()
 
@@ -1259,11 +1265,11 @@ class NCMCGHMCAlchemicalIntegrator(NCMCAlchemicalIntegrator):
             # Accumulate protocol work
             self.addAlchemicalPerturbationStep()
             # Execute propagation steps.
-            #self.addComputeGlobal('pstep', '0')
-            #self.beginWhileBlock('pstep < psteps')
+            self.addComputeGlobal('pstep', '0')
+            self.beginWhileBlock('pstep < psteps')
             self.addGHMCStep()
-            #self.addComputeGlobal('pstep', 'pstep+1')
-            #self.endBlock()
+            self.addComputeGlobal('pstep', 'pstep+1')
+            self.endBlock()
             # Increment step
             self.addComputeGlobal("Epert", "energy")
             self.addComputeGlobal('step', 'step+1')
@@ -1271,3 +1277,4 @@ class NCMCGHMCAlchemicalIntegrator(NCMCAlchemicalIntegrator):
             self.addComputeTotalWorkStep()
             # End block
             self.endBlock()
+
