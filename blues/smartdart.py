@@ -134,33 +134,6 @@ def findOldCoord(particle1, particle2, particle3, center):
     print('adjusted coord', adjusted_center)
     return adjusted_center
 
-
-def zero_masses( system, firstres, lastres):
-    for index in range(firstres, lastres):
-        system.setParticleMass(index, 0*daltons)
-
-def beta(temperature):
-    kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
-    kT = kB * temperature
-    beta = 1.0 / kT
-    return beta
-
-
-
-def forcegroupify(system):
-    forcegroups = {}
-    for i in range(system.getNumForces()):
-        force = system.getForce(i)
-        force.setForceGroup(i)
-        forcegroups[force] = i
-    return forcegroups
-
-def getEnergyDecomposition(context, forcegroups):
-    energies = {}
-    for f, i in forcegroups.items():
-        energies[f] = context.getState(getEnergy=True, groups=2**i).getPotentialEnergy()
-    return energies
-
 class SmartDarting(SimNCMC):
     """
     Class for performing smart darting moves during an NCMC simulation.
