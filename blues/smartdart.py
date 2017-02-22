@@ -134,33 +134,6 @@ def findOldCoord(particle1, particle2, particle3, center):
     print('adjusted coord', adjusted_center)
     return adjusted_center
 
-
-def zero_masses( system, firstres, lastres):
-    for index in range(firstres, lastres):
-        system.setParticleMass(index, 0*daltons)
-
-def beta(temperature):
-    kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
-    kT = kB * temperature
-    beta = 1.0 / kT
-    return beta
-
-
-
-def forcegroupify(system):
-    forcegroups = {}
-    for i in range(system.getNumForces()):
-        force = system.getForce(i)
-        force.setForceGroup(i)
-        forcegroups[force] = i
-    return forcegroups
-
-def getEnergyDecomposition(context, forcegroups):
-    energies = {}
-    for f, i in forcegroups.items():
-        energies[f] = context.getState(getEnergy=True, groups=2**i).getPotentialEnergy()
-    return energies
-
 class SmartDarting(SimNCMC):
     """
     Class for performing smart darting moves during an NCMC simulation.
@@ -176,33 +149,11 @@ class SmartDarting(SimNCMC):
         self.virtual_particles = []
 
     def setDartUpdates(self, particle_pairs, particle_weights):
+        '''used for updating darting positions when the dart center
+        lies simply between two particles (usually protien residues).
+        '''
         self.particle_pairs = particle_pairs
         self.particle_weights = particle_weights
-
-    def get_particle_masses(self, system, set_self=True, residueList=None):
-        if residueList == None:
-            residueList = self.residueList
-        mass_list = []
-        total_mass = 0*unit.dalton
-        for index in residueList:
-            mass = system.getParticleMass(index)
-            print('getting')
-            total_mass = total_mass + mass
-            print('mass', mass, 'total_mass', total_mass)
-            mass_list.append([mass])
-        total_mass = np.sum(mass_list)
-        mass_list = np.asarray(mass_list)
-        mass_list.reshape((-1,1))
-        total_mass = np.array(total_mass)
-        total_mass = np.sum(mass_list)
-        temp_list = np.zeros((len(residueList), 1))
-        for index in range(len(residueList)):
-            mass_list[index] = (np.sum(mass_list[index])).value_in_unit(unit.daltons)
-        mass_list =  mass_list*unit.daltons
-        if set_self == True:
-            self.total_mass = total_mass
-            self.mass_list = mass_list
-        return total_mass, mass_list
 
     def dartsFromPDB(self, pdb_list, forcefield, residueList=None, basis_particles=None):
         """
