@@ -45,6 +45,64 @@ def rigid_transform_3D(A, B):
 
     return R, t, centroid_A, centroid_B, centroid_difference
 
+def getRotTrans(apos, bpos, residueList=None):
+    '''
+    Get rotation and translation of rigid pose
+
+    Arguments
+    ---------
+    apos: nx3 np.array
+        simulation positions
+    bpos: nx3 np.array
+        comparison positoins
+    residueList
+    '''
+    if type(residueList) = type(None):
+        residueList = self.residueList
+    #rot, trans, centa, centb, tedit = rigid_transform_3D(apos, bpos)
+    a_new = apos[:]
+    a_res = np.zeros((3,len(residueList)))
+    b_res = np.zeros((3,len(residueList)))
+    for index, i in enumerate(residueList):
+        a_res[index] = apos[i]
+        b_res[index] = bpos[i]
+    rot, trans, centa, centb, centroid_difference = rigid_transform_3D(a_res, b_res)
+    return rot, centroid_difference
+
+def rigidDart(apos, bpos, rot, centroid_difference, residueList=None):
+    '''
+    Get rotation and translation of rigid pose
+
+    Arguments
+    ---------
+    apos: nx3 np.array
+        simulation positions
+    bpos: nx3 np.array
+        comparison positoins
+    rot: 3x3 np.array
+        Rotation to be applied from other dart.
+    centroid_difference: 1x3 np.array
+        Vector difference between other dart and simulation centroids.
+    residueList
+    '''
+    if type(residueList) = type(None):
+        residueList = self.residueList
+    #rot, trans, centa, centb, tedit = rigid_transform_3D(apos, bpos)
+    a_new = apos[:]
+    num_res = len(residueList)
+    a_res = np.zeros((3,len(residueList)))
+    b_res = np.zeros((3,len(residueList)))
+    for index, i in enumerate(residueList):
+        a_res[index] = apos[i]
+        b_res[index] = bpos[i]
+    holder_rot, trans, centa, centb, holder_centroid_difference = rigid_transform_3D(a_res, b_res)
+    a_removed_centroid = a_res - (np.tile(centa, (num_res, 1)))
+    b_new = np.dot(rot, a_removed_centroid.T) + (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centa, (num_res, 1))).T
+    for index, i in enumerate(residueList):
+        #index is index, i is residueList index
+        a_new[residueList] = b_new[i]
+    return a_new
+
 # Test with random data
 if __name__== "__main__":
   # Random rotation and translation

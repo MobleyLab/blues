@@ -6,6 +6,7 @@ import simtk.unit as unit
 import numpy as np
 from blues.ncmc import SimNCMC, get_lig_residues
 import mdtraj as md
+from blues.rot_mat import getRotTrans, rigidDart
 
 class PoseDart(SimNCMC):
     """
@@ -239,7 +240,7 @@ class PoseDart(SimNCMC):
 
         return changed_pos
 
-    def poseRigidRedart(self, changevec, binding_mode_pos, binding_mode_index, nc_pos, residueList=None):
+    def poseRigidRedart(self, binding_mode_pos, binding_mode_index, nc_pos, residueList=None):
         """
         Helper function to choose a random pose and determine the vector
         that would translate the current particles to that dart center
@@ -266,31 +267,40 @@ class PoseDart(SimNCMC):
 
         print('total residues', residueList)
         #get matching binding mode pose and get rotation/translation to that pose
-        binding_mode_pos[binding_mode_index]
+
+        selected_mode = binding_mode_pos[binding_mode_index]
+        random_mode = binding_mode_pos[rand_index]
+        rotation, centroid_difference = getRotTrans(nc_pos, selected_mode, residueList)
+        return_pos = rigidDart(nc_pos, random_mode, rotation, centroid_difference, residueList)
+        return return_pos
         #use rot and translation to dart to another pose
 
-        for index, atom in enumerate(residueList):
-            #index refers to where in list
-            #atom refers to atom#
-            print('fitting atom', atom)
-            dartindex = binding_mode_index
-            print('binding_mode_pos', binding_mode_pos)
-            print('binding_mode_pos.xyz', (binding_mode_pos[dartindex].xyz))
-            dart_origin = (binding_mode_pos[rand_index].xyz)[0][atom]
-            print('dart_origin', dart_origin)
-            print('changevec', changevec)
-            print('changevec[index]', changevec[index])
-            dart_change = dart_origin + changevec[index]
-            changed_pos[atom] = dart_change*unit.nanometers
-            print('dart_change', dart_change)
-            print('dart_before', nc_pos[atom])
-            print('dart_after', changed_pos[atom])
-
-
-        #select another binding pose and then for each atom
-        #use poseRedart() for each atom position
-
-
+    def poseRigidMove(self, context=None, residueList=None):
+        if residueList == None:
+            residueList = self.residueList
+        if context == None:
+            context = self.nc_context
+        stateinfo = context.getState(True, True, False, True, True, False)
+        oldEnergy = stateinfo.getPotentialEnergy()
+        oldDartPos = stateinfo.getPositions(asNumpy=True)
+        selected_pose, diff_list = self.poseDart()
+        if selected_pose == None:
+            print('no pose found')
+        else:
+            print('yes pose found')
+            new_pos = self.poseRigidRedart(binding_mode_pos=self.binding_mode_traj
+                                            binding_mode_index=selected_pose,
+                                            nc_pos=oldDartPos)
+            context.setPositions(new_pos)
+            stateinfo = context.getState(True, True, False, True, True, False)
+            newEnergy = stateinfo.getPotentialEnergy()
+            print('oldEnergy', oldEnergy)
+            print('newEnergy', newEnergy)
+            old_md_state = self.md_simulation.context.getState(True, True, False, True, True, False)
+            print('md_oldEnergy',old_md_state.getPotentialEnergy())
+            self.md_simulation.context.setPositions(new_pos)
+            new_md_state = self.md_simulation.context.getState(True, True, False, True, True, False)
+            print('md_newEnergy',new_md_state.getPotentialEnergy())
 
     def poseMove(self, context=None, residueList=None):
         if residueList == None:
@@ -319,17 +329,6 @@ class PoseDart(SimNCMC):
             self.md_simulation.context.setPositions(new_pos)
             new_md_state = self.md_simulation.context.getState(True, True, False, True, True, False)
             print('md_newEnergy',new_md_state.getPotentialEnergy())
-
-
-
-
-
-
-
-
-
-
-
 
     def findDart(self, particle_pairs=None, particle_weights=None):
         """
