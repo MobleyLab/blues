@@ -1,5 +1,6 @@
 import numpy as np
 from math import sqrt
+from simtk import unit
 
 # Input: expects Nx3 matrix of points
 # Returns R,t
@@ -54,19 +55,28 @@ def getRotTrans(apos, bpos, residueList=None):
     apos: nx3 np.array
         simulation positions
     bpos: nx3 np.array
-        comparison positoins
+        comparison positions
     residueList
     '''
-    if type(residueList) = type(None):
+    if type(residueList) == type(None):
         residueList = self.residueList
     #rot, trans, centa, centb, tedit = rigid_transform_3D(apos, bpos)
     a_new = apos[:]
     a_res = np.zeros((3,len(residueList)))
     b_res = np.zeros((3,len(residueList)))
     for index, i in enumerate(residueList):
+        print('ares', a_res)
+        print('apos', apos)
+
+        print('bres', b_res)
+        print('bpos', bpos)
         a_res[index] = apos[i]
         b_res[index] = bpos[i]
     rot, trans, centa, centb, centroid_difference = rigid_transform_3D(a_res, b_res)
+    print('ares', a_res)
+    print('TODO')
+    print('rot', rot)
+    print('centroid_difference', centroid_difference)
     return rot, centroid_difference
 
 def rigidDart(apos, bpos, rot, centroid_difference, residueList=None):
@@ -85,22 +95,33 @@ def rigidDart(apos, bpos, rot, centroid_difference, residueList=None):
         Vector difference between other dart and simulation centroids.
     residueList
     '''
-    if type(residueList) = type(None):
+    if type(residueList) == type(None):
         residueList = self.residueList
     #rot, trans, centa, centb, tedit = rigid_transform_3D(apos, bpos)
     a_new = apos[:]
     num_res = len(residueList)
-    a_res = np.zeros((3,len(residueList)))
-    b_res = np.zeros((3,len(residueList)))
+    a_res = np.zeros((3, num_res))
+    b_res = np.zeros((3, num_res))
     for index, i in enumerate(residueList):
+        print('ares', a_res)
+        print('apos', apos)
         a_res[index] = apos[i]
         b_res[index] = bpos[i]
     holder_rot, trans, centa, centb, holder_centroid_difference = rigid_transform_3D(a_res, b_res)
-    a_removed_centroid = a_res - (np.tile(centa, (num_res, 1)))
-    b_new = np.dot(rot, a_removed_centroid.T) + (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centa, (num_res, 1))).T
+    b_removed_centroid = b_res - (np.tile(centb, (num_res, 1)))
+    b_new = (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centb, (num_res, 1))).T
+#    b_new = np.dot(rot, b_removed_centroid.T) + (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centb, (num_res, 1))).T
+    print('b_res', b_res)
+    print('b_removed_centroid', b_removed_centroid)
+    print('b_new', b_new)
+    print('rot', rot)
+#    b_new = np.dot(rot, a_removed_centroid.T) + (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centa, (num_res, 1))).T
+    b_new = b_new * unit.nanometer
     for index, i in enumerate(residueList):
         #index is index, i is residueList index
-        a_new[residueList] = b_new[i]
+        print('a_new', a_new)
+        print('b_new', b_new)
+        a_new[residueList[index]] = b_new[index]
     return a_new
 
 # Test with random data

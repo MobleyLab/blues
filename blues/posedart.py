@@ -268,8 +268,10 @@ class PoseDart(SimNCMC):
         print('total residues', residueList)
         #get matching binding mode pose and get rotation/translation to that pose
 
-        selected_mode = binding_mode_pos[binding_mode_index]
-        random_mode = binding_mode_pos[rand_index]
+        selected_mode = binding_mode_pos[binding_mode_index].xyz[0]
+        print('binding_mode_pos', binding_mode_pos)
+        print('selected mode', selected_mode)
+        random_mode = binding_mode_pos[rand_index].xyz[0]
         rotation, centroid_difference = getRotTrans(nc_pos, selected_mode, residueList)
         return_pos = rigidDart(nc_pos, random_mode, rotation, centroid_difference, residueList)
         return return_pos
@@ -288,7 +290,9 @@ class PoseDart(SimNCMC):
             print('no pose found')
         else:
             print('yes pose found')
-            new_pos = self.poseRigidRedart(binding_mode_pos=self.binding_mode_traj
+            print('oldPos', oldDartPos[-3:])
+
+            new_pos = self.poseRigidRedart(binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=selected_pose,
                                             nc_pos=oldDartPos)
             context.setPositions(new_pos)
