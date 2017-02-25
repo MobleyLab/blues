@@ -108,8 +108,13 @@ def rigidDart(apos, bpos, rot, centroid_difference, residueList=None):
         a_res[index] = apos[i]
         b_res[index] = bpos[i]
     holder_rot, trans, centa, centb, holder_centroid_difference = rigid_transform_3D(a_res, b_res)
+    print('centroid_difference', centroid_difference)
     b_removed_centroid = b_res - (np.tile(centb, (num_res, 1)))
-    b_new = (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centb, (num_res, 1))).T
+    b_new = (np.tile(centroid_difference, (num_res, 1))) + b_res
+    b_rot = (np.dot(rot, b_removed_centroid.T)).T
+    #changed
+    b_new = b_rot + (np.tile(centroid_difference, (num_res, 1))) + (np.tile(centb, (num_res, 1)))
+#    b_new = (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centb, (num_res, 1))).T
 #    b_new = np.dot(rot, b_removed_centroid.T) + (np.tile(centroid_difference, (num_res, 1))).T + (np.tile(centb, (num_res, 1))).T
     print('b_res', b_res)
     print('b_removed_centroid', b_removed_centroid)
