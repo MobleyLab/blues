@@ -469,6 +469,11 @@ class SimNCMC(object):
                         print('shadow_before', nc_integrator.getGlobalVariableByName("shadow_work"))
                         print('protocol_before', nc_integrator.getGlobalVariableByName("protocol_work"))
                         print('Epert_before', nc_integrator.getGlobalVariableByName("Epert"))
+                        try:
+                            print('naccept', nc_integrator.getGlobalVariableByName("naccept"))
+                        except:
+                            pass
+
 
                     if write_ncmc_interval and (stepscarried+1) % write_ncmc_interval == 0:
                         if verbose:
@@ -486,6 +491,10 @@ class SimNCMC(object):
                         print('Eold', nc_integrator.getGlobalVariableByName("Eold"))
                         print('Enew', nc_integrator.getGlobalVariableByName("Enew"))
                         print('Epert_after', nc_integrator.getGlobalVariableByName("Epert"))
+                        try:
+                            print('naccept', nc_integrator.getGlobalVariableByName("naccept"))
+                        except:
+                            pass
 
                 except Exception as e:
                     if str(e) == "Particle coordinate is nan":
@@ -502,9 +511,11 @@ class SimNCMC(object):
                 dummy_simulation.context.setPositions(newPos)
                 dummy_info = dummy_simulation.context.getState(True, True, False, True, True, periodic)
                 norm_newPE = dummy_info.getPotentialEnergy()
-                correction_factor = -1.0*((norm_newPE - alc_newPE) - (oldPE - alc_oldPE))*(1/nc_integrator.kT)
+                correction_factor = (alc_oldPE - oldPE + norm_newPE - alc_newPE)*(1/nc_integrator.kT)
                 print('correction_factor', correction_factor)
-                log_ncmc = log_ncmc + correction_factor
+                #corrected energy term
+                log_ncmc = correction_factor + log_ncmc
+                #log_ncmc = log_ncmc + correction_factor
 
             if log_ncmc > randnum:
                 print('ncmc move accepted')
