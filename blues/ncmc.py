@@ -899,7 +899,7 @@ class SimNCMC(object):
             dummy_simulation.context.setPositions(newPos)
             dummy_info = dummy_simulation.context.getState(True, True, False, True, True, periodic)
             norm_newPE = dummy_info.getPotentialEnergy()
-            log_ncmc = (-1*(norm_newPE - oldPE) + (newKE - oldKE))*)1/nc_integrator.kT)
+            log_ncmc = (-1*(norm_newPE - oldPE) + (newKE - oldKE))*(1/nc_integrator.kT)
 
             randnum =  math.log(np.random.random())
             if alchemical_correction == True and np.isnan(log_ncmc) == False:
