@@ -693,16 +693,15 @@ class SimNCMC(object):
                         if str(e) == "Particle coordinate is nan":
                             print('nan, breaking')
                             break
-
+                newinfo = nc_context.getState(True, True, False, True, True, periodic)
+                newPos = newinfo.getPositions(asNumpy=True)
+                newVel = newinfo.getVelocities(asNumpy=True)
                 log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
                 dummy_simulation.context.setPositions(newPos)
                 dummy_info = dummy_simulation.context.getState(True, True, False, True, True, periodic)
                 norm_newPE = dummy_info.getPotentialEnergy()
                 log_ncmc = -(norm_newPE - oldPE)* (1/nc_integrator.kT)
 
-                newinfo = nc_context.getState(True, True, False, True, True, periodic)
-                newPos = newinfo.getPositions(asNumpy=True)
-                newVel = newinfo.getVelocities(asNumpy=True)
                 randnum =  math.log(np.random.random())
                 if alchemical_correction == True and np.isnan(log_ncmc) == False:
                     alc_newPE = newinfo.getPotentialEnergy()
