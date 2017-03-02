@@ -915,6 +915,10 @@ class SimNCMC(object):
 
             if log_ncmc > randnum:
                 print('ncmc move accepted')
+                print('oldKE', oldKE, 'newKE', newKE )
+                print('oldPE', oldPE, 'newPE', norm_newPE )
+                print('total old Energy', oldKE + oldPE, 'total new Energy', newKE + norm_newPE)
+
                 if verbose:
                     print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
                     print('ncmc Total energy', newinfo.getPotentialEnergy() + newinfo.getKineticEnergy())
@@ -933,6 +937,10 @@ class SimNCMC(object):
                 print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
                 print('rejected', log_ncmc, '<', randnum)
                 print('log_ncmc > randnum')
+                print('ncmc move accepted')
+                print('oldKE', oldKE, 'newKE', newKE )
+                print('oldPE', oldPE, 'newPE', norm_newPE )
+                print('total old Energy', oldKE + oldPE, 'total new Energy', newKE + norm_newPE)
                 print('move rejected')
                 nc_context.setPositions(oldPos)
                 nc_context.setVelocities(-oldVel)
