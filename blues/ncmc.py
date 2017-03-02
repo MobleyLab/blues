@@ -891,7 +891,7 @@ class SimNCMC(object):
                         print('nan, breaking')
                         break
 
-            log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
+            #log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
             newinfo = nc_context.getState(True, True, False, True, True, periodic)
             newPos = newinfo.getPositions(asNumpy=True)
             newVel = newinfo.getVelocities(asNumpy=True)
