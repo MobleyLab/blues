@@ -74,14 +74,14 @@ class PoseDart(SimNCMC):
         for index, dart in enumerate(binding_mode_atom_pos):
             diff = sim_atom_pos[index] - dart
             dist = np.sqrt(np.sum((diff)*(diff)))
-            print('binding_mode_atom_pos', binding_mode_atom_pos)
-            print('sim_atom_pos', sim_atom_pos[index])
-            print('dart', dart)
-            print('diff', diff)
+            #print('binding_mode_atom_pos', binding_mode_atom_pos)
+            #print('sim_atom_pos', sim_atom_pos[index])
+            #print('dart', dart)
+            #print('diff', diff)
             diff_list[index] = diff
             dist_list[index] = dist
-            print('diff_list', diff_list[index])
-            print('dist_list', dist_list[index])
+            #print('diff_list', diff_list[index])
+            #print('dist_list', dist_list[index])
 
         if symmetric_atoms != None:
             for index, dart in enumerate(binding_mode_atom_pos):
