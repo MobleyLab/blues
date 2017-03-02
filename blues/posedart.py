@@ -142,21 +142,21 @@ class PoseDart(SimNCMC):
 
 
         for index, atom in enumerate(residueList):
-            print('temp_pos', temp_pos[index])
-            print('nc_pos', nc_pos[atom])
+            #print('temp_pos', temp_pos[index])
+            #print('nc_pos', nc_pos[atom])
             #keep track of units
             temp_pos[index] = nc_pos[atom]._value
 
         #fit different binding modes to current protein
         #to remove rotational changes
         for pose in self.binding_mode_traj:
-            print('pose', pose.xyz)
+            #print('pose', pose.xyz)
             pose = pose.superpose(reference=self.sim_traj,
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms)
 #            pose.save('temp.pdb')
             pose_coord = pose.xyz[0]
-            print('pose_coord', pose.xyz[0])
+            #print('pose_coord', pose.xyz[0])
 #            help(pose.superpose)
             binding_mode_pos = []
             #find the dart vectors and distances to each protein
@@ -171,17 +171,17 @@ class PoseDart(SimNCMC):
             total_diff_list.append(temp_diff)
             total_dist_list.append(temp_dist)
 
-        print('total_diff_list', total_diff_list)
-        print('total_dist_list', total_dist_list)
-        print('self.dart_size', self.dart_size)
-        print('self.dart_size._value', self.dart_size._value)
+        #print('total_diff_list', total_diff_list)
+        #print('total_dist_list', total_dist_list)
+        #print('self.dart_size', self.dart_size)
+        #print('self.dart_size._value', self.dart_size._value)
         selected = []
         #check to see which poses fall within the dart size
         for index, single_pose in enumerate(total_dist_list):
             counter = 0
             for atomnumber,dist in enumerate(single_pose):
-                print(self.dart_size)
-                print(self.dart_size[0])
+                #print(self.dart_size)
+                #print(self.dart_size[0])
                 if dist <= self.dart_size[atomnumber]._value:
                     counter += 1
                 print('counter for pose', index, 'is ', counter)
@@ -223,19 +223,19 @@ class PoseDart(SimNCMC):
         for index, atom in enumerate(residueList):
             #index refers to where in list
             #atom refers to atom#
-            print('fitting atom', atom)
+            #print('fitting atom', atom)
             dartindex = binding_mode_index
-            print('binding_mode_pos', binding_mode_pos)
-            print('binding_mode_pos.xyz', (binding_mode_pos[dartindex].xyz))
+            #print('binding_mode_pos', binding_mode_pos)
+            #print('binding_mode_pos.xyz', (binding_mode_pos[dartindex].xyz))
             dart_origin = (binding_mode_pos[rand_index].xyz)[0][atom]
-            print('dart_origin', dart_origin)
-            print('changevec', changevec)
-            print('changevec[index]', changevec[index])
+            #print('dart_origin', dart_origin)
+            #print('changevec', changevec)
+            #print('changevec[index]', changevec[index])
             dart_change = dart_origin + changevec[index]
             changed_pos[atom] = dart_change*unit.nanometers
-            print('dart_change', dart_change)
-            print('dart_before', nc_pos[atom])
-            print('dart_after', changed_pos[atom])
+            #print('dart_change', dart_change)
+            #print('dart_before', nc_pos[atom])
+            #print('dart_after', changed_pos[atom])
 
 
         return changed_pos
@@ -265,12 +265,12 @@ class PoseDart(SimNCMC):
             rand_index = np.random.randint(len(self.binding_mode_traj))
         ###
 
-        print('total residues', residueList)
+        #print('total residues', residueList)
         #get matching binding mode pose and get rotation/translation to that pose
 
         selected_mode = binding_mode_pos[binding_mode_index].xyz[0]
-        print('binding_mode_pos', binding_mode_pos)
-        print('selected mode', selected_mode)
+        #print('binding_mode_pos', binding_mode_pos)
+        #print('selected mode', selected_mode)
         random_mode = binding_mode_pos[rand_index].xyz[0]
         rotation, centroid_difference = getRotTrans(nc_pos, selected_mode, residueList)
         return_pos = rigidDart(nc_pos, random_mode, rotation, centroid_difference, residueList)
