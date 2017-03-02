@@ -943,7 +943,6 @@ class SimNCMC(object):
                 print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
                 print('rejected', log_ncmc, '<', randnum)
                 print('log_ncmc > randnum')
-                print('ncmc move accepted')
                 print('oldKE', oldKE, 'newKE', newKE )
                 print('oldPE', oldPE, 'newPE', norm_newPE )
                 print('total old Energy', oldKE + oldPE, 'total new Energy', newKE + norm_newPE)
