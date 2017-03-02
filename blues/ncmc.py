@@ -918,6 +918,8 @@ class SimNCMC(object):
                 print('oldKE', oldKE, 'newKE', newKE )
                 print('oldPE', oldPE, 'newPE', norm_newPE )
                 print('total old Energy', oldKE + oldPE, 'total new Energy', newKE + norm_newPE)
+                print('difference', (norm_newPE - oldPE) + (newKE - oldKE))
+
 
                 if verbose:
                     print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
@@ -941,6 +943,7 @@ class SimNCMC(object):
                 print('oldKE', oldKE, 'newKE', newKE )
                 print('oldPE', oldPE, 'newPE', norm_newPE )
                 print('total old Energy', oldKE + oldPE, 'total new Energy', newKE + norm_newPE)
+                print('difference', (norm_newPE - oldPE) + (newKE - oldKE))
                 print('move rejected')
                 nc_context.setPositions(oldPos)
                 nc_context.setVelocities(-oldVel)
