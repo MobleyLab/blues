@@ -184,9 +184,9 @@ class PoseDart(SimNCMC):
                 #print(self.dart_size[0])
                 if dist <= self.dart_size[atomnumber]._value:
                     counter += 1
-                print('counter for pose', index, 'is ', counter)
             if counter == len(residueList):
                 selected.append(index)
+            print('counter for pose', index, 'is ', counter)
         if len(selected) == 1:
             #returns binding mode index, and the diff_list
             #diff_list will be used to dart
