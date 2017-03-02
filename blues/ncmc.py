@@ -921,7 +921,7 @@ class SimNCMC(object):
                 print('oldPE', oldPE, 'newPE', norm_newPE )
                 print('total old Energy', oldKE + oldPE, 'total new Energy', newKE + norm_newPE)
                 print('difference', (norm_newPE - oldPE) + (newKE - oldKE))
-                print('difference w kt', (-1.0*(norm_newPE - oldPE) + (newKE - oldKE))*(1/nc_integrator.kT))
+                print('difference w kt', (-(norm_newPE - oldPE) + (newKE - oldKE))*(1/nc_integrator.kT))
                 print
 
 
