@@ -121,7 +121,7 @@ class md_reporter:
         try:
             broken_ncmc.save_dcd(output_name)
         except ValueError:
-            print('couldnt output', output_name, 'values too large', file=print_file)
+            print('couldnt output', output_name, 'values too large')
 
 def rand_rotation_matrix():
     """
