@@ -24,6 +24,7 @@ setup(
     packages=find_packages()+['blues', 'blues/tests', 'run_scripts'],
     include_package_data = True,
     zip_safe = False,
+    long_description=read('README.md'),
     classifiers=[
         "Development Status :: 1 - Alpha",
         "Topic :: Utilities",
