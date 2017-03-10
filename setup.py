@@ -1,6 +1,6 @@
 import os
 from os.path import relpath, join
-from setuptools import setup
+from setuptools import setup, find_packages
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
@@ -17,11 +17,13 @@ setup(
     version = "0.0.1",
     author = "Samuel Gill, David Mobley, and others",
     description = ("NCMC moves in OpenMM to enhance ligand sampling"),
-    license = "GNU Lesser General Public License (LGPL), Version 3",
+    license = "MIT",
+    platforms = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
     keywords = "Nonequilibrium candidate Monte Carlo sampling of ligand binding modes",
     url = "https://github.com/MobleyLab/blues",
-    packages=['blues', 'blues/tests', 'run_scripts', 'utils', 'systems'],
-    long_description=read('README.md'),
+    packages=find_packages()+['blues', 'blues/tests', 'run_scripts'],
+    include_package_data = True,
+    zip_safe = False,
     classifiers=[
         "Development Status :: 1 - Alpha",
         "Topic :: Utilities",
