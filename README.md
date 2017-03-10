@@ -1,4 +1,5 @@
 # `BLUES`: Binding modes of Ligands Using Enhanced Sampling
+![Alt text](./images/blues.png?raw=true "Title")
 
 This package takes advantage of non-candidate equilibrium monte carlo moves (NCMC) to help sample between different ligand binding modes.
 
