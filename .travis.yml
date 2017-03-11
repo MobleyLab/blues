@@ -20,11 +20,9 @@ install:
     - hash -r
     - conda config --set always_yes true --set changeps1 no
     - conda config --add channels ${ORGNAME}
-    - conda install conda-build
     - conda create -q -n testenv python=$TRAVIS_PYTHON_VERSION
     - source activate testenv
-    - conda update --yes -q conda
-    - conda update --yes -q conda-build
+    - conda install conda-build
     - conda info -a
     - conda build devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
