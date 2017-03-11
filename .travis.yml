@@ -13,13 +13,15 @@ install:
   - conda create -n test python=$python
   - source activate test
   - conda build devtools/conda-recipe
+  - export PYTHONPATH=`which py${python}`
   - export PYTHONUNBUFFERED=true
 
 script:
  - source activate test
  - conda info -a
   #- cd devtools && nosetests -vv --nocapture --with-timer $PACKAGENAME && cd ..
- - cd blues/tests && $python pytest
+ - cd blues/tests && $PYTHONPATH -v pytest
+ - py${python} -v pytests
 
 env:
   matrix:
