@@ -6,8 +6,9 @@ source:
   path: ../../
 
 build:
-  preserve_egg_dir: False
+  preserve_egg_dir: True
   number: 0
+  script: python setup.py install
 
 requirements:
   build:
@@ -25,12 +26,17 @@ requirements:
     - alchemy
     - mdtraj
     - openmm
-    
+
 test:
   requires:
     - pytest
+    - openmmtools
+    - alchemy
+    - mdtraj
+    - openmm
   imports:
     - blues
+    - simtk
 
 about:
   home: https://github.com/mobleylab/blues
