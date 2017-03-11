@@ -1,25 +1,24 @@
 package:
   name: blues
-  version: "0.0.1"
+  version: !!str 0.0.0
 
 source:
-  #git_url: https://github.com/MobleyLab/blues
-  path: ../../
-
+  path: ../..
 build:
-  preserve_egg_dir: False
+  preserve_egg_dir: True
   number: 0
   script: python setup.py install
 
 requirements:
+  # Packages required to build the package.
   build:
     - python
     - pytest
     - setuptools
     - openmmtools
     - alchemy
-    - mdtraj
-    - openmm
+    - mdtraj >=1.8.0
+    - openmm >=7.1.0rc1
 
   run:
     - python
@@ -27,17 +26,15 @@ requirements:
     - setuptools
     - openmmtools
     - alchemy
-    - mdtraj
-    - openmm
+    - mdtraj >=1.8.0
+    - openmm >=7.1.0rc1
 
 test:
   requires:
     - pytest
-
   imports:
     - blues
-    - simtk
-    
+
 about:
   home: https://github.com/mobleylab/blues
   license: MIT
