@@ -23,7 +23,7 @@ install:
     - conda update --yes -q conda
     - conda info -a
 
-    - conda create -q -n testenv python=$TRAVIS_PYTHON_VERSION
+    - conda create -q -n testenv python=$TRAVIS_PYTHON_VERSION conda-build
     - source activate testenv
     - conda build devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
@@ -31,7 +31,7 @@ install:
 
 script:
  - pytest -v blues/tests
- 
+
 env:
   global:
     - ORGNAME="omnia"
