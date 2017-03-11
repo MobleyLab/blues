@@ -19,7 +19,7 @@ script:
  - source activate test
  - conda info -a
   #- cd devtools && nosetests -vv --nocapture --with-timer $PACKAGENAME && cd ..
- - cd blues/tests && python pytest
+ - cd blues/tests && $python pytest
 
 env:
   matrix:
