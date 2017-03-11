@@ -21,7 +21,7 @@ setup(
     platforms = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
     keywords = "Nonequilibrium candidate Monte Carlo sampling of ligand binding modes",
     url = "https://github.com/MobleyLab/blues",
-    packages=find_packages()+['blues', 'blues/tests', 'run_scripts'],
+    packages=find_packages()+['blues', 'blues/tests'],
     include_package_data = True,
     zip_safe = False,
     long_description=read('README.md'),
