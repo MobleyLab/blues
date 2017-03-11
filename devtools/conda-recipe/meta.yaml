@@ -37,7 +37,7 @@ test:
   imports:
     - blues
     - simtk
-
+  script: python -v pytest blues/test
 about:
   home: https://github.com/mobleylab/blues
   license: MIT
