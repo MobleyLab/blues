@@ -1,4 +1,7 @@
 language: python
+python:
+    - "2.7"
+    - "3.5"
 sudo: false
 
 branches:
@@ -7,18 +10,16 @@ branches:
 
 install:
   - source devtools/travis-ci/install.sh
-  - export PYTHONUNBUFFERED=true
-
-script:
   # Add omnia channel
   - conda config --add channels ${ORGNAME}
-  # Create and activate test environment
-  - conda create --yes -n test python=$python
+  - conda create -n test python=$python
   - source activate test
-  # Build the recipe
-  - conda build devtools/conda-recipe
-  # Run tests
-  - conda install --yes pytest
+  - conda build devtools/conda-recipie
+  - python setup.py install
+
+  #- export PYTHONUNBUFFERED=true
+
+script:
   #- cd devtools && nosetests -vv --nocapture --with-timer $PACKAGENAME && cd ..
   - cd blues/tests && pytest
 
