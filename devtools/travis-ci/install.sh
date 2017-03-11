@@ -1,5 +1,5 @@
 # Temporarily change directory to $HOME to install software
-#pushd .
+pushd .
 cd $HOME
 
 # Install Miniconda
@@ -22,4 +22,4 @@ conda update --yes conda
 conda install --yes conda-build jinja2 anaconda-client pip
 conda info -a
 # Restore original directory
-#popd
+popd
