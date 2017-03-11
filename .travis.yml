@@ -1,7 +1,4 @@
 language: python
-python:
-    - "2.7"
-    - "3.5"
 sudo: false
 
 branches:
@@ -14,14 +11,15 @@ install:
   - conda config --add channels ${ORGNAME}
   - conda create -n test python=$python
   - source activate test
-  - conda build devtools/conda-recipie
+  - conda build devtools/conda-recipe
   - python setup.py install
 
   #- export PYTHONUNBUFFERED=true
 
 script:
+ - source activate test
   #- cd devtools && nosetests -vv --nocapture --with-timer $PACKAGENAME && cd ..
-  - cd blues/tests && pytest
+ - cd blues/tests && pytest
 
 env:
   matrix:
