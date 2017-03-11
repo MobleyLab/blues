@@ -1,7 +1,7 @@
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
-from ncmc_switching import *
+from blues.ncmc_switching import *
 import mdtraj as md
 #from alCorrect import *
 from openmmtools import testsystems
@@ -9,8 +9,8 @@ import math
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 import numpy as np
 from mdtraj.reporters import HDF5Reporter
-from smartdart import SmartDarting
-from ncmc import *
+from blues.smartdart import SmartDarting
+from blues.ncmc import *
 
 if 0:
      # Create a reference system.
