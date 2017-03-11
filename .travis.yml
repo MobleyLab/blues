@@ -17,8 +17,6 @@ script:
   - source activate test
   # Build the recipe
   - conda build devtools/conda-recipe
-  # Install
-  - conda install --yes --use-local blues
   # Run tests
   - conda install --yes pytest
   #- cd devtools && nosetests -vv --nocapture --with-timer $PACKAGENAME && cd ..
