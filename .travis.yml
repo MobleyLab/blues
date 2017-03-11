@@ -3,7 +3,8 @@ sudo: false
 
 branches:
   only:
-    - master
+    #- master
+    - conda_install
 
 install:
   - source devtools/travis-ci/install.sh
@@ -12,9 +13,7 @@ install:
   - conda create -n test python=$python
   - source activate test
   - conda build devtools/conda-recipe
-  - python setup.py install
-
-  #- export PYTHONUNBUFFERED=true
+  - export PYTHONUNBUFFERED=true
 
 script:
  - source activate test
