@@ -30,10 +30,7 @@ requirements:
 test:
   requires:
     - pytest
-    - openmmtools
-    - alchemy
-    - mdtraj
-    - openmm
+
   imports:
     - blues
     - simtk
