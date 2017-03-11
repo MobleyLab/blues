@@ -13,12 +13,11 @@ install:
   - conda create -n testenv python=$python
   - source activate testenv
   - conda build devtools/conda-recipe
+  - conda install blues --use-local
   - conda list
 
 script:
- - conda list
  - py.test -v blues.tests
- - python setup.py install
 
 env:
   matrix:
