@@ -13,6 +13,7 @@ build:
 requirements:
   build:
     - python
+    - pytest
     - setuptools
     - openmmtools
     - alchemy
@@ -21,6 +22,7 @@ requirements:
 
   run:
     - python
+    - pytest
     - setuptools
     - openmmtools
     - alchemy
