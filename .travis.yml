@@ -21,8 +21,8 @@ install:
     - conda config --set always_yes true --set changeps1 no
     - conda config --add channels ${ORGNAME}
     - conda create -q -n testenv python=$TRAVIS_PYTHON_VERSION
-    - source activate testenv
     - conda install conda-build
+    - source activate testenv
     - conda info -a
     - conda build devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
@@ -32,6 +32,10 @@ script:
  - pytest -v blues/tests
 
 env:
+  matrix:
+    - python=2.7  CONDA_PY=2.7
+    - python=3.5  CONDA_PY=3.5
+
   global:
     - ORGNAME="omnia"
     - PACKAGENAME="blues"
