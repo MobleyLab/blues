@@ -6,7 +6,7 @@ source:
   path: ../../
 
 build:
-  preserve_egg_dir: True
+  preserve_egg_dir: False
   number: 0
 
 requirements:

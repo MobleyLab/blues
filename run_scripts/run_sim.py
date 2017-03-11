@@ -16,7 +16,7 @@ if 0:
      # Create a reference system.
      from openmmtools import testsystems
      testsystem = testsystems.LysozymeImplicit()
-     print type(testsystem)
+     print(type(testsystem))
      [reference_system, positions] = [testsystem.system, testsystem.positions]
      # Create a factory to produce alchemical intermediates.
      receptor_atoms = range(0,2603) # T4 lysozyme L99A
@@ -45,7 +45,7 @@ if 0: #if cluster test system
     inpcrd = openmm.app.AmberInpcrdFile(coord_file)
     temp_system = prmtop.createSystem(nonbondedMethod=openmm.app.PME, nonbondedCutoff=1*unit.nanometer, constraints=openmm.app.HBonds)
     testsystem = testsystems.TestSystem
-    testsystem.system = temp_system 
+    testsystem.system = temp_system
     testsystem.topology = prmtop.topology
     testsystem.positions = inpcrd.positions
     firstres, lastres, lig_atoms = get_lig_residues(lig_resname='LIG', coord_file=coord_file, top_file=top_file)
@@ -83,7 +83,7 @@ if 0: #if cluster test system implicit
     full_alchemical_system = factory.createPerturbedSystem(AlchemicalState(lambda_electrostatics=1, lambda_sterics=1))
     alchemical_system = factory.createPerturbedSystem()
 
- 
+
 if 1: #if cluster test system
     periodic=False
     pdb = PDBFile('./systems/circle.pdb')
@@ -259,7 +259,7 @@ md_simulation.step(5000)
 #md_simulation.step(100000)
 if 0:
     md_info = md_simulation.context.getState(True, False, False, False, False, periodic)
-    
+
     equilPos = md_info.getPositions(asNumpy=True)
     md_simulation.reporters.append(openmm.app.dcdreporter.DCDReporter('youtput_debug1.dcd', 500))
     md_simulation.reporters.append(HDF5Reporter('youtput_debug1.h5', 500))
@@ -300,13 +300,13 @@ if 0:
 
 if 1:
     md_info = md_simulation.context.getState(True, False, False, False, False, periodic)
-    
+
     equilPos = md_info.getPositions(asNumpy=True)
     md_simulation.reporters.append(openmm.app.dcdreporter.DCDReporter('youtput_debug1.dcd', 1000))
     md_simulation.reporters.append(HDF5Reporter('youtput_debug1.h5', 1000))
     md_simulation.reporters.append(openmm.app.statedatareporter.StateDataReporter('info.csv', 1000, step=True, potentialEnergy=True, kineticEnergy=True, totalEnergy=True, temperature=True))
     dboard = SmartDarting(temperature=300*unit.kelvin, residueList=[141, 142, 143])
-    dboard.get_particle_masses(system=md_simulation.system)            
+    dboard.get_particle_masses(system=md_simulation.system)
     dboard.dart_size = 0.20*unit.nanometers
     dboard.add_dart((np.array([3.37, 2.64, 3.43]))*unit.nanometers)
     dboard.add_dart((np.array([3.40, 3.34, 2.61]))*unit.nanometers)
@@ -330,6 +330,3 @@ if 1:
         dboard.justdartmove(md_simulation.context)
         test_class.testintegrator(md_simulation, nc_context, nc_integrator, dummy_simulation, nstepsNC=nstepsNC, nstepsMD=500, niter=1, periodic=False, verbose=False, alchemical_correction=True, ncmc_report=False, rot_report=False, origPos=origPos)
         md_simulation.step(2500)
-
-
-
