@@ -90,7 +90,7 @@ if 1: #if cluster test system
     forcefield = ForceField('./systems/circle.xml')
     system = forcefield.createSystem(pdb.topology,
              constraints=HBonds)
-    print 'removing', system.getForce(0)
+    print('removing', system.getForce(0))
     system.removeForce(1)
     system.removeForce(0)
     numParticles = system.getNumParticles()
@@ -99,7 +99,7 @@ if 1: #if cluster test system
     print('energy', pairwiseForce.getEnergyFunction())
     rangeparticles = range(numParticles)
     pairwiseForce.addInteractionGroup(rangeparticles[-3:], rangeparticles[:-3])
-    print 'Force num particles', pairwiseForce.getNumParticles()
+    print('Force num particles', pairwiseForce.getNumParticles())
     pairwiseForce.addPerParticleParameter("sigma")
     pairwiseForce.addPerParticleParameter("epsilon")
     pairwiseForce.addPerParticleParameter("q")
@@ -158,7 +158,7 @@ if 1: #if cluster test system
 if 1: #alchemical system
     alchemicalsystem = forcefield.createSystem(pdb.topology,
              constraints=HBonds)
-    print 'removing', alchemicalsystem.getForce(0)
+    print('removing', alchemicalsystem.getForce(0))
     alchemicalsystem.removeForce(1)
     alchemicalsystem.removeForce(0)
     numParticles = alchemicalsystem.getNumParticles()
@@ -167,7 +167,7 @@ if 1: #alchemical system
     print('energy', pairwiseForce.getEnergyFunction())
     rangeparticles = range(numParticles)
     pairwiseForce.addInteractionGroup(rangeparticles[-3:], rangeparticles[:-3])
-    print 'Force num particles', pairwiseForce.getNumParticles()
+    print('Force num particles', pairwiseForce.getNumParticles())
     pairwiseForce.addPerParticleParameter("sigma")
     pairwiseForce.addPerParticleParameter("epsilon")
     pairwiseForce.addPerParticleParameter("q")
@@ -234,7 +234,7 @@ functions = { 'lambda_sterics' : 'min(1, lambda*1000/900)', 'lambda_electrostati
 nc_integrator = NCMCVVAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='insert', timestep=0.001*unit.picoseconds)
 #nc_integrator = NCMCGHMCAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='insert', timestep=0.001*unit.picoseconds)
 
-print 'kt', nc_integrator.kT
+print('kt', nc_integrator.kT)
 #nc_integrator = NCMCGHMCAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='insert')
 
 
@@ -248,8 +248,8 @@ dummy_simulation = openmm.app.simulation.Simulation(topology=testsystem.topology
 #pdb = openmm.app.PDBFile('equil.pdb')
 #if inpcrd.boxVectors is not None:
 #    md_simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
-print 'testsystem Forces', testsystem.system.getForces()
-print 'alchemical Forces', alchemical_system.getForces()
+print('testsystem Forces', testsystem.system.getForces())
+print('alchemical Forces', alchemical_system.getForces())
 
 md_simulation.context.setPositions(testsystem.positions)
 #openmm.LocalEnergyMinimizer.minimize(md_simulation.context)
