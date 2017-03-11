@@ -31,7 +31,8 @@ install:
 
 script:
  - pytest -v blues/tests
-
+ 
+env:
   global:
     - ORGNAME="omnia"
     - PACKAGENAME="blues"
