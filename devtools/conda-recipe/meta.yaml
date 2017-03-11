@@ -13,6 +13,10 @@ requirements:
   build:
     - python
     - setuptools
+    - openmmtools
+    - alchemy
+    - mdtraj
+    - openmm
 
   run:
     - python
