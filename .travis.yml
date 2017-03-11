@@ -17,7 +17,9 @@ install:
   - conda list
 
 script:
- - py.test -v blues.tests
+ - py.test -v blues.tests.test_blues
+ - py.test -v blues.tests.test_mass
+ - py.test -v blues.tests.test_sim
 
 env:
   matrix:
