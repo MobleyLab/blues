@@ -10,14 +10,12 @@ install:
   - source devtools/travis-ci/install.sh
   # Add omnia channel
   - conda config --add channels ${ORGNAME}
-  - conda create -n test python=$python
-  - source activate test
+  - conda create -n testenv python=$python
+  - source activate testenv
   - conda build devtools/conda-recipe
   - conda list
 
 script:
- - source activate test
- - conda info -a
  - conda list
  - py.test -v blues.tests
  - python setup.py install
