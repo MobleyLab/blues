@@ -21,6 +21,11 @@ requirements:
   run:
     - python
     - setuptools
+    - openmmtools
+    - alchemy
+    - mdtraj
+    - openmm
+    
 test:
   requires:
     - pytest
