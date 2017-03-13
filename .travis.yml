@@ -24,7 +24,7 @@ install:
 
     - source activate testenv
     - conda info -a
-    - conda build --python $TRAVIS_PYTHON_VERSION devtools/conda-recipe
+    - conda build --python $python devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
     - conda list
 
