@@ -1,4 +1,6 @@
 """
+This setup.py script and other related installation scripts are adapted from
+https://github.com/choderalab/yank/blob/master/setup.py
 """
 from __future__ import print_function
 import os
