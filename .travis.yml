@@ -1,34 +1,38 @@
-language: python
+dist: trusty
 sudo: false
+language: python
 
 branches:
-  only:
-    - master
-
+    only:
+        #- master
+        - conda_install
 install:
-  - source devtools/travis-ci/install.sh
-  - export PYTHONUNBUFFERED=true
+    - if [[ $python == 2.7 ]]; then
+        wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
+      else
+        wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+      fi
+    - bash miniconda.sh -b -p $HOME/miniconda
+    - export PATH=$HOME/miniconda/bin:$PATH
+    - hash -r
+    - conda config --set always_yes true --set changeps1 no
+    - conda config --add channels ${ORGNAME}
+    - conda create -q -n testenv python=$python
+    - conda install conda-build
+
+    - source activate testenv
+    - conda info -a
+    - conda build --python $python devtools/conda-recipe
+    - conda install --use-local ${PACKAGENAME}
+    - conda list
 
 script:
-  # Add omnia channel
-  - conda config --add channels ${ORGNAME}
-  # Create and activate test environment
-  - conda create --yes -n test python=$python
-  - source activate test
-  # Build the recipe
-  - conda build devtools/conda-recipe
-  # Install
-  - conda install --yes --use-local blues
-  # Run tests
-  - conda install --yes pytest
-  #- cd devtools && nosetests -vv --nocapture --with-timer $PACKAGENAME && cd ..
-  - cd blues/tests && pytest
+ - pytest -v blues/tests
 
 env:
   matrix:
-    - python=2.7  CONDA_PY=27
-    #- python=3.4  CONDA_PY=34
-    - python=3.5  CONDA_PY=35
+    - python=2.7  CONDA_PY=2.7
+    - python=3.5  CONDA_PY=3.5
 
   global:
     - ORGNAME="omnia"
@@ -36,4 +40,4 @@ env:
 
 #after_success:
 #  - echo "after_success"
-#  - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then ./devtools/travis-ci/after_success.sh; fi
+#  -

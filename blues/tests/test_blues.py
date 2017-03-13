@@ -1,4 +1,4 @@
-import blues
+from blues import ncmc, ncmc_switching, smartdart
 from simtk import unit
 from openmmtools import testsystems
 
@@ -10,7 +10,7 @@ def test_basic_ncmc():
     test_system = testsystems.AlanineDipeptideVacuum()
     test_temp = 300*unit.kelvins
     test_res_list=[1]
-    ncmc_test = blues.ncmc.SimNCMC(temperature=test_temp, residueList=test_res_list)
+    ncmc_test = ncmc.SimNCMC(temperature=test_temp, residueList=test_res_list)
     # Need to add a test here that something is true about the output -- this just checks that it runs, but it would be good to check that the output is valid somehow or something. Pytest likes to use assert, i.e.
     # assert ncmc_test == 2
 
@@ -19,7 +19,7 @@ def test_basic_integrator():
     test_system = testsystems.AlanineDipeptideVacuum()
     test_temp = 300*unit.kelvins
     test_res_list=[1]
-    integrator_test = blues.ncmc_switching.NCMCVVAlchemicalIntegrator(temperature=test_temp, system=test_system.system, functions=[])
+    integrator_test = ncmc_switching.NCMCVVAlchemicalIntegrator(temperature=test_temp, system=test_system.system, functions=[])
     # Should add something checking the output...
 
 def test_basic_smartdart():
@@ -27,5 +27,4 @@ def test_basic_smartdart():
     test_system = testsystems.AlanineDipeptideVacuum()
     test_temp = 300*unit.kelvins
     test_res_list=[1]
-    smartdart_test = blues.smartdart.SmartDarting(temperature=test_temp, residueList=test_res_list)
-
+    smartdart_test = smartdart.SmartDarting(temperature=test_temp, residueList=test_res_list)

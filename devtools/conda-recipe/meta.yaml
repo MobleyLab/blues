@@ -1,24 +1,33 @@
 package:
   name: blues
-  version: 0.0.0
+  version: 0.0.1
 
 source:
   path: ../..
-
 build:
   preserve_egg_dir: True
   number: 0
+  script: python setup.py install
 
 requirements:
+  # Packages required to build the package.
   build:
     - python
+    - pytest
     - setuptools
+    - openmmtools
+    - alchemy
+    - mdtraj >=1.8.0
+    - openmm >=7.1.0rc1
 
   run:
     - python
-    - mdtraj
+    - pytest
+    - setuptools
     - openmmtools
     - alchemy
+    - mdtraj >=1.8.0
+    - openmm >=7.1.0rc1
 
 test:
   requires:
@@ -29,3 +38,4 @@ test:
 about:
   home: https://github.com/mobleylab/blues
   license: MIT
+  license_file: LICENSE

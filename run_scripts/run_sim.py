@@ -1,7 +1,7 @@
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
-from ncmc_switching import *
+from blues.ncmc_switching import *
 import mdtraj as md
 #from alCorrect import *
 from openmmtools import testsystems
@@ -9,14 +9,14 @@ import math
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 import numpy as np
 from mdtraj.reporters import HDF5Reporter
-from smartdart import SmartDarting
-from ncmc import *
+from blues.smartdart import SmartDarting
+from blues.ncmc import *
 
 if 0:
      # Create a reference system.
      from openmmtools import testsystems
      testsystem = testsystems.LysozymeImplicit()
-     print type(testsystem)
+     print(type(testsystem))
      [reference_system, positions] = [testsystem.system, testsystem.positions]
      # Create a factory to produce alchemical intermediates.
      receptor_atoms = range(0,2603) # T4 lysozyme L99A
@@ -45,7 +45,7 @@ if 0: #if cluster test system
     inpcrd = openmm.app.AmberInpcrdFile(coord_file)
     temp_system = prmtop.createSystem(nonbondedMethod=openmm.app.PME, nonbondedCutoff=1*unit.nanometer, constraints=openmm.app.HBonds)
     testsystem = testsystems.TestSystem
-    testsystem.system = temp_system 
+    testsystem.system = temp_system
     testsystem.topology = prmtop.topology
     testsystem.positions = inpcrd.positions
     firstres, lastres, lig_atoms = get_lig_residues(lig_resname='LIG', coord_file=coord_file, top_file=top_file)
@@ -83,14 +83,14 @@ if 0: #if cluster test system implicit
     full_alchemical_system = factory.createPerturbedSystem(AlchemicalState(lambda_electrostatics=1, lambda_sterics=1))
     alchemical_system = factory.createPerturbedSystem()
 
- 
+
 if 1: #if cluster test system
     periodic=False
     pdb = PDBFile('./systems/circle.pdb')
     forcefield = ForceField('systems/circle.xml')
     system = forcefield.createSystem(pdb.topology,
              constraints=HBonds)
-    print 'removing', system.getForce(0)
+    print('removing', system.getForce(0))
     system.removeForce(1)
     system.removeForce(0)
     numParticles = system.getNumParticles()
@@ -99,7 +99,7 @@ if 1: #if cluster test system
     print('energy', pairwiseForce.getEnergyFunction())
     rangeparticles = range(numParticles)
     pairwiseForce.addInteractionGroup(rangeparticles[-3:], rangeparticles[:-3])
-    print 'Force num particles', pairwiseForce.getNumParticles()
+    print('Force num particles', pairwiseForce.getNumParticles())
     pairwiseForce.addPerParticleParameter("sigma")
     pairwiseForce.addPerParticleParameter("epsilon")
     pairwiseForce.addPerParticleParameter("q")
@@ -158,7 +158,7 @@ if 1: #if cluster test system
 if 1: #alchemical system
     alchemicalsystem = forcefield.createSystem(pdb.topology,
              constraints=HBonds)
-    print 'removing', alchemicalsystem.getForce(0)
+    print('removing', alchemicalsystem.getForce(0))
     alchemicalsystem.removeForce(1)
     alchemicalsystem.removeForce(0)
     numParticles = alchemicalsystem.getNumParticles()
@@ -167,7 +167,7 @@ if 1: #alchemical system
     print('energy', pairwiseForce.getEnergyFunction())
     rangeparticles = range(numParticles)
     pairwiseForce.addInteractionGroup(rangeparticles[-3:], rangeparticles[:-3])
-    print 'Force num particles', pairwiseForce.getNumParticles()
+    print('Force num particles', pairwiseForce.getNumParticles())
     pairwiseForce.addPerParticleParameter("sigma")
     pairwiseForce.addPerParticleParameter("epsilon")
     pairwiseForce.addPerParticleParameter("q")
@@ -234,7 +234,7 @@ functions = { 'lambda_sterics' : 'min(1, lambda*1000/900)', 'lambda_electrostati
 nc_integrator = NCMCVVAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='insert', timestep=0.001*unit.picoseconds)
 #nc_integrator = NCMCGHMCAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='insert', timestep=0.001*unit.picoseconds)
 
-print 'kt', nc_integrator.kT
+print('kt', nc_integrator.kT)
 #nc_integrator = NCMCGHMCAlchemicalIntegrator(temperature, alchemical_system, functions, nsteps=nstepsNC, direction='insert')
 
 
@@ -248,8 +248,8 @@ dummy_simulation = openmm.app.simulation.Simulation(topology=testsystem.topology
 #pdb = openmm.app.PDBFile('equil.pdb')
 #if inpcrd.boxVectors is not None:
 #    md_simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
-print 'testsystem Forces', testsystem.system.getForces()
-print 'alchemical Forces', alchemical_system.getForces()
+print('testsystem Forces', testsystem.system.getForces())
+print('alchemical Forces', alchemical_system.getForces())
 
 md_simulation.context.setPositions(testsystem.positions)
 #openmm.LocalEnergyMinimizer.minimize(md_simulation.context)
@@ -259,7 +259,7 @@ md_simulation.step(5000)
 #md_simulation.step(100000)
 if 0:
     md_info = md_simulation.context.getState(True, False, False, False, False, periodic)
-    
+
     equilPos = md_info.getPositions(asNumpy=True)
     md_simulation.reporters.append(openmm.app.dcdreporter.DCDReporter('youtput_debug1.dcd', 500))
     md_simulation.reporters.append(HDF5Reporter('youtput_debug1.h5', 500))
@@ -300,13 +300,13 @@ if 0:
 
 if 1:
     md_info = md_simulation.context.getState(True, False, False, False, False, periodic)
-    
+
     equilPos = md_info.getPositions(asNumpy=True)
     md_simulation.reporters.append(openmm.app.dcdreporter.DCDReporter('youtput_debug1.dcd', 1000))
     md_simulation.reporters.append(HDF5Reporter('youtput_debug1.h5', 1000))
     md_simulation.reporters.append(openmm.app.statedatareporter.StateDataReporter('info.csv', 1000, step=True, potentialEnergy=True, kineticEnergy=True, totalEnergy=True, temperature=True))
     dboard = SmartDarting(temperature=300*unit.kelvin, residueList=[141, 142, 143])
-    dboard.get_particle_masses(system=md_simulation.system)            
+    dboard.get_particle_masses(system=md_simulation.system)
     dboard.dart_size = 0.20*unit.nanometers
     dboard.add_dart((np.array([3.37, 2.64, 3.43]))*unit.nanometers)
     dboard.add_dart((np.array([3.40, 3.34, 2.61]))*unit.nanometers)
@@ -330,6 +330,3 @@ if 1:
         dboard.justdartmove(md_simulation.context)
         test_class.testintegrator(md_simulation, nc_context, nc_integrator, dummy_simulation, nstepsNC=nstepsNC, nstepsMD=500, niter=1, periodic=False, verbose=False, alchemical_correction=True, ncmc_report=False, rot_report=False, origPos=origPos)
         md_simulation.step(2500)
-
-
-
