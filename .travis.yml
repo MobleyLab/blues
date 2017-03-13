@@ -7,7 +7,7 @@ branches:
         #- master
         - conda_install
 install:
-    - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then
+    - if [[ $python == 2.7 ]]; then
         wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
       else
         wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -17,7 +17,7 @@ install:
     - hash -r
     - conda config --set always_yes true --set changeps1 no
     - conda config --add channels ${ORGNAME}
-    - conda create -q -n testenv python=$TRAVIS_PYTHON_VERSION
+    - conda create -q -n testenv python=$python
     - conda install conda-build
     - conda update --yes -q conda
     - conda update --yes -q conda-build
