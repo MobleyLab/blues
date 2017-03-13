@@ -19,8 +19,6 @@ install:
     - conda config --add channels ${ORGNAME}
     - conda create -q -n testenv python=$python
     - conda install conda-build
-    - conda update --yes -q conda
-    - conda update --yes -q conda-build
 
     - source activate testenv
     - conda info -a
