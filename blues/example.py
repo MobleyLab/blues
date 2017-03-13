@@ -9,33 +9,21 @@ import blues.ncmc as ncmc
 import blues.ncmc_switching as ncmc_switching
 from blues.smartdart import SmartDarting
 
-import sys
+import sys, os
 import numpy as np
 import mdtraj as md
 from mdtraj.reporters import HDF5Reporter
-from datetime import datetime
 from optparse import OptionParser
 
-def timeIntegration(context, steps, initialSteps):
-    """Integrate a Context for a specified number of steps, then return how many seconds it took."""
-    context.getIntegrator().step(initialSteps) # Make sure everything is fully initialized
-    context.getState(getEnergy=True)
-    start = datetime.now()
-    context.getIntegrator().step(steps)
-    context.getState(getEnergy=True)
-    end = datetime.now()
-    elapsed = end -start
-    return elapsed.seconds + elapsed.microseconds*1e-6
-
-def runNCMC(options):
+def runNCMC(platform_name):
     # Define some constants
     temperature = 300.0*unit.kelvin
     friction = 1/unit.picosecond
     dt = 0.002*unit.picoseconds
     # set nc attributes
-    numIter = 10
+    numIter = 5
     nstepsNC = 10
-    nstepsMD = 50
+    nstepsMD = 10
     #functions here defines the equation of the lambda peturbation of the sterics and electrostatics over the course of a ncmc move
     functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                 'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
@@ -43,11 +31,11 @@ def runNCMC(options):
     md_integrator = openmm.LangevinIntegrator(temperature, friction, dt)
     alch_integrator = openmm.LangevinIntegrator(temperature, friction, dt)
     # Define platform
-    platform = openmm.Platform.getPlatformByName(options.platform)
+    platform = openmm.Platform.getPlatformByName(platform_name)
 
     # Obtain topologies/positions
-    prmtop = app.AmberPrmtopFile('eqToluene.prmtop')
-    inpcrd = app.AmberInpcrdFile('eqToluene.inpcrd')
+    prmtop = app.AmberPrmtopFile(utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop'))
+    inpcrd = app.AmberInpcrdFile(utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd'))
 
     # Generate OpenMM System
     system = prmtop.createSystem(nonbondedMethod=app.PME,
@@ -57,13 +45,20 @@ def runNCMC(options):
     # Initailize MD Simulation
     md_sim = app.Simulation(prmtop.topology, system,
                             md_integrator, platform)
+    mmver = openmm.version.version
+    print('OpenMM({}) simulation generated for {} platform'.format(mmver, platform_name))
     md_sim.context.setPositions(inpcrd.positions)
     md_sim.context.setVelocitiesToTemperature(temperature)
     md_sim.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     # Add reporters for MD simulation
-    md_sim.reporters.append(app.dcdreporter.DCDReporter('traj.dcd', nstepsMD))
+    #md_sim.reporters.append(app.dcdreporter.DCDReporter('traj.dcd', nstepsMD))
     md_sim.reporters.append(HDF5Reporter('traj.h5', nstepsMD))
+    md_sim.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
+                                    reportInterval=10,
+                                    step=True, totalSteps=numIter*nstepsMD,
+                                    time=True, speed=True, progress=True,
+                                    elapsedTime=True, remainingTime=True))
 
     # Get ligand atom indices
     ligand_atoms = utils.atomIndexfromTop('LIG', prmtop.topology)
@@ -106,26 +101,19 @@ def runNCMC(options):
                     niter=numIter, nstepsNC=nstepsNC, nstepsMD=nstepsMD,
                     alchemical_correction=True)
 
-    nc_time = timeIntegration(nc_context, nstepsNC, 5)
-    md_time = timeIntegration(md_sim.context, nstepsMD, 25)
-
-    nc_steps = int(nstepsNC*1.0/nc_time)
-    md_steps = int(nstepsMD*1.0/md_time)
-
-    print('NC: Integrated %d steps in %g seconds' % (nstepsNC, nc_time))
-    print('MD: Integrated %d steps in %g seconds' % (nstepsMD, md_time))
-
-    print('NC: %g ns/day' % (dt/2*nstepsNC*86400/nc_time).value_in_unit(unit.nanoseconds))
-    print('MD: %g ns/day' % (dt*nstepsMD*86400/nc_time).value_in_unit(unit.nanoseconds))
-
 parser = OptionParser()
-platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
-parser.add_option('--platform', dest='platform', choices=platformNames, help='name of the platform to benchmark')
+parser.add_option('-f', '--force', action='store_true', default=False,
+                  help='run BLUES example without GPU platform')
 (options, args) = parser.parse_args()
-if len(args) > 0:
-    parser.error('Unknown argument: '+args[0])
-if options.platform is None:
-    parser.error('No platform specified')
+
+platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
+if set(['CUDA', 'OpenCL']).issubset( platformNames ):
+    runNCMC('CUDA')
+    runNCMC('OpenCL')
+
 else:
-    print('Platform:', options.platform)
-    runNCMC(options)
+    if options.force:
+        runNCMC('CPU')
+    else:
+        print('WARNING: Could not find a valid CUDA/OpenCL platform. BLUES is not recommended on CPUs.')
+        print("To run on CPU: 'python blues/example.py -f'")

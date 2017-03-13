@@ -37,7 +37,3 @@ env:
   global:
     - ORGNAME="omnia"
     - PACKAGENAME="blues"
-
-#after_success:
-#  - echo "after_success"
-#  -

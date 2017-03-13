@@ -22,7 +22,8 @@ def atomIndexfromTop(resname, topology):
             lig_atoms.append(atom.index)
     return lig_atoms
 
-def get_data_filename(relative_path):
+
+def get_data_filename(package_root, relative_path):
     """Get the full path to one of the reference files in testsystems.
     In the source distribution, these files are in ``blues/data/``,
     but on installation, they're moved to somewhere in the user's python
@@ -31,15 +32,14 @@ def get_data_filename(relative_path):
     https://github.com/open-forcefield-group/smarty/blob/master/smarty/utils.py
     Parameters
     ----------
-    name : str
-        Name of the file to load (with respect to the repex folder).
+    package_root : str
+        Name of the included/installed python package
+    relative_path: str
+        Path to the file within the python package
     """
 
     from pkg_resources import resource_filename
-    fn = resource_filename('blues', os.path.join('data', relative_path))
-
+    fn = resource_filename(package_root, os.path.join(relative_path))
     if not os.path.exists(fn):
         raise ValueError("Sorry! %s does not exist. If you just added it, you'll have to re-install" % fn)
-
     return fn
-

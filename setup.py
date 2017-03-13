@@ -129,7 +129,7 @@ setup(
     classifiers=CLASSIFIERS.splitlines(),
     package_dir={'blues': 'blues'},
     packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
-    package_data={'blues': find_package_data('tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
+    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
     zip_safe=False,
     include_package_data=True
