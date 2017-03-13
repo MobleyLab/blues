@@ -13,27 +13,19 @@ This also provides a prototype and validation of the SMIRFF SMIRKS-based force f
 * `systems/` - some example systems to run blues on.
 
 ## Prerequisites
-
-Install [miniconda](http://conda.pydata.org/miniconda.html) first. On `osx` with `bash`, just run:
-```
-bash Miniconda3-latest-MacOSX-x86_64.sh
-```
-from the command-line after downloading.
-
-Install other conda dependencies, after adding the omnia channel:
-```
-conda config add --channels omnia
-conda install --yes omnia mdtraj
-conda install --yes omnia openmmtools
-conda install --yes omnia alchemy
-```
-
+BLUES compatible with MacOSX/Linux with Python 2.7/3.5
+Install [miniconda](http://conda.pydata.org/miniconda.html) according to your systems
 
 ## Installation
-
-Install `blues` from the `blues/` directory with:
+Recommended: Install from conda
 ```bash
-pip install .
+conda install -c mobleylab blues
+```
+
+Install from source
+```bash
+git clone git@github.com:MobleyLab/blues.git
+python setup.py install
 ```
 
 ## Documentation

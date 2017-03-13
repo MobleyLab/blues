@@ -1,4 +1,6 @@
 """
+This setup.py script and other related installation scripts are adapted from
+https://github.com/choderalab/yank/blob/master/setup.py
 """
 from __future__ import print_function
 import os
@@ -129,7 +131,7 @@ setup(
     classifiers=CLASSIFIERS.splitlines(),
     package_dir={'blues': 'blues'},
     packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
-    package_data={'blues': find_package_data('tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
+    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
     zip_safe=False,
     include_package_data=True
