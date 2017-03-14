@@ -85,10 +85,12 @@ class PoseDart(SimNCMC):
                     #create permutations of the symmetric atom indices
                     iter_symm = itertools.permutations(original_index)
                     dist_subset = [dist_list[x] for x in original_index]
+                    #iterate over the permutations
                     for x in iter_symm:
                         for i, atom in enumerate(x):
                             #i is the index, atom is the original_atom index
                             #switch original_index with permutation
+                            print('i', i, 'atom', atom)
                             temp_sim_pos = sim_atom_pos[:]
                             temp_sim_pos[original_index[i]] = sim_atom_pos[atom[i]]
                             diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
