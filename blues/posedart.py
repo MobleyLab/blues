@@ -71,6 +71,7 @@ class PoseDart(SimNCMC):
             dist_list[index] = dist
 
         if symmetric_atoms != None:
+            print('checking for symmetric equivalents')
             for index, dart in enumerate(binding_mode_atom_pos):
                 #make temporary pos to compare distances with
                 #loop over symmetric groups
