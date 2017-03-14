@@ -52,7 +52,7 @@ class PoseDart(SimNCMC):
         symmetric_atoms: list of lists
             list of symmetric atoms
         """
-        if symmetric_atoms != None:
+        if symmetric_atoms == None:
             symmetric_atoms = self.symmetric_atoms
 
         num_lig_atoms = len(self.residueList)
