@@ -12,7 +12,7 @@ class PoseDart(SimNCMC):
     """
     Class for performing smart darting moves during an NCMC simulation.
     """
-    def __init__(self, pdb_files, fit_atoms, dart_size, **kwds):
+    def __init__(self, pdb_files, fit_atoms, dart_size, symmetric_atoms=None, **kwds):
         super(PoseDart, self).__init__(**kwds)
         self.dartboard = []
         self.dart_size = []
