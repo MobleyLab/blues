@@ -32,6 +32,7 @@ class PoseDart(SimNCMC):
         self.binding_mode_traj = []
         self.fit_atoms = fit_atoms
         self.ligand_pos = None
+        self.symmetric_atoms = symmetric_atoms
         for pdb_file in pdb_files:
             traj = md.load(pdb_file)[0]
             self.binding_mode_traj.append(copy.deepcopy(traj))
@@ -51,6 +52,8 @@ class PoseDart(SimNCMC):
         symmetric_atoms: list of lists
             list of symmetric atoms
         """
+        if symmetric_atoms != None:
+            symmetric_atoms = self.symmetric_atoms
 
         num_lig_atoms = len(self.residueList)
 
