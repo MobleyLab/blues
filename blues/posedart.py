@@ -92,7 +92,7 @@ class PoseDart(SimNCMC):
                             #switch original_index with permutation
                             print('i', i, 'atom', atom)
                             temp_sim_pos = sim_atom_pos[:]
-                            temp_sim_pos[original_index[i]] = sim_atom_pos[atom[i]]
+                            temp_sim_pos[original_index[i]] = sim_atom_pos[atom]
                             diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
                             dist = np.sqrt(np.sum((diff)*(diff)))
                             compare_diff.append(diff)
