@@ -81,6 +81,7 @@ class PoseDart(SimNCMC):
                     compare_dist =[]
                     #find the original index, which correspods with the position in temp_sim_pos
                     original_index = [self.residueList.index(x) for x in symm_group]
+                    print('original_index')
                     #create permutations of the symmetric atom indices
                     iter_symm = itertools.permutations(original_index)
                     dist_subset = [dist_list[x] for x in original_index]
