@@ -7,6 +7,7 @@ import numpy as np
 from blues.ncmc import SimNCMC, get_lig_residues
 import mdtraj as md
 from blues.rot_mat import getRotTrans, rigidDart
+import itertools
 
 class PoseDart(SimNCMC):
     """
