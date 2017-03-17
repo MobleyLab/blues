@@ -11,12 +11,12 @@ import itertools
 import chemcoord as cc
 import copy
 
-class PoseDart(SimNCMC):
+class MolDart(SimNCMC):
     """
     Class for performing smart darting moves during an NCMC simulation.
     """
     def __init__(self, pdb_files, xyz_file, fit_atoms, dart_size, symmetric_atoms=None, **kwds):
-        super(PoseDart, self).__init__(**kwds)
+        super(MolDart, self).__init__(**kwds)
         self.dartboard = []
         self.dart_size = []
         print('initizalizing dart', dart_size._value, type(dart_size._value))
@@ -40,7 +40,7 @@ class PoseDart(SimNCMC):
         self.internal_zmat = []
         self.buildlist = None
         xyz = cc.xyz_functions.read_xyz(xyz_file)
-        self.buildlist = xyz._get_buildlist
+        self.buildlist = xyz._get_buildlist()
 
         for j, pdb_file in enumerate(pdb_files):
             traj = md.load(pdb_file)[0]
@@ -51,8 +51,9 @@ class PoseDart(SimNCMC):
             for index, entry in enumerate(['x', 'y', 'z']):
                 for i in range(len(self.residueList)):
                     sel_atom = self.residueList[i]
-                    self.internal_xyz[j].frame.set_value(i+1, entry, self.binding_mode_traj[j].xyz[:,index][sel_atom])
-                    self.internal_zmat.append(self.internal_xyz.to_zmat(buildlist=self.buildlist))
+                    self.internal_xyz[j].frame.set_value(i+1, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom])
+                    print('coords', self.internal_xyz[j].frame)
+                self.internal_zmat.append(self.internal_xyz[j].to_zmat(buildlist=self.buildlist))
 
 
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
@@ -285,19 +286,24 @@ class PoseDart(SimNCMC):
         #TODO decide on making a copy or always point to same object
         xyz_ref = self.internal_xyz[0]
         for index, entry in enumerate(['x', 'y', 'z']):
-            for i in range(1, len(self.residueList)):
+            for i in range(len(self.residueList)):
                 sel_atom = self.residueList[i]
                 xyz_ref.frame.set_value(i+1, entry, (nc_pos[:,index][sel_atom]._value*10))
-        zmat_diff = xyz_ref.to_zmat()
+        print('xyz_ref', xyz_ref)
+        print('buildlist', self.buildlist)
+        zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
         #get appropriate comparision zmat
         zmat_compare = self.internal_zmat[binding_mode_index]
         for i in ['angle', 'dihedral']:
-            zmat_diff = zmat_diff.frame[i] - zmat_compare.frame[i]
+            zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
 
         selected_mode = binding_mode_pos[binding_mode_index].xyz[0]
         random_mode = self.internal_zmat[rand_index]
         #random_mode = binding_mode_pos[rand_index].xyz[0]
-        zmat_new = zmat_diff + zmat_compare
+        zmat_new = copy.deepcopy(zmat_diff)
+        for i in ['angle', 'dihedral']:
+            zmat_new.frame[i] = zmat_diff.frame[i] + zmat_compare.frame[i]
+        print('zmat_new', zmat_new)
         xyz_new = zmat_new.to_xyz()
         print('xyz_new.frame', xyz_new.frame)
         exit()
