@@ -11,6 +11,32 @@ import itertools
 import chemcoord as cc
 import copy
 
+def calc_rotation_matrix(vec_ref, vec_target):
+    '''calculate the rotation matrix that will rotate vec_ref to vec_target
+    Arguments
+    ---------
+    vec_ref: np.array
+        Vector to calculate rotation matrix to vec_target
+    vec_target: np.array
+        Target vector to rotate to.
+    '''
+    #get normalized vectors
+    a = np.array(vec_target) / np.linalg.norm(vec_target)
+    b = np.array(vec_ref) / np.linalg.norm(vec_ref)
+    #get cross product to get norm of plane these vectors are in
+    v = np.cross(a,b)
+    vec_cos = np.inner(a,b) / (np.linalg.norm(a) * np.linalg.norm(b))
+    #create skew symmetric matrix
+    vx = np.array([[0, -v[2], v[1]],
+                    [v[2], 0, -v[1]],
+                    [-v[1], v[0], 0]
+                    ])
+    I = np.identity(3)
+    #actually calculate rotation matrix
+    R = I + vx + vx.dot(vx)*(1/(1+vec_cos))
+    return R
+
+
 class MolDart(SimNCMC):
     """
     Class for performing smart darting moves during an NCMC simulation.
@@ -39,7 +65,7 @@ class MolDart(SimNCMC):
         self.internal_xyz = []
         self.internal_zmat = []
         self.buildlist = None
-        xyz = cc.xyz_functions.read_xyz(xyz_file)
+        xyz = cc.xyz_functions.read_xyz(xyz_file, pythonic_index=True)
         self.buildlist = xyz._get_buildlist()
 
         for j, pdb_file in enumerate(pdb_files):
@@ -51,8 +77,7 @@ class MolDart(SimNCMC):
             for index, entry in enumerate(['x', 'y', 'z']):
                 for i in range(len(self.residueList)):
                     sel_atom = self.residueList[i]
-                    self.internal_xyz[j].frame.set_value(i+1, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom])
-                    print('coords', self.internal_xyz[j].frame)
+                    self.internal_xyz[j].frame.set_value(i, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10)
                 self.internal_zmat.append(self.internal_xyz[j].to_zmat(buildlist=self.buildlist))
 
 
@@ -284,11 +309,13 @@ class MolDart(SimNCMC):
         ###
         #get matching binding mode pose and get rotation/translation to that pose
         #TODO decide on making a copy or always point to same object
-        xyz_ref = self.internal_xyz[0]
+        xyz_ref = copy.deepcopy(self.internal_xyz[0])
         for index, entry in enumerate(['x', 'y', 'z']):
             for i in range(len(self.residueList)):
                 sel_atom = self.residueList[i]
-                xyz_ref.frame.set_value(i+1, entry, (nc_pos[:,index][sel_atom]._value*10))
+                #set the pandas series with the appropriate data
+                #multiply by 10 since openmm works in nm and cc works in angstroms
+                xyz_ref.frame.set_value(i, entry, (nc_pos[:,index][sel_atom]._value*10))
         print('xyz_ref', xyz_ref)
         print('buildlist', self.buildlist)
         zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
@@ -303,9 +330,37 @@ class MolDart(SimNCMC):
         zmat_new = copy.deepcopy(zmat_diff)
         for i in ['angle', 'dihedral']:
             zmat_new.frame[i] = zmat_diff.frame[i] + zmat_compare.frame[i]
+        print('zmat_diff', zmat_diff)
+        print('zmat_compare', zmat_compare)
         print('zmat_new', zmat_new)
-        xyz_new = zmat_new.to_xyz()
-        print('xyz_new.frame', xyz_new.frame)
+        xyz_new = (zmat_new.to_xyz()).sort_index()
+        #TODO make sure to sort new xyz
+        print('xyz_new.frame', xyz_new.frame.sort_index())
+        #overlay new xyz onto the first atom of
+        first_atom = self.buildlist[0,0]
+        second_atom = self.buildlist[1,0]
+
+
+        xyz_first_pos = np.array([0, 0, 0])
+        for index, entry in enumerate(['x', 'y', 'z']):
+            print('xyz_new.frame', xyz_new.frame)
+            print('entry', entry)
+            print('xyz entry', xyz_new.frame[entry])
+            print('atom', first_atom)
+            print('xyz entry atom', xyz_new.frame[entry][first_atom])
+
+            xyz_first_pos[index] = xyz_new.frame[entry][first_atom]
+
+        for index, entry in enumerate(['x', 'y', 'z']):
+            for i in range(len(self.residueList)):
+                sel_atom = self.residueList[i]
+                #TODO from friday: set units for xyz_first_pos and then go about doing the rotation to reorient the molecule after moving
+
+                nc_pos[:,index][sel_atom] = xyz_new.frame[entry][i]
+                self.internal_xyz[j].frame.set_value(i, entry, nc_pos[:,index][sel_atom]*10)
+
+        for entry in self.internal_xyz:
+            print('int', entry)
         exit()
         rotation, centroid_difference = getRotTrans(nc_pos, selected_mode, residueList)
         return_pos = rigidDart(nc_pos, random_mode, rotation, centroid_difference, residueList)
