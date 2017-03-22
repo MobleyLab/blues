@@ -6,10 +6,47 @@ import simtk.unit as unit
 import numpy as np
 from blues.ncmc import SimNCMC, get_lig_residues
 import mdtraj as md
-from blues.rot_mat import getRotTrans, rigidDart
+from blues.lin_math import calc_rotation_matrix, adjust_angle
+from blues.rot_mat import getRotTrans
 import itertools
 import chemcoord as cc
 import copy
+
+def rigidDart(apos, bpos, rot, centroid_difference, residueList=None):
+    '''
+    Get rotation and translation of rigid pose
+
+    Arguments
+    ---------
+    apos: nx3 np.array
+        simulation positions
+    bpos: nx3 np.array
+        comparison positoins
+    rot: 3x3 np.array
+        Rotation to be applied from other dart.
+    centroid_difference: 1x3 np.array
+        Vector difference between other dart and simulation centroids.
+    residueList
+    '''
+    if type(residueList) == type(None):
+        residueList = self.residueList
+    a_new = apos[:]
+    num_res = len(residueList)
+    a_res = np.zeros((len(residueList),3))
+    b_res = np.zeros((len(residueList),3))
+    for index, i in enumerate(residueList):
+        a_res[index] = apos[i]
+        b_res[index] = bpos[i]
+    holder_rot, trans, centa, centb, holder_centroid_difference = rigid_transform_3D(a_res, b_res)
+    b_removed_centroid = b_res - (np.tile(centb, (num_res, 1)))
+    b_new = (np.tile(centroid_difference, (num_res, 1))) + b_res
+    b_rot = (np.dot(rot, b_removed_centroid.T)).T
+    #changed
+    b_new = b_rot + (np.tile(centroid_difference, (num_res, 1))) + (np.tile(centb, (num_res, 1)))
+    b_new = b_new * unit.nanometer
+    for index, i in enumerate(residueList):
+        a_new[residueList[index]] = b_new[index]
+    return a_new
 
 def calc_rotation_matrix(vec_ref, vec_target):
     '''calculate the rotation matrix that will rotate vec_ref to vec_target
@@ -35,6 +72,15 @@ def calc_rotation_matrix(vec_ref, vec_target):
     #actually calculate rotation matrix
     R = I + vx + vx.dot(vx)*(1/(1+vec_cos))
     return R
+def apply_rotation(array, rot_matrix, rotation_center):
+    n_rows = np.shape(array)[0]
+    sub_vec = np.tile(array[:,rotation_center], (n_rows,1))
+    rotated_array = array - sub_vec
+    rotated_array = rotated_array.dot(rot_matrix)
+    rotated_array = rotated_array + sub_vec
+    return rotated_array
+
+
 
 
 class MolDart(SimNCMC):
@@ -325,6 +371,30 @@ class MolDart(SimNCMC):
             zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
 
         selected_mode = binding_mode_pos[binding_mode_index].xyz[0]
+        #find translation differences in positions of first two atoms to reference structure
+        #find the appropriate rotation to transform the structure back
+        #repeat for second bond
+        #get first 3 new moldart positions, apply same series of rotation/translations
+        sim_three = np.zeros((3,3))
+        ref_three = np.zeros((3,3))
+        for i in range(3):
+            sim_three[:,index] = nc_pos[:,residueList[self.buildlist[i, 0]]]
+            ref_three[:,index] = binding_mode_pos[binding_mode_index].xyz[0][:,residueList[self.buildlist[i, 0]]]
+            dart_three[:,index] = binding_mode_pos[rand_index].xyz[0][:,residueList[self.buildlist[i, 0]]]
+        vec1_sim = sim_three[1,:] - sim_three[0,:]
+        vec2_sim = sim_three[2,:] - sim_three[1,:]
+        vec1_ref = ref_three[1,:] - ref_three[0,:]
+        vec2_ref = ref_three[2,:] - ref_three[1,:]
+        #calculate rotation from ref pos to sim pos
+        rotation1 = calc_rotation_matrix(vec1_ref, vec1_sim)
+        rotation2 = calc_rotation_matrix(vec2_ref, vec2_sim)
+        pos_diff = sim_three[1,:] - ref_three[1,:]
+        #apply translation, rotations to new positions
+        dart_three = dart_three + np.tile(pos_diff, (3,1))
+        dart_three = apply_rotation(dart_three, rotation1, 0)
+        second_rot = apply_rotation(dart_three[1:], rotation2, 0)
+        dart_three[1:] = second_rot
+
         random_mode = self.internal_zmat[rand_index]
         #random_mode = binding_mode_pos[rand_index].xyz[0]
         zmat_new = copy.deepcopy(zmat_diff)
@@ -350,7 +420,10 @@ class MolDart(SimNCMC):
             print('xyz entry atom', xyz_new.frame[entry][first_atom])
 
             xyz_first_pos[index] = xyz_new.frame[entry][first_atom]
+            xyz_second_pos[index] = xyz_new.frame[entry][first_atom]
 
+        xyz_first_pos = xyz_first_pos / 10.0
+        print(xyz_first_pos)
         for index, entry in enumerate(['x', 'y', 'z']):
             for i in range(len(self.residueList)):
                 sel_atom = self.residueList[i]
