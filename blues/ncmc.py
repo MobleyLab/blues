@@ -172,7 +172,6 @@ class SimNCMC(object):
         self.residueList = residueList
         self.acceptance = 0
         self.md_simulation = None
-        self.dummy_simulation = None
         self.nc_context = None
         self.nc_integrator = None
         self._storage = None
@@ -384,7 +383,7 @@ class SimNCMC(object):
         rotPos[:] = rotPos*unit.nanometers
         context.setPositions(rotPos)
 
-    def runSim(self, md_simulation, nc_context, nc_integrator, dummy_simulation, movekey=None, nstepsNC=25, nstepsMD=1000, niter=10,
+    def runSim(self, md_simulation, nc_simulation, movekey=None, nstepsNC=25, nstepsMD=1000, niter=10,
                 periodic=True, verbose=False, print_output=sys.stdout, residueList=None, alchemical_correction=False,
                 ncmc_storage='out_ncmc.h5', write_ncmc_interval=None):
         """
@@ -392,15 +391,9 @@ class SimNCMC(object):
         Arguments
         ---------
         md_simulation: simtk.openmm.simulation
-            normal interacting simulation
-        nc_context: simtk.openmm.context
-            Context containing the alchemical system with a NCMCAlchemicalIntegrator (currently
-            either GHMC or VV based)
-        nc_intgrator: blues.ncmc_switching.NCMCAlchemicalIntegrator
-            integrator used for the NCMC steps
-        dummy_simulation: simtk.openmm.simulation
-            A copy of the md_simulation. Is used for alchemical corrections and for writing ncmc frames
-            if write_ncmc_interval is specified
+            Normal interacting simulation.
+        nc_simulation: simtk.openmm.simulation
+            Alchemical simulation.
         movekey: list of 2 item lists, the first item is a reference to a function and the second is a list of ints
             This will perform the given function at the start of a NCMC step, given that step is listed in
             the list of ints. In the case where mulitple moves are being performed at the same step they are performed
@@ -424,13 +417,18 @@ class SimNCMC(object):
         write_ncmc_interval: int or None, optional, default=None
             If int is used, specifies the interval which NCMC positions are written.
             Also writes out after every function applied by movekey
+
+        Returns
+        –––––––
+        simPos, unit np.array
+            Last position array from the simulation.
         """
+
         if residueList == None:
             residueList = self.residueList
         self.md_simulation = md_simulation
-        self.dummy_simulation = dummy_simulation
-        self.nc_context = nc_context
-        self.nc_integrator = nc_integrator
+        self.nc_context = nc_simulation.context
+        self.nc_integrator = nc_simulation.nc_integrator
         self.get_particle_masses(self.md_simulation.system)
         if print_output == sys.stdout:
             print_file = sys.stdout
@@ -440,6 +438,8 @@ class SimNCMC(object):
             h5reporter = md.reporters.HDF5Reporter(file=ncmc_storage, reportInterval=100,
                 coordinates=True, time=False, cell=False, potentialEnergy=False, kineticEnergy=False,
                 temperature=False, velocities=False, atomSubset=None)
+        nc_integrator = nc_simulation.nc_integrator
+        nc_context = nc_simulation.context
         #set up initial counters/ inputs
         accCounter = 0
         #set inital conditions
@@ -471,9 +471,7 @@ class SimNCMC(object):
 
                             func[0]()
                             if write_ncmc_interval:
-                                positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-                                dummy_simulation.context.setPositions(positions)
-                                h5reporter.report(dummy_simulation, dummy_simulation.context.getState(True, True))
+                                h5reporter.report(nc_simulation, nc_simulation.context.getState(True, True))
 
                 try:
                     if verbose:
@@ -486,9 +484,7 @@ class SimNCMC(object):
                     if write_ncmc_interval and (stepscarried+1) % write_ncmc_interval == 0:
                         if verbose:
                             print('writing coordinates')
-                        positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-                        dummy_simulation.context.setPositions(positions)
-                        h5reporter.report(dummy_simulation, dummy_simulation.context.getState(True, True))
+                        h5reporter.report(nc_simulation, nc_simulation.context.getState(True, True))
 
                     nc_integrator.step(1)
                     if verbose:
@@ -512,8 +508,8 @@ class SimNCMC(object):
             randnum =  math.log(np.random.random())
             if alchemical_correction == True and np.isnan(log_ncmc) == False:
                 alc_newPE = newinfo.getPotentialEnergy()
-                dummy_simulation.context.setPositions(newPos)
-                dummy_info = dummy_simulation.context.getState(True, True, False, True, True, periodic)
+                md_simulation.context.setPositions(newPos)
+                dummy_info = md_simulation.context.getState(True, True, False, True, True, periodic)
                 norm_newPE = dummy_info.getPotentialEnergy()
                 correction_factor = -1.0*((norm_newPE - alc_newPE) - (oldPE - alc_oldPE))*(1/nc_integrator.kT)
                 print('correction_factor', correction_factor, file=print_file)
@@ -532,8 +528,8 @@ class SimNCMC(object):
                 accCounter = accCounter + 1.0
                 print('accCounter', float(accCounter)/float(stepsdone+1), accCounter, file=print_file)
                 nc_stateinfo = nc_context.getState(True, True, False, False, False, periodic)
-                oldPos = newPos[:]
-                oldVel = newVel[:]
+                oldPos[:] = newPos
+                oldVel[:] = newVel
 
             else:
                 print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE, file=print_file)

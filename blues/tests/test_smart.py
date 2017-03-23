@@ -23,11 +23,9 @@ def test_dartMove():
     test_run.basis_particles = basis_part
     md_integrator = openmm.openmm.LangevinIntegrator(temperature, 1/unit.picosecond, 0.0000002*unit.picoseconds)
     md_simulation = openmm.app.simulation.Simulation(topology=test_system.topology, system=test_system.system, integrator=md_integrator)
-    dummy_integrator = openmm.openmm.LangevinIntegrator(temperature, 1/unit.picosecond, 0.0000002*unit.picoseconds)
-    dummy_simulation = openmm.app.simulation.Simulation(topology=test_system.topology, system=test_system.system, integrator=dummy_integrator)
     functions = { 'lambda_sterics' : '1', 'lambda_electrostatics' : '1'}
     nc_integrator = NCMCVVAlchemicalIntegrator(300*unit.kelvin, test_system.system, functions, nsteps=2, timestep=0.0002*unit.femtoseconds, direction='flux')
-    nc_context = openmm.Context(test_system.system, nc_integrator)
+    nc_simulation = openmm.app.simulation.Simulation(topology=test_system.topology, system=test_system.system, integrator=nc_integrator)
     md_simulation.context.setPositions(test_system.positions)
     md_simulation.context.setVelocitiesToTemperature(temperature)
     #set up center of mass coordinates
@@ -45,7 +43,7 @@ def test_dartMove():
     #add rotational move
     nc_move = None
     #see if simulation runs
-    results = test_run.runSim(md_simulation, nc_context, nc_integrator, dummy_simulation, nstepsNC=2, nstepsMD=2, niter=1, alchemical_correction=True, movekey=nc_move)
+    results = test_run.runSim(md_simulation, nc_simulation, nstepsNC=2, nstepsMD=2, niter=1, alchemical_correction=True, movekey=nc_move)
     assert type(results) == type(test_system.positions)
     standard_dart = np.array([-0.0096823 ,  0.50751791,  0.060064  ])
     for i in range(20):
