@@ -74,7 +74,7 @@ def calc_rotation_matrix(vec_ref, vec_target):
     return R
 def apply_rotation(array, rot_matrix, rotation_center):
     n_rows = np.shape(array)[0]
-    sub_vec = np.tile(array[:,rotation_center], (n_rows,1))
+    sub_vec = np.tile(array[rotation_center,:], (n_rows,1))
     rotated_array = array - sub_vec
     rotated_array = rotated_array.dot(rot_matrix)
     rotated_array = rotated_array + sub_vec
@@ -111,7 +111,7 @@ class MolDart(SimNCMC):
         self.internal_xyz = []
         self.internal_zmat = []
         self.buildlist = None
-        xyz = cc.xyz_functions.read_xyz(xyz_file, pythonic_index=True)
+        xyz = cc.xyz_functions.read(xyz_file, start_index=0)
         self.buildlist = xyz._get_buildlist()
 
         for j, pdb_file in enumerate(pdb_files):
@@ -369,6 +369,9 @@ class MolDart(SimNCMC):
         zmat_compare = self.internal_zmat[binding_mode_index]
         for i in ['angle', 'dihedral']:
             zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
+        zmat_new = copy.deepcopy(zmat_diff)
+        for i in ['angle', 'dihedral']:
+            zmat_new.frame[i] = zmat_diff.frame[i] + zmat_compare.frame[i]
 
         selected_mode = binding_mode_pos[binding_mode_index].xyz[0]
         #find translation differences in positions of first two atoms to reference structure
@@ -377,10 +380,13 @@ class MolDart(SimNCMC):
         #get first 3 new moldart positions, apply same series of rotation/translations
         sim_three = np.zeros((3,3))
         ref_three = np.zeros((3,3))
+        dart_three = np.zeros((3,3))
         for i in range(3):
-            sim_three[:,index] = nc_pos[:,residueList[self.buildlist[i, 0]]]
-            ref_three[:,index] = binding_mode_pos[binding_mode_index].xyz[0][:,residueList[self.buildlist[i, 0]]]
-            dart_three[:,index] = binding_mode_pos[rand_index].xyz[0][:,residueList[self.buildlist[i, 0]]]
+            sim_three[i] = nc_pos[residueList[self.buildlist[i, 0]]]
+            print('using index', [residueList[self.buildlist[i, 0]]])
+            ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][residueList[self.buildlist[i, 0]]]
+            dart_three[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
+            print('dart3 1', dart_three)
         vec1_sim = sim_three[1,:] - sim_three[0,:]
         vec2_sim = sim_three[2,:] - sim_three[1,:]
         vec1_ref = ref_three[1,:] - ref_three[0,:]
@@ -394,50 +400,40 @@ class MolDart(SimNCMC):
         dart_three = apply_rotation(dart_three, rotation1, 0)
         second_rot = apply_rotation(dart_three[1:], rotation2, 0)
         dart_three[1:] = second_rot
+        #added
+        vec1_dart = dart_three[0] - dart_three[1]
+        vec2_dart = dart_three[2] - dart_three[1]
+        print('debug', zmat_new.frame['angle'][self.buildlist[2,0]])
+        dart_degrees = zmat_new.frame['angle'][self.buildlist[2,0]]
+        if 0:
+            adjusted = adjust_angle(vec2_dart, vec1_dart, np.radians(dart_degrees))
+            print('adjust', adjusted, np.linalg.norm(adjusted))
+            print('old', vec2_dart, np.linalg.norm(vec2_dart))
+            dart_three[2] = dart_three[1] + adjusted
+        #exit()
 
         random_mode = self.internal_zmat[rand_index]
         #random_mode = binding_mode_pos[rand_index].xyz[0]
-        zmat_new = copy.deepcopy(zmat_diff)
-        for i in ['angle', 'dihedral']:
-            zmat_new.frame[i] = zmat_diff.frame[i] + zmat_compare.frame[i]
         print('zmat_diff', zmat_diff)
         print('zmat_compare', zmat_compare)
         print('zmat_new', zmat_new)
-        xyz_new = (zmat_new.to_xyz()).sort_index()
+        print('starting_coord', dart_three)
+        xyz_new = (zmat_new.to_xyz(starting_coord=dart_three*10)).sort_index()
         #TODO make sure to sort new xyz
+        print('xyz_new.frame unsorted', xyz_new.frame)
         print('xyz_new.frame', xyz_new.frame.sort_index())
+        print('darted from', self.internal_xyz[binding_mode_index])
+
         #overlay new xyz onto the first atom of
-        first_atom = self.buildlist[0,0]
-        second_atom = self.buildlist[1,0]
-
-
-        xyz_first_pos = np.array([0, 0, 0])
-        for index, entry in enumerate(['x', 'y', 'z']):
-            print('xyz_new.frame', xyz_new.frame)
-            print('entry', entry)
-            print('xyz entry', xyz_new.frame[entry])
-            print('atom', first_atom)
-            print('xyz entry atom', xyz_new.frame[entry][first_atom])
-
-            xyz_first_pos[index] = xyz_new.frame[entry][first_atom]
-            xyz_second_pos[index] = xyz_new.frame[entry][first_atom]
-
-        xyz_first_pos = xyz_first_pos / 10.0
-        print(xyz_first_pos)
         for index, entry in enumerate(['x', 'y', 'z']):
             for i in range(len(self.residueList)):
                 sel_atom = self.residueList[i]
                 #TODO from friday: set units for xyz_first_pos and then go about doing the rotation to reorient the molecule after moving
+                nc_pos[:,index][sel_atom] = (xyz_new.frame[entry][i] / 10) * unit.nanometers
+                #self.internal_xyz[j].frame.set_value(i, entry, nc_pos[:,index][sel_atom]*10)
+            print('putting', nc_pos[sel_atom])
 
-                nc_pos[:,index][sel_atom] = xyz_new.frame[entry][i]
-                self.internal_xyz[j].frame.set_value(i, entry, nc_pos[:,index][sel_atom]*10)
-
-        for entry in self.internal_xyz:
-            print('int', entry)
-        exit()
-        rotation, centroid_difference = getRotTrans(nc_pos, selected_mode, residueList)
-        return_pos = rigidDart(nc_pos, random_mode, rotation, centroid_difference, residueList)
-        return return_pos
+        return nc_pos
         #use rot and translation to dart to another pose
 
 
