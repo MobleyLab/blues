@@ -394,7 +394,7 @@ class MolDart(SimNCMC):
         #calculate rotation from ref pos to sim pos
         rotation1 = calc_rotation_matrix(vec1_ref, vec1_sim)
         rotation2 = calc_rotation_matrix(vec2_ref, vec2_sim)
-        pos_diff = sim_three[1,:] - ref_three[1,:]
+        pos_diff = sim_three[0,:] - ref_three[0,:]
         #apply translation, rotations to new positions
         dart_three = dart_three + np.tile(pos_diff, (3,1))
         dart_three = apply_rotation(dart_three, rotation1, 0)
