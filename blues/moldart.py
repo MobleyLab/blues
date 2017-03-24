@@ -179,7 +179,7 @@ class MolDart(SimNCMC):
                         for i, atom in enumerate(x):
                             #i is the index, atom is the original_atom index
                             #switch original_index with permutation
-                            temp_sim_pos = np.copy(sim_atom_pos[:])
+                            temp_sim_pos = np.copy(sim_atom_pos)
                             temp_sim_pos[original_index[i]] = sim_atom_pos[atom]
                             diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
                             dist = np.sqrt(np.sum((diff)*(diff)))
@@ -188,7 +188,7 @@ class MolDart(SimNCMC):
                         if np.sum(compare_dist) < np.sum(dist_subset):
                             print('better symmetric equivalent found')
                             #replace changed variables
-                            sim_atom_pos = temp_sim_pos[:]
+                            sim_atom_pos[:] = temp_sim_pos
                             #replace diff_list and dist_list with updated values
                             for i, atom in enumerate(x):
                                 diff_list[atom] = compare_diff[i]
