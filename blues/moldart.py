@@ -139,7 +139,7 @@ class MolDart(SimNCMC):
         sim_atom_pos: nx3 np.array
             simulation positions of the ligand atoms
         binding_mode_atom_pos: nx3 np.array
-            positions of the ligand atoms from the different poses
+            positions of the ligand atoms from a given poses
         symmetric_atoms: list of lists
             list of symmetric atoms
         """
@@ -163,37 +163,43 @@ class MolDart(SimNCMC):
 
         if symmetric_atoms != None:
             print('checking for symmetric equivalents')
-            for index, dart in enumerate(binding_mode_atom_pos):
-                #make temporary pos to compare distances with
-                #loop over symmetric groups
-                for symm_group in symmetric_atoms:
+            #make temporary pos to compare distances with
+            #loop over symmetric groups
+            for symm_group in symmetric_atoms:
+                compare_diff =[]
+                compare_dist =[]
+                #find the original index, which correspods with the position in temp_sim_pos
+                original_index = [self.residueList.index(x) for x in symm_group]
+                #create permutations of the symmetric atom indices
+                iter_symm = itertools.permutations(original_index)
+                dist_subset = [dist_list[x] for x in original_index]
+                #iterate over the permutations
+                xcounter = 0
+                for x in iter_symm:
+                    print('xcounter', xcounter)
+                    xcounter = xcounter+1
+                    for i, atom in enumerate(x):
+                        #i is the index, atom is the original_atom index
+                        #switch original_index with permutation
+                        temp_sim_pos = np.copy(sim_atom_pos)
+                        temp_sim_pos[original_index[i]] = sim_atom_pos[atom]
+                        diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
+                        dist = np.sqrt(np.sum((diff)*(diff)))
+                        compare_diff.append(diff)
+                        compare_dist.append(dist)
+                        print('dist', compare_dist)
+                    if np.sum(compare_dist) < np.sum(dist_subset):
+                        print('better symmetric equivalent found')
+                        #replace changed variables
+                        sim_atom_pos[:] = temp_sim_pos
+                        #replace diff_list and dist_list with updated values
+                        for i, atom in enumerate(x):
+                            diff_list[atom] = compare_diff[i]
+                            dist_list[atom] = compare_dist[i]
+                            #TODO might wanna trade velocities too
                     compare_diff =[]
                     compare_dist =[]
-                    #find the original index, which correspods with the position in temp_sim_pos
-                    original_index = [self.residueList.index(x) for x in symm_group]
-                    #create permutations of the symmetric atom indices
-                    iter_symm = itertools.permutations(original_index)
-                    dist_subset = [dist_list[x] for x in original_index]
-                    #iterate over the permutations
-                    for x in iter_symm:
-                        for i, atom in enumerate(x):
-                            #i is the index, atom is the original_atom index
-                            #switch original_index with permutation
-                            temp_sim_pos = np.copy(sim_atom_pos)
-                            temp_sim_pos[original_index[i]] = sim_atom_pos[atom]
-                            diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
-                            dist = np.sqrt(np.sum((diff)*(diff)))
-                            compare_diff.append(diff)
-                            compare_dist.append(dist)
-                        if np.sum(compare_dist) < np.sum(dist_subset):
-                            print('better symmetric equivalent found')
-                            #replace changed variables
-                            sim_atom_pos[:] = temp_sim_pos
-                            #replace diff_list and dist_list with updated values
-                            for i, atom in enumerate(x):
-                                diff_list[atom] = compare_diff[i]
-                                dist_list[atom] = compare_dist[i]
-                                #TODO might wanna trade velocities too
+
 
 
         return dist_list, diff_list
@@ -240,8 +246,9 @@ class MolDart(SimNCMC):
             for index, atom in enumerate(residueList):
                 temp_binding_mode_pos[index] = pose_coord[atom]
             temp_dist, temp_diff = self.dist_from_dart_center(temp_pos, temp_binding_mode_pos)
-            total_diff_list.append(temp_diff)
-            total_dist_list.append(temp_dist)
+            #TODO: replace the actual simulation position/velocities with the symmetric equivalents if found!!!!
+            total_diff_list.append(temp_diff[:])
+            total_dist_list.append(temp_dist[:])
 
         selected = []
         #check to see which poses fall within the dart size
