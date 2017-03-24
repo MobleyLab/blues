@@ -202,7 +202,7 @@ class MolDart(SimNCMC):
 
 
 
-        return dist_list, diff_list
+        return sim_atom_pos, dist_list, diff_list
 
     def poseDart(self, context=None, residueList=None):
         """check whether molecule is within a pose, and
@@ -214,6 +214,8 @@ class MolDart(SimNCMC):
             residueList = self.residueList
         total_diff_list = []
         total_dist_list = []
+        symm_pos_list = []
+
         nc_pos = context.getState(getPositions=True).getPositions()
         #update sim_traj positions for superposing binding modes
         #might need to make self.sim_traj.xyz = nc_pos._value into
@@ -245,10 +247,12 @@ class MolDart(SimNCMC):
 
             for index, atom in enumerate(residueList):
                 temp_binding_mode_pos[index] = pose_coord[atom]
-            temp_dist, temp_diff = self.dist_from_dart_center(temp_pos, temp_binding_mode_pos)
+            temp_pos, temp_dist, temp_diff = self.dist_from_dart_center(temp_pos, temp_binding_mode_pos)
+
             #TODO: replace the actual simulation position/velocities with the symmetric equivalents if found!!!!
             total_diff_list.append(temp_diff[:])
             total_dist_list.append(temp_dist[:])
+            symm_pos_list.append(np.copy(temp_pos))
 
         selected = []
         #check to see which poses fall within the dart size
@@ -263,7 +267,7 @@ class MolDart(SimNCMC):
         if len(selected) == 1:
             #returns binding mode index, and the diff_list
             #diff_list will be used to dart
-            return selected[0], total_diff_list[selected[0]]
+            return selected[0], total_diff_list[selected[0]], symm_pos_list[selected[0]]
         elif len(selected) == 0:
             return None, total_diff_list
         elif len(selected) >= 2:
@@ -336,7 +340,7 @@ class MolDart(SimNCMC):
         return return_pos
         #use rot and translation to dart to another pose
 
-    def moldRedart(self, binding_mode_pos, binding_mode_index, nc_pos, residueList=None):
+    def moldRedart(self, binding_mode_pos, binding_mode_index, nc_pos, symm_pos, residueList=None):
         """
         Helper function to choose a random pose and determine the vector
         that would translate the current particles to that dart center
@@ -355,6 +359,9 @@ class MolDart(SimNCMC):
         if residueList == None:
             residueList = self.residueList
         #choose a random binding pose
+        #change symmetric atoms
+        for i, atom_num in enumerate(residueList):
+            nc_pos[atom_num] = symm_pos[i]
         rand_index = np.random.randint(len(self.binding_mode_traj))
         ###temp to encourage going to other binding modes
         while rand_index == binding_mode_index:
@@ -461,7 +468,7 @@ class MolDart(SimNCMC):
 
             new_pos = self.poseRigidRedart(binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=selected_pose,
-                                            nc_pos=oldDartPos)
+                                            nc_pos=oldDartPos, symm_pos=symm_pos)
             context.setPositions(new_pos)
             stateinfo = context.getState(True, True, False, True, True, False)
             newEnergy = stateinfo.getPotentialEnergy()
@@ -482,7 +489,7 @@ class MolDart(SimNCMC):
         stateinfo = context.getState(True, True, False, True, True, False)
         oldEnergy = stateinfo.getPotentialEnergy()
         oldDartPos = stateinfo.getPositions(asNumpy=True)
-        selected_pose, diff_list = self.poseDart()
+        selected_pose, diff_list, symm_list = self.poseDart()
         #now self.binding_mode_pos should be fitted to structure at this point
         #use the first entry
 
