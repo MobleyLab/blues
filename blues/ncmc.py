@@ -1,3 +1,10 @@
+"""
+ncmc.py: Provides the Simulation class for running the NCMC simulation.
+
+Authors: Samuel C. Gill
+Contributors: Nathan M. Lim, David L. Mobley
+"""
+
 from __future__ import print_function
 import sys
 from simtk.openmm.app import *
@@ -182,6 +189,7 @@ class SimNCMC(object):
         beta = 1.0 / kT
         self.beta = beta
 
+<<<<<<< HEAD
     def get_particle_masses(self, system, residueList=None, set_self=True):
         """
         Finds the mass of each particle given by residueList and returns
@@ -219,6 +227,16 @@ class SimNCMC(object):
             self.total_mass = total_mass
             self.mass_list = mass_list
         return total_mass, mass_list
+=======
+    def get_particle_masses(self, system, atomsIdx):
+        masses = unit.Quantity(np.zeros([len(atomsIdx),1],np.float32), unit.dalton)
+        #system = context.getSystem()
+        for ele, idx in enumerate(atomsIdx):
+            masses[ele] = system.getParticleMass(idx)
+        self.total_mass = masses.sum()
+        self.mass_list = masses
+        return self.total_mass, self.mass_list
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2
 
     def zero_masses(self, system, atomList=None):
         """
@@ -354,7 +372,19 @@ class SimNCMC(object):
         self.normalsystem = testsystem
         return self.normalsystem
 
+<<<<<<< HEAD
     def rotationalMove(self, context=None, residueList=None):
+=======
+#    def createNormalSimulation(self, friction=1/unit.picosecond, timestep=0.002*unit.picoseconds, temperature=None):
+#        if temperature == None:
+#            temperature = self.temperature
+#        self.md_integrator = openmm.openmm.LangevinIntegrator(temperature, friction, timestep)
+#        self.dummy_integrator = openmm.openmm.LangevinIntegrator(temperature, friction, timestep)
+#        self.md_simulation = openmm.app.simulation.Simulation(topology=self.normalsystem.topology, system=self.normalsystem.system, integrator=self.md_integrator)
+#        self.dummy_simulation = openmm.app.simulation.Simulation(topology=self.normalsystem.topology, system=self.normalsystem.system, integrator=self.dummy_integrator)
+
+    def rotationalMove(self, residueList=None):
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2
         """
         Function to be used in movekey. Performs a rotation around the center of mass
         of the ligand. Generally no arguments are specified, since this takes the
@@ -362,6 +392,7 @@ class SimNCMC(object):
 
         Arguments
         ---------
+<<<<<<< HEAD
         context: openmm.context
             variable referring to the ncmc context. If none are
             specified uses the context in self.nc_context
@@ -369,6 +400,9 @@ class SimNCMC(object):
             Indices of ligand atoms for alchemical transformation. If none are
             specified uses the residueList in self.residueList
 
+=======
+        generally none
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2
         """
 
         if residueList == None:
@@ -502,7 +536,11 @@ class SimNCMC(object):
 
                 except Exception as e:
                     if str(e) == "Particle coordinate is nan":
+<<<<<<< HEAD
                         print('nan, breaking', file=print_file)
+=======
+                        print('nan, breaking')
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2
                         break
 
             log_ncmc = nc_integrator.getLogAcceptanceProbability(nc_context)
@@ -522,6 +560,7 @@ class SimNCMC(object):
             if log_ncmc > randnum:
                 print('ncmc move accepted', file=print_file)
                 if verbose:
+<<<<<<< HEAD
                     print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE, file=print_file)
                     print('ncmc Total energy', newinfo.getPotentialEnergy() + newinfo.getKineticEnergy(), file=print_file)
                     PE_diff = newinfo.getPotentialEnergy() - oldPE
@@ -532,6 +571,20 @@ class SimNCMC(object):
                 accCounter = accCounter + 1.0
                 print('accCounter', float(accCounter)/float(stepsdone+1), accCounter, file=print_file)
                 nc_stateinfo = nc_context.getState(True, True, False, False, False, periodic)
+=======
+                    print('ncmc PE', newinfo.getPotentialEnergy(), 'old PE', oldPE)
+                    print('ncmc Total energy', newinfo.getPotentialEnergy() + newinfo.getKineticEnergy())
+                    PE_diff = newinfo.getPotentialEnergy() - oldPE
+                    print('PE_diff', PE_diff)
+                print('accepted since', log_ncmc, '>', randnum)
+                print('log_ncmc > randnum')
+                print('move accepted')
+                accCounter = accCounter + 1.0
+                print('accCounter', float(accCounter)/float(stepsdone+1), accCounter)
+
+                nc_stateinfo = nc_context.getState(True, True, False, False, False, periodic)
+
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2
                 oldPos = newPos[:]
                 oldVel = newVel[:]
 
@@ -563,6 +616,24 @@ class SimNCMC(object):
                     last_top = md.Topology.from_openmm(md_simulation.topology)
                     broken_frame = md.Trajectory(xyz=reshape, topology=last_top)
                     broken_frame.save_pdb('broken.pdb')
+<<<<<<< HEAD
+=======
+                    print('np.shape', np.shape(broken_frame))
+                    broken_ncmc = md.Trajectory(xyz=ncmc_frame, topology=last_top)
+                    try:
+                        broken_ncmc.save_gro('broken_last.gro')
+                    except ValueError:
+                        print('couldnt output gro, values too large')
+                    try:
+                        broken_ncmc.save_dcd('broken_ncmc.dcd')
+                    except ValueError:
+                        print('couldnt output dcd, values too large')
+                    try:
+                        broken_ncmc.save_pdb('broken_ncmc.pdb')
+                    except ValueError:
+
+                        print('couldnt output pdb, values too large')
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2
                     exit()
 
             md_stateinfo = md_simulation.context.getState(True, True, False, False, False, periodic)

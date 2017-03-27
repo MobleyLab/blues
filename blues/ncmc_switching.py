@@ -1,5 +1,19 @@
+<<<<<<< HEAD
 #Original code written by Patrick B. Grinaway, Julie M. Behr, and John D. Chodera
 #https://github.com/choderalab/perses/blob/master/perses/annihilation/ncmc_switching.py
+=======
+"""
+ncmc_switching.py: Provides an classes for controlling the primary NCMC engine,
+and related alchemical functions.
+
+*Adapted from source code:
+#https://github.com/choderalab/perses/blob/master/perses/annihilation/ncmc_switching.py
+
+Authors: Patrick B. Grinaway, Julie M. Behr, and John D. Chodera
+Contributors: Samuel C. Gill
+"""
+
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2
 from __future__ import print_function
 import numpy as np
 import copy

@@ -1,5 +1,14 @@
-#benchmarking functions originally by Peter Eastman
-#adapted from https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
+"""
+example.py: Provides an example script to run BLUES and
+benchmark the run on a given platform
+
+Authors: Samuel C. Gill
+Contributors: Nathan M. Lim, David L. Mobley
+
+* Benchmarking related code adapted from:
+https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
+(Authors: Peter Eastmen)
+"""
 from __future__ import print_function
 from simtk import unit, openmm
 from simtk.openmm import app
@@ -16,7 +25,11 @@ import mdtraj as md
 from mdtraj.reporters import HDF5Reporter
 from optparse import OptionParser
 
+<<<<<<< HEAD:blues/example.py
 def runNCMC(platform_name):
+=======
+def runNCMC(options):
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2:examples/example.py
     # Define some constants
     temperature = 300.0*unit.kelvin
     friction = 1/unit.picosecond
@@ -53,7 +66,19 @@ def runNCMC(platform_name):
     md_sim.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     # Add reporters for MD simulation
+<<<<<<< HEAD:blues/example.py
     #md_sim.reporters.append(app.dcdreporter.DCDReporter('traj.dcd', nstepsMD))
+=======
+    from sys import stdout
+    progress_reporter = app.StateDataReporter(stdout, separator="\t",
+                                            reportInterval=10,
+                                            totalSteps=nstepsMD,
+                                            time=True, speed=True, progress=True,
+                                            elapsedTime=True, remainingTime=True)
+
+    md_sim.reporters.append(progress_reporter)
+    md_sim.reporters.append(app.dcdreporter.DCDReporter('traj.dcd', nstepsMD))
+>>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2:examples/example.py
     md_sim.reporters.append(HDF5Reporter('traj.h5', nstepsMD))
     md_sim.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
                                     reportInterval=10,
@@ -89,14 +114,14 @@ def runNCMC(platform_name):
     nc_context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     # Initialize BLUES engine
-    blues_run = ncmc.SimNCMC(temperature, residueList=ligand_atoms)
+    blues_run = ncmc.SimNCMC(temperature, ligand_atoms)
 
     #during the ncmc move, perform a rotation around the center of mass at the start of step 49 (again to maintain symmetry of ncmc move
     rot_step = (nstepsNC/2) -1
     nc_move = [[blues_run.rotationalMove, [rot_step]]]
 
     # actually run
-    blues_run.get_particle_masses(system, residueList=ligand_atoms)
+    blues_run.get_particle_masses(system, ligand_atoms)
     blues_run.runSim(md_sim, nc_context, nc_integrator,
                     alch_sim, movekey=nc_move,
                     niter=numIter, nstepsNC=nstepsNC, nstepsMD=nstepsMD,
