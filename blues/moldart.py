@@ -388,6 +388,24 @@ class MolDart(SimNCMC):
             zmat_new.frame[i] = zmat_diff.frame[i] + zmat_compare.frame[i]
 
         selected_mode = binding_mode_pos[binding_mode_index].xyz[0]
+        def findCentralAngle(buildlist):
+            connection_list = []
+            index_list = []
+            count_list = []
+            for i in buildlist[:3]:
+                index_list.append(i[0])
+                connection_list.append(i[1])
+            counts = connection_list(index_list[0])
+            if counts == 2:
+                center_index = index_list[0]
+            else:
+                center_index = index_list[1]
+            index_list = index_list.pop(center_index)
+            vector_list = []
+            for index in index_list:
+                vector_list.append([index, center_index])
+            return vector_list
+        vector_list = findCentralAngle(self.buildlist)
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
@@ -401,31 +419,27 @@ class MolDart(SimNCMC):
             ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][residueList[self.buildlist[i, 0]]]
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
             print('dart3 1', dart_three)
-        vec1_sim = sim_three[1,:] - sim_three[0,:]
-        vec2_sim = sim_three[2,:] - sim_three[1,:]
-        vec1_ref = ref_three[1,:] - ref_three[0,:]
-        vec2_ref = ref_three[2,:] - ref_three[1,:]
+        vec1_sim = sim_three[[vector_list[0][0]]] - sim_three[[vector_list[0][1]]
+        vec2_sim = sim_three[[vector_list[1][0]]] - sim_three[[vector_list[1][1]]
+        vec1_ref = ref_three[[vector_list[0][0]]] - ref_three[[vector_list[0][0]]]
+        vec2_ref = ref_three[[vector_list[1][0]]] - ref_three[[vector_list[1][0]]]
         #calculate rotation from ref pos to sim pos
         rotation1 = calc_rotation_matrix(vec1_ref, vec1_sim)
         rotation2 = calc_rotation_matrix(vec2_ref, vec2_sim)
-        pos_diff = sim_three[0,:] - ref_three[0,:]
+        pos_diff = sim_three[0] - ref_three[0]
         #apply translation, rotations to new positions
         dart_three = dart_three + np.tile(pos_diff, (3,1))
-        dart_three = apply_rotation(dart_three, rotation1, 0)
+        dart_three = apply_rotation(dart_three, rotation1, [vector_list[0][1]])
+        temp_three = np.zeros((2,3))
+        temp_three[0] = dart_three[vector_list[0][1]]
+        temp_three[1] = dart_three[2]
         second_rot = apply_rotation(dart_three[1:], rotation2, 0)
-        dart_three[1:] = second_rot
+        dart_three[2] = second_rot[1]
         #added
-        vec1_dart = dart_three[0] - dart_three[1]
-        vec2_dart = dart_three[2] - dart_three[1]
+        vec1_dart = dart_three[[vector_list[0][0]]] - dart_three[[vector_list[0][1]]
+        vec2_dart = dart_three[[vector_list[1][0]]] - dart_three[[vector_list[1][1]]
         print('debug', zmat_new.frame['angle'][self.buildlist[2,0]])
         dart_degrees = zmat_new.frame['angle'][self.buildlist[2,0]]
-        if 0:
-            adjusted = adjust_angle(vec2_dart, vec1_dart, np.radians(dart_degrees))
-            print('adjust', adjusted, np.linalg.norm(adjusted))
-            print('old', vec2_dart, np.linalg.norm(vec2_dart))
-            dart_three[2] = dart_three[1] + adjusted
-        #exit()
-
         random_mode = self.internal_zmat[rand_index]
         #random_mode = binding_mode_pos[rand_index].xyz[0]
         print('zmat_diff', zmat_diff)
