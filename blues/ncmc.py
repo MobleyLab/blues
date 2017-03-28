@@ -515,7 +515,7 @@ class SimNCMC(object):
                 dummy_simulation.context.setPositions(newPos)
                 dummy_info = dummy_simulation.context.getState(True, True, False, True, True, periodic)
                 norm_newPE = dummy_info.getPotentialEnergy()
-                correction_factor = -1.0*((norm_newPE - alc_newPE) - (oldPE - alc_oldPE))*(1/nc_integrator.kT)
+                correction_factor = (alc_oldPE - oldPE + norm_newPE - alc_newPE)*(1/nc_integrator.kT)
                 print('correction_factor', correction_factor, file=print_file)
                 log_ncmc = log_ncmc + correction_factor
 
