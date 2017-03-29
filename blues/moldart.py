@@ -387,18 +387,20 @@ class MolDart(SimNCMC):
         zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
         #get appropriate comparision zmat
         zmat_compare = self.internal_zmat[binding_mode_index]
-#        for i in ['angle', 'dihedral']:
+        for i in ['angle', 'dihedral']:
 #        for i in ['angle',]:
 #
-#            zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
+            zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
         zmat_new = copy.deepcopy(zmat_diff)
+        #edit
+        zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         print('zmat_new', zmat_new)
 #        random_mode = self.internal_zmat[rand_index]
 #        #random_mode = binding_mode_pos[rand_index].xyz[0]
 #        for i in ['angle',]:
-#        for i in ['angle', 'dihedral']:
+        for i in ['angle', 'dihedral']:
         #change form zmat_compare to random index
-#            zmat_new.frame[i] = zmat_diff.frame[i] + random_mode.frame[i]
+            zmat_new.frame[i] = zmat_diff.frame[i] + zmat_new.frame[i]
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
@@ -419,6 +421,21 @@ class MolDart(SimNCMC):
             for index in index_list:
                 vector_list.append([index, center_index])
             return vector_list
+        def normalize_vectors(dart_array, ref_array, vector_list):
+            ref1 = ref_array[vector_list[0][0]] - ref_array[vector_list[0][1]]
+            ref2 = ref_array[vector_list[1][0]] - ref_array[vector_list[1][1]]
+            dart1 = dart_array[vector_list[0][0]] - dart_array[vector_list[0][1]]
+            dart2 = dart_array[vector_list[1][0]] - dart_array[vector_list[1][1]]
+            normal1 = dart1/np.linalg.norm(dart1) * np.linalg.norm(ref1)
+            normal2 = dart2/np.linalg.norm(dart2) * np.linalg.norm(ref2)
+            centered_dart = np.tile(dart_array[vector_list[0][1]], (3,1))
+            centered_dart[vector_list[0][0]] = normal1 + centered_dart[vector_list[0][0]]
+            centered_dart[vector_list[1][0]] = normal2 + centered_dart[vector_list[1][0]]
+            return centered_dart
+
+
+
+
         vector_list = findCentralAngle(self.buildlist)
         print('vector_list', vector_list)
         #find translation differences in positions of first two atoms to reference structure
@@ -428,11 +445,13 @@ class MolDart(SimNCMC):
         sim_three = np.zeros((3,3))
         ref_three = np.zeros((3,3))
         dart_three = np.zeros((3,3))
+        dart_ref = np.zeros((3,3))
         for i in range(3):
             sim_three[i] = nc_pos[residueList[self.buildlist[i, 0]]]
             print('using index', [residueList[self.buildlist[i, 0]]])
             ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][residueList[self.buildlist[i, 0]]]
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
+            dart_ref[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
             print('dart3 1', dart_three)
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
         vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
@@ -451,9 +470,10 @@ class MolDart(SimNCMC):
         dart_three = apply_rotation(dart_three, rotation1, vector_list[0][1])
         temp_three = np.zeros((2,3))
         temp_three[0] = dart_three[vector_list[0][1]]
-        temp_three[1] = dart_three[2]
-        second_rot = apply_rotation(dart_three[1:], rotation2, 0)
-        dart_three[2] = second_rot[1]
+        temp_three[1] = dart_three[vector_list[1][0]]
+        second_rot = apply_rotation(temp_three, rotation2, 0)
+        dart_three[vector_list[1][0]] = second_rot[1]
+        dart_three = normalize_vectors(dart_three, dart_ref, vector_list)
         #end addition
         ddist1 = np.linalg.norm(dart_three[1] - dart_three[0])
         ddist2 = np.linalg.norm(dart_three[2] - dart_three[0])
@@ -462,8 +482,8 @@ class MolDart(SimNCMC):
 #        vec1_dart = dart_three[0] - dart_three[1]
 #        vec2_dart = dart_three[2] - dart_three[1]
         print('debug', zmat_new.frame['angle'][self.buildlist[2,0]])
-        angle1 = dart_three[1] - dart_three[0]
-        angle2 = dart_three[2] - dart_three[0]
+        angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+        angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
         dart_angle = vec1_ref.dot(vec2_ref) / (np.linalg.norm(vec1_ref) * np.linalg.norm(vec2_ref))
         print('dart_angle', np.degrees(np.arccos(dart_angle)))
         dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
@@ -483,13 +503,13 @@ class MolDart(SimNCMC):
             degrees = np.degrees(angle)
             return degrees
         print('testing angle', angle_calc(angle1, angle2))
-        
-        for i, vectors in enumerate([sim_three, ref_three, dart_three, ang_before_rot]):
+
+        for i, vectors in enumerate([sim_three, ref_three, dart_three]):
             print(i)
             print(vectors[0],vectors[1],vectors[2])
             test_angle(vectors)
 
-            
+
         ###temp_testing
         xxx = self.internal_xyz[0]
         x_list = np.zeros((3,3))
