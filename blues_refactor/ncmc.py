@@ -21,7 +21,7 @@ from openmmtools import testsystems
 
 import blues_refactor.utils as utils
 
-class MovePropsal(object):
+class MoveProposal(object):
 
     def __init__(self, nc_sim, model, method, nstepsNC):
         supported_methods = ['random_rotation']

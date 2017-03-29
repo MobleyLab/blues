@@ -55,7 +55,7 @@ def runNCMC(platform_name):
     model.calculateCOM()
 
     # Propse some move
-    mover = ncmc.MovePropsal(sims.nc, model,
+    mover = ncmc.MoveProposal(sims.nc, model,
                              'random_rotation', opt['nstepsNC'])
 
     blues = ncmc.Simulation(sims, model, mover.nc_move, **opt)
