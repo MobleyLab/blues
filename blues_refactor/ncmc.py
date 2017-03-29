@@ -102,10 +102,17 @@ class Simulation(object):
                        'getParameters': True,
                        'enforcePeriodicBox' : True}
 
-
     def setSimState(self, simkey, stateidx, stateinfo):
         self.current_state[simkey][stateidx] = stateinfo
 
+    def setStateConditions(self):
+        md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
+        nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
+        self.nc_context.setPositions(md_state0['positions'])
+        self.nc_context.setVelocities(md_state0['velocities'])
+        self.setSimState('md', 'state0', md_state0)
+        self.setSimState('nc', 'state0', nc_state0)
+        
     def getStateInfo(self, context, parameters):
         stateinfo = {}
         state  = context.getState(**parameters)
@@ -165,7 +172,7 @@ class Simulation(object):
                 work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
                 # Attempt NCMC Move
                 if nc_step == self.nc_move['step']:
-                    print('[Iter {}] Performing NCMC {} move'.format(
+                    print('[Iter {}] Performing NCMC {} movegi'.format(
                     self.current_iter, self.nc_move['method'].__name__))
                     self.nc_move['method']
                 # Do 1 NCMC step
@@ -202,14 +209,6 @@ class Simulation(object):
         # Set NC poistions to last positions from MD
         self.nc_context.setPositions(md_state1['positions'])
         self.nc_context.setVelocities(md_state1['velocities'])
-
-    def setStateConditions(self):
-        md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
-        nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
-        self.nc_context.setPositions(md_state0['positions'])
-        self.nc_context.setVelocities(md_state0['velocities'])
-        self.setSimState('md', 'state0', md_state0)
-        self.setSimState('nc', 'state0', nc_state0)
 
     def run(self):
         #set inital conditions
