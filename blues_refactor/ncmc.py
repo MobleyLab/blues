@@ -112,7 +112,7 @@ class Simulation(object):
         self.nc_context.setVelocities(md_state0['velocities'])
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
-        
+
     def getStateInfo(self, context, parameters):
         stateinfo = {}
         state  = context.getState(**parameters)
@@ -154,15 +154,14 @@ class Simulation(object):
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             #print('accCounter', float(self.accept)/float(stepsdone+1), self.accept)
             self.md_sim.context.setPositions(nc_state1['positions'])
-            self.md_sim.context.setVelocities(nc_state1['velocities'])
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
             #print('ncmc PE', newinfo['potential_energy'], 'old PE', md_PE0)
             self.nc_context.setPositions(md_state0['positions'])
-            self.nc_context.setVelocities(-md_state0['velocities'])
 
         self.nc_integrator.reset()
+        self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
     def simulateNCMC(self):
         for nc_step in range(self.nstepsNC):
