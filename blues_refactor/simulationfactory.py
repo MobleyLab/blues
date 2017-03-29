@@ -88,7 +88,7 @@ class SimulationFactory(object):
         simulation.context.setVelocitiesToTemperature(opt['temperature']*unit.kelvin)
         simulation.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
                                     reportInterval=opt['reporter_interval'],
-                                    step=True, totalSteps=opt['numIter']*opt['nstepsMD'],
+                                    step=True, totalSteps=opt['nIter']*opt['nstepsMD'],
                                     time=True, speed=True, progress=True,
                                     elapsedTime=True, remainingTime=True))
 

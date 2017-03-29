@@ -34,7 +34,7 @@ from optparse import OptionParser
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'numIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
+            'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
             'trajectory_interval' : 10, 'reporter_interval' : 10,
             'platform' : platform_name,
@@ -58,8 +58,8 @@ def runNCMC(platform_name):
     mover = ncmc.MovePropsal(sims.nc, model,
                              'random_rotation', opt['nstepsNC'])
 
-    blues = ncmc.Simulation(sims, model, **opt)
-    blues.run(nc_move=mover.nc_move, residueList=atom_indices, **opt)
+    blues = ncmc.Simulation(sims, model, mover.nc_move, **opt)
+    blues.run()
 
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
