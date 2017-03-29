@@ -51,7 +51,6 @@ def runNCMC(platform_name):
     sims.createSimulationSet(opt)
 
     # Calculate particle masses of object to be moved
-    from blues.modeller import LigandModeller
     model = ModelProperties(sims.nc, atom_indices)
     model.calculateCOM()
 

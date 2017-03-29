@@ -76,7 +76,10 @@ class Simulation(object):
         self.current_iter = 0
         self.current_stepMD = 0
 
-        self.current_state = {}
+        self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
+                               'nc'   : { 'state0' : {}, 'state1' : {} },
+                               'alch' : { 'state0' : {}, 'state1' : {} }
+                            }
 
         self.temperature = opt['temperature']
         kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
@@ -95,11 +98,8 @@ class Simulation(object):
                        'enforcePeriodicBox' : True}
 
 
-    def setCurrentState(self, simkey, stateinfo):
-        current_state = {}
-        for k,v in stateinfo.items():
-            current_state[k] = v
-        self.current_state[simkey] = current_state
+    def setSimState(self, simkey, stateidx, stateinfo):
+        self.current_state[simkey][stateidx] = stateinfo
 
     def getStateInfo(self, context, parameters):
         stateinfo = {}
@@ -117,7 +117,11 @@ class Simulation(object):
             workinfo['param'] = nc_integrator.getGlobalVariableByName(param)
         return workinfo
 
-    def chooseMove(self, md_state0, nc_state0, nc_state1):
+    def chooseMove(self):
+        md_state0 = self.current_state['md']['state0']
+        nc_state0 = self.current_state['nc']['state0']
+        nc_state1 = self.current_state['nc']['state1']
+
         log_ncmc = self.nc_integrator.getLogAcceptanceProbability(self.nc_context)
         randnum =  math.log(np.random.random())
 
@@ -125,6 +129,7 @@ class Simulation(object):
         if not np.isnan(log_ncmc):
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
+            self.setSimState('alch', 'state1', alch_state1)
 
             n1_PE = alch_state1['potential_energy'] - nc_state1['potential_energy']
             n_PE = md_state0['potential_energy'] - nc_state0['potential_energy']
@@ -145,6 +150,19 @@ class Simulation(object):
             self.nc_context.setPositions(md_state0['positions'])
             self.nc_context.setVelocities(-md_state0['velocities'])
 
+    def stepNCMC(self, nc_step, nc_move):
+        self.current_stepNC = int(nc_step)
+        # Calculate Work/Energies Before Step
+        work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
+        # Attempt NCMC Move
+        if nc_step == nc_move['step']:
+            print('[Iter {}] Performing NCMC move: {} at NC step {}'.format(
+            self.current_iter, nc_move['method'].__name__, nc_move['step'] ) )
+            nc_move['method']
+        # Do 1 NCMC step
+        self.nc_integrator.step(1)
+        # Calculate Work/Energies After Step.
+        work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
 
     def run(self, nc_move=None, nstepsNC=25, nstepsMD=1000, niter=10,
                 periodic=True, verbose=False, print_output=sys.stdout, residueList=None,
@@ -162,9 +180,11 @@ class Simulation(object):
 
         #set inital conditions
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
+        nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
-        nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
+        self.setSimState('md', 'state0', md_state0)
+        self.setSimState('nc', 'state0', nc_state0)
 
         for n in range(niter):
 
@@ -172,28 +192,19 @@ class Simulation(object):
             self.current_iter = int(n)
             md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
             nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
+            self.setSimState('md', 'state0', md_state0)
+            self.setSimState('nc', 'state0', nc_state0)
 
             ### START: NCMC BLOCK###
             for nc_step in range(nstepsNC):
-                self.current_stepNC = int(nc_step)
                 try:
-                    # Calculate Work/Energies Before Step
-                    work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
-                    # Attempt NCMC Move
-                    if nc_step == nc_move['step']:
-                        print('[Iter {}] Performing NCMC move: {} at NC step {}'.format(
-                        n, nc_move['method'].__name__, nc_move['step'] ) )
-                        nc_move['method']
-                    # Do 1 NCMC step
-                    self.nc_integrator.step(1)
-                    # Calculate Work/Energies After Step.
-                    work_step = self.getWorkInfo(self.nc_integrator, self.work_keys)
+                    self.stepNCMC(nc_step, nc_move)
                 except Exception as e:
                     print(e)
                     break
             nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
-            #Set move from NCMC
-            self.chooseMove(md_state0, nc_state0, nc_state1)
+            self.setSimState('nc', 'state1', nc_state1)
+            self.chooseMove()
             self.nc_integrator.reset()
             ### END: NCMC BLOCK###################
 
@@ -216,6 +227,7 @@ class Simulation(object):
                     exit()
 
             md_state1 = self.getStateInfo(self.md_sim.context, self.state_keys)
+            self.setSimState('md', 'state1', nc_state1)
             # Set NC poistions to last positions from MD
             self.nc_context.setPositions(md_state1['positions'])
             self.nc_context.setVelocities(md_state1['velocities'])
