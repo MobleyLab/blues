@@ -165,8 +165,8 @@ class Simulation(object):
                 work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
                 # Attempt NCMC Move
                 if nc_step == self.nc_move['step']:
-                    print('[Iter {}] Performing NCMC move: {} at NC step {}'.format(
-                    self.current_iter, self.nc_move['method'].__name__, self.nc_move['step'] ) )
+                    print('[Iter {}] Performing NCMC {} move'.format(
+                    self.current_iter, self.nc_move['method'].__name__))
                     self.nc_move['method']
                 # Do 1 NCMC step
                 self.nc_integrator.step(1)
@@ -185,7 +185,7 @@ class Simulation(object):
             self.md_sim.step(self.nstepsMD)
             self.current_stepMD = self.md_sim.currentStep
         except Exception as e:
-            raise(e)
+            print(e)
             stateinfo = self.getStateInfo(self.md_sim.context, self.state_keys)
             last_x, last_y = np.shape(md_state0['positions'])
             reshape = (np.reshape(md_state0['positions'], (1, last_x, last_y))).value_in_unit(unit.nanometers)
