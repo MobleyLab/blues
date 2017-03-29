@@ -369,7 +369,7 @@ class MolDart(SimNCMC):
             nc_pos[atom_num] = symm_pos[i]
         rand_index = np.random.randint(len(self.binding_mode_traj))
         ###temp to encourage going to other binding modes
-        while rand_index == binding_mode_index:
+        while rand_index != binding_mode_index:
             rand_index = np.random.randint(len(self.binding_mode_traj))
         ###
         #get matching binding mode pose and get rotation/translation to that pose
@@ -432,6 +432,13 @@ class MolDart(SimNCMC):
             centered_dart[vector_list[0][0]] = normal1 + centered_dart[vector_list[0][0]]
             centered_dart[vector_list[1][0]] = normal2 + centered_dart[vector_list[1][0]]
             return centered_dart
+        def test_angle(dart_three, vector_list):
+            angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+            angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+            dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
+            print('dart_angle', np.degrees(np.arccos(dart_angle)))
+            return np.degrees(np.arccos(dart_angle))
+
 
 
 
@@ -446,90 +453,91 @@ class MolDart(SimNCMC):
         ref_three = np.zeros((3,3))
         dart_three = np.zeros((3,3))
         dart_ref = np.zeros((3,3))
+        target_three = np.zeros((3,3))
         for i in range(3):
             sim_three[i] = nc_pos[residueList[self.buildlist[i, 0]]]
             print('using index', [residueList[self.buildlist[i, 0]]])
             ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][residueList[self.buildlist[i, 0]]]
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
             dart_ref[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
+            target_three = np.zeros((3,3))
             print('dart3 1', dart_three)
+        start_pos = np.copy(sim_three)
+        print('starting center pos', start_pos)
+        print('before_rotation_sim_angle', test_angle(sim_three, vector_list))
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
         vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
         vec1_ref = ref_three[vector_list[0][0]] - ref_three[vector_list[0][1]]
         vec2_ref = ref_three[vector_list[1][0]] - ref_three[vector_list[1][1]]
+        vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+        vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+        rotation1 = calc_rotation_matrix(vec1_ref, vec1_dart)
+        rotation2 = calc_rotation_matrix(vec2_ref, vec2_dart)
+        trans_diff = dart_three[vector_list[0][1]] - ref_three[vector_list[0][1]]
+        print('trans_diff', trans_diff)
+        trans_diff = np.tile(trans_diff, (3,1))
+        sim_three = sim_three + trans_diff
+        sim_three = apply_rotation(sim_three, rotation1, vector_list[0][1])
+        temp_three = np.zeros((2,3))
+        temp_three[0] = sim_three[vector_list[0][1]]
+        temp_three[1] = sim_three[vector_list[1][0]]
+        second_rot = apply_rotation(temp_three, rotation2, 0)
+        sim_three[vector_list[1][0]] = second_rot[1]
+        ###sim_three = normalize_vectors(sim_three, dart_three, vector_list)
+
+
         #calculate rotation from ref pos to sim pos
         print('vec1_ref', vec1_ref)
         print('vec1_sim', vec1_sim)
-        rotation1 = calc_rotation_matrix(vec1_ref, vec1_sim)
-        rotation2 = calc_rotation_matrix(vec2_ref, vec2_sim)
-        pos_diff = sim_three[0] - ref_three[0]
+        angle_before = test_angle(dart_three, vector_list)
+        print('before_rotation_sim_angle', test_angle(sim_three, vector_list))
+
+        ###pos_diff = sim_three[0] - ref_three[0]
         #apply translation, rotations to new positions
-        dart_three = dart_three + np.tile(pos_diff, (3,1))
-        dist1 = np.linalg.norm(dart_three[1] - dart_three[0])
-        dist2 = np.linalg.norm(dart_three[2] - dart_three[0])
-        dart_three = apply_rotation(dart_three, rotation1, vector_list[0][1])
-        temp_three = np.zeros((2,3))
-        temp_three[0] = dart_three[vector_list[0][1]]
-        temp_three[1] = dart_three[vector_list[1][0]]
-        second_rot = apply_rotation(temp_three, rotation2, 0)
-        dart_three[vector_list[1][0]] = second_rot[1]
-        dart_three = normalize_vectors(dart_three, dart_ref, vector_list)
+        ###dart_three = dart_three + np.tile(pos_diff, (3,1))
+        dist1 = np.linalg.norm(sim_three[1] - sim_three[0])
+        dist2 = np.linalg.norm(sim_three[2] - sim_three[0])
         #end addition
         ddist1 = np.linalg.norm(dart_three[1] - dart_three[0])
         ddist2 = np.linalg.norm(dart_three[2] - dart_three[0])
+        print('distance1', dist1, ddist1)
+        print('distance2', dist2, ddist2)
         print('dart_three after', dart_three)
+        next_pos = np.copy(sim_three)
+        print('after movement center pos', next_pos)
+        print('vs', start_pos)
+        print('diff', next_pos - start_pos)
+
         #added
 #        vec1_dart = dart_three[0] - dart_three[1]
 #        vec2_dart = dart_three[2] - dart_three[1]
-        print('debug', zmat_new.frame['angle'][self.buildlist[2,0]])
-        angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
-        angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-        dart_angle = vec1_ref.dot(vec2_ref) / (np.linalg.norm(vec1_ref) * np.linalg.norm(vec2_ref))
-        print('dart_angle', np.degrees(np.arccos(dart_angle)))
-        dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
-        print('orig_dart_angle', np.degrees(np.arccos(dart_angle)))
-        print('desired angle', zmat_new.frame['angle'][self.buildlist[2,0]])
-        print('selected_random_angle', self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]])
-        print('distance1', dist1, ddist1)
-        print('distance2', dist2, ddist2)
-        def test_angle(dart_three):
-            angle1 = dart_three[0] - dart_three[1]
-            angle2 = dart_three[2] - dart_three[1]
-            dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
-            print('dart_angle', np.degrees(np.arccos(dart_angle)))
-
+#        print('debug', zmat_new.frame['angle'][self.buildlist[2,0]])
+#        angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+#        angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+#        dart_angle = vec1_sim.dot(vec2_sim) / (np.linalg.norm(vec1_sim) * np.linalg.norm(vec2_sim))
+#        print('simulation_angle', np.degrees(np.arccos(dart_angle)))
+#        dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
+#        print('after_rotation_dart_angle', np.degrees(np.arccos(dart_angle)))
+#        print('desired angle', zmat_new.frame['angle'][self.buildlist[2,0]])
+#        print('difference with reference angle,', self.internal_zmat[binding_mode_index].frame['angle'][self.buildlist[2,0]] - angle_before)
+#        print('selected_random_angle', self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]])
         def angle_calc(angle1, angle2):
             angle = np.arccos(angle1.dot(angle2) / ( np.linalg.norm(angle1) * np.linalg.norm(angle2) ) )
             degrees = np.degrees(angle)
             return degrees
-        print('testing angle', angle_calc(angle1, angle2))
+#        print('testing angle', angle_calc(angle1, angle2))
 
         for i, vectors in enumerate([sim_three, ref_three, dart_three]):
             print(i)
             print(vectors[0],vectors[1],vectors[2])
-            test_angle(vectors)
+            test_angle(vectors, vector_list)
 
-
-        ###temp_testing
-        xxx = self.internal_xyz[0]
-        x_list = np.zeros((3,3))
-        for i in range(3):
-            print([self.buildlist[i, 0]])
-            for j in['x', 'y', 'z']:
-                x_list[i] = xxx.frame[j][self.buildlist[i, 0]]
-        v1 = x_list[0] - x_list[1]
-        v2 = x_list[1] - x_list[2]
-        dart_angle = v1.dot(v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
-        print('array', x_list)
-        print('costheta', dart_angle)
-        print('test angle', np.degrees(np.arccos(dart_angle)))
-        #####
         dart_degrees = zmat_new.frame['angle'][self.buildlist[2,0]]
         #print('zmat_diff', zmat_diff)
         #print('zmat_compare', zmat_compare)
         #print('zmat_new', zmat_new)
         #print('starting_coord', dart_three)
-        xyz_new = (zmat_new.to_xyz(starting_coord=dart_three*10)).sort_index()
+        xyz_new = (zmat_new.to_xyz(starting_coord=sim_three*10)).sort_index()
         #TODO make sure to sort new xyz
         #print('xyz_new.frame unsorted', xyz_new.frame)
         #print('xyz_new.frame', xyz_new.frame.sort_index())
