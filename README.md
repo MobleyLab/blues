@@ -5,6 +5,9 @@ This package takes advantage of non-candidate equilibrium monte carlo moves (NCM
 
 This also provides a prototype and validation of the SMIRFF SMIRKS-based force field format, along with classes to parameterize OpenMM systems given [SMIRFF `.ffxml` format files](https://github.com/open-forcefield-group/smarty/blob/master/The-SMIRFF-force-field-format.md) as provided here.
 
+Latest release: [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
+
+
 ## Manifest
 
 * `utils/` - some helper scripts for various things (not directly associated with BLUES)
@@ -43,5 +46,10 @@ An example of how to set up a simulation sampling the binding modes of toluene b
 
 ## Implementing other non-equilibrium moves
 An optional argument for SimNCMC.runSim() , movekey allows users to implement their own moves into the simulation workflow. To add your own moves make a subclass of SimNCMC. The custom method can use self.nc_context or self.nc_integrator to access the NCMC context or NCMC integrator in the runSim() method. Then, insert the method into the movekey. As an example, say you implemented a smart darting move in a method called smartdart(). Then for the keymove argument use [[smartdart, [range]]], where range is a list of integers that specify when you want to apply the move. In general the keymove argument takes a list of lists. The first item in the list references the function, while the second references a list which specifies what steps you want to apply the function.
-##Acknowledgements
+
+## Versions:
+- Version 0.0.1: Basic BLUES functionality/package
+- [Version 0.0.2](http://dx.doi.org/10.5281/zenodo.438714): Maintainance release fixing a critical bug and improving organization as a package. 
+
+## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.
