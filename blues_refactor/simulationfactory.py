@@ -23,6 +23,9 @@ class SimulationFactory(object):
         self.md = None
         self.alch  = None
         self.nc  = None
+            #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
+        self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
+                           'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
     def generateAlchSystem(self, system, atom_indices):
         # Generate Alchemical System
@@ -45,7 +48,7 @@ class SimulationFactory(object):
         if ncmc:
             integrator = ncmc_switching.NCMCVVAlchemicalIntegrator(opt['temperature']*unit.kelvin,
                                                        system,
-                                                       opt['functions'],
+                                                       self.functions,
                                                        nsteps=opt['nstepsNC'],
                                                        direction='insert',
                                                        timestep=0.001*unit.picoseconds,
