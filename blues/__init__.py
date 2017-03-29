@@ -14,3 +14,4 @@ from . import ncmc
 from . import ncmc_switching
 from . import posedart
 from . import smartdart
+from . import ncmc_v2

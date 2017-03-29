@@ -692,7 +692,3 @@ class SmartDarting(SimNCMC):
 #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
-<<<<<<< HEAD
-
-=======
->>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2

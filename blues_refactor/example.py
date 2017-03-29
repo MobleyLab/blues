@@ -7,7 +7,7 @@ Contributors: Nathan M. Lim, David L. Mobley
 
 * Benchmarking related code adapted from:
 https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
-(Authors: Peter Eastmen)
+(Authors: Peter Eastman)
 
 version: 0.0.2 (WIP-Refactor)
 """

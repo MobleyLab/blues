@@ -25,11 +25,7 @@ import mdtraj as md
 from mdtraj.reporters import HDF5Reporter
 from optparse import OptionParser
 
-<<<<<<< HEAD:blues/example.py
 def runNCMC(platform_name):
-=======
-def runNCMC(options):
->>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2:examples/example.py
     # Define some constants
     temperature = 300.0*unit.kelvin
     friction = 1/unit.picosecond
@@ -66,19 +62,7 @@ def runNCMC(options):
     md_sim.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     # Add reporters for MD simulation
-<<<<<<< HEAD:blues/example.py
     #md_sim.reporters.append(app.dcdreporter.DCDReporter('traj.dcd', nstepsMD))
-=======
-    from sys import stdout
-    progress_reporter = app.StateDataReporter(stdout, separator="\t",
-                                            reportInterval=10,
-                                            totalSteps=nstepsMD,
-                                            time=True, speed=True, progress=True,
-                                            elapsedTime=True, remainingTime=True)
-
-    md_sim.reporters.append(progress_reporter)
-    md_sim.reporters.append(app.dcdreporter.DCDReporter('traj.dcd', nstepsMD))
->>>>>>> 63cd22390b2e6595bd1defa81aa758e62ae31fc2:examples/example.py
     md_sim.reporters.append(HDF5Reporter('traj.h5', nstepsMD))
     md_sim.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
                                     reportInterval=10,
@@ -95,10 +79,12 @@ def runNCMC(options):
     alch_sim = app.Simulation(prmtop.topology, system,
                               alch_integrator, platform)
     alch_sim.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
+
     # Generate Alchemical System
     factory = AbsoluteAlchemicalFactory(system, ligand_atoms,
                                         annihilate_sterics=True,
                                         annihilate_electrostatics=True)
+
     alch_system = factory.createPerturbedSystem()
 
     # Generate NC Integrator/Contexts
@@ -112,7 +98,8 @@ def runNCMC(options):
 
     nc_context = openmm.Context(alch_system, nc_integrator, platform)
     nc_context.setPeriodicBoxVectors(*inpcrd.boxVectors)
-
+    print(dir(nc_context))
+    print(dir(nc_integrator))
     # Initialize BLUES engine
     blues_run = ncmc.SimNCMC(temperature, ligand_atoms)
 
@@ -133,6 +120,7 @@ parser.add_option('-f', '--force', action='store_true', default=False,
 (options, args) = parser.parse_args()
 
 platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
+print(platformNames)
 if set(['CUDA', 'OpenCL']).issubset( platformNames ):
     runNCMC('CUDA')
     runNCMC('OpenCL')
