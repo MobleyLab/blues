@@ -21,12 +21,19 @@ from openmmtools import testsystems
 
 import blues_refactor.utils as utils
 
-class ProposeMove(object):
-    def __init__(self, nc_sim, model):
-        self.nc_sim = nc_sim
-        self.model = model
+class MovePropsal(object):
 
-    def rotation(self):
+    def __init__(self, nc_sim, model, method, nstepsNC):
+        supported_methods = ['random_rotation']
+        if method not in supported_methods:
+            raise Exception("Method %s not implemented" % method)
+        else:
+            self.nc_sim = nc_sim
+            self.model = model
+            self.nc_move = { 'method' : None , 'step' : 0}
+            self.setMove(method, nstepsNC)
+
+    def random_rotation(self):
         atom_indices = self.model.atom_indices
         model_pos = self.model.positions
         com = self.model.com
@@ -47,8 +54,12 @@ class ProposeMove(object):
         for index, atomidx in enumerate(atom_indices):
             positions[atomidx] = rot_move[index]
         self.nc_sim.context.setPositions(positions)
-
         return self.nc_sim
+
+    def setMove(self, method, step):
+        self.nc_move['method']  = getattr(MovePropsal, method)
+        self.nc_move['step'] = int(step) / 2 - 1
+        return self.nc_move
 
 class Simulation(object):
     def __init__(self, sims, model, **opt):
@@ -123,7 +134,7 @@ class Simulation(object):
 
         if log_ncmc > randnum:
             self.accept += 1
-            print('NCMC MOVE ACCETPED: {} > {}'.format(log_ncmc, randnum) )
+            print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             #print('accCounter', float(self.accept)/float(stepsdone+1), self.accept)
             self.md_sim.context.setPositions(nc_state1['positions'])
             self.md_sim.context.setVelocities(nc_state1['velocities'])
@@ -170,7 +181,9 @@ class Simulation(object):
                     work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
                     # Attempt NCMC Move
                     if nc_step == nc_move['step']:
-                        nc_move['function']
+                        print('[Iter {}] Performing NCMC move: {} at NC step {}'.format(
+                        n, nc_move['method'].__name__, nc_move['step'] ) )
+                        nc_move['method']
                     # Do 1 NCMC step
                     self.nc_integrator.step(1)
                     # Calculate Work/Energies After Step.

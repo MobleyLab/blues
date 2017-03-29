@@ -23,6 +23,7 @@ from blues.smartdart import SmartDarting
 
 import blues_refactor.ncmc as ncmc
 from blues_refactor.simulationfactory import SimulationFactory
+from blues_refactor.modelproperties import ModelProperties
 
 import sys, os, parmed
 import numpy as np
@@ -35,7 +36,8 @@ def runNCMC(platform_name):
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
             'numIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-            'trajectory_interval' : 10, 'reporter_interval' : 10, 'platform' : platform_name,
+            'trajectory_interval' : 10, 'reporter_interval' : 10,
+            'platform' : platform_name,
             'verbose' : True }
 
     # Obtain topologies/positions
@@ -50,18 +52,15 @@ def runNCMC(platform_name):
 
     # Calculate particle masses of object to be moved
     from blues.modeller import LigandModeller
-    model = LigandModeller(sims.nc, atom_indices)
+    model = ModelProperties(sims.nc, atom_indices)
     model.calculateCOM()
 
     # Propse some move
-    rot_move = ncmc.ProposeMove(sims.nc, model)
-    rot_step = (opt['nstepsNC']  / 2) - 1
-    nc_move = { 'type' : 'rotation',
-                'function': rot_move.rotation(),
-                'step' : int(rot_step) }
+    mover = ncmc.MovePropsal(sims.nc, model,
+                             'random_rotation', opt['nstepsNC'])
 
     blues = ncmc.Simulation(sims, model, **opt)
-    blues.run(nc_move=nc_move, residueList=atom_indices, alchemical_correction=True, **opt)
+    blues.run(nc_move=mover.nc_move, residueList=atom_indices, **opt)
 
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
