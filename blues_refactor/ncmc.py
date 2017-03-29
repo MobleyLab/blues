@@ -214,7 +214,7 @@ class Simulation(object):
         self.setStateConditions()
         for n in range(self.nIter):
             self.current_iter = int(n)
-            self.setStateConditions
+            self.setStateConditions()
             self.simulateNCMC()
             self.chooseMove()
             self.simulateMD()
