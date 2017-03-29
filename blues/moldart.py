@@ -384,23 +384,23 @@ class MolDart(SimNCMC):
         #print('xyz_ref', xyz_ref)
         #print('buildlist', self.buildlist)
         #get simulation ligand's zmat representation
-        zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
+        ###zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
         #get appropriate comparision zmat
-        zmat_compare = self.internal_zmat[binding_mode_index]
-        for i in ['angle', 'dihedral']:
+        ###zmat_compare = self.internal_zmat[binding_mode_index]
+        ###for i in ['angle', 'dihedral']:
 #        for i in ['angle',]:
 #
-            zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
-        zmat_new = copy.deepcopy(zmat_diff)
+        ###    zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
+        ###zmat_new = copy.deepcopy(zmat_diff)
         #edit
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         print('zmat_new', zmat_new)
 #        random_mode = self.internal_zmat[rand_index]
 #        #random_mode = binding_mode_pos[rand_index].xyz[0]
 #        for i in ['angle',]:
-        for i in ['angle', 'dihedral']:
+        ###for i in ['angle', 'dihedral']:
         #change form zmat_compare to random index
-            zmat_new.frame[i] = zmat_diff.frame[i] + zmat_new.frame[i]
+            ###zmat_new.frame[i] = zmat_diff.frame[i] + zmat_new.frame[i]
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
