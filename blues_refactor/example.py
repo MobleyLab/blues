@@ -22,8 +22,6 @@ import blues.ncmc_switching as ncmc_switching
 from blues.smartdart import SmartDarting
 
 import blues_refactor.ncmc as ncmc
-from blues_refactor.simulationfactory import SimulationFactory
-from blues_refactor.modelproperties import ModelProperties
 
 import sys, os, parmed
 import numpy as np
@@ -47,11 +45,11 @@ def runNCMC(platform_name):
     atom_indices = utils.atomIndexfromTop('LIG', struct.topology)
 
     # Generate the MD, NCMC, ALCHEMICAL Simulation objects
-    sims = SimulationFactory(struct, atom_indices)
+    sims = ncmc.SimulationFactory(struct, atom_indices)
     sims.createSimulationSet(opt)
 
     # Calculate particle masses of object to be moved
-    model = ModelProperties(sims.nc, atom_indices)
+    model = ncmc.ModelProperties(sims.nc, atom_indices)
     model.calculateCOM()
 
     # Propse some move

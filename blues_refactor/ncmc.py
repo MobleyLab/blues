@@ -20,6 +20,209 @@ import numpy as np
 from openmmtools import testsystems
 
 import blues_refactor.utils as utils
+from simtk import unit, openmm
+from simtk.openmm import app
+from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
+
+import blues.utils as utils
+import blues.ncmc as ncmc
+import blues.ncmc_switching as ncmc_switching
+from blues.smartdart import SmartDarting
+
+import sys
+import numpy as np
+import mdtraj
+from mdtraj.reporters import HDF5Reporter
+from datetime import datetime
+from optparse import OptionParser
+
+class SimulationFactory(object):
+    def __init__(self, structure, atom_indices):
+        self.structure = structure
+        self.atom_indices = atom_indices
+        self.system = None
+        self.alch_system = None
+        self.md = None
+        self.alch  = None
+        self.nc  = None
+            #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
+        self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
+                           'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+
+    def generateAlchSystem(self, system, atom_indices):
+        # Generate Alchemical System
+        factory = AbsoluteAlchemicalFactory(system, atom_indices,
+                                            annihilate_sterics=True,
+                                            annihilate_electrostatics=True)
+        alch_system = factory.createPerturbedSystem()
+        self.alch_system = alch_system
+        return self.alch_system
+
+    def generateSystem(self, structure, **opt):
+        system = structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
+                            nonbondedCutoff=opt['nonbondedCutoff']*unit.angstroms,
+                            constraints=eval("app.%s" % opt['constraints']),
+                            flexibleConstraints=False)
+        self.system = system
+        return self.system
+
+    def generateSimFromStruct(self, structure, system, ncmc=False, printfile=sys.stdout, **opt):
+        if ncmc:
+            integrator = ncmc_switching.NCMCVVAlchemicalIntegrator(opt['temperature']*unit.kelvin,
+                                                       system,
+                                                       self.functions,
+                                                       nsteps=opt['nstepsNC'],
+                                                       direction='insert',
+                                                       timestep=0.001*unit.picoseconds,
+                                                       steps_per_propagation=1)
+        else:
+            integrator = openmm.LangevinIntegrator(opt['temperature']*unit.kelvin,
+                                                   opt['friction']/unit.picosecond,
+                                                   opt['dt']*unit.picoseconds)
+
+        if opt['platform'] is None:
+            #Use the fastest available platform
+            simulation = app.Simulation(structure.topology, system, integrator)
+        else:
+            platform = openmm.Platform.getPlatformByName(opt['platform'])
+            prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
+            simulation = app.Simulation(structure.topology, system, integrator, platform, prop)
+
+        # OpenMM platform information
+        mmver = openmm.version.version
+        mmplat = simulation.context.getPlatform()
+        print('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()), file=printfile)
+
+        if opt['verbose']:
+            # Host information
+            from platform import uname
+            for k,v in uname()._asdict().items():
+                print(k, ':', v, file=printfile)
+
+            # Platform properties
+            for prop in mmplat.getPropertyNames():
+                val = mmplat.getPropertyValue(simulation.context, prop)
+                print(prop, ':', val, file=printfile)
+
+        # Set initial positions/velocities
+        # Will get overwritten from saved State.
+        simulation.context.setPositions(structure.positions)
+        simulation.context.setVelocitiesToTemperature(opt['temperature']*unit.kelvin)
+        simulation.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
+                                    reportInterval=opt['reporter_interval'],
+                                    step=True, totalSteps=opt['nIter']*opt['nstepsMD'],
+                                    time=True, speed=True, progress=True,
+                                    elapsedTime=True, remainingTime=True))
+
+        return simulation
+
+    def createSimulationSet(self, opt):
+        system = self.generateSystem(self.structure, **opt)
+        alch_system = self.generateAlchSystem(self.system, self.atom_indices)
+
+        sim_dict = {}
+        self.md = self.generateSimFromStruct(self.structure, system, **opt)
+        self.alch = self.generateSimFromStruct(self.structure, system,  **opt)
+        self.nc = self.generateSimFromStruct(self.structure, alch_system, ncmc=True,  **opt)
+
+class ModelProperties(object):
+    """ModelProperties provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+
+    Current methods calculate the object's atomic masses and center of masss.
+    Calculating the object's center of mass will get the positions and total mass.
+    Ex.
+        import blues.ncmc as ncmc
+        model = ncmc.ModelProperties(nc_sim, atom_indices)
+        model.calculateCOM()
+        print(model.center_of_mass)
+        print(model.totalmass, model.masses, model.positions)
+    """
+
+    def __init__(self, nc_sim, atom_indices):
+        """Initialize the model.
+
+        Parameters
+        ----------
+        nc_sim : openmm.app.simulation.Simulation
+            The OpenMM Simulation object corresponding to the NCMC simulation.
+        atom_indices : list
+            Atom indicies of the model.
+        """
+        self.nc_sim = nc_sim
+        self.atom_indices = atom_indices
+
+        self.totalmass = 0
+        self.masses = []
+        self.positions = None
+        self.center_of_mass = None
+
+    def getMasses(self, context, atom_indices):
+        """Returns a list of masses of the atoms in the model.
+
+        Parameters
+        ----------
+        context : openmm.openmm.Context
+            The OpenMM Context corresponding to the NCMC simulation.
+        atom_indices : list
+            Atom indicies of the model.
+        """
+        masses = unit.Quantity(np.zeros([len(atom_indices),1],np.float32), unit.dalton)
+        system = context.getSystem()
+        for ele, idx in enumerate(atom_indices):
+            masses[ele] = system.getParticleMass(idx)
+        self.totalmass = masses.sum()
+        self.masses = masses
+        return self.masses
+
+    def getTotalMass(self, masses):
+        """Returns total mass of model.
+
+        Parameters
+        ----------
+        masses : list
+            List of atom masses of model
+        """
+        self.totalmass = self.masses.sum()
+        return self.totalmass
+
+    def getPositions(self, context, atom_indices):
+        """Returns a nummpy.array of atom positions of the model given the
+        simulation Context.
+
+        Parameters
+        ----------
+        context : openmm.openmm.Context
+            The OpenMM Context corresponding to the NCMC simulation.
+        atom_indices : list
+            Atom indicies of the model.
+        """
+        state = context.getState(getPositions=True)
+        coordinates = state.getPositions(asNumpy=True) / unit.nanometers
+        positions = unit.Quantity( np.zeros([len(atom_indices),3],np.float32), unit.nanometers)
+        for ele, idx in enumerate(atom_indices):
+            positions[ele,:] = unit.Quantity(coordinates[idx], unit.nanometers)
+        self.positions = positions
+        return self.positions
+
+    def calculateCOM(self):
+        """Returns a list of masses of the atoms in the model.
+
+        Parameters
+        ----------
+        context : openmm.openmm.Context
+            The OpenMM Context corresponding to the NCMC simulation.
+        atom_indices : list
+            Atom indicies of the model.
+        """
+        context = self.nc_sim.context
+        atom_indices = self.atom_indices
+        #Update masses for current context
+        masses = self.getMasses(context, atom_indices)
+        totalmass = self.getTotalMass(masses)
+        positions = self.getPositions(context, atom_indices)
+        center_of_mass =  (masses / totalmass * positions).sum(0)
+        self.center_of_mass = center_of_mass
 
 class MoveProposal(object):
 
@@ -62,13 +265,15 @@ class MoveProposal(object):
         return self.nc_move
 
 class Simulation(object):
+    """Sim
     def __init__(self, sims, model, nc_move, **opt):
         self.md_sim = sims.md
         self.alch_sim = sims.alch
         self.nc_context = sims.nc.context
         self.nc_integrator = sims.nc.context._integrator
-        self.nc_move = nc_move
         self.model = model
+        self.nc_move = nc_move
+
         self.accept = 0
         self.reject = 0
         self.accept_ratio = 0
@@ -77,8 +282,8 @@ class Simulation(object):
         self.nstepsNC = int(opt['nstepsNC'])
         self.nstepsMD = int(opt['nstepsMD'])
 
-        self.current_stepNC = 0
         self.current_iter = 0
+        self.current_stepNC = 0
         self.current_stepMD = 0
 
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
