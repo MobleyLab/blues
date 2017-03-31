@@ -44,7 +44,7 @@ class SimulationFactory(object):
         sims = SimulationFactory(structure, atom_indices, **opt)
         sims.createSimulationSet()
     """
-    def __init__(self, structure, atom_indices, **opt):
+    def __init__(self, structure=None, atom_indices=[], **opt):
         self.structure = structure
         self.atom_indices = atom_indices
         self.system = None
@@ -58,7 +58,8 @@ class SimulationFactory(object):
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
-    def generateAlchSystem(self, system, atom_indices):
+    @staticmethod
+    def generateAlchSystem(system, atom_indices):
         """Returns the OpenMM System for alchemical perturbations.
 
         Parameters
@@ -72,10 +73,11 @@ class SimulationFactory(object):
                                             annihilate_sterics=True,
                                             annihilate_electrostatics=True)
         alch_system = factory.createPerturbedSystem()
-        self.alch_system = alch_system
-        return self.alch_system
 
-    def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
+        return alch_system
+
+    @staticmethod
+    def generateSystem(structure, nonbondedMethod='PME', nonbondedCutoff=10,
                        constraints='HBonds', **opt):
         """Returns the OpenMM System for the reference system.
 
@@ -89,10 +91,11 @@ class SimulationFactory(object):
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
                             constraints=eval("app.%s" % constraints),
                             flexibleConstraints=False)
-        self.system = system
-        return self.system
+        #self.system = system
+        return system
 
-    def generateSimFromStruct(self, structure, system, ncmc=False, printfile=sys.stdout, **opt):
+    @staticmethod
+    def generateSimFromStruct(structure, system, functions, ncmc=False, printfile=sys.stdout, **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
 
         Parameters
@@ -107,7 +110,7 @@ class SimulationFactory(object):
         if ncmc:
             integrator = ncmc_switching.NCMCVVAlchemicalIntegrator(opt['temperature']*unit.kelvin,
                                                        system,
-                                                       self.functions,
+                                                       functions,
                                                        nsteps=opt['nstepsNC'],
                                                        direction='insert',
                                                        timestep=0.001*unit.picoseconds,
@@ -158,12 +161,13 @@ class SimulationFactory(object):
 
     def createSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
-        system = self.generateSystem(self.structure, **self.opt)
-        alch_system = self.generateAlchSystem(self.system, self.atom_indices)
+        self.system = self.generateSystem(self.structure, **self.opt)
+        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices)
 
         self.md = self.generateSimFromStruct(self.structure, system, **self.opt)
         self.alch = self.generateSimFromStruct(self.structure, system,  **self.opt)
-        self.nc = self.generateSimFromStruct(self.structure, alch_system, ncmc=True,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, alch_system,
+                                            self.functions, ncmc=True,  **self.opt)
 
 class ModelProperties(object):
     """ModelProperties provides methods for calculating properties on the
