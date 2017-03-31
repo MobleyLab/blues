@@ -52,7 +52,7 @@ def runNCMC(platform_name):
     model = ncmc.ModelProperties(sims.nc, atom_indices)
     model.calculateCOM()
 
-    # Propse some move
+    # Initialize object that proposes moves.
     mover = ncmc.MoveProposal(sims.nc, model,
                              'random_rotation', opt['nstepsNC'])
 
