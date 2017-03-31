@@ -41,7 +41,7 @@ class SimulationFactory(object):
     objects (MD, NCMC, ALCH) required for the BLUES run.
     Ex.
         from blues.ncmc import SimulationFactory
-        sims = SimulationFactory(structure, atom_indices, opt)
+        sims = SimulationFactory(structure, atom_indices, **opt)
         sims.createSimulationSet()
     """
     def __init__(self, structure, atom_indices, **opt):
@@ -54,10 +54,6 @@ class SimulationFactory(object):
         self.nc  = None
 
         self.opt = opt
-        #self.nonbondedMethod = opt['nonbondedMethod']
-        #self.nonbondedCutoff = opt['nonbondedCutoff']
-        #self.constraints = opt['constraints']
-
         #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
@@ -261,8 +257,31 @@ class ModelProperties(object):
         self.center_of_mass = center_of_mass
 
 class MoveProposal(object):
+    """MoveProposal provides perturbation functions for the model during the NCMC
+    simulation. Current supported methods: random rotation.
 
+    Ex.
+        from blues.ncmc import MoveProposal
+        mover = MoveProposal(nc_sim, model, 'random_rotation', nstepsNC)
+
+        #Get the dictionary of proposed moves
+        mover.nc_move
+    """
     def __init__(self, nc_sim, model, method, nstepsNC):
+        """Initialize the MovePropsal object that contains functions to perturb
+        the model in the NCMC simulation.
+
+        Parameters
+        ----------
+        nc_sim : openmm.simulation
+            The OpenMM Simulation object corresponding to the NCMC simulation.
+        model : blues.ncmc.ModelProperties object
+            The object to be perturbed in the NCMC simulation.
+        method : str
+            A string of the perturbation function name (i.e 'random_rotation')
+        nstepsNC : int
+            An integer value for the number of NCMC steps performed.
+        """
         supported_methods = ['random_rotation']
         if method not in supported_methods:
             raise Exception("Method %s not implemented" % method)
@@ -273,6 +292,9 @@ class MoveProposal(object):
             self.setMove(method, nstepsNC)
 
     def random_rotation(self):
+        """Function that performs a random rotation about the center of mass of
+        the model.
+        """
         atom_indices = self.model.atom_indices
         model_pos = self.model.positions
         com = self.model.com
@@ -296,18 +318,42 @@ class MoveProposal(object):
         return self.nc_sim
 
     def setMove(self, method, step):
-        self.nc_move['method']  = getattr(MovePropsal, method)
+        """Returns the dictionary that defines the perturbation methods to be
+        performed on the model object and the step number to perform it at."""
+        self.nc_move['method']  = getattr(MoveProposal, method)
         self.nc_move['step'] = int(step) / 2 - 1
         return self.nc_move
 
 class Simulation(object):
-    def __init__(self, sims, model, nc_move, **opt):
+    """Simulation class provides the functions that perform the BLUES run.
+
+    Ex.
+        import blues.ncmc
+        blues = ncmc.Simulation(sims, model, mover, **opt)
+        blues.run()
+
+    """
+    def __init__(self, sims, model, mover, **opt):
+        """Initialize the BLUES Simulation object.
+
+        Parameters
+        ----------
+        sims : blues.ncmc.SimulationFactory object
+            SimulationFactory Object which carries the 3 required
+            OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
+        model : blues.ncmc.ModelProperties object
+            ModelProperties object that represents the model to be perturbed
+            in the NCMC simulation.
+        mover : blues.ncmc.MoveProposal object
+            MoveProposal object which contains the dict of moves performed
+            in the NCMC simulation.
+        """
         self.md_sim = sims.md
         self.alch_sim = sims.alch
         self.nc_context = sims.nc.context
         self.nc_integrator = sims.nc.context._integrator
         self.model = model
-        self.nc_move = nc_move
+        self.nc_move = mover.nc_move
 
         self.accept = 0
         self.reject = 0
@@ -343,9 +389,27 @@ class Simulation(object):
                        'enforcePeriodicBox' : True}
 
     def setSimState(self, simkey, stateidx, stateinfo):
+        """Stores the dict of Positions, Velocities, Potential/Kinetic energies
+        of the state before and after a NCMC step or iteration.
+
+        Parameters
+        ----------
+        simkey : str (key: 'md', 'nc', 'alch')
+            Key corresponding to the simulation.
+        stateidx : int (key: 'state0' or 'state1')
+            Key corresponding to the state information being stored.
+        stateinfo : dict
+            Dictionary containing the State information.
+        """
         self.current_state[simkey][stateidx] = stateinfo
 
     def setStateConditions(self):
+        """Stores the dict of current state of the MD and NCMC simulations.
+        Dict contains the Positions, Velocities, Potential/Kinetic Energies
+        of the current state.
+        Sets the NCMC simulation Positions/Velocities to
+        the current state of the MD simulation.
+        """
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
         self.nc_context.setPositions(md_state0['positions'])
@@ -354,6 +418,18 @@ class Simulation(object):
         self.setSimState('nc', 'state0', nc_state0)
 
     def getStateInfo(self, context, parameters):
+        """Function that gets the State information from the given context and
+        list of parameters to queuey it with.
+        Returns a dict of the data from the State.
+
+        Parameters
+        ----------
+        context : openmm.Context
+            Context of the OpenMM Simulation to query.
+        parameters : list
+            Default: [ positions, velocities, potential_energy, kinetic_energy ]
+            A list that defines what information to get from the context State.
+        """
         stateinfo = {}
         state  = context.getState(**parameters)
         stateinfo['iter'] = int(self.current_iter)
@@ -364,12 +440,27 @@ class Simulation(object):
         return stateinfo
 
     def getWorkInfo(self, nc_integrator, parameters):
+        """Function that obtains the work and energies from the NCMC integrator.
+
+        Returns a dict of the specified parameters.
+
+        Parameters
+        ----------
+        nc_integrator : openmm.Context.Integrator
+            The integrator from the NCMC Context
+        parameters : list
+            list containing strings of the values to get from the integrator.
+            Default : ['total_work', 'lambda', 'shadow_work',
+                       'protocol_work', 'Eold', 'Enew','Epert']
+        """
         workinfo = {}
         for param in parameters:
             workinfo['param'] = nc_integrator.getGlobalVariableByName(param)
         return workinfo
 
     def chooseMove(self):
+        """Function that chooses to accept or reject the proposed move.
+        """
         md_state0 = self.current_state['md']['state0']
         nc_state0 = self.current_state['nc']['state0']
         nc_state1 = self.current_state['nc']['state1']
@@ -404,6 +495,7 @@ class Simulation(object):
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
     def simulateNCMC(self):
+        """Function that performs the NCMC simulation."""
         for nc_step in range(self.nstepsNC):
             try:
                 self.current_stepNC = int(nc_step)
@@ -411,7 +503,7 @@ class Simulation(object):
                 work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
                 # Attempt NCMC Move
                 if nc_step == self.nc_move['step']:
-                    print('[Iter {}] Performing NCMC {} movegi'.format(
+                    print('[Iter {}] Performing NCMC {} move'.format(
                     self.current_iter, self.nc_move['method'].__name__))
                     self.nc_move['method']
                 # Do 1 NCMC step
@@ -426,6 +518,7 @@ class Simulation(object):
         self.setSimState('nc', 'state1', nc_state1)
 
     def simulateMD(self):
+        """Function that performs the MD simulation."""
         md_state0 = self.current_state['md']['state0']
         try:
             self.md_sim.step(self.nstepsMD)
@@ -450,6 +543,10 @@ class Simulation(object):
         self.nc_context.setVelocities(md_state1['velocities'])
 
     def run(self):
+        """Function that runs the BLUES engine that iterates of the actions:
+        Perform NCMC simulation, perform proposed move, accepts/rejects move,
+        then performs the MD simulation from the NCMC state.
+        """
         #set inital conditions
         self.setStateConditions()
         for n in range(self.nIter):

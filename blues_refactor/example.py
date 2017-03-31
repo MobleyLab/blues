@@ -56,7 +56,7 @@ def runNCMC(platform_name):
     mover = ncmc.MoveProposal(sims.nc, model,
                              'random_rotation', opt['nstepsNC'])
 
-    blues = ncmc.Simulation(sims, model, mover.nc_move, **opt)
+    blues = ncmc.Simulation(sims, model, mover, **opt)
     blues.run()
 
 parser = OptionParser()
