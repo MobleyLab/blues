@@ -10,8 +10,8 @@ class SimulationFactoryTester(unittest.TestCase):
     """
     def setUp(self):
         # Obtain topologies/positions
-        self.prmtop = 'tests/data/TOL-parm.prmtop'
-        self.inpcrd = 'tests/data/TOL-parm.inpcrd'
+        self.prmtop = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.prmtop')
+        self.inpcrd = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.inpcrd')
         self.structure = parmed.load_file(self.prmtop, xyz=self.inpcrd)
         self.atom_indices = utils.atomIndexfromTop('LIG', self.structure.topology)
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,

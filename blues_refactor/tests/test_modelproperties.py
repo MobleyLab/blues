@@ -10,8 +10,8 @@ class ModelPropertiesTester(unittest.TestCase):
     """
     def setUp(self):
         # Obtain topologies/positions
-        prmtop = 'tests/data/TOL-parm.prmtop'
-        inpcrd = 'tests/data/TOL-parm.inpcrd'
+        prmtop = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.prmtop')
+        inpcrd = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.inpcrd')
         structure = parmed.load_file(prmtop, xyz=inpcrd)
         self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
