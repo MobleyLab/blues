@@ -10,8 +10,8 @@ class ModelPropertiesTester(unittest.TestCase):
     """
     def setUp(self):
         # Obtain topologies/positions
-        prmtop = 'tests/data/TOL-gaff.prmtop'
-        inpcrd = 'tests/data/TOL-gaff.inpcrd'
+        prmtop = 'tests/data/TOL-parm.prmtop'
+        inpcrd = 'tests/data/TOL-parm.inpcrd'
         structure = parmed.load_file(prmtop, xyz=inpcrd)
         self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
@@ -40,7 +40,7 @@ class ModelPropertiesTester(unittest.TestCase):
 
     def test_calculate_COM(self):
         self.model.calculateCOM()
-        self.assertNotEqual(self.model.center_of_mass)
+        self.assertNotEqual(self.model.center_of_mass, 0)
 
 if __name__ == "__main__":
         unittest.main()
