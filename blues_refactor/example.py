@@ -45,8 +45,8 @@ def runNCMC(platform_name):
     atom_indices = utils.atomIndexfromTop('LIG', struct.topology)
 
     # Generate the MD, NCMC, ALCHEMICAL Simulation objects
-    sims = ncmc.SimulationFactory(struct, atom_indices)
-    sims.createSimulationSet(opt)
+    sims = ncmc.SimulationFactory(struct, atom_indices, **opt)
+    sims.createSimulationSet()
 
     # Calculate particle masses of object to be moved
     model = ncmc.ModelProperties(sims.nc, atom_indices)

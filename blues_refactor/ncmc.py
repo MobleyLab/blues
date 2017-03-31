@@ -37,7 +37,14 @@ from datetime import datetime
 from optparse import OptionParser
 
 class SimulationFactory(object):
-    def __init__(self, structure, atom_indices):
+    """SimulationFactory is used to generate the 3 required OpenMM Simulation
+    objects (MD, NCMC, ALCH) required for the BLUES run.
+    Ex.
+        from blues.ncmc import SimulationFactory
+        sims = SimulationFactory(structure, atom_indices, opt)
+        sims.createSimulationSet()
+    """
+    def __init__(self, structure, atom_indices, **opt):
         self.structure = structure
         self.atom_indices = atom_indices
         self.system = None
@@ -45,12 +52,26 @@ class SimulationFactory(object):
         self.md = None
         self.alch  = None
         self.nc  = None
-            #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
+
+        self.opt = opt
+        #self.nonbondedMethod = opt['nonbondedMethod']
+        #self.nonbondedCutoff = opt['nonbondedCutoff']
+        #self.constraints = opt['constraints']
+
+        #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
     def generateAlchSystem(self, system, atom_indices):
-        # Generate Alchemical System
+        """Returns the OpenMM System for alchemical perturbations.
+
+        Parameters
+        ----------
+        context : openmm.System
+            The OpenMM System object corresponding to the reference system.
+        atom_indices : list
+            Atom indicies of the model.
+        """
         factory = AbsoluteAlchemicalFactory(system, atom_indices,
                                             annihilate_sterics=True,
                                             annihilate_electrostatics=True)
@@ -58,15 +79,35 @@ class SimulationFactory(object):
         self.alch_system = alch_system
         return self.alch_system
 
-    def generateSystem(self, structure, **opt):
-        system = structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
-                            nonbondedCutoff=opt['nonbondedCutoff']*unit.angstroms,
-                            constraints=eval("app.%s" % opt['constraints']),
+    def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
+                       constraints='HBonds', **opt):
+        """Returns the OpenMM System for the reference system.
+
+        Parameters
+        ----------
+        structure: parmed.Structure
+            ParmEd Structure object of the entire system to be simulated.
+        opt : optional parameters (i.e. cutoffs/constraints)
+        """
+        system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
+                            nonbondedCutoff=nonbondedCutoff*unit.angstroms,
+                            constraints=eval("app.%s" % constraints),
                             flexibleConstraints=False)
         self.system = system
         return self.system
 
     def generateSimFromStruct(self, structure, system, ncmc=False, printfile=sys.stdout, **opt):
+        """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
+
+        Parameters
+        ----------
+        structure: parmed.Structure
+            ParmEd Structure object of the entire system to be simulated.
+        system :
+        opt : optional parameters (i.e. cutoffs/constraints)
+        atom_indices : list
+            Atom indicies of the model.
+        """
         if ncmc:
             integrator = ncmc_switching.NCMCVVAlchemicalIntegrator(opt['temperature']*unit.kelvin,
                                                        system,
@@ -79,7 +120,8 @@ class SimulationFactory(object):
             integrator = openmm.LangevinIntegrator(opt['temperature']*unit.kelvin,
                                                    opt['friction']/unit.picosecond,
                                                    opt['dt']*unit.picoseconds)
-
+        ###TODO SIMPLIFY TO 1 LINE.
+        #Specifying platform properties here used for local development.
         if opt['platform'] is None:
             #Use the fastest available platform
             simulation = app.Simulation(structure.topology, system, integrator)
@@ -108,6 +150,8 @@ class SimulationFactory(object):
         # Will get overwritten from saved State.
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(opt['temperature']*unit.kelvin)
+
+        ###TODO MOVE SIMULATION REPORTERS TO OWN FUNCTION.
         simulation.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
                                     reportInterval=opt['reporter_interval'],
                                     step=True, totalSteps=opt['nIter']*opt['nstepsMD'],
@@ -116,14 +160,14 @@ class SimulationFactory(object):
 
         return simulation
 
-    def createSimulationSet(self, opt):
-        system = self.generateSystem(self.structure, **opt)
+    def createSimulationSet(self):
+        """Function used to generate the 3 OpenMM Simulation objects."""
+        system = self.generateSystem(self.structure, **self.opt)
         alch_system = self.generateAlchSystem(self.system, self.atom_indices)
 
-        sim_dict = {}
-        self.md = self.generateSimFromStruct(self.structure, system, **opt)
-        self.alch = self.generateSimFromStruct(self.structure, system,  **opt)
-        self.nc = self.generateSimFromStruct(self.structure, alch_system, ncmc=True,  **opt)
+        self.md = self.generateSimFromStruct(self.structure, system, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, system,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, alch_system, ncmc=True,  **self.opt)
 
 class ModelProperties(object):
     """ModelProperties provides methods for calculating properties on the
@@ -187,7 +231,7 @@ class ModelProperties(object):
         return self.totalmass
 
     def getPositions(self, context, atom_indices):
-        """Returns a nummpy.array of atom positions of the model given the
+        """Returns a numpy.array of atom positions of the model given the
         simulation Context.
 
         Parameters
@@ -206,15 +250,7 @@ class ModelProperties(object):
         return self.positions
 
     def calculateCOM(self):
-        """Returns a list of masses of the atoms in the model.
-
-        Parameters
-        ----------
-        context : openmm.openmm.Context
-            The OpenMM Context corresponding to the NCMC simulation.
-        atom_indices : list
-            Atom indicies of the model.
-        """
+        """Calculates the center of mass of the model."""
         context = self.nc_sim.context
         atom_indices = self.atom_indices
         #Update masses for current context
@@ -265,7 +301,6 @@ class MoveProposal(object):
         return self.nc_move
 
 class Simulation(object):
-    """Sim
     def __init__(self, sims, model, nc_move, **opt):
         self.md_sim = sims.md
         self.alch_sim = sims.alch
