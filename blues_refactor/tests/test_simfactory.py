@@ -18,10 +18,10 @@ class SimulationFactoryTester(unittest.TestCase):
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
-                'platform' : None,
-                'verbose' : True }
+                'platform' : None }
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+
         #Initialize the SimulationFactory object
         self.sims = ncmc.SimulationFactory(self.structure, self.atom_indices, **self.opt)
 
@@ -38,13 +38,14 @@ class SimulationFactoryTester(unittest.TestCase):
         self.assertIsInstance(md_sim, openmm.app.simulation.Simulation)
 
     def test_nc_simulation_generation(self):
+
         system = self.sims.generateSystem(self.structure, **self.opt)
         self.assertIsInstance(system, openmm.System)
 
         alch_system = self.sims.generateAlchSystem(system, self.atom_indices)
         self.assertIsInstance(alch_system, openmm.System)
 
-        nc_sim = self.sims.generateSimFromStruct(self.structure, alch_system, self.functions, ncmc=True,  **self.opt)
+        nc_sim = self.sims.generateSimFromStruct(self.structure, alch_system, self.functions, ncmc=True, verbose=True, **self.opt)
         self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
 
 if __name__ == "__main__":

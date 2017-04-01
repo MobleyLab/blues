@@ -73,7 +73,6 @@ class SimulationFactory(object):
                                             annihilate_sterics=True,
                                             annihilate_electrostatics=True)
         alch_system = factory.createPerturbedSystem()
-
         return alch_system
 
     @staticmethod
@@ -91,11 +90,11 @@ class SimulationFactory(object):
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
                             constraints=eval("app.%s" % constraints),
                             flexibleConstraints=False)
-        #self.system = system
         return system
 
     @staticmethod
-    def generateSimFromStruct(structure, system, functions, ncmc=False, printfile=sys.stdout, **opt):
+    def generateSimFromStruct(structure, system, functions, ncmc=False, platform=None,
+                              verbose=False, printfile=sys.stdout, **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
 
         Parameters
@@ -121,7 +120,7 @@ class SimulationFactory(object):
                                                    opt['dt']*unit.picoseconds)
         ###TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
-        if opt['platform'] is None:
+        if platform is None:
             #Use the fastest available platform
             simulation = app.Simulation(structure.topology, system, integrator)
         else:
@@ -129,12 +128,12 @@ class SimulationFactory(object):
             prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
             simulation = app.Simulation(structure.topology, system, integrator, platform, prop)
 
-        # OpenMM platform information
-        mmver = openmm.version.version
-        mmplat = simulation.context.getPlatform()
-        print('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()), file=printfile)
+        if verbose:
+            # OpenMM platform information
+            mmver = openmm.version.version
+            mmplat = simulation.context.getPlatform()
+            print('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()), file=printfile)
 
-        if opt['verbose']:
             # Host information
             from platform import uname
             for k,v in uname()._asdict().items():
@@ -217,7 +216,7 @@ class ModelProperties(object):
             masses[ele] = system.getParticleMass(idx)
         self.totalmass = masses.sum()
         self.masses = masses
-        return self.masses
+        return masses
 
     def getTotalMass(self, masses):
         """Returns total mass of model.
@@ -228,7 +227,7 @@ class ModelProperties(object):
             List of atom masses of model
         """
         self.totalmass = self.masses.sum()
-        return self.totalmass
+        return totalmass
 
     def getPositions(self, context, atom_indices):
         """Returns a numpy.array of atom positions of the model given the
@@ -247,7 +246,7 @@ class ModelProperties(object):
         for ele, idx in enumerate(atom_indices):
             positions[ele,:] = unit.Quantity(coordinates[idx], unit.nanometers)
         self.positions = positions
-        return self.positions
+        return positions
 
     def calculateCOM(self):
         """Calculates the center of mass of the model."""
@@ -259,6 +258,7 @@ class ModelProperties(object):
         positions = self.getPositions(context, atom_indices)
         center_of_mass =  (masses / totalmass * positions).sum(0)
         self.center_of_mass = center_of_mass
+        return center_of_mass
 
 class MoveProposal(object):
     """MoveProposal provides perturbation functions for the model during the NCMC
@@ -295,17 +295,17 @@ class MoveProposal(object):
             self.nc_move = { 'method' : None , 'step' : 0}
             self.setMove(method, nstepsNC)
 
-    def random_rotation(self):
+    def random_rotation(self, nc_sim):
         """Function that performs a random rotation about the center of mass of
         the model.
         """
         atom_indices = self.model.atom_indices
         model_pos = self.model.positions
-        com = self.model.com
+        com = self.model.center_of_mass
         reduced_pos = model_pos - com
-
+        nc_sim = self.nc_sim
         # Store initial positions of entire system
-        initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        initial_positions = nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         positions = copy.deepcopy(initial_positions)
 
         # Define random rotational move on the ligand
@@ -318,15 +318,20 @@ class MoveProposal(object):
         # Update ligand positions in nc_sim
         for index, atomidx in enumerate(atom_indices):
             positions[atomidx] = rot_move[index]
-        self.nc_sim.context.setPositions(positions)
-        return self.nc_sim
+        nc_sim.context.setPositions(positions)
+        return nc_sim
 
-    def setMove(self, method, step):
+    def setMove(self, method, step=0):
         """Returns the dictionary that defines the perturbation methods to be
         performed on the model object and the step number to perform it at."""
-        self.nc_move['method']  = getattr(MoveProposal, method)
-        self.nc_move['step'] = int(step) / 2 - 1
-        return self.nc_move
+        if step == 0:
+            #Default to doing move at half point
+            nc_move['step'] = int(step) / 2 - 1
+        nc_move = {}
+        nc_move['method']  = getattr(MoveProposal, method)
+        nc_move['step'] = int(step)
+        self.nc_move = nc_move
+        return nc_move
 
 class Simulation(object):
     """Simulation class provides the functions that perform the BLUES run.
