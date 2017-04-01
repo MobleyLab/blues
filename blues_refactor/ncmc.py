@@ -29,7 +29,7 @@ import blues.ncmc as ncmc
 import blues.ncmc_switching as ncmc_switching
 from blues.smartdart import SmartDarting
 
-import sys
+import sys, parmed
 import numpy as np
 import mdtraj
 from mdtraj.reporters import HDF5Reporter
@@ -44,7 +44,7 @@ class SimulationFactory(object):
         sims = SimulationFactory(structure, atom_indices, **opt)
         sims.createSimulationSet()
     """
-    def __init__(self, structure=None, atom_indices=[], **opt):
+    def __init__(self, structure, atom_indices=[], **opt):
         self.structure = structure
         self.atom_indices = atom_indices
         self.system = None
@@ -58,8 +58,7 @@ class SimulationFactory(object):
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
-    @staticmethod
-    def generateAlchSystem(system, atom_indices):
+    def generateAlchSystem(self, system, atom_indices):
         """Returns the OpenMM System for alchemical perturbations.
 
         Parameters
@@ -75,8 +74,7 @@ class SimulationFactory(object):
         alch_system = factory.createPerturbedSystem()
         return alch_system
 
-    @staticmethod
-    def generateSystem(structure, nonbondedMethod='PME', nonbondedCutoff=10,
+    def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
                        constraints='HBonds', **opt):
         """Returns the OpenMM System for the reference system.
 
@@ -88,12 +86,10 @@ class SimulationFactory(object):
         """
         system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
-                            constraints=eval("app.%s" % constraints),
-                            flexibleConstraints=False)
+                            constraints=eval("app.%s" % constraints))
         return system
 
-    @staticmethod
-    def generateSimFromStruct(structure, system, functions, ncmc=False, platform=None,
+    def generateSimFromStruct(self, structure, system, ncmc=False, platform=None,
                               verbose=False, printfile=sys.stdout, **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
 
@@ -109,7 +105,7 @@ class SimulationFactory(object):
         if ncmc:
             integrator = ncmc_switching.NCMCVVAlchemicalIntegrator(opt['temperature']*unit.kelvin,
                                                        system,
-                                                       functions,
+                                                       self.functions,
                                                        nsteps=opt['nstepsNC'],
                                                        direction='insert',
                                                        timestep=0.001*unit.picoseconds,
@@ -175,47 +171,71 @@ class ModelProperties(object):
     Current methods calculate the object's atomic masses and center of masss.
     Calculating the object's center of mass will get the positions and total mass.
     Ex.
-        import blues.ncmc as ncmc
-        model = ncmc.ModelProperties(nc_sim, atom_indices)
-        model.calculateCOM()
-        print(model.center_of_mass)
-        print(model.totalmass, model.masses, model.positions)
+        from blues.ncmc import ModelProperties
+        model = ModelProperties('LIG', structure)
+        model.calculateProperties()
+
+    Attributes
+    ----------
+    model.resname : string specifying the residue name of the ligand
+    model.atom_indices : list of atom indicies of the ligand.
+    model.structure : parmed.Structure of the ligand selected by resname.
+    model.masses : list of particle masses of the ligand with units.
+    model.totalmass : integer of the total mass of the ligand.
+    model.center_of_mass : np.array of calculated center of mass of the ligand
     """
 
-    def __init__(self, nc_sim, atom_indices):
+    def __init__(self, structure, resname='LIG'):
         """Initialize the model.
 
         Parameters
         ----------
-        nc_sim : openmm.app.simulation.Simulation
-            The OpenMM Simulation object corresponding to the NCMC simulation.
-        atom_indices : list
-            Atom indicies of the model.
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the model to be moved.
         """
-        self.nc_sim = nc_sim
-        self.atom_indices = atom_indices
+        self.resname = resname
+        self.atom_indices = self.getAtomIndices(self.resname, structure)
+        self.structure = structure[self.atom_indices]
 
+        self.atom_indices = []
         self.totalmass = 0
         self.masses = []
-        self.positions = None
         self.center_of_mass = None
 
-    def getMasses(self, context, atom_indices):
+    def getAtomIndices(self, resname, structure):
+        """
+        Get atom indices of a ligand from ParmEd Structure.
+        Arguments
+        ---------
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the model to be moved.
+        Returns
+        -------
+        atom_indices : list of ints
+            list of atoms in the coordinate file matching lig_resname
+        """
+        atom_indices = []
+        topology = structure.topology
+        for atom in topology.atoms():
+            if str(resname) in atom.residue.name:
+                atom_indices.append(atom.index)
+        return atom_indices
+
+    def getMasses(self, structure):
         """Returns a list of masses of the atoms in the model.
 
         Parameters
         ----------
-        context : openmm.openmm.Context
-            The OpenMM Context corresponding to the NCMC simulation.
-        atom_indices : list
-            Atom indicies of the model.
+        structure: parmed.Structure
+            ParmEd Structure object of the model to be moved.
         """
-        masses = unit.Quantity(np.zeros([len(atom_indices),1],np.float32), unit.dalton)
-        system = context.getSystem()
-        for ele, idx in enumerate(atom_indices):
-            masses[ele] = system.getParticleMass(idx)
-        self.totalmass = masses.sum()
-        self.masses = masses
+        masses = unit.Quantity(np.zeros([len(structure.atoms),1],np.float32), unit.dalton)
+        for idx in range(len(structure.atoms)):
+            masses[idx] = structure.atoms[idx].mass * unit.dalton
         return masses
 
     def getTotalMass(self, masses):
@@ -223,42 +243,33 @@ class ModelProperties(object):
 
         Parameters
         ----------
-        masses : list
-            List of atom masses of model
+        masses : numpy.array
+            np.array of particle masses
         """
-        self.totalmass = self.masses.sum()
+        totalmass = masses.sum()
         return totalmass
 
-    def getPositions(self, context, atom_indices):
-        """Returns a numpy.array of atom positions of the model given the
-        simulation Context.
+    def getCenterOfMass(self, structure, masses):
+        """Returns the calculate center of mass of the ligand as a np.array
 
         Parameters
         ----------
-        context : openmm.openmm.Context
-            The OpenMM Context corresponding to the NCMC simulation.
-        atom_indices : list
-            Atom indicies of the model.
+        structure: parmed.Structure
+            ParmEd Structure object of the model to be moved.
+        masses : numpy.array
+            np.array of particle masses
         """
-        state = context.getState(getPositions=True)
-        coordinates = state.getPositions(asNumpy=True) / unit.nanometers
-        positions = unit.Quantity( np.zeros([len(atom_indices),3],np.float32), unit.nanometers)
-        for ele, idx in enumerate(atom_indices):
-            positions[ele,:] = unit.Quantity(coordinates[idx], unit.nanometers)
-        self.positions = positions
-        return positions
-
-    def calculateCOM(self):
-        """Calculates the center of mass of the model."""
-        context = self.nc_sim.context
-        atom_indices = self.atom_indices
-        #Update masses for current context
-        masses = self.getMasses(context, atom_indices)
-        totalmass = self.getTotalMass(masses)
-        positions = self.getPositions(context, atom_indices)
-        center_of_mass =  (masses / totalmass * positions).sum(0)
-        self.center_of_mass = center_of_mass
+        dim = structure.positions.unit
+        coordinates = np.asarray(structure.positions._value, np.float32)
+        center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * dim
         return center_of_mass
+
+    def calculateProperties(self):
+        """Function to quickly calculate available properties."""
+        self.masses = self.getMasses(self.structure)
+        self.totalmass = self.getTotalMass(self.masses)
+        self.center_of_mass = self.getCenterOfMass(self.structure, self.masses)
+
 
 class MoveProposal(object):
     """MoveProposal provides perturbation functions for the model during the NCMC

@@ -16,15 +16,13 @@ class BLUESTester(unittest.TestCase):
         self.prmtop = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.prmtop')
         self.inpcrd = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.inpcrd')
         self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
-
-        self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
-                           'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
                 'platform' : None,
                 'verbose' : True }
+
 
     def test_modelproperties(self):
         # Model.structure must be residue selection.
@@ -48,6 +46,24 @@ class BLUESTester(unittest.TestCase):
         self.assertEqual(totalmass, model.totalmass)
         self.assertEqual(center_of_mass.tolist(), model.center_of_mass.tolist())
 
+    def test_simulationfactory(self):
+        #Initialize the SimulationFactory object
+        model = ModelProperties(self.full_struct, 'LIG')
+        sims = SimulationFactory(self.full_struct, model.atom_indices, **self.opt)
+
+        system = sims.generateSystem(self.full_struct, **self.opt)
+        self.assertIsInstance(system, openmm.System)
+
+        alch_system = sims.generateAlchSystem(system, model.atom_indices)
+        self.assertIsInstance(alch_system, openmm.System)
+
+        md_sim = sims.generateSimFromStruct(self.full_struct, system, **self.opt)
+        self.assertIsInstance(md_sim, openmm.app.simulation.Simulation)
+
+        nc_sim = sims.generateSimFromStruct(self.full_struct, alch_system, ncmc=True, **self.opt)
+        self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
+
+        #sims.createSimulationSet()
 
 if __name__ == "__main__":
         unittest.main()
