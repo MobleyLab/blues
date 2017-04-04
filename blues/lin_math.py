@@ -17,7 +17,8 @@ def adjust_angle(a,b, radians, maintain_magnitude=True):
         Radian you want to adjust the angle to.
     maintain_magnitude, boolean:
         If True adjusts the returned vector keeps
-        the same magnitude as a.
+        the same magnitude as a. If false returns
+        a normalized vector
     Returns
     -------
     c, 1x3 np.array:
@@ -43,6 +44,7 @@ def adjust_angle(a,b, radians, maintain_magnitude=True):
 
 def calc_rotation_matrix(vec_ref, vec_target):
     '''calculate the rotation matrix that will rotate vec_ref to vec_target
+        Note: will fail if vectors are in exact opposite directions
     Arguments
     ---------
     vec_ref: np.array
@@ -58,7 +60,7 @@ def calc_rotation_matrix(vec_ref, vec_target):
     vec_cos = np.inner(a,b) / (np.linalg.norm(a) * np.linalg.norm(b))
     #create skew symmetric matrix
     vx = np.array([[0, -v[2], v[1]],
-                    [v[2], 0, -v[1]],
+                    [v[2], 0, -v[0]],
                     [-v[1], v[0], 0]
                     ])
     I = np.identity(3)
@@ -87,7 +89,22 @@ def rigid_transform_3D(A, B):
 
     return R, t, centroid_A, centroid_B, centroid_difference
 
-def getRotTrans(apos, bpos, residueList=None):
+def getRotTrans(ares, bres):
+    '''
+    Get rotation and translation of rigid pose
+
+    Arguments
+    ---------
+    apos: nx3 np.array
+        simulation positions
+    bpos: nx3 np.array
+        comparison positions
+    residueList
+    '''
+    rot, trans, centa, centb, centroid_difference = rigid_transform_3D(ares, bres)
+    return rot, centroid_difference
+
+def old_getRotTrans(apos, bpos, residueList=None):
     '''
     Get rotation and translation of rigid pose
 

@@ -7,7 +7,7 @@ import numpy as np
 from blues.ncmc import SimNCMC, get_lig_residues
 import mdtraj as md
 from blues.lin_math import calc_rotation_matrix, adjust_angle
-from blues.rot_mat import getRotTrans
+from blues.lin_math import getRotTrans
 import itertools
 import chemcoord as cc
 import copy
@@ -369,7 +369,7 @@ class MolDart(SimNCMC):
             nc_pos[atom_num] = symm_pos[i]
         rand_index = np.random.randint(len(self.binding_mode_traj))
         ###temp to encourage going to other binding modes
-        while rand_index != binding_mode_index:
+        while rand_index == binding_mode_index:
             rand_index = np.random.randint(len(self.binding_mode_traj))
         ###
         #get matching binding mode pose and get rotation/translation to that pose
@@ -438,7 +438,13 @@ class MolDart(SimNCMC):
             dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
             print('dart_angle', np.degrees(np.arccos(dart_angle)))
             return np.degrees(np.arccos(dart_angle))
-
+        def angle_calc(angle1, angle2):
+            angle = np.arccos(angle1.dot(angle2) / ( np.linalg.norm(angle1) * np.linalg.norm(angle2) ) )
+            degrees = np.degrees(angle)
+            return degrees
+        def calc_angle(vec1, vec2):
+            angle = np.arccos(vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+            return angle
 
 
 
@@ -460,30 +466,12 @@ class MolDart(SimNCMC):
             ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][residueList[self.buildlist[i, 0]]]
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
             dart_ref[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
-            target_three = np.zeros((3,3))
             print('dart3 1', dart_three)
-        start_pos = np.copy(sim_three)
-        print('starting center pos', start_pos)
-        print('before_rotation_sim_angle', test_angle(sim_three, vector_list))
+        change_three = np.copy(sim_three)
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
         vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
         vec1_ref = ref_three[vector_list[0][0]] - ref_three[vector_list[0][1]]
         vec2_ref = ref_three[vector_list[1][0]] - ref_three[vector_list[1][1]]
-        vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
-        vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-        rotation1 = calc_rotation_matrix(vec1_ref, vec1_dart)
-        rotation2 = calc_rotation_matrix(vec2_ref, vec2_dart)
-        trans_diff = dart_three[vector_list[0][1]] - ref_three[vector_list[0][1]]
-        print('trans_diff', trans_diff)
-        trans_diff = np.tile(trans_diff, (3,1))
-        sim_three = sim_three + trans_diff
-        sim_three = apply_rotation(sim_three, rotation1, vector_list[0][1])
-        temp_three = np.zeros((2,3))
-        temp_three[0] = sim_three[vector_list[0][1]]
-        temp_three[1] = sim_three[vector_list[1][0]]
-        second_rot = apply_rotation(temp_three, rotation2, 0)
-        sim_three[vector_list[1][0]] = second_rot[1]
-        ###sim_three = normalize_vectors(sim_three, dart_three, vector_list)
 
 
         #calculate rotation from ref pos to sim pos
@@ -491,40 +479,68 @@ class MolDart(SimNCMC):
         print('vec1_sim', vec1_sim)
         angle_before = test_angle(dart_three, vector_list)
         print('before_rotation_sim_angle', test_angle(sim_three, vector_list))
+        print('before_rotation_dart_angle', test_angle(dart_three, vector_list))
 
-        ###pos_diff = sim_three[0] - ref_three[0]
-        #apply translation, rotations to new positions
-        ###dart_three = dart_three + np.tile(pos_diff, (3,1))
-        dist1 = np.linalg.norm(sim_three[1] - sim_three[0])
-        dist2 = np.linalg.norm(sim_three[2] - sim_three[0])
+        #change angle of one vector
+        ref_angle = self.internal_zmat[binding_mode_index].frame['angle'][self.buildlist[2,0]]
+        print('sim angle', np.degrees(calc_angle(vec1_sim, vec2_sim)))
+        print('ref_angle', ref_angle)
+        angle_diff = ref_angle - np.degrees(calc_angle(vec1_sim, vec2_sim))
+        print('angle_diff', angle_diff)
+        ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=False)
+        print('check that this is a bond length', self.internal_zmat[binding_mode_index].frame['bond'][self.buildlist[1,0]])
+        ad_vec = ad_vec / np.linalg.norm(ad_vec) * self.internal_zmat[binding_mode_index].frame['bond'][self.buildlist[1,0]]/10.
+        print('ad_vec length', np.linalg.norm(ad_vec))
+        #apply changed vector to center coordinate to get new position of first particle
+        nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * self.internal_zmat[binding_mode_index].frame['bond'][self.buildlist[2,0]]/10.
+        print('new angle1', np.degrees(calc_angle(ad_vec, nvec2_sim)))
+        change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
+        change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
+        rot_mat, centroid = getRotTrans(change_three, ref_three)
+        #TODO CONTINUE FROM HERE
+        #perform the same angle change on new coordinate
+        centroid_orig = np.mean(dart_three, axis=0)
+        #perform rotation
+        dist1 = np.linalg.norm(dart_three[1] - dart_three[0])
+        dist2 = np.linalg.norm(dart_three[2] - dart_three[0])
+        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+        vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+        vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+        print('angle after centroid rotation', np.degrees(calc_angle(vec1_dart, vec2_dart)) )
+        #dart_three[vector_list[0][1]] = dart_three[vector_list[0][1]] + centroid
+        dart_angle = self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]]
+        angle_change = dart_angle - angle_diff 
+        print('angle_change', angle_change)
+        ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
+        ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]]/10.
+        print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]])
+        print('length ad_dartvec', np.linalg.norm(ad_dartvec))
+        nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.
+        print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.)
+        print('length nvec2_dart', np.linalg.norm(nvec2_dart))
+        print('new angle2', np.degrees(calc_angle(ad_dartvec, nvec2_dart)))
+        dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
+        dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
+        
         #end addition
         ddist1 = np.linalg.norm(dart_three[1] - dart_three[0])
         ddist2 = np.linalg.norm(dart_three[2] - dart_three[0])
-        print('distance1', dist1, ddist1)
-        print('distance2', dist2, ddist2)
         print('dart_three after', dart_three)
-        next_pos = np.copy(sim_three)
-        print('after movement center pos', next_pos)
-        print('vs', start_pos)
-        print('diff', next_pos - start_pos)
-
         #added
 #        vec1_dart = dart_three[0] - dart_three[1]
 #        vec2_dart = dart_three[2] - dart_three[1]
 #        print('debug', zmat_new.frame['angle'][self.buildlist[2,0]])
-#        angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
-#        angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-#        dart_angle = vec1_sim.dot(vec2_sim) / (np.linalg.norm(vec1_sim) * np.linalg.norm(vec2_sim))
-#        print('simulation_angle', np.degrees(np.arccos(dart_angle)))
-#        dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
-#        print('after_rotation_dart_angle', np.degrees(np.arccos(dart_angle)))
-#        print('desired angle', zmat_new.frame['angle'][self.buildlist[2,0]])
-#        print('difference with reference angle,', self.internal_zmat[binding_mode_index].frame['angle'][self.buildlist[2,0]] - angle_before)
-#        print('selected_random_angle', self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]])
-        def angle_calc(angle1, angle2):
-            angle = np.arccos(angle1.dot(angle2) / ( np.linalg.norm(angle1) * np.linalg.norm(angle2) ) )
-            degrees = np.degrees(angle)
-            return degrees
+        angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+        angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+        dart_angle = vec1_sim.dot(vec2_sim) / (np.linalg.norm(vec1_sim) * np.linalg.norm(vec2_sim))
+        print('simulation_angle', np.degrees(np.arccos(dart_angle)))
+        dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
+        print('after_rotation_dart_angle', np.degrees(np.arccos(dart_angle)))
+        print('desired angle', zmat_new.frame['angle'][self.buildlist[2,0]])
+        print('difference with reference angle,', self.internal_zmat[binding_mode_index].frame['angle'][self.buildlist[2,0]] - angle_before)
+        print('selected_random_angle', self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]])
+        print('distance1', dist1, ddist1)
+        print('distance2', dist2, ddist2)
 #        print('testing angle', angle_calc(angle1, angle2))
 
         for i, vectors in enumerate([sim_three, ref_three, dart_three]):
@@ -537,7 +553,7 @@ class MolDart(SimNCMC):
         #print('zmat_compare', zmat_compare)
         #print('zmat_new', zmat_new)
         #print('starting_coord', dart_three)
-        xyz_new = (zmat_new.to_xyz(starting_coord=sim_three*10)).sort_index()
+        xyz_new = (zmat_new.to_xyz(starting_coord=dart_three*10)).sort_index()
         #TODO make sure to sort new xyz
         #print('xyz_new.frame unsorted', xyz_new.frame)
         #print('xyz_new.frame', xyz_new.frame.sort_index())
