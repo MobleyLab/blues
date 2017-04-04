@@ -126,7 +126,7 @@ class MolDart(SimNCMC):
                 for i in range(len(self.residueList)):
                     sel_atom = self.residueList[i]
                     self.internal_xyz[j].frame.set_value(i, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10)
-                self.internal_zmat.append(self.internal_xyz[j].to_zmat(buildlist=self.buildlist))
+            self.internal_zmat.append(self.internal_xyz[j].to_zmat(buildlist=self.buildlist))
 
 
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
