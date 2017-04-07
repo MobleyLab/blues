@@ -34,7 +34,7 @@ def adjust_angle(a,b, radians, maintain_magnitude=True):
     #determine how much to scale the perpendicular
     #component of a to adjust the angle
     scale = np.tan(float(radians))*mag_para/mag_perp
-    c = para + perp*scale
+    c = para - perp*scale
     #if True, adjusts vector c to maintain same
     #total magnitude as the original (a).
     if maintain_magnitude == True:
@@ -164,3 +164,51 @@ def old_old_getRotTrans(apos, bpos, residueList=None):
         b_res[index] = bpos[i]
     rot, trans, centa, centb, centroid_difference = rigid_transform_3D(a_res, b_res)
     return rot, centroid_difference
+
+def kabsch(p, q, center):
+    """
+    The optimal rotation matrix U is calculated and then used to rotate matrix
+    P unto matrix Q so the minimum root-mean-square deviation (RMSD) can be
+    calculated.
+    Using the Kabsch algorithm with two sets of paired point P and Q,
+    centered around the center-of-mass.
+    Each vector set is represented as an NxD matrix, where D is the
+    the dimension of the space.
+    The algorithm works in three steps:
+    - a translation of P and Q
+    - the computation of a covariance matrix C
+    - computation of the optimal rotation matrix U
+    http://en.wikipedia.org/wiki/Kabsch_algorithm
+    Parameters:
+    P -- (N, number of points)x(D, dimension) matrix
+    Q -- (N, number of points)x(D, dimension) matrix
+    Returns:
+    U -- Rotation matrix
+    """
+    N = p.shape[0]; # total points
+
+    P = p - np.tile(p[center], (N, 1))
+    Q = q - np.tile(q[center], (N, 1))
+
+    # Computation of the covariance matrix
+    C = np.dot(np.transpose(P), Q)
+
+    # Computation of the optimal rotation matrix
+    # This can be done using singular value decomposition (SVD)
+    # Getting the sign of the det(V)*(W) to decide
+    # whether we need to correct our rotation matrix to ensure a
+    # right-handed coordinate system.
+    # And finally calculating the optimal rotation matrix U
+    # see http://en.wikipedia.org/wiki/Kabsch_algorithm
+    V, S, W = np.linalg.svd(C)
+    d = (np.linalg.det(V) * np.linalg.det(W)) < 0.0
+
+    if d:
+        S[-1] = -S[-1]
+        V[:, -1] = -V[:, -1]
+
+    # Create Rotation matrix U
+    U = np.dot(V, W)
+
+    return U
+

@@ -6,7 +6,7 @@ import simtk.unit as unit
 import numpy as np
 from blues.ncmc import SimNCMC, get_lig_residues
 import mdtraj as md
-from blues.lin_math import calc_rotation_matrix, adjust_angle
+from blues.lin_math import calc_rotation_matrix, adjust_angle, kabsch
 from blues.lin_math import getRotTrans
 import itertools
 import chemcoord as cc
@@ -477,6 +477,9 @@ class MolDart(SimNCMC):
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
             dart_ref[i] = binding_mode_pos[rand_index].xyz[0][residueList[self.buildlist[i, 0]]]
             print('dart3 1', dart_three)
+        print('debugging')
+        print('before sim', sim_three)
+        print('before ref', ref_three)
         change_three = np.copy(sim_three)
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
         vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
@@ -502,21 +505,30 @@ class MolDart(SimNCMC):
         ad_vec = ad_vec / np.linalg.norm(ad_vec) * self.internal_zmat[binding_mode_index].frame['bond'][self.buildlist[1,0]]/10.
         print('ad_vec length', np.linalg.norm(ad_vec))
         #apply changed vector to center coordinate to get new position of first particle
+        print('change before before rot', change_three)
+
         nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * self.internal_zmat[binding_mode_index].frame['bond'][self.buildlist[2,0]]/10.
         print('new angle1', np.degrees(calc_angle(ad_vec, nvec2_sim)))
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
+        print('change before rot', change_three)
         rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
+        print('ref_three', ref_three)
+        print('sim_three', sim_three)
+        print('change_three', change_three)
         print('centroid movement', centroid, np.linalg.norm(centroid))
         #TODO CONTINUE FROM HERE
         #perform the same angle change on new coordinate
-        centroid_orig = np.mean(dart_three, axis=0)
+#        centroid_orig = np.mean(dart_three, axis=0)
+        centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
         dist1 = np.linalg.norm(dart_three[1] - dart_three[0])
         dist2 = np.linalg.norm(dart_three[2] - dart_three[0])
-
-#        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
-        dart_three = dart_three  - np.tile(centroid, (3,1))
+        print('rot_mat', rot_mat)
+        other_rot = kabsch(change_three, ref_three, vector_list[0][1]) 
+        print('other_rot', other_rot)
+        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+#        dart_three = dart_three  - np.tile(centroid, (3,1))
 
         vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
