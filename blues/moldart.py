@@ -395,6 +395,16 @@ class MolDart(SimNCMC):
         #edit
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         print('zmat_new', zmat_new)
+        if 1:
+             zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
+             #get appropriate comparision zmat
+             zmat_compare = self.internal_zmat[binding_mode_index]
+             for i in ['angle', 'dihedral']:
+                 zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
+             for i in ['angle', 'dihedral']:
+            #change form zmat_compare to random index
+                 zmat_new.frame[i] = zmat_diff.frame[i] + zmat_new.frame[i]
+
 #        random_mode = self.internal_zmat[rand_index]
 #        #random_mode = binding_mode_pos[rand_index].xyz[0]
 #        for i in ['angle',]:
@@ -497,13 +507,17 @@ class MolDart(SimNCMC):
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
         rot_mat, centroid = getRotTrans(change_three, ref_three)
+        print('centroid movement', centroid, np.linalg.norm(centroid))
         #TODO CONTINUE FROM HERE
         #perform the same angle change on new coordinate
         centroid_orig = np.mean(dart_three, axis=0)
         #perform rotation
         dist1 = np.linalg.norm(dart_three[1] - dart_three[0])
         dist2 = np.linalg.norm(dart_three[2] - dart_three[0])
-        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+
+#        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+        dart_three = dart_three  - np.tile(centroid, (3,1))
+
         vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
         print('angle after centroid rotation', np.degrees(calc_angle(vec1_dart, vec2_dart)) )
@@ -511,36 +525,34 @@ class MolDart(SimNCMC):
         dart_angle = self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]]
         angle_change = dart_angle - angle_diff 
         print('angle_change', angle_change)
-        ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
-        ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]]/10.
-        print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]])
-        print('length ad_dartvec', np.linalg.norm(ad_dartvec))
-        nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.
-        print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.)
-        print('length nvec2_dart', np.linalg.norm(nvec2_dart))
-        print('new angle2', np.degrees(calc_angle(ad_dartvec, nvec2_dart)))
-        dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
-        dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
+        if 0:
+            ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
+            ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]]/10.
+            print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]])
+            print('length ad_dartvec', np.linalg.norm(ad_dartvec))
+            nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.
+            print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.)
+            print('length nvec2_dart', np.linalg.norm(nvec2_dart))
+            print('new angle2', np.degrees(calc_angle(ad_dartvec, nvec2_dart)))
+            dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
+            dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
         
         #end addition
-        ddist1 = np.linalg.norm(dart_three[1] - dart_three[0])
-        ddist2 = np.linalg.norm(dart_three[2] - dart_three[0])
+#        ddist1 = np.linalg.norm(dart_three[1] - dart_three[0])
+#        ddist2 = np.linalg.norm(dart_three[2] - dart_three[0])
         print('dart_three after', dart_three)
         #added
-#        vec1_dart = dart_three[0] - dart_three[1]
-#        vec2_dart = dart_three[2] - dart_three[1]
-#        print('debug', zmat_new.frame['angle'][self.buildlist[2,0]])
-        angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
-        angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-        dart_angle = vec1_sim.dot(vec2_sim) / (np.linalg.norm(vec1_sim) * np.linalg.norm(vec2_sim))
-        print('simulation_angle', np.degrees(np.arccos(dart_angle)))
-        dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
-        print('after_rotation_dart_angle', np.degrees(np.arccos(dart_angle)))
-        print('desired angle', zmat_new.frame['angle'][self.buildlist[2,0]])
-        print('difference with reference angle,', self.internal_zmat[binding_mode_index].frame['angle'][self.buildlist[2,0]] - angle_before)
-        print('selected_random_angle', self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]])
-        print('distance1', dist1, ddist1)
-        print('distance2', dist2, ddist2)
+#        angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+#        angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+#        dart_angle = vec1_sim.dot(vec2_sim) / (np.linalg.norm(vec1_sim) * np.linalg.norm(vec2_sim))
+#        print('simulation_angle', np.degrees(np.arccos(dart_angle)))
+#        dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
+#        print('after_rotation_dart_angle', np.degrees(np.arccos(dart_angle)))
+#        print('desired angle', zmat_new.frame['angle'][self.buildlist[2,0]])
+#        print('difference with reference angle,', self.internal_zmat[binding_mode_index].frame['angle'][self.buildlist[2,0]] - angle_before)
+#        print('selected_random_angle', self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]])
+#        print('distance1', dist1, ddist1)
+#        print('distance2', dist2, ddist2)
 #        print('testing angle', angle_calc(angle1, angle2))
 
         for i, vectors in enumerate([sim_three, ref_three, dart_three]):
