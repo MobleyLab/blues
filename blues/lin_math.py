@@ -68,7 +68,29 @@ def calc_rotation_matrix(vec_ref, vec_target):
     R = I + vx + vx.dot(vx)*(1/(1+vec_cos))
     return R
 
-def rigid_transform_3D(A, B):
+def rigid_transform_3D(A, B, center):
+    assert len(A) == len(B)
+    N = A.shape[0]; # total points
+    centroid_A = A[center]
+    centroid_B = B[center]
+    # centre the points
+    AA = A - np.tile(centroid_A, (N, 1))
+    BB = B - np.tile(centroid_B, (N, 1))
+    # dot is matrix multiplication for array
+    H = np.dot(np.transpose(AA), BB)
+    U, S, Vt = np.linalg.svd(H)
+    R = np.dot(Vt.T, U.T)
+    # special reflection case
+    if np.linalg.det(R) < 0:
+       Vt[2,:] *= -1
+       R = np.dot(Vt.T, U.T)
+    centroid_difference = centroid_B - centroid_A
+    t = -np.dot(R, centroid_A.T) + centroid_B.T
+
+    return R, t, centroid_A, centroid_B, centroid_difference
+
+
+def old_rigid_transform_3D(A, B):
     assert len(A) == len(B)
     N = A.shape[0]; # total points
     centroid_A = np.mean(A, axis=0)
@@ -89,7 +111,7 @@ def rigid_transform_3D(A, B):
 
     return R, t, centroid_A, centroid_B, centroid_difference
 
-def getRotTrans(ares, bres):
+def getRotTrans(ares, bres, center):
     '''
     Get rotation and translation of rigid pose
 
@@ -101,10 +123,26 @@ def getRotTrans(ares, bres):
         comparison positions
     residueList
     '''
-    rot, trans, centa, centb, centroid_difference = rigid_transform_3D(ares, bres)
+    rot, trans, centa, centb, centroid_difference = rigid_transform_3D(ares, bres, center)
     return rot, centroid_difference
 
-def old_getRotTrans(apos, bpos, residueList=None):
+def old_getRotTrans(ares, bres, center):
+    '''
+    Get rotation and translation of rigid pose
+
+    Arguments
+    ---------
+    apos: nx3 np.array
+        simulation positions
+    bpos: nx3 np.array
+        comparison positions
+    residueList
+    '''
+    rot, trans, centa, centb, centroid_difference = rigid_transform_3D(ares, bres, center)
+    return rot, centroid_difference
+
+
+def old_old_getRotTrans(apos, bpos, residueList=None):
     '''
     Get rotation and translation of rigid pose
 

@@ -506,7 +506,7 @@ class MolDart(SimNCMC):
         print('new angle1', np.degrees(calc_angle(ad_vec, nvec2_sim)))
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
-        rot_mat, centroid = getRotTrans(change_three, ref_three)
+        rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
         print('centroid movement', centroid, np.linalg.norm(centroid))
         #TODO CONTINUE FROM HERE
         #perform the same angle change on new coordinate
@@ -523,7 +523,7 @@ class MolDart(SimNCMC):
         print('angle after centroid rotation', np.degrees(calc_angle(vec1_dart, vec2_dart)) )
         #dart_three[vector_list[0][1]] = dart_three[vector_list[0][1]] + centroid
         dart_angle = self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]]
-        angle_change = dart_angle - angle_diff 
+        angle_change = dart_angle - angle_diff
         print('angle_change', angle_change)
         if 0:
             ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
@@ -536,7 +536,7 @@ class MolDart(SimNCMC):
             print('new angle2', np.degrees(calc_angle(ad_dartvec, nvec2_dart)))
             dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
             dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
-        
+
         #end addition
 #        ddist1 = np.linalg.norm(dart_three[1] - dart_three[0])
 #        ddist2 = np.linalg.norm(dart_three[2] - dart_three[0])
