@@ -345,7 +345,7 @@ class MolDart(SimNCMC):
         return return_pos
         #use rot and translation to dart to another pose
 
-    def moldRedart(self, binding_mode_pos, binding_mode_index, nc_pos, symm_pos, residueList=None):
+    def moldRedart(self, binding_mode_pos, binding_mode_index, nc_pos, symm_pos, bond_compare=True, residueList=None):
         """
         Helper function to choose a random pose and determine the vector
         that would translate the current particles to that dart center
@@ -396,14 +396,17 @@ class MolDart(SimNCMC):
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         print('zmat_new', zmat_new)
         if 1:
-             zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
-             #get appropriate comparision zmat
-             zmat_compare = self.internal_zmat[binding_mode_index]
-             for i in ['angle', 'dihedral']:
-                 zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
-             for i in ['angle', 'dihedral']:
+            zmat_diff = xyz_ref.to_zmat(buildlist=self.buildlist)
+            #get appropriate comparision zmat
+            zmat_compare = self.internal_zmat[binding_mode_index]
+            change_list = ['angle', 'dihedral']
+            if bond_compare == True:
+                change_list.append('bond')
+            for i in change_list:
+                zmat_diff.frame[i] = zmat_diff.frame[i] - zmat_compare.frame[i]
+            for i in change_list:
             #change form zmat_compare to random index
-                 zmat_new.frame[i] = zmat_diff.frame[i] + zmat_new.frame[i]
+                zmat_new.frame[i] = zmat_diff.frame[i] + zmat_new.frame[i]
 
 #        random_mode = self.internal_zmat[rand_index]
 #        #random_mode = binding_mode_pos[rand_index].xyz[0]
@@ -537,12 +540,14 @@ class MolDart(SimNCMC):
         dart_angle = self.internal_zmat[rand_index].frame['angle'][self.buildlist[2,0]]
         angle_change = dart_angle - angle_diff
         print('angle_change', angle_change)
-        if 0:
+        if 1:
             ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
-            ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]]/10.
+#            ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]]/10.
+            ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new.frame['bond'][self.buildlist[1,0]]/10.
             print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[1,0]])
             print('length ad_dartvec', np.linalg.norm(ad_dartvec))
-            nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.
+#            nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.
+            nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new.frame['bond'][self.buildlist[2,0]]/10.
             print(self.internal_zmat[rand_index].frame['bond'][self.buildlist[2,0]]/10.)
             print('length nvec2_dart', np.linalg.norm(nvec2_dart))
             print('new angle2', np.degrees(calc_angle(ad_dartvec, nvec2_dart)))
