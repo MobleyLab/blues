@@ -25,7 +25,6 @@ from simtk.openmm import app
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 
 import blues.utils as utils
-import blues.ncmc as ncmc
 import blues.ncmc_switching as ncmc_switching
 from blues.smartdart import SmartDarting
 
@@ -120,7 +119,7 @@ class SimulationFactory(object):
             #Use the fastest available platform
             simulation = app.Simulation(structure.topology, system, integrator)
         else:
-            platform = openmm.Platform.getPlatformByName(opt['platform'])
+            platform = openmm.Platform.getPlatformByName(platform)
             prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
             simulation = app.Simulation(structure.topology, system, integrator, platform, prop)
 
@@ -159,10 +158,10 @@ class SimulationFactory(object):
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices)
 
-        self.md = self.generateSimFromStruct(self.structure, system, **self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, system,  **self.opt)
-        self.nc = self.generateSimFromStruct(self.structure, alch_system,
-                                            self.functions, ncmc=True,  **self.opt)
+        self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
+                                            ncmc=True, **self.opt)
 
 class ModelProperties(object):
     """ModelProperties provides methods for calculating properties on the
@@ -172,7 +171,7 @@ class ModelProperties(object):
     Calculating the object's center of mass will get the positions and total mass.
     Ex.
         from blues.ncmc import ModelProperties
-        model = ModelProperties('LIG', structure)
+        model = ModelProperties(structure, 'LIG')
         model.calculateProperties()
 
     Attributes
@@ -199,10 +198,10 @@ class ModelProperties(object):
         self.atom_indices = self.getAtomIndices(self.resname, structure)
         self.structure = structure[self.atom_indices]
 
-        self.atom_indices = []
         self.totalmass = 0
         self.masses = []
         self.center_of_mass = None
+        self.positions = self.structure.positions
 
     def getAtomIndices(self, resname, structure):
         """
@@ -282,14 +281,12 @@ class MoveProposal(object):
         #Get the dictionary of proposed moves
         mover.nc_move
     """
-    def __init__(self, nc_sim, model, method, nstepsNC):
+    def __init__(self, model, method, nstepsNC):
         """Initialize the MovePropsal object that contains functions to perturb
         the model in the NCMC simulation.
 
         Parameters
         ----------
-        nc_sim : openmm.simulation
-            The OpenMM Simulation object corresponding to the NCMC simulation.
         model : blues.ncmc.ModelProperties object
             The object to be perturbed in the NCMC simulation.
         method : str
@@ -301,22 +298,21 @@ class MoveProposal(object):
         if method not in supported_methods:
             raise Exception("Method %s not implemented" % method)
         else:
-            self.nc_sim = nc_sim
-            self.model = model
             self.nc_move = { 'method' : None , 'step' : 0}
-            self.setMove(method, nstepsNC)
+        self.setMove(method, nstepsNC)
 
-    def random_rotation(self, nc_sim):
+    @staticmethod
+    def random_rotation(model, nc_context):
         """Function that performs a random rotation about the center of mass of
         the model.
         """
-        atom_indices = self.model.atom_indices
-        model_pos = self.model.positions
-        com = self.model.center_of_mass
+        atom_indices = model.atom_indices
+        model_pos = model.positions
+        com = model.center_of_mass
         reduced_pos = model_pos - com
-        nc_sim = self.nc_sim
+        #nc_sim = self.nc_sim
         # Store initial positions of entire system
-        initial_positions = nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
         positions = copy.deepcopy(initial_positions)
 
         # Define random rotational move on the ligand
@@ -329,18 +325,15 @@ class MoveProposal(object):
         # Update ligand positions in nc_sim
         for index, atomidx in enumerate(atom_indices):
             positions[atomidx] = rot_move[index]
-        nc_sim.context.setPositions(positions)
-        return nc_sim
+        nc_context.setPositions(positions)
+        return nc_context
 
-    def setMove(self, method, step=0):
+    def setMove(self, method, step=None):
         """Returns the dictionary that defines the perturbation methods to be
         performed on the model object and the step number to perform it at."""
-        if step == 0:
-            #Default to doing move at half point
-            nc_move['step'] = int(step) / 2 - 1
         nc_move = {}
         nc_move['method']  = getattr(MoveProposal, method)
-        nc_move['step'] = int(step)
+        nc_move['step'] = int(step) / 2 - 1
         self.nc_move = nc_move
         return nc_move
 
@@ -521,11 +514,15 @@ class Simulation(object):
                 self.current_stepNC = int(nc_step)
                 # Calculate Work/Energies Before Step
                 work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
+
                 # Attempt NCMC Move
-                if nc_step == self.nc_move['step']:
+                if int(self.nc_move['step']) == nc_step:
                     print('[Iter {}] Performing NCMC {} move'.format(
                     self.current_iter, self.nc_move['method'].__name__))
-                    self.nc_move['method']
+
+                    #Do move
+                    self.nc_context = self.nc_move['method'](model=self.model, nc_context=self.nc_context)
+
                 # Do 1 NCMC step
                 self.nc_integrator.step(1)
                 # Calculate Work/Energies After Step.

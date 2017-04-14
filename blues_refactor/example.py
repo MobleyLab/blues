@@ -32,7 +32,7 @@ from optparse import OptionParser
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
+            'nIter' : 5, 'nstepsNC' : 10, 'nstepsMD' : 50,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
             'trajectory_interval' : 10, 'reporter_interval' : 10,
             'platform' : platform_name,
@@ -49,12 +49,11 @@ def runNCMC(platform_name):
     sims.createSimulationSet()
 
     # Calculate particle masses of object to be moved
-    model = ncmc.ModelProperties(sims.nc, atom_indices)
-    model.calculateCOM()
+    model = ncmc.ModelProperties(struct, 'LIG')
+    model.calculateProperties()
 
     # Initialize object that proposes moves.
-    mover = ncmc.MoveProposal(sims.nc, model,
-                             'random_rotation', opt['nstepsNC'])
+    mover = ncmc.MoveProposal(model, 'random_rotation', opt['nstepsNC'])
 
     blues = ncmc.Simulation(sims, model, mover, **opt)
     blues.run()
@@ -65,6 +64,7 @@ parser.add_option('-f', '--force', action='store_true', default=False,
 (options, args) = parser.parse_args()
 
 platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
+
 if 'OpenCL' in platformNames:
     runNCMC('OpenCL')
 elif 'CUDA' in platformNames:
