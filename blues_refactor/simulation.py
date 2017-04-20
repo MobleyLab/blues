@@ -167,9 +167,8 @@ class Simulation(object):
         structure = parmed.openmm.load_topology(topology, system,
                                    xyz=state.getPositions())
 
-        outpdb = outfname+'.pdb'
-        structure.save(outpdb,overwrite=True)
-        print('Saving PDB to', outpdb)
+        structure.save(outfname,overwrite=True)
+        print('Saving Frame to', outfname)
 
     def chooseMove(self):
         """Function that chooses to accept or reject the proposed move.
@@ -181,24 +180,12 @@ class Simulation(object):
         log_ncmc = self.nc_integrator.getLogAcceptanceProbability(self.nc_context)
         randnum =  math.log(np.random.random())
 
-        ### Compute Alchemical Correction Term
-        ### ? Why not always add correction term?
+        # Compute Alchemical Correction Term
         if np.isnan(log_ncmc) == False:
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
-
-            #print('alc_oldPE', nc_state0['potential_energy'])
-            #print('oldPE', md_state0['potential_energy'] )
-            #print('norm_newPE', nc_state1['potential_energy'])
-            #print('alc_newPE', alch_state1['potential_energy'])
-
-            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + nc_state1['potential_energy'] - alch_state1['potential_energy']) * (1.0/self.nc_integrator.kT)
-            # Should this be negative 1?
-            #n1_PE = alch_state1['potential_energy'] - nc_state1['potential_energy']
-            #n_PE = md_state0['potential_energy'] - nc_state0['potential_energy']
-            #correction_factor = (-1.0/self.nc_integrator.kT)*( n1_PE - n_PE )
-            #print('correction_factor', correction_factor)
+            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
         if log_ncmc > randnum:
@@ -206,7 +193,7 @@ class Simulation(object):
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             #print('accCounter', float(self.accept)/float(stepsdone+1), self.accept)
             self.md_sim.context.setPositions(nc_state1['positions'])
-            #self.writeFrame(self.md_sim, 'MD-iter{}'.format(self.current_iter))
+            #self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
@@ -216,7 +203,7 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
-    def simulateNCMC(self):
+    def simulateNCMC(self, debug=False):
         """Function that performs the NCMC simulation."""
         for nc_step in range(self.nstepsNC):
             try:
@@ -234,11 +221,20 @@ class Simulation(object):
 
                 # Do 1 NCMC step
                 self.nc_integrator.step(1)
+
                 # Calculate Work/Energies After Step.
                 work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
+
+                if debug:
+                    print('Initial work:', work_initial)
+                    print('Final work:', work_final)
+                    ###TODO write out frame regardless if accepted/REJECTED
+                    # Embed in move function or here???
+                    #self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
+
             except Exception as e:
                 print(e)
-                break #should this be exit?
+                break
 
         nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
@@ -262,11 +258,11 @@ class Simulation(object):
             broken_frame.save_pdb('MD-blues_fail-iter{}_md{}.pdb'.format(self.current_iter, self.current_stepMD))
             exit()
 
-        md_state1 = self.getStateInfo(self.md_sim.context, self.state_keys)
-        self.setSimState('md', 'state1', md_state1)
+        md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
+        self.setSimState('md', 'state0', md_state0)
         # Set NC poistions to last positions from MD
-        self.nc_context.setPositions(md_state1['positions'])
-        self.nc_context.setVelocities(md_state1['velocities'])
+        self.nc_context.setPositions(md_state0['positions'])
+        self.nc_context.setVelocities(md_state0['velocities'])
 
     def run(self):
         """Function that runs the BLUES engine that iterates of the actions:
@@ -278,7 +274,7 @@ class Simulation(object):
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC()
+            self.simulateNCMC(debug=False)
             self.chooseMove()
             self.simulateMD()
 

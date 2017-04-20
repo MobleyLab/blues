@@ -42,6 +42,7 @@ class Model(object):
     ligand.masses : list of particle masses of the ligand with units.
     ligand.totalmass : integer of the total mass of the ligand.
     ligand.center_of_mass : np.array of calculated center of mass of the ligand
+    ligand.positions : np.array of ligands positions
     """
 
     def __init__(self, structure, resname='LIG'):
@@ -54,6 +55,7 @@ class Model(object):
         structure: parmed.Structure
             ParmEd Structure object of the model to be moved.
         """
+        #Dynamic properties are the positions/center of mass
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
@@ -77,6 +79,7 @@ class Model(object):
         atom_indices : list of ints
             list of atoms in the coordinate file matching lig_resname
         """
+        ###TODO: Add option for resnum to better select residue names
         atom_indices = []
         topology = structure.topology
         for atom in topology.atoms():
@@ -153,10 +156,10 @@ class MoveProposal(object):
     def random_rotation(model, nc_context):
         """Function that performs a random rotation about the center of mass of the model during the NCMC simulation.
         """
-
+        ##TODO check if we can remove deepcopy
         initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
         positions = copy.deepcopy(initial_positions)
-        init_model = positions[model.atom_indices]
+        #init_model = positions[model.atom_indices]
 
         model.positions = positions[model.atom_indices]
         model.center_of_mass = model.getCenterOfMass(model.positions, model.masses)
@@ -260,6 +263,7 @@ class SimulationFactory(object):
         """
         if ncmc:
             #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
+            ###TODO Update to nicer function here
             functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                                'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
