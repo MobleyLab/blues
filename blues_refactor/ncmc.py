@@ -15,7 +15,7 @@ import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
 
-import utils
+from blues_refactor import utils
 from blues.ncmc_switching import NCMCVVAlchemicalIntegrator
 
 import sys, parmed, math, copy

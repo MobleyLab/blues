@@ -1,6 +1,6 @@
 
 import unittest, os, parmed
-import blues.utils as utils
+from blues_refactor import utils
 import blues_refactor.ncmc as ncmc
 from blues_refactor.ncmc import *
 from simtk import openmm
