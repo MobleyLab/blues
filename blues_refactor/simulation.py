@@ -151,6 +151,28 @@ class Simulation(object):
             workinfo['param'] = nc_integrator.getGlobalVariableByName(param)
         return workinfo
 
+    def writeFrame(self, simulation, outfname):
+        """Extracts a ParmEd structure and writes the frame given
+        an OpenMM Simulation object"""
+        topology = simulation.topology
+        system = simulation.context.getSystem()
+        state = simulation.context.getState(getPositions=True,
+                                            getVelocities=True,
+                                            getParameters=True,
+                                            getForces=True,
+                                            getParameterDerivatives=True,
+                                            getEnergy=True,
+                                            enforcePeriodicBox=True)
+
+
+        # Generate the ParmEd Structure
+        structure = parmed.openmm.load_topology(topology, system,
+                                   xyz=state.getPositions())
+
+        outpdb = outfname+'.pdb'
+        structure.save(outpdb,overwrite=True)
+        print('Saving PDB to', outpdb)
+
     def chooseMove(self):
         """Function that chooses to accept or reject the proposed move.
         """
@@ -162,6 +184,7 @@ class Simulation(object):
         randnum =  math.log(np.random.random())
 
         ### Compute Alchemical Correction Term
+        ### ? Why not always add correction term?
         if np.isnan(log_ncmc) == False:
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
@@ -185,6 +208,8 @@ class Simulation(object):
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             #print('accCounter', float(self.accept)/float(stepsdone+1), self.accept)
             self.md_sim.context.setPositions(nc_state1['positions'])
+            self.writeFrame(self.md_sim, 'MD-iter{}'.format(self.current_iter))
+
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
@@ -263,4 +288,4 @@ class Simulation(object):
         # END OF NITER
         self.accept_ratio = self.accept/float(self.nIter)
         print('Acceptance Ratio', self.accept_ratio)
-        print('numsteps ', self.nstepsNC)
+        print('nIter ', self.nIter)
