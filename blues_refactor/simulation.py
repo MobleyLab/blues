@@ -1,11 +1,10 @@
 from __future__ import print_function
-import simtk.unit as unit
-from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
+#from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
+#from openmmtools.alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 import numpy as np
 
 from simtk import unit, openmm
 from simtk.openmm import app
-from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 
 import utils
 from blues.ncmc_switching import NCMCVVAlchemicalIntegrator
@@ -14,8 +13,7 @@ import sys, parmed, math, copy
 import numpy as np
 import mdtraj
 from mdtraj.reporters import HDF5Reporter
-from datetime import datetime
-from optparse import OptionParser
+
 
 class Simulation(object):
     """Simulation class provides the functions that perform the BLUES run.
@@ -208,8 +206,7 @@ class Simulation(object):
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             #print('accCounter', float(self.accept)/float(stepsdone+1), self.accept)
             self.md_sim.context.setPositions(nc_state1['positions'])
-            self.writeFrame(self.md_sim, 'MD-iter{}'.format(self.current_iter))
-
+            #self.writeFrame(self.md_sim, 'MD-iter{}'.format(self.current_iter))
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )

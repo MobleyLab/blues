@@ -8,24 +8,20 @@ version: 0.0.2 (WIP-Refactor)
 """
 
 from __future__ import print_function
-import simtk.unit as unit
-from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
+#from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
+from openmmtools import alchemy
 import numpy as np
 
 from simtk import unit, openmm
 from simtk.openmm import app
-from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 
 import utils
 from blues.ncmc_switching import NCMCVVAlchemicalIntegrator
 
-import sys, parmed, copy
+import sys, parmed, math, copy
 import numpy as np
 import mdtraj
 from mdtraj.reporters import HDF5Reporter
-from datetime import datetime
-from optparse import OptionParser
-
 
 class Model(object):
     """Model provides methods for calculating properties on the
@@ -131,7 +127,7 @@ class MoveProposal(object):
         mover = MoveProposal(model, 'random_rotation', nstepsNC)
 
         #Get the dictionary of proposed moves
-        mover.move
+        mover.moves
     """
     def __init__(self, model, method, nstepsNC):
         """Initialize the MovePropsal object that contains functions to perturb
@@ -222,10 +218,13 @@ class SimulationFactory(object):
         atom_indices : list
             Atom indicies of the model.
         """
-        factory = AbsoluteAlchemicalFactory(system, atom_indices,
-                                            annihilate_sterics=True,
-                                            annihilate_electrostatics=True)
-        alch_system = factory.createPerturbedSystem()
+        factory = alchemy.AlchemicalFactory()
+        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
+        alch_system = factory.create_alchemical_system(system, alch_region)
+        #factory = AbsoluteAlchemicalFactory(system, atom_indices,
+        #                                    annihilate_sterics=True,
+        #                                    annihilate_electrostatics=True)
+        #alch_system = factory.createPerturbedSystem()
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,

@@ -12,20 +12,13 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 version: 0.0.2 (WIP-Refactor)
 """
 from __future__ import print_function
-from simtk import unit, openmm
-from simtk.openmm import app
-from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
-
 import ncmc
 import utils
 from simulation import Simulation
-
-import sys, os, parmed
-import numpy as np
-import mdtraj as md
-from mdtraj.reporters import HDF5Reporter
-from optparse import OptionParser
+import parmed
 from simtk import unit, openmm
+from datetime import datetime
+from optparse import OptionParser
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
