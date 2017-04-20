@@ -16,46 +16,43 @@ from simtk import unit, openmm
 from simtk.openmm import app
 from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 
-import blues.utils as utils
-
-import blues.ncmc_switching as ncmc_switching
-from blues.smartdart import SmartDarting
-
-import blues_refactor.ncmc as ncmc
+import ncmc
+import utils
+from simulation import Simulation
 
 import sys, os, parmed
 import numpy as np
 import mdtraj as md
 from mdtraj.reporters import HDF5Reporter
 from optparse import OptionParser
-
+from simtk import unit, openmm
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 5, 'nstepsNC' : 10, 'nstepsMD' : 50,
+            'nIter' : 100, 'nstepsNC' : 2, 'nstepsMD' : 2,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-            'trajectory_interval' : 10, 'reporter_interval' : 10,
+            'trajectory_interval' : 1000, 'reporter_interval' : 1,
             'platform' : platform_name,
             'verbose' : True }
 
-    # Obtain topologies/positions
-    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')
+    #Generate the ParmEd Structure
+    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
     inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
     struct = parmed.load_file(prmtop, xyz=inpcrd)
-    atom_indices = utils.atomIndexfromTop('LIG', struct.topology)
 
-    # Generate the MD, NCMC, ALCHEMICAL Simulation objects
-    sims = ncmc.SimulationFactory(struct, atom_indices, **opt)
-    sims.createSimulationSet()
-
+    #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
-    model = ncmc.ModelProperties(struct, 'LIG')
-    model.calculateProperties()
+    ligand = ncmc.Model(struct, 'LIG')
+    ligand.calculateProperties()
 
     # Initialize object that proposes moves.
-    mover = ncmc.MoveProposal(model, 'random_rotation', opt['nstepsNC'])
+    ligand_mover = ncmc.MoveProposal(ligand, 'random_rotation', opt['nstepsNC'])
 
-    blues = ncmc.Simulation(sims, model, mover, **opt)
+    # Generate the MD, NCMC, ALCHEMICAL Simulation objects
+    simulations = ncmc.SimulationFactory(struct, ligand, **opt)
+    simulations.createSimulationSet()
+
+    blues = Simulation(simulations, ligand, ligand_mover, **opt)
     blues.run()
 
 parser = OptionParser()

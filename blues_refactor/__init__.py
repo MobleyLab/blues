@@ -8,9 +8,6 @@ BLUES
 from . import version
 __version__ = version.version
 
-# Self module imports
-from . import utils
 from . import ncmc
-from . import ncmc_switching
-from . import posedart
-from . import smartdart
+from . import utils
+from . import simulation
