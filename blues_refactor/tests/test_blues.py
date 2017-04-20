@@ -9,7 +9,7 @@ import simtk.unit as unit
 import numpy as np
 class BLUESTester(unittest.TestCase):
     """
-    Test the ModelProperties class.
+    Test the Model class.
     """
     def setUp(self):
         # Load the waterbox with toluene into a structure.
@@ -26,17 +26,15 @@ class BLUESTester(unittest.TestCase):
 
     def test_modelproperties(self):
         # Model.structure must be residue selection.
-        model = ModelProperties(self.full_struct, 'LIG')
-        self.assertNotEqual(len(model.structure.atoms), len(self.full_struct.atoms))
+        model = Model(self.full_struct, 'LIG')
+        self.assertNotEqual(model.topology.getNumAtoms(), len(self.full_struct.atoms))
 
         # Test each function separately
-        masses = model.getMasses(model.structure)
+        masses, totalmass = model.getMasses(model.topology)
         self.assertNotEqual(len(masses), 0)
-
-        totalmass = model.getTotalMass(masses)
         self.assertEqual(totalmass, masses.sum())
 
-        center_of_mass = model.getCenterOfMass(model.structure, masses)
+        center_of_mass = model.getCenterOfMass(model.positions, masses)
         self.assertNotEqual(center_of_mass, [0, 0, 0])
 
         # Test function that calcs all properties
@@ -48,8 +46,8 @@ class BLUESTester(unittest.TestCase):
 
     def test_simulationfactory(self):
         #Initialize the SimulationFactory object
-        model = ModelProperties(self.full_struct, 'LIG')
-        sims = SimulationFactory(self.full_struct, model.atom_indices, **self.opt)
+        model = Model(self.full_struct, 'LIG')
+        sims = SimulationFactory(self.full_struct, model, **self.opt)
 
         system = sims.generateSystem(self.full_struct, **self.opt)
         self.assertIsInstance(system, openmm.System)
@@ -64,6 +62,5 @@ class BLUESTester(unittest.TestCase):
         self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
 
         #sims.createSimulationSet()
-
 if __name__ == "__main__":
         unittest.main()

@@ -1,6 +1,6 @@
 
 import unittest, os, parmed
-import blues.utils as utils
+from blues_refactor import utils
 import blues_refactor.ncmc as ncmc
 from simtk import openmm
 
@@ -13,7 +13,7 @@ class MoveProposalTester(unittest.TestCase):
         prmtop = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.prmtop')
         inpcrd = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.inpcrd')
         structure = parmed.load_file(prmtop, xyz=inpcrd)
-        print(structure)
+
         self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
@@ -23,30 +23,29 @@ class MoveProposalTester(unittest.TestCase):
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
                 'platform' : None,
                 'verbose' : False }
-        sims = ncmc.SimulationFactory(structure, self.atom_indices, **self.opt)
-        sims.createSimulationSet()
 
-        self.nc_sim = sims.nc
-        self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
-        #Initialize the ModelProperties object
-        self.model = ncmc.ModelProperties(structure, 'LIG')
+        #Initialize the Model object
+        self.model = ncmc.Model(structure, 'LIG')
         self.model.calculateProperties()
+        #Initialize the SimulationFactory object
+        sims = ncmc.SimulationFactory(structure, self.model, **self.opt)
+        system = sims.generateSystem(structure, **self.opt)
+        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
+        self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
 
+        self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.mover = ncmc.MoveProposal(self.model, 'random_rotation', self.opt['nstepsNC'])
 
     def test_random_rotation(self):
-        initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        mover = ncmc.MoveProposal(self.model, 'random_rotation', self.opt['nstepsNC'])
-        nc_context = mover.nc_move['method'](self.model, self.nc_sim.context)
-
+        model, nc_context = self.mover.moves['method'](self.model, self.nc_sim.context)
         rot_pos = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-
         #for idx in self.atom_indices:
         #    print('Initial')
         #    print(initial_positions[idx,:]._value)
         #    print('Rotated')
         #    print(rot_pos[idx,:]._value)
-        self.assertNotEqual(rot_pos.tolist(), initial_positions.tolist())
+        self.assertNotEqual(rot_pos.tolist(), self.initial_positions.tolist())
 
 if __name__ == "__main__":
         unittest.main()
