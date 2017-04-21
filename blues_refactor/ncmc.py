@@ -4,11 +4,10 @@ ncmc.py: Provides the Simulation class for running the NCMC simulation.
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, David L. Mobley
 
-version: 0.0.2 (WIP-Refactor)
+version: 0.0.3
 """
 
 from __future__ import print_function
-#from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 from openmmtools import alchemy
 import numpy as np
 
@@ -37,10 +36,12 @@ class Model(object):
     Attributes
     ----------
     ligand.resname : string specifying the residue name of the ligand
+    ligand.topology : openmm.topology of ligand
     ligand.atom_indices : list of atom indicies of the ligand.
-    ligand.structure : parmed.Structure of the ligand selected by resname.
     ligand.masses : list of particle masses of the ligand with units.
     ligand.totalmass : integer of the total mass of the ligand.
+
+    #Dynamic attribtues that must be updated with each iteration
     ligand.center_of_mass : np.array of calculated center of mass of the ligand
     ligand.positions : np.array of ligands positions
     """
@@ -55,15 +56,15 @@ class Model(object):
         structure: parmed.Structure
             ParmEd Structure object of the model to be moved.
         """
-        #Dynamic properties are the positions/center of mass
+
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
-        self.positions = structure[self.atom_indices].positions
-
         self.totalmass = 0
         self.masses = []
+
         self.center_of_mass = None
+        self.positions = structure[self.atom_indices].positions
 
     def getAtomIndices(self, structure, resname):
         """
@@ -196,8 +197,15 @@ class SimulationFactory(object):
         sims.createSimulationSet()
     """
     def __init__(self, structure, model, **opt):
-        """Requires a parmed.Structure of the entire system and the 'model'
-        object being perturbed."""
+        """Requires a parmed.Structure of the entire system and the ncmc.Model
+        object being perturbed.
+
+        Options is expected to be a dict of values. Ex:
+        nIter=5, nstepsNC=50, nstepsMD=10000,
+        temperature=300, friction=1, dt=0.002,
+        nonbondedMethod='PME', nonbondedCutoff=10, constraints='HBonds',
+        trajectory_interval=1000, reporter_interval=1000, platform=None,
+        verbose=False"""
 
         #Structure of entire system
         self.structure = structure
@@ -216,7 +224,7 @@ class SimulationFactory(object):
 
         Parameters
         ----------
-        context : openmm.System
+        system : openmm.System
             The OpenMM System object corresponding to the reference system.
         atom_indices : list
             Atom indicies of the model.
@@ -224,10 +232,6 @@ class SimulationFactory(object):
         factory = alchemy.AlchemicalFactory()
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
         alch_system = factory.create_alchemical_system(system, alch_region)
-        #factory = AbsoluteAlchemicalFactory(system, atom_indices,
-        #                                    annihilate_sterics=True,
-        #                                    annihilate_electrostatics=True)
-        #alch_system = factory.createPerturbedSystem()
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
@@ -263,9 +267,8 @@ class SimulationFactory(object):
         """
         if ncmc:
             #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
-            ###TODO Update to nicer function here
-            functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
-                               'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+            functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
             integrator = NCMCVVAlchemicalIntegrator(temperature*unit.kelvin,
                                                     system,
@@ -278,14 +281,14 @@ class SimulationFactory(object):
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
                                                    dt*unit.picoseconds)
-        ###TODO SIMPLIFY TO 1 LINE.
+        #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
         if platform is None:
             #Use the fastest available platform
             simulation = app.Simulation(structure.topology, system, integrator)
         else:
             platform = openmm.Platform.getPlatformByName(platform)
-            prop = dict(DeviceIndex='0') # For local testing with multi-GPU Mac.
+            prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
             simulation = app.Simulation(structure.topology, system, integrator, platform, prop)
 
         if verbose:
@@ -295,9 +298,9 @@ class SimulationFactory(object):
             print('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()), file=printfile)
 
             # Host information
-            from platform import uname
-            for k,v in uname()._asdict().items():
-                print(k, ':', v, file=printfile)
+            #from platform import uname
+            #for k,v in uname()._asdict().items():
+            #    print(k, ':', v, file=printfile)
 
             # Platform properties
             for prop in mmplat.getPropertyNames():
@@ -308,12 +311,6 @@ class SimulationFactory(object):
         # Will get overwritten from saved State.
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(temperature*unit.kelvin)
-
-        #init = simulation.context.getState(getEnergy=True)
-        #print('Initial energy = {}'.format(init.getPotentialEnergy()))
-        #simulation.minimizeEnergy()
-        #minene = #simulation.context.getState(getPositions=True,getEnergy=True).getPotentialEnergy()
-        #print('Minimized energy = {}'.format(minene))
 
         ###TODO MOVE SIMULATION REPORTERS TO OWN FUNCTION.
         simulation.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
