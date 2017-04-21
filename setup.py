@@ -16,8 +16,8 @@ import subprocess
 DOCLINES = __doc__.split("\n")
 
 ########################
-VERSION = "0.0.1"  # Primary base version of the build
-DEVBUILD = "2"      # Dev build status, Either None or Integer as string
+VERSION = "0.0.3"  # Primary base version of the build
+DEVBUILD = "1"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
@@ -130,8 +130,8 @@ setup(
     platforms = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
     classifiers=CLASSIFIERS.splitlines(),
     package_dir={'blues': 'blues'},
-    packages=['blues', "blues_refactor.tests", "blues_refactor.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
-    package_data={'blues': find_package_data('blues_refactor/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
+    packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
+    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
     zip_safe=False,
     include_package_data=True

@@ -1,7 +1,7 @@
 
 import unittest, os, parmed
-from blues_refactor import utils
-import blues_refactor.ncmc as ncmc
+from blues import utils
+from blues import ncmc
 from simtk import openmm
 
 class MoveProposalTester(unittest.TestCase):
@@ -10,8 +10,8 @@ class MoveProposalTester(unittest.TestCase):
     """
     def setUp(self):
         # Obtain topologies/positions
-        prmtop = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.prmtop')
-        inpcrd = utils.get_data_filename('blues_refactor', 'tests/data/TOL-parm.inpcrd')
+        prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
+        inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
         structure = parmed.load_file(prmtop, xyz=inpcrd)
 
         self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
