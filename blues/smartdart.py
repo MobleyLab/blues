@@ -1,3 +1,11 @@
+"""
+smartdart.py: Provides the class for performing smart darting moves
+during an NCMC simulation.
+
+Authors: Samuel C. Gill
+Contributors: David L. Mobley
+"""
+
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
@@ -684,4 +692,3 @@ class SmartDarting(SimNCMC):
 #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
-

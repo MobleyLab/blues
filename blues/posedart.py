@@ -1,3 +1,11 @@
+"""
+posedart.py: Provides the class for performing smart darting moves
+during an NCMC simulation.
+
+Authors: Samuel C. Gill
+Contributors: David L. Mobley
+"""
+
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
@@ -72,8 +80,8 @@ class PoseDart(SimNCMC):
         self.residueList = residueList
 
     def defineLigandAtomsFromFile(lig_resname, coord_file, top_file=None):
-        self.residueList = get_lig_residues(lig_resname, 
-                                    coord_file, 
+        self.residueList = get_lig_residues(lig_resname,
+                                    coord_file,
                                     top_file)
 
 
@@ -87,7 +95,7 @@ class PoseDart(SimNCMC):
         dist_list = np.zeros((num_lig_atoms, 1))
         diff_list = np.zeros((num_lig_atoms, 3))
         indexList = []
-        #Find the distances of the center to each dart, appending 
+        #Find the distances of the center to each dart, appending
         #the results to dist_list
         #TODO change to handle np.arrays instead
 
@@ -198,7 +206,7 @@ class PoseDart(SimNCMC):
         changevec: list
             The change in vector that you want to apply,
             typically supplied by poseDart
-        """ 
+        """
         if residueList == None:
             residueList = self.residueList
             changed_pos = copy.deepcopy(nc_pos)
@@ -249,9 +257,9 @@ class PoseDart(SimNCMC):
             print('no pose found')
         else:
             print('yes pose found')
-            new_pos = self.poseRedart(changevec=diff_list, 
-                binding_mode_pos=self.binding_mode_traj, 
-                binding_mode_index=selected_pose, 
+            new_pos = self.poseRedart(changevec=diff_list,
+                binding_mode_pos=self.binding_mode_traj,
+                binding_mode_index=selected_pose,
                 nc_pos=oldDartPos)
             context.setPositions(new_pos)
             stateinfo = context.getState(True, True, False, True, True, False)
@@ -276,12 +284,12 @@ class PoseDart(SimNCMC):
 
 
     def findDart(self, particle_pairs=None, particle_weights=None):
-        """ 
+        """
         For dynamically updating dart positions based on positions
         of other particles.
         This takes the weighted average of the specified particles
         and changes the dartboard of the object
-        
+
         Arguments
         ---------
         particle_pairs: list of list of ints
@@ -299,7 +307,7 @@ class PoseDart(SimNCMC):
             particle_pairs = self.particle_pairs
         if particle_weights == None:
             particle_weights = self.particle_weights
-        #make sure there's an equal number of particle pair lists 
+        #make sure there's an equal number of particle pair lists
         #and particle weight lists
         assert len(particle_pairs) == len(particle_weights)
 
@@ -316,19 +324,19 @@ class PoseDart(SimNCMC):
                 temp_array += (temp_pos[particle] * float(particle_weights[i][j]))
                 temp_wavg += float(particle_weights[i][j])
                 print(temp_array)
-            #divide by total number of particles in a list and append 
+            #divide by total number of particles in a list and append
             #calculated postion to dart_list
             dart_list.append(temp_array[:] / temp_wavg)
         self.dartboard = dart_list[:]
         return dart_list
 
     def virtualDart(self, virtual_particles=None):
-        """ 
+        """
         For dynamically updating dart positions based on positions
         of other particles.
         This takes the weighted average of the specified particles
         and changes the dartboard of the object
-        
+
         Arguments
         ---------
         virtual_particles: list of ints
@@ -362,16 +370,16 @@ class PoseDart(SimNCMC):
         """
         Helper function to choose a random dart and determine the vector
         that would translate the COM to that dart center
-        """ 
+        """
         dartindex = np.random.randint(len(self.dartboard))
         dart_origin = self.dartboard[dartindex]
-        chboard = dvector + changevec   
+        chboard = dvector + changevec
         print('chboard', chboard)
         return chboard
 
     def dartmove(self, context=None, residueList=None):
         """
-        Obsolete function kept for reference. 
+        Obsolete function kept for reference.
         """
         if residueList == None:
             residueList = self.residueList
@@ -386,7 +394,7 @@ class PoseDart(SimNCMC):
         print('changevec', changevec)
         if selectedboard != None:
         #notes
-        #comMove is where the com ends up after accounting from where 
+        #comMove is where the com ends up after accounting from where
         #it was from the original dart center
         #basically it's final displacement location
             newDartPos = copy.deepcopy(oldDartPos)
@@ -448,7 +456,7 @@ class PoseDart(SimNCMC):
 
     def updateDartMove(self, context=None, residueList=None):
         """
-        Function for performing smart darting move with darts that 
+        Function for performing smart darting move with darts that
         depend on particle positions in the system
         """
 
@@ -486,7 +494,7 @@ class PoseDart(SimNCMC):
 
     def virtualDartMove(self, context=None, residueList=None):
         """
-        Function for performing smart darting move with darts that 
+        Function for performing smart darting move with darts that
         depend on particle positions in the system
         """
 
@@ -521,6 +529,3 @@ class PoseDart(SimNCMC):
 #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
-
-
-
