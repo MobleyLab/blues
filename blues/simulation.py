@@ -1,6 +1,10 @@
+"""
+simulation.py: Provides the Simulation class object that runs the BLUES engine
+
+Authors: Samuel C. Gill
+Contributors: Nathan M. Lim, David L. Mobley
+"""
 from __future__ import print_function
-#from alchemy import AbsoluteAlchemicalFactory, AlchemicalState
-#from openmmtools.alchemy import AbsoluteAlchemicalFactory, AlchemicalState
 import numpy as np
 
 from simtk import unit, openmm

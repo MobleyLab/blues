@@ -8,9 +8,8 @@ Contributors: Nathan M. Lim, David L. Mobley
 * Benchmarking related code adapted from:
 https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 (Authors: Peter Eastman)
-
-version: 0.0.3
 """
+
 from __future__ import print_function
 from blues import ncmc
 from blues import utils

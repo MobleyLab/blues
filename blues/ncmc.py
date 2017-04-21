@@ -1,10 +1,9 @@
 """
-ncmc.py: Provides the Simulation class for running the NCMC simulation.
+ncmc.py: Provides the core class objects (Model, MoveProposal, SimulationFactory)
+required to run the BLUES engine
 
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, David L. Mobley
-
-version: 0.0.3
 """
 
 from __future__ import print_function
@@ -124,7 +123,7 @@ class Model(object):
 
 class MoveProposal(object):
     """MoveProposal provides perturbation functions for the model during the NCMC
-    simulation. Current supported methods: random rotation.
+    simulation. Current supported methods: 'random_rotation.''
 
     Ex.
         from blues.ncmc import MoveProposal
