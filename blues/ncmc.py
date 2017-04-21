@@ -41,7 +41,7 @@ class Model(object):
     ligand.masses : list of particle masses of the ligand with units.
     ligand.totalmass : integer of the total mass of the ligand.
 
-    #Dynamic attribtues that must be updated with each iteration
+    #Dynamic attributes that must be updated with each iteration
     ligand.center_of_mass : np.array of calculated center of mass of the ligand
     ligand.positions : np.array of ligands positions
     """
@@ -157,10 +157,9 @@ class MoveProposal(object):
     def random_rotation(model, nc_context):
         """Function that performs a random rotation about the center of mass of the model during the NCMC simulation.
         """
-        ##TODO check if we can remove deepcopy
+        #TODO check if we can remove deepcopy
         initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
         positions = copy.deepcopy(initial_positions)
-        #init_model = positions[model.atom_indices]
 
         model.positions = positions[model.atom_indices]
         model.center_of_mass = model.getCenterOfMass(model.positions, model.masses)
@@ -179,7 +178,6 @@ class MoveProposal(object):
         positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
         model.positions = positions[model.atom_indices]
 
-        #print('Diff', init_model - model.positions)
         return model, nc_context
 
     def setMove(self, method, step):
@@ -298,6 +296,7 @@ class SimulationFactory(object):
             print('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()), file=printfile)
 
             # Host information
+            # ._asdict() is incompatible with py2.7
             #from platform import uname
             #for k,v in uname()._asdict().items():
             #    print(k, ':', v, file=printfile)
@@ -312,7 +311,7 @@ class SimulationFactory(object):
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(temperature*unit.kelvin)
 
-        ###TODO MOVE SIMULATION REPORTERS TO OWN FUNCTION.
+        #TODO MOVE SIMULATION REPORTERS TO OWN FUNCTION.
         simulation.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
                                     reportInterval=reporter_interval,
                                     step=True, totalSteps=nIter*nstepsMD,

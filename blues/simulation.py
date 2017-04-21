@@ -110,7 +110,7 @@ class Simulation(object):
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
-        list of parameters to queuey it with.
+        list of parameters to query it with.
         Returns a dict of the data from the State.
 
         Parameters
@@ -191,19 +191,17 @@ class Simulation(object):
         if log_ncmc > randnum:
             self.accept += 1
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
-            #print('accCounter', float(self.accept)/float(stepsdone+1), self.accept)
             self.md_sim.context.setPositions(nc_state1['positions'])
             #self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
-            #print('ncmc PE', newinfo['potential_energy'], 'old PE', md_PE0)
             self.nc_context.setPositions(md_state0['positions'])
 
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
-    def simulateNCMC(self, debug=False):
+    def simulateNCMC(self, verbose=False):
         """Function that performs the NCMC simulation."""
         for nc_step in range(self.nstepsNC):
             try:
@@ -225,10 +223,10 @@ class Simulation(object):
                 # Calculate Work/Energies After Step.
                 work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
 
-                if debug:
+                if verbose:
                     print('Initial work:', work_initial)
                     print('Final work:', work_final)
-                    ###TODO write out frame regardless if accepted/REJECTED
+                    #TODO write out frame regardless if accepted/REJECTED
                     # Embed in move function or here???
                     #self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
 
@@ -265,7 +263,7 @@ class Simulation(object):
         self.nc_context.setVelocities(md_state0['velocities'])
 
     def run(self):
-        """Function that runs the BLUES engine that iterates of the actions:
+        """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state.
         """
@@ -274,7 +272,7 @@ class Simulation(object):
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC(debug=False)
+            self.simulateNCMC()
             self.chooseMove()
             self.simulateMD()
 
