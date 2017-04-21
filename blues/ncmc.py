@@ -263,7 +263,9 @@ class SimulationFactory(object):
             Atom indicies of the model.
         """
         if ncmc:
-            #Defines ncmc move eqns for lambda peturbation of sterics/electrostatics
+            #During NCMC simulation, lambda parameters are controlled by function dict below
+            # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
+            # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
             functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
