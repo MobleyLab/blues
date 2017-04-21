@@ -27,7 +27,7 @@ install:
     - conda list
 
 script:
- - py.test -v blues_refactor
+ - py.test -v blues
 
 env:
   matrix:
