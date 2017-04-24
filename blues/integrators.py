@@ -1,4 +1,15 @@
 from openmmtools.integrators import LangevinIntegrator
+import numpy
+import logging
+import re
+
+import simtk.unit
+
+import simtk.unit as units
+import simtk.openmm as mm
+
+from openmmtools.constants import kB
+
 #TODO use Nonequilibrium baseclass directly
 class AlchemicalLangevinSplittingIntegrator(LangevinIntegrator):
     """Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
@@ -54,7 +65,7 @@ class AlchemicalLangevinSplittingIntegrator(LangevinIntegrator):
                  measure_shadow_work=False,
                  measure_heat=True,
                  direction="forward",
-                 steps_per_propagation=1
+                 steps_per_propagation=1,
                  nsteps_neq=100):
         """
         Parameters
