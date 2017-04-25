@@ -16,7 +16,8 @@ def test_nonequilibrium_external_integrator():
     integrator = NonequilibriumExternalLangevinIntegrator(alchemical_functions=functions,
                             timestep=0.05*simtk.unit.femtoseconds,
                             nsteps_neq=nsteps_neq,
-                            measure_shadow_work=True)
+                            measure_shadow_work=False,
+                            steps_per_propagation=2)
     for i in range(20):
         print(integrator.getGlobalVariableName(i))
 
@@ -34,5 +35,4 @@ def test_nonequilibrium_external_integrator():
     #protocol work is around 550.0
     assert 548.0 < protocol_work
     assert 551.0 > protocol_work
-
 
