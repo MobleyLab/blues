@@ -47,7 +47,7 @@ The `Simulation` class in `blues/simulation.py` serves as a wrapper for running 
 ## Versions:
 - Version 0.0.1: Basic BLUES functionality/package
 - [Version 0.0.2](http://dx.doi.org/10.5281/zenodo.438714): Maintenance release fixing a critical bug and improving organization as a package.
-- Version 0.0.3: Refactored BLUES functionality and design.
+- [Version 0.0.3](http://doi.org/10.5281/zenodo.569065): Refactored BLUES functionality and design.
 
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.
