@@ -18,8 +18,6 @@ def test_nonequilibrium_external_integrator():
                             nsteps_neq=nsteps_neq,
                             measure_shadow_work=False,
                             steps_per_propagation=2)
-    for i in range(20):
-        print(integrator.getGlobalVariableName(i))
 
     simulation = Simulation(testsystem.topology, alanine_alchemical_system, integrator)
     simulation.context.setPositions(testsystem.positions)
@@ -32,7 +30,9 @@ def test_nonequilibrium_external_integrator():
             pos[0,1] = pos[0,1] + 0.5*simtk.unit.nanometers
             simulation.context.setPositions(pos)
     print(protocol_work)
-    #protocol work is around 550.0
-    assert 548.0 < protocol_work
-    assert 551.0 > protocol_work
+    #protocol work is around 221.0
+    assert 220.0 < protocol_work
+    assert 223.0 > protocol_work
 
+if __name__ == '__main__':
+    test_nonequilibrium_external_integrator()

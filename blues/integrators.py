@@ -127,7 +127,7 @@ class NonequilibriumExternalLangevinIntegrator(NonequilibriumLangevinIntegrator)
         self.addComputeGlobal("unperturbed_pe", "energy")
         self.endBlock()
         self.addComputeGlobal("perturbed_pe", "energy")
-        self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
+        self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)/kT")
         #repeat BAOAB integration psteps number of times per lambda
         self.addComputeGlobal("pstep", "0")
         self.beginWhileBlock('pstep < psteps')
