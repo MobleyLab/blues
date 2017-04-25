@@ -65,10 +65,11 @@ simulations.createSimulationSet()
 In order to run the BLUES simulation, we provide the `Simulation()` class the 3 core objects described above.
 From the example:
 
-``python    
+```python    
 blues = Simulation(simulations, ligand, ligand_mover, **opt)
 blues.run()
-``
+```
+
 In each NCMC iteration, there are 4 general stages:
  1. `setStateConditions()`: store the current state of our Simulations to a dict.
  2. `simulateNCMC()` : Alchemically scale our ligand interactions and perform the rotational move.
@@ -109,3 +110,46 @@ After the MD simulation has completed the specified number of steps, we set the 
 In regards to velocities, it may be important to note:
 - *Before the MD simulation*, velocities are randomly initialized by the selected temperature.
 - *After the MD simulation*, the NCMC simulation uses velocities from the final state of the MD simulation.
+
+# Implementing other non-equilibrium moves
+To implement a new move into the BLUES framework, additions need to be made to 2 classes:
+`MoveProposal()` and `Model()`.
+
+Under the `MoveProposal()` class, define a new function that will perform your new move type.
+Some general guidelines to follow when implementing a new function:
+1. Inputs should be the OpenMM Context corresponding to the NCMC simulation and the `model` object generated from the `Model()` class.  
+2. Be sure to update the relevant attributes to the `model` object (i.e `model.positions`)
+
+Under the `Model()` class, add any related functions required for your move.
+These functions should strictly be methods that store/calculate some properties of the ligand being perturbed.
+In our example, we need the ligand's center of mass, which we obtain from the class's function `getCenterOfMass()`
+
+
+For example, the implementation of random_rotation is shown below:
+
+```python
+def random_rotation(model, nc_context):
+    initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
+    positions = copy.deepcopy(initial_positions)
+
+    model.positions = positions[model.atom_indices]
+    model.center_of_mass = model.getCenterOfMass(model.positions, model.masses)
+    reduced_pos = model.positions - model.center_of_mass
+
+    # Define random rotational move on the ligand
+    rand_quat = mdtraj.utils.uniform_quaternion()
+    rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
+    #multiply lig coordinates by rot matrix and add back COM translation from origin
+    rot_move =  np.dot(reduced_pos, rand_rotation_matrix) * positions.unit + model.center_of_mass
+
+    # Update ligand positions in nc_sim
+    for index, atomidx in enumerate(model.atom_indices):
+        positions[atomidx] = rot_move[index]
+    nc_context.setPositions(positions)
+    positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
+    model.positions = positions[model.atom_indices]
+
+    return model, nc_context
+```
+
+In short, `MoveProposal()` will operate on the NCMC simulation's Context by actually performing the move, using the current context to update the ligands positions. `Model()` is intended to provide functionality for storing attributes required to do the move itself.
