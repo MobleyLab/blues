@@ -2,7 +2,7 @@ from openmmtools import testsystems, alchemy
 from openmmtools.alchemy import AlchemicalFactory, AlchemicalRegion
 from simtk.openmm.app import Simulation
 import simtk
-from integrators import NonequilibriumExternalLangevinIntegrator
+from blues.integrators import NonequilibriumExternalLangevinIntegrator
 def test_nonequilibrium_external_integrator():
     testsystem = testsystems.AlanineDipeptideVacuum()
     functions = { 'lambda_sterics' : '1', 'lambda_electrostatics' : '1'}
