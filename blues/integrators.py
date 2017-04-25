@@ -93,7 +93,7 @@ class NonequilibriumExternalLangevinIntegrator(NonequilibriumLangevinIntegrator)
 #        self._system_parameters = {system_parameter for system_parameter in alchemical_functions.keys()}
 
         # call the base class constructor
-        super(EditIntegrator, self).__init__(alchemical_functions=alchemical_functions,
+        super(NonequilibriumExternalLangevinIntegrator, self).__init__(alchemical_functions=alchemical_functions,
                                                                splitting=splitting, temperature=temperature,
                                                                collision_rate=collision_rate, timestep=timestep,
                                                                constraint_tolerance=constraint_tolerance,
@@ -112,6 +112,10 @@ class NonequilibriumExternalLangevinIntegrator(NonequilibriumLangevinIntegrator)
         self.addGlobalVariable("first_step", 0)
         self.addGlobalVariable("psteps", steps_per_propagation)
         self.addGlobalVariable("pstep", 0)
+        try:
+            self.getGlobalVariableByName("shadow_work")
+        except:
+            self.addGlobalVariable('shadow_work', 0)
 
     def add_integrator_steps(self, splitting, measure_shadow_work, measure_heat, ORV_counts, force_group_nV, mts):
         self.addComputeGlobal("perturbed_pe", "energy")
@@ -125,7 +129,7 @@ class NonequilibriumExternalLangevinIntegrator(NonequilibriumLangevinIntegrator)
         #repeat BAOAB integration psteps number of times per lambda
         self.addComputeGlobal("pstep", "0")
         self.beginWhileBlock('pstep < psteps')
-        super(EditIntegrator, self).add_integrator_steps(splitting, measure_shadow_work, measure_heat, ORV_counts, force_group_nV, mts)
+        super(NonequilibriumExternalLangevinIntegrator, self).add_integrator_steps(splitting, measure_shadow_work, measure_heat, ORV_counts, force_group_nV, mts)
         self.beginIfBlock("pstep < psteps - 1")
         self.addComputeGlobal("step", "step - 1")
         self.endBlock()
