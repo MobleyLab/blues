@@ -287,8 +287,8 @@ class SimulationFactory(object):
             simulation = app.Simulation(structure.topology, system, integrator)
         else:
             platform = openmm.Platform.getPlatformByName(platform)
-            prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
-            simulation = app.Simulation(structure.topology, system, integrator, platform, prop)
+            #prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
+            simulation = app.Simulation(structure.topology, system, integrator, platform) #, prop)
 
         if verbose:
             # OpenMM platform information
