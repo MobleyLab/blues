@@ -16,7 +16,6 @@ requirements:
     - pytest
     - setuptools
     - openmmtools
-    - alchemy
     - mdtraj >=1.8.0
     - openmm >=7.1.0rc1
 
@@ -25,7 +24,6 @@ requirements:
     - pytest
     - setuptools
     - openmmtools
-    - alchemy
     - mdtraj >=1.8.0
     - openmm >=7.1.0rc1
 
