@@ -22,9 +22,9 @@ from optparse import OptionParser
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 100, 'nstepsNC' : 2, 'nstepsMD' : 1,
+            'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 5000,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-            'trajectory_interval' : 1000, 'reporter_interval' : 1,
+            'trajectory_interval' : 1000, 'reporter_interval' : 1000,
             'platform' : platform_name,
             'verbose' : True }
 
