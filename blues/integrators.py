@@ -2,7 +2,11 @@ from openmmtools.integrators import NonequilibriumLangevinIntegrator
 import simtk
 
 class NonequilibriumExternalLangevinIntegrator(NonequilibriumLangevinIntegrator):
-    """Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
+    """
+    NOTE: Currently a vestigal integrator (not used in the other parts of
+    the BLUES code). May possibly be used in a later release.
+
+    Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
     The functions can use this to create more complex protocols for other global parameters.
     This also takes into account work done outside the nonequilibrium switching between steps,
