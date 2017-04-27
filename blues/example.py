@@ -13,7 +13,7 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 from __future__ import print_function
 from blues import ncmc
 from blues import utils
-from simulation import Simulation
+from blues.simulation import Simulation
 import parmed
 from simtk import unit, openmm
 from datetime import datetime
