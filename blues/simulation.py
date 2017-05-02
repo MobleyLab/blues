@@ -73,8 +73,13 @@ class Simulation(object):
         beta = 1.0 / kT
         self.beta = beta
 
+        if 'verbose' in opt:
+            self.verbose = opt['verbose']
+        else:
+            self.verbose = False
+
         self.work_keys = ['total_work', 'lambda', 'shadow_work',
-                          'protocol_work', 'Eold', 'Enew','Epert']
+                          'protocol_work']
 
         self.state_keys = { 'getPositions' : True,
                        'getVelocities' : True,
@@ -150,7 +155,7 @@ class Simulation(object):
         """
         workinfo = {}
         for param in parameters:
-            workinfo['param'] = nc_integrator.getGlobalVariableByName(param)
+            workinfo[param] = nc_integrator.getGlobalVariableByName(param)
         return workinfo
 
     def writeFrame(self, simulation, outfname):
@@ -205,7 +210,7 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
-    def simulateNCMC(self, verbose=False):
+    def simulateNCMC(self):
         """Function that performs the NCMC simulation."""
         for nc_step in range(self.nstepsNC):
             try:
@@ -227,7 +232,7 @@ class Simulation(object):
                 # Calculate Work/Energies After Step.
                 work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
 
-                if verbose:
+                if self.verbose:
                     print('Initial work:', work_initial)
                     print('Final work:', work_final)
                     #TODO write out frame regardless if accepted/REJECTED
