@@ -123,7 +123,7 @@ class Model(object):
 
 class MoveProposal(object):
     """MoveProposal provides perturbation functions for the model during the NCMC
-    simulation. Current supported methods: 'random_rotation.''
+    simulation. Current supported methods: 'random_rotation', 'smart_dart'.'
 
     Ex.
         from blues.ncmc import MoveProposal
@@ -145,7 +145,7 @@ class MoveProposal(object):
         nstepsNC : int
             An integer value for the number of NCMC steps performed.
         """
-        supported_methods = ['random_rotation']
+        supported_methods = ['random_rotation', 'smart_dart']
         if method not in supported_methods:
             raise Exception("Method %s not implemented" % method)
         else:
