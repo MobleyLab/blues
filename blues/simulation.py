@@ -210,7 +210,7 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
-    def simulateNCMC(self):
+    def simulateNCMC(self, verbose=False):
         """Function that performs the NCMC simulation."""
         for nc_step in range(self.nstepsNC):
             try:
@@ -232,7 +232,7 @@ class Simulation(object):
                 # Calculate Work/Energies After Step.
                 work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
 
-                if self.verbose:
+                if verbose:
                     print('Initial work:', work_initial)
                     print('Final work:', work_final)
                     #TODO write out frame regardless if accepted/REJECTED
