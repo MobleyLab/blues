@@ -226,6 +226,8 @@ class SimulationFactory(object):
         atom_indices : list
             Atom indicies of the model.
         """
+        import logging
+        logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
         factory = alchemy.AlchemicalFactory()
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
         alch_system = factory.create_alchemical_system(system, alch_region)
@@ -243,7 +245,7 @@ class SimulationFactory(object):
         """
         system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
-                            constraints=None)
+                            constraints=eval("app.%s" % constraints) )
         return system
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
