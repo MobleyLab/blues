@@ -115,6 +115,7 @@ class Model(object):
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
     def getTargetAtoms(molecule, residue_list):
+        #comment
         return True
 
     def calculateProperties(self):
