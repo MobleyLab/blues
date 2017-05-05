@@ -114,6 +114,8 @@ class Model(object):
         coordinates = np.asarray(positions._value, np.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
+    def getTargetAtoms(molecule, residue_list):
+        return True
 
     def calculateProperties(self):
         """Function to quickly calculate available properties."""
