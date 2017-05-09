@@ -124,8 +124,10 @@ def findOldCoord(particle1, particle2, particle3, center):
 
 
 class Model_SmartDart(Model):
-    def __init__(structure, basis_particles, dart_size=0.2*unit.nanometers, resname='LIG'):
-        super(Model_SmartDart, self).__init__(structure, resname='LIG')
+    def __init__(self, structure, basis_particles, dart_size=0.2*unit.nanometers, resname='LIG'):
+        super(Model_SmartDart, self).__init__(structure, resname=resname)
+        print('top', self.topology)
+        print('getMasses', self.getMasses(self.topology))
         self.dartboard = []
         self.n_dartboard = []
         self.particle_pairs = []

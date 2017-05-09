@@ -55,7 +55,6 @@ class Model(object):
         structure: parmed.Structure
             ParmEd Structure object of the model to be moved.
         """
-
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
@@ -243,7 +242,7 @@ class SimulationFactory(object):
         """
         system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
-                            constraints=None)
+                            constraints=app.HBonds)
         return system
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
