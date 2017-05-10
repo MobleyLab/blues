@@ -1,7 +1,10 @@
 from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 import simtk
 
-class NonequilibriumExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
+# Energy unit used by OpenMM unit system
+_OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
+
+class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
     """
     NOTE: Currently a vestigal integrator (not used in the other parts of
     the BLUES code). May possibly be used in a later release.
@@ -63,7 +66,7 @@ class NonequilibriumExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinI
                  measure_shadow_work=False,
                  measure_heat=True,
                  nsteps_neq=100,
-                 steps_per_propagation=1):
+                 *args, **kwargs):
         """
         Parameters
         ----------
@@ -92,14 +95,8 @@ class NonequilibriumExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinI
             Number of steps in nonequilibrium protocol. Default 100
         """
 
-#        self._alchemical_functions = alchemical_functions
-#        self._n_steps_neq = nsteps_neq
-
-        # collect the system parameters.
-#        self._system_parameters = {system_parameter for system_parameter in alchemical_functions.keys()}
-
         # call the base class constructor
-        super(NonequilibriumExternalLangevinIntegrator, self).__init__(alchemical_functions=alchemical_functions,
+        super(AlchemicalExternalLangevinIntegrator, self).__init__(alchemical_functions=alchemical_functions,
                                                                splitting=splitting, temperature=temperature,
                                                                collision_rate=collision_rate, timestep=timestep,
                                                                constraint_tolerance=constraint_tolerance,
@@ -109,45 +106,57 @@ class NonequilibriumExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinI
                                                                )
 
         # add some global variables relevant to the integrator
-        ##self.add_global_variables(nsteps=nsteps_neq)
         kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
         kT = kB * temperature
-        self.kT = kT
         self.addGlobalVariable("perturbed_pe", 0)
         self.addGlobalVariable("unperturbed_pe", 0)
         self.addGlobalVariable("first_step", 0)
-        self.addGlobalVariable("psteps", steps_per_propagation)
-        self.addGlobalVariable("pstep", 0)
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
             self.addGlobalVariable('shadow_work', 0)
 
-    def add_integrator_steps(self, splitting, measure_shadow_work, measure_heat, ORV_counts, force_group_nV, mts):
+    def _add_integrator_steps(self):
+        """
+        Override the base class to insert reset steps around the integrator.
+        """
+
+        # First step: Constrain positions and velocities and reset work accumulators and alchemical integrators
+        self.beginIfBlock('step = 0')
         self.addComputeGlobal("perturbed_pe", "energy")
-        # Assumes no perturbation is done before doing the initial MD step.
-        self.beginIfBlock("first_step < 1")
-        self.addComputeGlobal("first_step", "1")
         self.addComputeGlobal("unperturbed_pe", "energy")
+        self.addConstrainPositions()
+        self.addConstrainVelocities()
+        self._add_reset_protocol_work_step()
+        self._add_alchemical_reset_step()
         self.endBlock()
-        self.addComputeGlobal("perturbed_pe", "energy")
-        self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)/kT")
-        #repeat BAOAB integration psteps number of times per lambda
-        self.addComputeGlobal("pstep", "0")
-        self.beginWhileBlock('pstep < psteps')
-        super(NonequilibriumExternalLangevinIntegrator, self).add_integrator_steps(splitting, measure_shadow_work, measure_heat, ORV_counts, force_group_nV, mts)
-        self.beginIfBlock("pstep < psteps - 1")
-        self.addComputeGlobal("step", "step - 1")
-        self.endBlock()
-        self.addComputeGlobal("pstep", "pstep + 1")
-        self.endBlock()
-        #update unperturbed_pe
-        self.addComputeGlobal("unperturbed_pe", "energy")
+
+        # Main body
+        if self._n_steps_neq == 0:
+            # If nsteps = 0, we need to force execution on the first step only.
+            self.beginIfBlock('step = 0')
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.addComputeGlobal("step", "step + 1")
+            self.endBlock()
+        else:
+            #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
+            self.beginIfBlock("step < nsteps")
+            self.addComputeGlobal("perturbed_pe", "energy")
+            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
+
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+
+            self.addComputeGlobal("unperturbed_pe", "energy")
+            self.addComputeGlobal("step", "step + 1")
+
+            self.endBlock()
+
 
     def getLogAcceptanceProbability(self, context):
+        #TODO remove context from arguments if/once ncmc_switching is changed
         protocol = self.getGlobalVariableByName("protocol_work")
         shadow = self.getGlobalVariableByName("shadow_work")
-        logp_accept = -1.0*(protocol + shadow)
+        logp_accept = -1.0*(protocol + shadow)*_OPENMM_ENERGY_UNIT / self.kT
         return logp_accept
 
     def reset(self):
@@ -157,3 +166,6 @@ class NonequilibriumExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinI
         self.setGlobalVariableByName("protocol_work", 0.0)
         self.setGlobalVariableByName("shadow_work", 0.0)
         self.setGlobalVariableByName("first_step", 0)
+        self.addComputeGlobal("perturbed_pe", "0")
+        self.addComputeGlobal("unperturbed_pe", "0")
+
