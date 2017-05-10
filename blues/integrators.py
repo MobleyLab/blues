@@ -1,7 +1,7 @@
-from openmmtools.integrators import NonequilibriumLangevinIntegrator
+from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 import simtk
 
-class NonequilibriumExternalLangevinIntegrator(NonequilibriumLangevinIntegrator):
+class NonequilibriumExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
     """
     NOTE: Currently a vestigal integrator (not used in the other parts of
     the BLUES code). May possibly be used in a later release.
