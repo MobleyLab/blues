@@ -78,8 +78,8 @@ class Simulation(object):
         else:
             self.verbose = False
 
-        self.work_keys = ['total_work', 'lambda', 'shadow_work',
-                          'protocol_work']
+        self.work_keys = ['lambda', 'shadow_work',
+                          'protocol_work', 'Eold', 'Enew']
 
         self.state_keys = { 'getPositions' : True,
                        'getVelocities' : True,
@@ -197,12 +197,19 @@ class Simulation(object):
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
-        if log_ncmc > randnum:
+        #check if potential energy is greater then precision and reject if that's the case
+        if abs(nc_state1['potential_energy']._value) > 2147483640.:
+            self.reject += 1
+            print('NCMC MOVE REJECTED: potential energy {} > precision'.format(nc_state1['potential_energy']))
+            self.nc_context.setPositions(md_state0['positions'])
+        #else check acceptance criteria for acceptance/rejection
+        elif log_ncmc >= randnum:
             self.accept += 1
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
-            #self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
-        else:
+            self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
+
+        elif log_ncmc < randnum or np.isnan(log_ncmc):
             self.reject += 1
             print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
             self.nc_context.setPositions(md_state0['positions'])
@@ -281,7 +288,7 @@ class Simulation(object):
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC()
+            self.simulateNCMC(verbose=self.verbose)
             self.chooseMove()
             self.simulateMD()
 

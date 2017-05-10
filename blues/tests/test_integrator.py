@@ -2,7 +2,7 @@ from openmmtools import testsystems, alchemy
 from openmmtools.alchemy import AlchemicalFactory, AlchemicalRegion
 from simtk.openmm.app import Simulation
 import simtk
-from blues.integrators import NonequilibriumExternalLangevinIntegrator
+from blues.integrators import AlchemicalExternalLangevinIntegrator
 def test_nonequilibrium_external_integrator():
     testsystem = testsystems.AlanineDipeptideVacuum()
     functions = { 'lambda_sterics' : '1', 'lambda_electrostatics' : '1'}
@@ -13,7 +13,7 @@ def test_nonequilibrium_external_integrator():
     alanine_alchemical_system = factory.create_alchemical_system(reference_system=alanine_vacuum,
                                                                  alchemical_regions=alchemical_region)
     nsteps_neq = 6
-    integrator = NonequilibriumExternalLangevinIntegrator(alchemical_functions=functions,
+    integrator = AlchemicalExternalLangevinIntegrator(alchemical_functions=functions,
                             timestep=0.05*simtk.unit.femtoseconds,
                             nsteps_neq=nsteps_neq,
                             measure_shadow_work=False,
@@ -29,10 +29,11 @@ def test_nonequilibrium_external_integrator():
             pos = state.getPositions(asNumpy=True)
             pos[0,1] = pos[0,1] + 0.5*simtk.unit.nanometers
             simulation.context.setPositions(pos)
+    protocol_work = simulation.integrator.getLogAcceptanceProbability(simulation.context)
     print(protocol_work)
-    #protocol work is around 221.0
-    assert 220.0 < protocol_work
-    assert 223.0 > protocol_work
+    #protocol work is around 221.0 (in kT units), so acceptance is around -221.0
+    assert -220.0 > protocol_work
+    assert -223.0 < protocol_work
 
 if __name__ == '__main__':
     test_nonequilibrium_external_integrator()
