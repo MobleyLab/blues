@@ -166,6 +166,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.setGlobalVariableByName("protocol_work", 0.0)
         self.setGlobalVariableByName("shadow_work", 0.0)
         self.setGlobalVariableByName("first_step", 0)
-        self.addComputeGlobal("perturbed_pe", "0")
-        self.addComputeGlobal("unperturbed_pe", "0")
+        self.setGlobalVariableByName("perturbed_pe", "0")
+        self.setGlobalVariableByName("unperturbed_pe", "0")
 
