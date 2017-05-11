@@ -78,6 +78,17 @@ class Simulation(object):
             self.verbose = opt['verbose']
         else:
             self.verbose = False
+        if 'write_ncmc' in opt:
+            self.write_ncmc = opt['write_ncmc']
+            if 'ncmc_outfile' in opt:
+                self.ncmc_outfile = opt['ncmc_outfile']
+            else: 
+                self.ncmc_outfile = 'ncmc_output.dcd'
+            
+            self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
+            self.nc_sim.reporters.append(self.ncmc_reporter)
+        else:
+            self.write_ncmc = False
 
         self.work_keys = ['total_work', 'lambda', 'shadow_work',
                           'protocol_work']
@@ -218,6 +229,9 @@ class Simulation(object):
                 self.current_stepNC = int(nc_step)
                 # Calculate Work/Energies Before Step
                 work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
+                if self.write_ncmc and (nc_step+1) % self.write_ncmc == 0:
+                    self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
+                     
 
                 # Attempt NCMC Move
                 if int(self.mover.moves['step']) == nc_step:
@@ -226,6 +240,9 @@ class Simulation(object):
 
                     #Do move
                     self.model, self.nc_context = self.mover.moves['method'](model=self.model, nc_context=self.nc_context)
+                    if self.write_ncmc and (nc_step+1) % self.write_ncmc == 0:
+                        self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
+
 
                 # Do 1 NCMC step
                 self.nc_integrator.step(1)
@@ -277,8 +294,13 @@ class Simulation(object):
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state.
         """
-        reporter = app.statedatareporter.StateDataReporter('test.csv', step=True)
+        reporter = app.statedatareporter.StateDataReporter('test.csv', 10, step=True,  potentialEnergy=True)
         self.nc_sim.reporters.append(reporter)
+        areporter = app.dcdreporter.DCDReporter('test.dcd', 1)
+        self.nc_sim.reporters.append(areporter)
+        areporter.report(self.nc_sim, self.nc_sim.context.getState(True,True))
+
+
         #set inital conditions
         self.setStateConditions()
         for n in range(self.nIter):
