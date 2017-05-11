@@ -46,6 +46,7 @@ class Simulation(object):
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
         self.nc_context = simulations.nc.context
+        self.nc_sim = simulations.nc
         self.nc_integrator = simulations.nc.context._integrator
         self.model = model
         self.mover = mover
@@ -276,6 +277,8 @@ class Simulation(object):
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state.
         """
+        reporter = app.statedatareporter.StateDataReporter('test.csv', step=True)
+        self.nc_sim.reporters.append(reporter)
         #set inital conditions
         self.setStateConditions()
         for n in range(self.nIter):
