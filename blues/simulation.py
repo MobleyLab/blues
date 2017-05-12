@@ -78,20 +78,20 @@ class Simulation(object):
             self.verbose = opt['verbose']
         else:
             self.verbose = False
+
+        #attach ncmc reporter if specified
         if 'write_ncmc' in opt:
             self.write_ncmc = opt['write_ncmc']
             if 'ncmc_outfile' in opt:
                 self.ncmc_outfile = opt['ncmc_outfile']
             else: 
                 self.ncmc_outfile = 'ncmc_output.dcd'
-            
-            self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
-            self.nc_sim.reporters.append(self.ncmc_reporter)
         else:
-            self.write_ncmc = False
+            self.write_ncmc = None
 
-        self.work_keys = ['total_work', 'lambda', 'shadow_work',
-                          'protocol_work']
+        #specify nc integrator variables to report in verbose output
+        self.work_keys = [ 'lambda', 'shadow_work',
+                          'protocol_work', 'Eold', 'Enew']
 
         self.state_keys = { 'getPositions' : True,
                        'getVelocities' : True,
@@ -224,6 +224,10 @@ class Simulation(object):
 
     def simulateNCMC(self, verbose=False):
         """Function that performs the NCMC simulation."""
+        #append nc reporter at the first step
+        if (self.current_iter == 0) and (self.write_ncmc is not None):
+            self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
+            self.nc_sim.reporters.append(self.ncmc_reporter)
         for nc_step in range(self.nstepsNC):
             try:
                 self.current_stepNC = int(nc_step)
@@ -294,19 +298,12 @@ class Simulation(object):
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state.
         """
-        reporter = app.statedatareporter.StateDataReporter('test.csv', 10, step=True,  potentialEnergy=True)
-        self.nc_sim.reporters.append(reporter)
-        areporter = app.dcdreporter.DCDReporter('test.dcd', 1)
-        self.nc_sim.reporters.append(areporter)
-        areporter.report(self.nc_sim, self.nc_sim.context.getState(True,True))
-
-
         #set inital conditions
         self.setStateConditions()
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC()
+            self.simulateNCMC(verbose=self.verbose)
             self.chooseMove()
             self.simulateMD()
 
