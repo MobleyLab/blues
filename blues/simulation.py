@@ -222,10 +222,10 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
-    def simulateNCMC(self, verbose=False):
+    def simulateNCMC(self, verbose=False, write_ncmc=False):
         """Function that performs the NCMC simulation."""
         #append nc reporter at the first step
-        if (self.current_iter == 0) and (self.write_ncmc is not None):
+        if (self.current_iter == 0) and (write_ncmc):
             self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
             self.nc_sim.reporters.append(self.ncmc_reporter)
         for nc_step in range(self.nstepsNC):
@@ -233,7 +233,7 @@ class Simulation(object):
                 self.current_stepNC = int(nc_step)
                 # Calculate Work/Energies Before Step
                 work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
-                if self.write_ncmc and (nc_step+1) % self.write_ncmc == 0:
+                if write_ncmc and (nc_step+1) % write_ncmc == 0:
                     self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
                      
 
@@ -244,7 +244,7 @@ class Simulation(object):
 
                     #Do move
                     self.model, self.nc_context = self.mover.moves['method'](model=self.model, nc_context=self.nc_context)
-                    if self.write_ncmc and (nc_step+1) % self.write_ncmc == 0:
+                    if write_ncmc and (nc_step+1) % write_ncmc == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
 
@@ -303,7 +303,7 @@ class Simulation(object):
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC(verbose=self.verbose)
+            self.simulateNCMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
             self.chooseMove()
             self.simulateMD()
 
