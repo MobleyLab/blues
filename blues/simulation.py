@@ -233,8 +233,6 @@ class Simulation(object):
                 self.current_stepNC = int(nc_step)
                 # Calculate Work/Energies Before Step
                 work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
-                if write_ncmc and (nc_step+1) % write_ncmc == 0:
-                    self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
                      
 
                 # Attempt NCMC Move
@@ -250,6 +248,8 @@ class Simulation(object):
 
                 # Do 1 NCMC step
                 self.nc_integrator.step(1)
+                if write_ncmc and (nc_step+1) % write_ncmc == 0:
+                    self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
                 # Calculate Work/Energies After Step.
                 work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
