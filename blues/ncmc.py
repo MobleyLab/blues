@@ -114,9 +114,110 @@ class Model(object):
         coordinates = np.asarray(positions._value, np.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
+
+    def pDB2OEMol(pdbfile):
+        '''This function takes in a pdbfile as a string (e.g. 'protein.pdb') and
+            reads it into and OEGraphMol'''
+
+        # check if file exists
+        if os.path.isfile(pdbfile):
+            # read file into an input stream
+            ifs = oemolistream(pdbfile)
+            # set the format of the input stream to pdb (other wise SMI default)
+            ifs.SetFormat(OEFormat_PDB)
+            # create OEMol destination
+            pdb_OEMol = OEGraphMol()
+            # assign input stream to OEMol
+            OEReadMolecule(ifs, pdb_OEMol)
+            return pdb_OEMol
+        else:
+            print('PDB filename not found.')
+
+    def getBackboneAtoms(molecule):
+        '''This function takes a OEGraphMol PDB structure and returns a list of backbone atoms'''
+        backbone_atoms = []
+        # Call this function to find atoms and bonds
+        OEFindRingAtomsAndBonds(molecule)
+        #OEPerceiveResidues(pdb_OEMol)
+        if not OEHasResidues(molecule):
+                OEPerceiveResidues(molecule, OEPreserveResInfo_All)
+        aiter = molecule.GetAtoms(OEIsBackboneAtom())
+        for atom in aiter:
+            bb_atom_idx = atom.GetIdx()
+            backbone_atoms.append(bb_atom_idx)
+        return backbone_atoms
+
     def getTargetAtoms(molecule, residue_list):
-        #comment
-        return True
+        '''This function takes a OEGraphMol PDB structure and a list of residue numbers and
+            generates a dictionary containing all the non-backbone, heavy atom locations and indicies for those residues.
+            Note: The atom indicies start at 0 and are thus -1 from the PDB file indicies'''
+
+        # Call this function to find atoms and bonds
+        OEFindRingAtomsAndBonds(molecule)
+
+        # create and clear dictionary to store atoms that make up residue list
+        qry_atoms = {}
+        qry_atoms.clear()
+
+        # call backbone function and create backbone atom list
+        backbone = getBackboneAtoms(molecule)
+        # loop through all the atoms in the PDB OEGraphMol structure
+        for atom in molecule.GetAtoms():
+            # check if the atom is a heavy atom
+            if atom.GetAtomicNum() > 1 and atom.GetIdx() not in backbone:
+                # if heavy, find what residue it is associated with
+                myres = OEAtomGetResidue(atom)
+                # check if the residue number is amongst the list of residues
+                if myres.GetResidueNumber() in residue_list:
+                    # store the atom location in a query atom dict keyed by its atom index
+                    qry_atoms.update({atom : atom.GetIdx()})
+
+        #return dictionary of residue atoms and indicies
+        return qry_atoms
+
+    def findHeavyRotBonds(pdb_OEMol, qry_atoms):
+        '''This function takes in an OEGraphMol PDB structure as well as a dictionary of atom locations (keys)
+            and atom indicies.  It loops over the query atoms and identifies the bonds associated with each atom.
+            It stores and returns the bond indicies (keys) and the two atom indicies for each bond in a dictionary
+            **Note: atom indicies start at 0, so are offset by 1 compared to pdb)'''
+
+        # Call this function to find atoms and bonds
+        OEFindRingAtomsAndBonds(pdb_OEMol)
+        # create and clear dictionary to store bond and atom indicies that are rotatable + heavy
+        rot_atoms = {}
+        rot_atoms.clear()
+
+        for atom in qry_atoms:
+            for bond in atom.GetBonds():
+                # retrieve the begnning and ending atoms
+                begatom = bond.GetBgn()
+                endatom = bond.GetEnd()
+                # if begnnning and ending atoms are not Hydrogen, and the bond is rotatable
+                if endatom.GetAtomicNum() >1 and begatom.GetAtomicNum() >1 and OEIsRotor:
+                    # if the bond has not been added to dictionary already..
+                    # (as would happen if one of the atom pairs was previously looped over)
+                    if bond.GetIdx() not in rot_atoms:
+                        # print the bond index
+                        print('Bond number',bond, 'is rotatable and contains only heavy atoms')
+                        # store bond index number (key) and atom indicies in dictionary if not already there
+                        rot_atoms.update({bond.GetIdx() : {'AtomIdx_1' : bond.GetBgnIdx(), 'AtomIdx_2': bond.GetEndIdx()}})
+        # Return dictionary with bond atom indicies keyed by bond index
+        return rot_atoms
+
+    def getRotBonds(pdbfile,residue_list):
+        '''This function takes in a PDB filename (as a string) and list of residue numbers.  It returns
+            a dictionary of rotatable bonds (containing only heavy atoms), that are keyed by bond index
+            and containing the associated atom indicies
+            **Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies'''
+        # read .pdb file into OEGraphMol
+        structure = pDB2OEMol(pdbfile)
+        # Generate dictionary containing locations and indicies of heavy residue atoms
+        qry_atoms = getTargetAtoms(structure, residue_list)
+        # Identify bonds containing query atoms and return dictionary of indicies
+        rot_atoms = findHeavyRotBonds(structure,qry_atoms)
+        print('\nRotable bond and atom index dictionary generated with format: {Bond Index: {Atom1Index:, Atom2Index:}}')
+        print('\n')
+        print(rot_atoms)
 
     def calculateProperties(self):
         """Function to quickly calculate available properties."""
