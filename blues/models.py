@@ -59,6 +59,7 @@ def normalize(vector):
     unit_vec: 1xn np.array
         Normalized vector.
     '''
+    print(vector)
     magnitude = np.sqrt(np.sum(vector*vector))
     unit_vec = vector / magnitude
     return unit_vec
@@ -74,7 +75,9 @@ def localcoord(particle1, particle2, particle3):
     vec1 = part2
     vec2= part3
     vec3 = np.cross(vec1,vec2)*unit.nanometers
+
     print('vec3', vec3, normalize(vec3))
+
     print('vec1', vec1, 'vec2', vec2, 'vec3', vec3)
     return vec1, vec2, vec3
 def findNewCoord(particle1, particle2, particle3, center):
@@ -132,11 +135,11 @@ class Model_SmartDart(Model):
         self.n_dartboard = []
         self.particle_pairs = []
         self.particle_weights = []
-        self.basis_particles = []
+        self.basis_particles = basis_particles
         self.dart_size = dart_size
         self.calculateProperties()
 
-    def dartsFromParmEd(self, system, coord_files, topology=None):
+    def dartsFromParmEd(self, coord_files, topology=None):
         """
         Used to setup darts from a generic coordinate file, through MDtraj using the basis_particles to define
         new basis vectors, which allows dart centers to remain consistant through a simulation.
@@ -166,20 +169,22 @@ class Model_SmartDart(Model):
             if topology == None:
                 temp_md = parmed.load_file(coord_file)
             else:
-                temp_md = md.load(topology, xyz=coord_file)
-            context_pos = temp_md.openmm_positions.in_units_of(unit.nanometers)
-
-            print('context_pos', context_pos, 'context_pos')
-            print('context_pos type', type(context_pos._value))
-            print('temp_md', temp_md)
+                temp_md = parmed.load_file(topology, xyz=coord_file)
+            context_pos = temp_md.positions.in_units_of(unit.nanometers)
+            #print('context_pos', context_pos, 'context_pos')
+            lig_pos = np.asarray(context_pos._value)[self.atom_indices]*unit.nanometers
+            particle_pos = np.asarray(context_pos._value)[self.basis_particles]*unit.nanometers
+            #print('context_pos', context_pos, 'context_pos')
+#            print('context_pos type', type(context_pos._value))
             self.calculateProperties()
-            self.center_of_mass = self.getCenterOfMass(temp_md.positions, self.masses)
+            self.center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
             #get particle positions
-            particle_pos = []
-            for particle in basis_particles:
-                print('particle %i position' % (particle), context_pos[particle])
-                particle_pos.append(context_pos[particle])
-            new_coord = findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], com)
+            print('basis particles', self.basis_particles)
+            print('particle_pos', particle_pos)
+#            for particle in self.basis_particles:
+#                print('particle %i position' % (particle), context_pos[particle])
+#                particle_pos.append(context_pos[particle])
+            new_coord = findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], self.center_of_mass)
             #keep this in for now to check code is correct
             #old_coord should be equal to com
             old_coord = findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
