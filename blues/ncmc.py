@@ -55,6 +55,7 @@ class Model(object):
         structure: parmed.Structure
             ParmEd Structure object of the model to be moved.
         """
+
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
@@ -62,7 +63,7 @@ class Model(object):
         self.masses = []
 
         self.center_of_mass = None
-        self.positions = structure[self.atom_indices].positions
+        self.positions = structure[self.atom_indices].positions.in_units_of(unit.nanometers)
 
     def getAtomIndices(self, structure, resname):
         """
@@ -122,7 +123,7 @@ class Model(object):
 
 class MoveProposal(object):
     """MoveProposal provides perturbation functions for the model during the NCMC
-    simulation. Current supported methods: 'random_rotation', 'smart_dart'.'
+    simulation. Current supported methods: 'random_rotation.''
 
     Ex.
         from blues.ncmc import MoveProposal
@@ -177,6 +178,12 @@ class MoveProposal(object):
         model.positions = positions[model.atom_indices]
 
         return model, nc_context
+
+    @staticmethod
+    def smart_dart(model, nc_context):
+        model.smartDartMove(nc_context)
+        return model, nc_context
+
 
     def setMove(self, method, step):
         """Returns the dictionary that defines the perturbation methods to be

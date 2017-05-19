@@ -253,7 +253,83 @@ class Model_SmartDart(Model):
 
         self.n_dartboard = n_dartboard
         self.dartboard = dartboard
-    def SmartDartMove(model, nc_context):
+
+    def calc_from_center(self, com):
+
+        distList = []
+        diffList = []
+        indexList = []
+        #Find the distances of the COM to each dart, appending
+        #the results to distList
+        for dart in self.dartboard:
+            diff = com - dart
+            dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
+            distList.append(dist)
+            diffList.append(diff)
+        selected = []
+        #Find the dart(s) less than self.dart_size
+        for index, entry in enumerate(distList):
+            if entry <= self.dart_size:
+                selected.append(entry)
+                diff = diffList[index]
+                indexList.append(index)
+        #Dart error checking
+        #to ensure reversibility the COM should only be
+        #within self.dart_size of one dart
+        if len(selected) == 1:
+            return selected[0], diffList[indexList[0]]
+        elif len(selected) == 0:
+            return None, diff
+        elif len(selected) >= 2:
+            print(selected)
+            #COM should never be within two different darts
+            raise ValueError('sphere size overlap, check darts')
+
+    def n_findDart(self, nc_context):
+        """
+        Helper function to dynamically update dart positions based on positions
+        of other particles.
+        Arguments
+        ---------
+        basis_particles: list of 3 ints
+            Specifies the 3 indices of particles whose coordinates will be used
+            as basis vectors. If None is specified, uses those found in basis particles
+        Returns
+        -------
+        dart_list list of 1x3 np.arrays in units.nm
+            new dart positions calculated from the particle_pairs
+            and particle_weights
+        """
+        basis_particles = self.basis_particles
+        #make sure there's an equal number of particle pair lists
+        #and particle weight lists
+        dart_list = []
+        state_info = nc_context.getState(True, True, False, True, True, False)
+        temp_pos = state_info.getPositions(asNumpy=True)
+        part1 = temp_pos[basis_particles[0]]
+        part2 = temp_pos[basis_particles[1]]
+        part3 = temp_pos[basis_particles[2]]
+        print('n_findDart before dartboard', self.dartboard)
+        for dart in self.n_dartboard:
+            print('particles', part1, part2, part3)
+            old_center = findOldCoord(part1, part2, part3, dart)
+            dart_list.append(old_center)
+        self.dartboard = dart_list[:]
+        print('n_findDart dartboard', self.dartboard)
+        return dart_list
+
+    def reDart(self, changevec):
+        """
+        Helper function to choose a random dart and determine the vector
+        that would translate the COM to that dart center
+        """
+        dartindex = np.random.randint(len(self.dartboard))
+        dvector = self.dartboard[dartindex]
+        chboard = dvector + changevec
+        print('chboard', chboard)
+        return chboard
+
+    def smartDartMove(self, nc_context):
         """
         Function for performing smart darting move with darts that
         depend on particle positions in the system
@@ -262,86 +338,12 @@ class Model_SmartDart(Model):
         atom_indices = self.atom_indices
         context = nc_context
 
-        def calc_from_center(self, com):
-
-            distList = []
-            diffList = []
-            indexList = []
-            #Find the distances of the COM to each dart, appending
-            #the results to distList
-            for dart in self.dartboard:
-                diff = com - dart
-                dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
-                distList.append(dist)
-                diffList.append(diff)
-            selected = []
-            #Find the dart(s) less than self.dart_size
-            for index, entry in enumerate(distList):
-                if entry <= self.dart_size:
-                    selected.append(entry)
-                    diff = diffList[index]
-                    indexList.append(index)
-            #Dart error checking
-            #to ensure reversibility the COM should only be
-            #within self.dart_size of one dart
-            if len(selected) == 1:
-                return selected[0], diffList[indexList[0]]
-            elif len(selected) == 0:
-                return None, diff
-            elif len(selected) >= 2:
-                print(selected)
-                #COM should never be within two different darts
-                raise ValueError('sphere size overlap, check darts')
-
-        def n_findDart(self):
-            """
-            Helper function to dynamically update dart positions based on positions
-            of other particles.
-            Arguments
-            ---------
-            basis_particles: list of 3 ints
-                Specifies the 3 indices of particles whose coordinates will be used
-                as basis vectors. If None is specified, uses those found in basis particles
-            Returns
-            -------
-            dart_list list of 1x3 np.arrays in units.nm
-                new dart positions calculated from the particle_pairs
-                and particle_weights
-            """
-            basis_particles = self.basis_particles
-            #make sure there's an equal number of particle pair lists
-            #and particle weight lists
-            dart_list = []
-            state_info = self.nc_context.getState(True, True, False, True, True, False)
-            temp_pos = state_info.getPositions(asNumpy=True)
-            part1 = temp_pos[basis_particles[0]]
-            part2 = temp_pos[basis_particles[1]]
-            part3 = temp_pos[basis_particles[2]]
-            print('n_findDart before dartboard', self.dartboard)
-            for dart in self.n_dartboard:
-                print('particles', part1, part2, part3)
-                old_center = findOldCoord(part1, part2, part3, dart)
-                dart_list.append(old_center)
-            self.dartboard = dart_list[:]
-            print('n_findDart dartboard', self.dartboard)
-            return dart_list
-
-        def reDart(self, changevec):
-            """
-            Helper function to choose a random dart and determine the vector
-            that would translate the COM to that dart center
-            """
-            dartindex = np.random.randint(len(self.dartboard))
-            dvector = self.dartboard[dartindex]
-            chboard = dvector + changevec
-            print('chboard', chboard)
-            return chboard
-
         stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
+        lig_pos = np.asarray(oldDartPos._value)[self.atom_indices]*unit.nanometers
         oldDartPE = stateinfo.getPotentialEnergy()
-        self.n_findDart()
-        center = self.getCenterOfMass(oldDartPos, self.masses)
+        self.n_findDart(context)
+        center = self.getCenterOfMass(lig_pos, self.masses)
         selectedboard, changevec = self.calc_from_center(com=center)
         print('selectedboard', selectedboard)
         print('changevec', changevec)
@@ -355,7 +357,8 @@ class Model_SmartDart(Model):
             vecMove = comMove - center
             print('vecMove', vecMove)
             for residue in atom_indices:
-                newDartPos[residue] = newDartPos[residue] + vecMove
+                print(newDartPos[residue])
+                newDartPos[residue] = newDartPos[residue] + vecMove._value
             print('worked')
             print('old', oldDartPos)
             print('new', newDartPos)
