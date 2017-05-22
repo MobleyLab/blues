@@ -1,5 +1,5 @@
 import unittest, os, parmed                                                     
-from blues.ncmc import Model, SimulationFactory                                 
+from blues.ncmc import Model, SimulationFactory, MoveProposal                                 
 from blues.models import Model_SmartDart
 from simtk import openmm                                                        
 from openmmtools import testsystems                                             
@@ -18,12 +18,12 @@ class MoveProposalTester(unittest.TestCase):
                                             system=testsystem.system,
                                             xyz=testsystem.positions)
 
-        self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
+        #self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
         self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
-                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
+                'nonbondedMethod' : 'NoCutoff', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
                 'platform' : None,
                 'verbose' : False }
@@ -35,13 +35,13 @@ class MoveProposalTester(unittest.TestCase):
                                 resname='ALA')
         self.model.calculateProperties()
         #Initialize the SimulationFactory object
-        sims = ncmc.SimulationFactory(structure, self.model, **self.opt)
+        sims = SimulationFactory(structure, self.model, **self.opt)
         system = sims.generateSystem(structure, **self.opt)
         alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
         self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
 
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        self.mover = ncmc.MoveProposal(self.model, 'smart_dart', self.opt['nstepsNC'])
+        self.mover = MoveProposal(self.model, 'smart_dart', self.opt['nstepsNC'])
 
     def test_smart_dart(self):
         orig_pos = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
