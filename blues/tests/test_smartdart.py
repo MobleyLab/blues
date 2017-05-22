@@ -1,3 +1,12 @@
+import unittest, os, parmed                                                     
+from blues.ncmc import Model, SimulationFactory                                 
+from blues.models import Model_SmartDart
+from simtk import openmm                                                        
+from openmmtools import testsystems                                             
+import simtk.unit as unit                                                       
+import numpy as np                                                              
+
+
 class MoveProposalTester(unittest.TestCase):
     """
     Test the MoveProposal class.
@@ -22,7 +31,7 @@ class MoveProposalTester(unittest.TestCase):
 
         #Initialize the Model object
         basis_particles = [0,2,7]
-        self.model = ncmc.Model(structure, basis_particles=basis_particles,
+        self.model = Model_SmartDart(structure, basis_particles=basis_particles,
                                 resname='ALA')
         self.model.calculateProperties()
         #Initialize the SimulationFactory object
