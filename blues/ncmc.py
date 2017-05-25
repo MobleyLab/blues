@@ -63,7 +63,7 @@ class Model(object):
         self.masses = []
 
         self.center_of_mass = None
-        self.positions = structure[self.atom_indices].positions
+        self.positions = structure[self.atom_indices].positions.in_units_of(unit.nanometers)
 
     def getAtomIndices(self, structure, resname):
         """
@@ -145,7 +145,7 @@ class MoveProposal(object):
         nstepsNC : int
             An integer value for the number of NCMC steps performed.
         """
-        supported_methods = ['random_rotation']
+        supported_methods = ['random_rotation', 'smart_dart']
         if method not in supported_methods:
             raise Exception("Method %s not implemented" % method)
         else:
@@ -178,6 +178,12 @@ class MoveProposal(object):
         model.positions = positions[model.atom_indices]
 
         return model, nc_context
+
+    @staticmethod
+    def smart_dart(model, nc_context):
+        model.smartDartMove(nc_context)
+        return model, nc_context
+
 
     def setMove(self, method, step):
         """Returns the dictionary that defines the perturbation methods to be
