@@ -128,8 +128,6 @@ class Model_SmartDart(Model):
             Openmm System corresponding to the system to smart dart.
         coord_files: list of str
             List containing coordinate files of the system for smart darting.
-        atom_indices: list of ints
-            List containing the ligand atom indices. If None uses self.atom_indices instead.
         basis_particles: list of 3 ints
             Specifies the 3 indices of particles whose coordinates will be used
             as basis vectors. If None is specified, uses those found in basis particles.
@@ -175,8 +173,6 @@ class Model_SmartDart(Model):
             Openmm System corresponding to the system to smart dart.
         file_list: list of str
             List containing coordinate files of the system for smart darting.
-        atom_indices: list of ints
-            List containing the ligand atom indices. If None uses self.atom_indices instead.
         basis_particles: list of 3 ints
             Specifies the 3 indices of particles whose coordinates will be used
             as basis vectors. If None is specified, uses those found in basis particles.
