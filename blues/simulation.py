@@ -311,3 +311,61 @@ class Simulation(object):
         self.accept_ratio = self.accept/float(self.nIter)
         print('Acceptance Ratio', self.accept_ratio)
         print('nIter ', self.nIter)
+
+    def chooseMCMove(self):
+        """Function that chooses to accept or reject the proposed MC move.
+        """
+        md_state0 = self.current_state['md']['state0']
+        md_state1 = self.current_state['md']['state1']
+        log_ncmc = md_state1['potential_energy'] - md_state0['potential_energy'] * (-1.0/self.nc_integrator.kT)
+        randnum =  math.log(np.random.random())
+
+        if log_ncmc > randnum:
+            self.accept += 1
+            print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+            self.md_sim.context.setPositions(md_state1['positions'])
+
+        else:
+            self.reject += 1
+            print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
+            self.md_sim.context.setPositions(md_state0['positions'])
+
+#        self.nc_integrator.reset()
+        self.md_sim.context.setVelocitiesToTemperature(self.temperature)
+
+
+    def simulateMC(self, verbose=False, write_ncmc=False):
+        """Function that performs the MD move."""
+        #append nc reporter at the first step
+        if (self.current_iter == 0) and (write_ncmc):
+            self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
+            self.nc_sim.reporters.append(self.ncmc_reporter)
+        if type(self.mover.moves['step']) == type(int):
+            print('[Iter {}] Performing NCMC {} move'.format(
+            self.current_iter, self.mover.moves['method'].__name__))
+            self.model, self.md_sim.context = self.mover.moves['method'](model=self.model, nc_context=self.md_sim.context)
+            md_state1 = self.getStateInfo(self.md_sim.context, self.state_keys)
+            self.setSimState('md', 'state1', md_state1)
+            if (write_ncmc):
+                self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
+                self.nc_sim.reporters.append(self.ncmc_reporter)
+
+    def runMC(self):
+        """Function that runs the BLUES engine to iterate over the actions:
+        Performs proposed move, accepts/rejects move,
+        then performs the MD simulation from the changed state.
+        """
+        #set inital conditions
+        self.setStateConditions()
+        for n in range(self.nIter):
+            self.current_iter = int(n)
+            self.setStateConditions()
+            self.simulateMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
+            self.chooseMCMove()
+            self.simulateMD()
+
+        # END OF NITER
+        self.accept_ratio = self.accept/float(self.nIter)
+        print('Acceptance Ratio', self.accept_ratio)
+        print('nIter ', self.nIter)
+
