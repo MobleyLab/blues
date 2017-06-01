@@ -366,7 +366,7 @@ class Simulation(object):
             self.setStateConditions()
             for i in range(mc_steps):
                 self.simulateMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
-            self.chooseMCMove()
+                self.chooseMCMove()
             self.simulateMD()
 
         # END OF NITER
