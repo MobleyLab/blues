@@ -354,7 +354,7 @@ class Simulation(object):
                 self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
                 self.nc_sim.reporters.append(self.ncmc_reporter)
 
-    def runMC(self):
+    def runMC(self, mc_steps=1):
         """Function that runs the BLUES engine to iterate over the actions:
         Performs proposed move, accepts/rejects move,
         then performs the MD simulation from the changed state.
@@ -364,7 +364,8 @@ class Simulation(object):
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
+            for i in range(mc_steps):
+                self.simulateMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
             self.chooseMCMove()
             self.simulateMD()
 
