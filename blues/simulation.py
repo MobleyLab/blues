@@ -6,17 +6,10 @@ Contributors: Nathan M. Lim, David L. Mobley
 """
 from __future__ import print_function
 import numpy as np
-
-from simtk import unit, openmm
+from simtk import unit
 from simtk.openmm import app
-
-from blues import utils
-from blues.ncmc_switching import NCMCVVAlchemicalIntegrator
-
-import sys, parmed, math, copy
-import numpy as np
+import parmed, math
 import mdtraj
-from mdtraj.reporters import HDF5Reporter
 
 
 class Simulation(object):
@@ -84,7 +77,7 @@ class Simulation(object):
             self.write_ncmc = opt['write_ncmc']
             if 'ncmc_outfile' in opt:
                 self.ncmc_outfile = opt['ncmc_outfile']
-            else: 
+            else:
                 self.ncmc_outfile = 'ncmc_output.dcd'
         else:
             self.write_ncmc = None
@@ -226,35 +219,36 @@ class Simulation(object):
         """Function that performs the NCMC simulation."""
         #append nc reporter at the first step
         if (self.current_iter == 0) and (write_ncmc):
-            self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1) 
+            self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1)
             self.nc_sim.reporters.append(self.ncmc_reporter)
         for nc_step in range(self.nstepsNC):
             try:
                 self.current_stepNC = int(nc_step)
                 # Calculate Work/Energies Before Step
-                work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
-                     
+                if verbose:
+                    work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
 
                 # Attempt NCMC Move
-                if int(self.mover.moves['step']) == nc_step:
+                if self.nstepsNC / 2 + 1 == nc_step:
+                #TODO think about if it should be nc_step + 1 instead
+#                if int(self.mover.moves['step']) == nc_step:
                     print('[Iter {}] Performing NCMC {} move'.format(
                     self.current_iter, self.mover.moves['method'].__name__))
 
                     #Do move
-                    self.model, self.nc_context = self.mover.moves['method'](model=self.model, nc_context=self.nc_context)
+                    self.nc_context = self.move_engine.runEngine(self.nc_context)
+#                    self.model, self.nc_context = self.mover.moves['method'](model=self.model, nc_context=self.nc_context)
                     if write_ncmc and (nc_step+1) % write_ncmc == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
-
 
                 # Do 1 NCMC step
                 self.nc_integrator.step(1)
                 if write_ncmc and (nc_step+1) % write_ncmc == 0:
                     self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
-                # Calculate Work/Energies After Step.
-                work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
-
                 if verbose:
+                    # Calculate Work/Energies After Step.
+                    work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
                     print('Initial work:', work_initial)
                     print('Final work:', work_final)
                     #TODO write out frame regardless if accepted/REJECTED
@@ -276,7 +270,7 @@ class Simulation(object):
             self.current_stepMD = self.md_sim.currentStep
         except Exception as e:
             print(e)
-            stateinfo = self.getStateInfo(self.md_sim.context, self.state_keys)
+#            stateinfo = self.getStateInfo(self.md_sim.context, self.state_keys)
             last_x, last_y = np.shape(md_state0['positions'])
             reshape = (np.reshape(md_state0['positions'], (1, last_x, last_y))).value_in_unit(unit.nanometers)
             print('potential energy before NCMC', md_state0['potential_energy'])
