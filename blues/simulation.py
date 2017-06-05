@@ -21,7 +21,7 @@ class Simulation(object):
         blues.run()
 
     """
-    def __init__(self, simulations, model, mover, **opt):
+    def __init__(self, simulations, mover, **opt):
         """Initialize the BLUES Simulation object.
 
         Parameters
@@ -29,10 +29,7 @@ class Simulation(object):
         sims : blues.ncmc.SimulationFactory object
             SimulationFactory Object which carries the 3 required
             OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
-        model : blues.ncmc.ModelProperties object
-            ModelProperties object that represents the model to be perturbed
-            in the NCMC simulation.
-        mover : blues.ncmc.MoveProposal object
+        mover : blues.ncmc.MoveEngine object
             MoveProposal object which contains the dict of moves performed
             in the NCMC simulation.
         """
@@ -41,7 +38,6 @@ class Simulation(object):
         self.nc_context = simulations.nc.context
         self.nc_sim = simulations.nc
         self.nc_integrator = simulations.nc.context._integrator
-        self.model = model
         self.mover = mover
 
         self.accept = 0
