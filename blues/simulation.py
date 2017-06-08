@@ -38,7 +38,7 @@ class Simulation(object):
         self.nc_context = simulations.nc.context
         self.nc_sim = simulations.nc
         self.nc_integrator = simulations.nc.context._integrator
-        self.mover = mover
+        self.move_engine = mover
 
         self.accept = 0
         self.reject = 0
@@ -225,14 +225,21 @@ class Simulation(object):
                     work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
 
                 # Attempt NCMC Move
-                if self.nstepsNC / 2 + 1 == nc_step:
-                #TODO think about if it should be nc_step + 1 instead
+                if self.nstepsNC / 2 == nc_step:
+                #TODO check if it should be nc_step + 1 instead
 #                if int(self.mover.moves['step']) == nc_step:
-                    print('[Iter {}] Performing NCMC {} move'.format(
-                    self.current_iter, self.mover.moves['method'].__name__))
 
                     #Do move
-                    self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    print('[Iter {}] Performing NCMC move'.format(self.current_iter))
+                    try:
+                        self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    except Exception as e:
+                        #error handling in the case where trying the move raises
+                        #an exception
+                        #TODO figure out how to do this without using SystemExit
+                        print(e)
+                        raise SystemExit
+
 #                    self.model, self.nc_context = self.mover.moves['method'](model=self.model, nc_context=self.nc_context)
                     if write_ncmc and (nc_step+1) % write_ncmc == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
