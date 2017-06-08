@@ -1,6 +1,7 @@
 import parmed
 from simtk import unit
 import mdtraj
+import numpy as np
 
 
 class Move(object):
@@ -35,13 +36,6 @@ class Move(object):
         structure: parmed.Structure
             ParmEd Structure object of the model to be moved.
         """
-
-    def setMove(self, method, step):
-        """Returns the dictionary that defines the perturbation methods to be
-        performed on the model object and the step number to perform it at."""
-        self.moves['method'] = getattr(MoveProposal, method)
-        self.moves['step'] = int(step) / 2 - 1
-
 
 class RandomLigandRotationMove(Move):
     """Model provides methods for calculating properties on the
@@ -172,7 +166,7 @@ class CombinationMove(Move):
     ----------
     move_list : list of blues.move.Move-like objects
     """
-    def __init__(move_list):
+    def __init__(self, move_list):
         self.move_list = move_list
 
     def move(self, context):
@@ -213,28 +207,32 @@ class MoveEngine(object):
         """
 
     #make a list from moves if not a list
-    if type(moves) != type(list()):
-        self.moves = [moves]
-    else:
-        self.moves = moves
-    #normalize probabilities
-    if probabilities is None:
-        single_prob = 1. / len(self.moves)
-        self.probs = [single_prob for x in len(self.moves)]
-    prob_sum = float(sum(probabilities))
-    self.probs = [x/prob_sum for x in probabilities]
-    assert len(moves) == len(self.probs)
+#        if type(moves) isinstance(list type(list()):
+        if isinstance(moves,list):
+            self.moves = moves
+        else:
+            self.moves = [moves]
+        #normalize probabilities
+        if probabilities is None:
+            single_prob = 1. / len(self.moves)
+            self.probs = [single_prob for x in (self.moves)]
+        else:
+            prob_sum = float(sum(probabilities))
+            self.probs = [x/prob_sum for x in probabilities]
+        assert len(self.moves) == len(self.probs)
+
 
     def runEngine(self, context):
-    """Selects a random Move object based on its
-        assigned probability and and performs its move() function
-        on a context.
-    Parameters
-    ----------
-    context : openmm.context object
-        OpenMM context whose positions should be moved.
-
-    """
+#    """Selects a random Move object based on its
+#        assigned probability and and performs its move() function
+#        on a context.
+#    Parameters
+##    ----------
+#    context : openmm.context object
+#        OpenMM context whose positions should be moved.
+#
+ #  """
         rand_num = np.random.choice(len(self.probs), p=self.probs)
-        moves[rand_num].move(context)
+        new_context = self.moves[rand_num].move(context)
+        return new_context
 

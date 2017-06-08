@@ -228,7 +228,7 @@ class SimulationFactory(object):
         """
         import logging
         logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
-        factory = alchemy.AlchemicalFactory()
+        factory = alchemy.AbsoluteAlchemicalFactory()
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
         alch_system = factory.create_alchemical_system(system, alch_region)
         return alch_system
