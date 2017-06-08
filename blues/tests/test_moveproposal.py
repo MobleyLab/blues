@@ -3,6 +3,7 @@ import unittest, os, parmed
 from blues import utils
 from blues import ncmc
 from simtk import openmm
+import blues
 
 class MoveProposalTester(unittest.TestCase):
     """
@@ -26,19 +27,21 @@ class MoveProposalTester(unittest.TestCase):
 
 
         #Initialize the Model object
-        self.model = ncmc.Model(structure, 'LIG')
-        self.model.calculateProperties()
+#        self.model = ncmc.Model(structure, 'LIG')
+        self.move = blues.move.RandomLigandRotationMove(structure, 'LIG')
+        self.move.calculateProperties()
+        self.engine = blues.move.MoveEngine(self.move)
         #Initialize the SimulationFactory object
-        sims = ncmc.SimulationFactory(structure, self.model, **self.opt)
+        sims = ncmc.SimulationFactory(structure, self.move, **self.opt)
         system = sims.generateSystem(structure, **self.opt)
-        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
+        alch_system = sims.generateAlchSystem(system, self.atom_indices)
         self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
 
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        self.mover = ncmc.MoveProposal(self.model, 'random_rotation', self.opt['nstepsNC'])
+#        self.mover = ncmc.MoveProposal(self.model, 'random_rotation', self.opt['nstepsNC'])
 
     def test_random_rotation(self):
-        model, nc_context = self.mover.moves['method'](self.model, self.nc_sim.context)
+        nc_context = self.engine.runEngine(self.nc_sim.context)
         rot_pos = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
         #for idx in self.atom_indices:
         #    print('Initial')

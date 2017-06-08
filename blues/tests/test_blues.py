@@ -1,11 +1,12 @@
 
 import unittest, os, parmed
 from blues import utils
-from blues.ncmc import Model, SimulationFactory
+from blues.ncmc import SimulationFactory
+from blues.move import RandomLigandRotationMove, MoveEngine
+from blues.simulation import Simulation
 from simtk import openmm
 from openmmtools import testsystems
 import simtk.unit as unit
-import numpy as np
 class BLUESTester(unittest.TestCase):
     """
     Test the Model class.
@@ -16,42 +17,42 @@ class BLUESTester(unittest.TestCase):
         self.inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
         self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
+                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-                'trajectory_interval' : 10, 'reporter_interval' : 10,
+                'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'platform' : None,
                 'verbose' : True }
 
 
-    def test_modelproperties(self):
+    def test_moveproperties(self):
         # Model.structure must be residue selection.
-        model = Model(self.full_struct, 'LIG')
-        self.assertNotEqual(model.topology.getNumAtoms(), len(self.full_struct.atoms))
+        move = RandomLigandRotationMove(self.full_struct, 'LIG')
+        self.assertNotEqual(move.topology.getNumAtoms(), len(self.full_struct.atoms))
 
         # Test each function separately
-        masses, totalmass = model.getMasses(model.topology)
+        masses, totalmass = move.getMasses(move.topology)
         self.assertNotEqual(len(masses), 0)
         self.assertEqual(totalmass, masses.sum())
 
-        center_of_mass = model.getCenterOfMass(model.positions, masses)
+        center_of_mass = move.getCenterOfMass(move.positions, masses)
         self.assertNotEqual(center_of_mass, [0, 0, 0])
 
         # Test function that calcs all properties
         # Ensure properties are same as returned values
-        model.calculateProperties()
-        self.assertEqual(masses.tolist(), model.masses.tolist())
-        self.assertEqual(totalmass, model.totalmass)
-        self.assertEqual(center_of_mass.tolist(), model.center_of_mass.tolist())
+        move.calculateProperties()
+        self.assertEqual(masses.tolist(), move.masses.tolist())
+        self.assertEqual(totalmass, move.totalmass)
+        self.assertEqual(center_of_mass.tolist(), move.center_of_mass.tolist())
 
     def test_simulationfactory(self):
         #Initialize the SimulationFactory object
-        model = Model(self.full_struct, 'LIG')
-        sims = SimulationFactory(self.full_struct, model, **self.opt)
+        move = RandomLigandRotationMove(self.full_struct, 'LIG')
+        sims = SimulationFactory(self.full_struct, move, **self.opt)
 
         system = sims.generateSystem(self.full_struct, **self.opt)
         self.assertIsInstance(system, openmm.System)
 
-        alch_system = sims.generateAlchSystem(system, model.atom_indices)
+        alch_system = sims.generateAlchSystem(system, move.atom_indices)
         self.assertIsInstance(alch_system, openmm.System)
 
         md_sim = sims.generateSimFromStruct(self.full_struct, system, **self.opt)
@@ -59,6 +60,38 @@ class BLUESTester(unittest.TestCase):
 
         nc_sim = sims.generateSimFromStruct(self.full_struct, alch_system, ncmc=True, **self.opt)
         self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
+    def test_simulationRun(self):
+        """Tests the Simulation.run() function"""
+        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
+                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2,
+                'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
+                'trajectory_interval' : 1, 'reporter_interval' : 1,
+                'platform' : None,
+                'verbose' : True }
+
+        testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
+        structure = parmed.openmm.topsystem.load_topology(topology=testsystem.topology,
+                                            system=testsystem.system,
+                                            xyz=testsystem.positions,
+                                            )
+
+        self.model = RandomLigandRotationMove(structure, resname='ALA')
+        self.model.atom_indices = range(22)
+        self.model.topology = structure.topology
+        self.model.positions = structure.positions
+        self.model.calculateProperties()
+        #Initialize the SimulationFactory object
+        sims = SimulationFactory(structure, self.model, **self.opt)
+        #print(sims)
+        system = sims.generateSystem(structure, **self.opt)
+        simdict = sims.createSimulationSet()
+        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
+        self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
+        self.model.calculateProperties()
+        self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.mover = MoveEngine(self.model)
+        asim = Simulation(sims, self.mover, **self.opt)
+        asim.run()
 
         #sims.createSimulationSet()
 if __name__ == "__main__":
