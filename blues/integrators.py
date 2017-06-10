@@ -111,7 +111,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("perturbed_pe", 0)
         self.addGlobalVariable("unperturbed_pe", 0)
         self.addGlobalVariable("first_step", 0)
-        self.addGlobalVariable("awork", 0)
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
@@ -149,7 +148,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.addComputeGlobal("unperturbed_pe", "energy")
             self.endBlock()
 
-            self.addComputeGlobal("awork", "perturbed_pe - unperturbed_pe")
             self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
 
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
@@ -176,5 +174,4 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.setGlobalVariableByName("first_step", 0)
         self.setGlobalVariableByName("perturbed_pe", 0.0)
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
-        self.setGlobalVariableByName("awork", 0.0)
 
