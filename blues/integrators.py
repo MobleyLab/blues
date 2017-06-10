@@ -111,6 +111,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("perturbed_pe", 0)
         self.addGlobalVariable("unperturbed_pe", 0)
         self.addGlobalVariable("first_step", 0)
+        self.addGlobalVariable("awork", 0)
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
@@ -142,6 +143,13 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
             self.beginIfBlock("step < nsteps")
             self.addComputeGlobal("perturbed_pe", "energy")
+            self.beginIfBlock("first_step < 1")
+            #TODO write better test that checks that the initial work isn't gigantic
+            self.addComputeGlobal("first_step", "1")
+            self.addComputeGlobal("unperturbed_pe", "energy")
+            self.endBlock()
+
+            self.addComputeGlobal("awork", "perturbed_pe - unperturbed_pe")
             self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
 
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
@@ -168,4 +176,5 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.setGlobalVariableByName("first_step", 0)
         self.setGlobalVariableByName("perturbed_pe", 0.0)
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
+        self.setGlobalVariableByName("awork", 0.0)
 
