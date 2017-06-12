@@ -202,7 +202,6 @@ class Simulation(object):
             self.accept += 1
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
-            #self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
@@ -226,8 +225,6 @@ class Simulation(object):
 
                 # Attempt NCMC Move
                 if self.nstepsNC / 2 == nc_step:
-                #TODO check if it should be nc_step + 1 instead
-#                if int(self.mover.moves['step']) == nc_step:
 
                     #Do move
                     print('[Iter {}] Performing NCMC move'.format(self.current_iter))
@@ -240,7 +237,6 @@ class Simulation(object):
                         print(e)
                         raise SystemExit
 
-#                    self.model, self.nc_context = self.mover.moves['method'](model=self.model, nc_context=self.nc_context)
                     if write_ncmc and (nc_step+1) % write_ncmc == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
@@ -273,7 +269,6 @@ class Simulation(object):
             self.current_stepMD = self.md_sim.currentStep
         except Exception as e:
             print(e)
-#            stateinfo = self.getStateInfo(self.md_sim.context, self.state_keys)
             last_x, last_y = np.shape(md_state0['positions'])
             reshape = (np.reshape(md_state0['positions'], (1, last_x, last_y))).value_in_unit(unit.nanometers)
             print('potential energy before NCMC', md_state0['potential_energy'])
