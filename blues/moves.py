@@ -1,7 +1,18 @@
+"""
+moves.py: Provides the two main classes, Move and MoveEngine
+which allow altering the positions of a
+subset of atoms in a context during a BLUES simulation to
+increase sampling.
+
+Authors: Samuel C. Gill
+Contributors: Nathan M. Lim, David L. Mobley
+"""
+
 import parmed
 from simtk import unit
 import mdtraj
 import numpy as np
+import sys, traceback
 
 
 class Move(object):
@@ -207,7 +218,6 @@ class MoveEngine(object):
         """
 
     #make a list from moves if not a list
-#        if type(moves) isinstance(list type(list()):
         if isinstance(moves,list):
             self.moves = moves
         else:
@@ -223,16 +233,24 @@ class MoveEngine(object):
 
 
     def runEngine(self, context):
-#    """Selects a random Move object based on its
-#        assigned probability and and performs its move() function
-#        on a context.
-#    Parameters
-##    ----------
-#    context : openmm.context object
-#        OpenMM context whose positions should be moved.
-#
- #  """
+        """Selects a random Move object based on its
+        assigned probability and and performs its move() function
+        on a context.
+        Parameters
+        ----------
+        context : openmm.context object
+        OpenMM context whose positions should be moved.
+        """
         rand_num = np.random.choice(len(self.probs), p=self.probs)
-        new_context = self.moves[rand_num].move(context)
+        try:
+            new_context = self.moves[rand_num].move(context)
+        except Exception as e:
+            #In case the move isn't properly implemented, print out useful info
+            print('Error: move not implemented correctly, printing traceback:')
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)
+            print(e)
+            raise SystemExit
+
         return new_context
 

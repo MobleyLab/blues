@@ -2,7 +2,7 @@
 import unittest, os, parmed
 from blues import utils
 from blues.ncmc import SimulationFactory
-from blues.move import RandomLigandRotationMove, MoveEngine
+from blues.moves import RandomLigandRotationMove, MoveEngine
 from blues.simulation import Simulation
 from simtk import openmm
 from openmmtools import testsystems
@@ -63,7 +63,7 @@ class BLUESTester(unittest.TestCase):
     def test_simulationRun(self):
         """Tests the Simulation.run() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2,
+                'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'platform' : None,

@@ -10,6 +10,7 @@ from simtk import unit
 from simtk.openmm import app
 import parmed, math
 import mdtraj
+import sys, traceback
 
 
 class Simulation(object):
@@ -228,14 +229,7 @@ class Simulation(object):
 
                     #Do move
                     print('[Iter {}] Performing NCMC move'.format(self.current_iter))
-                    try:
-                        self.nc_context = self.move_engine.runEngine(self.nc_context)
-                    except Exception as e:
-                        #error handling in the case where trying the move raises
-                        #an exception
-                        #TODO figure out how to do this without using SystemExit
-                        print(e)
-                        raise SystemExit
+                    self.nc_context = self.move_engine.runEngine(self.nc_context)
 
                     if write_ncmc and (nc_step+1) % write_ncmc == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
