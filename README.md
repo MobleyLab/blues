@@ -50,7 +50,7 @@ Users can implement their own MC moves into NCMC by inheriting from an appropria
 ```python
 from blues.moves import Move
 class TranslationMove(Move):
-   	__init__(self, atom_indices)
+   	def __init__(self, atom_indices):
    		self.atom_indices = atom_indices
    	def move(context):
    		positions = context.context.getState(getPositions=True).getPositions(asNumpy=True)
