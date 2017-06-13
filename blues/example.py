@@ -11,12 +11,11 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 """
 
 from __future__ import print_function
-from blues import ncmc
-from blues import utils
+from blues.moves import RandomLigandRotationMove, MoveEngine
+from blues import utils, ncmc
 from blues.simulation import Simulation
 import parmed
-from simtk import unit, openmm
-from datetime import datetime
+from simtk import openmm
 from optparse import OptionParser
 
 def runNCMC(platform_name):
@@ -35,17 +34,17 @@ def runNCMC(platform_name):
 
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
-    ligand = ncmc.Model(struct, 'LIG')
+    ligand = RandomLigandRotationMove(struct, 'LIG')
     ligand.calculateProperties()
 
     # Initialize object that proposes moves.
-    ligand_mover = ncmc.MoveProposal(ligand, 'random_rotation', opt['nstepsNC'])
+    ligand_mover = MoveEngine(ligand)
 
     # Generate the MD, NCMC, ALCHEMICAL Simulation objects
     simulations = ncmc.SimulationFactory(struct, ligand, **opt)
     simulations.createSimulationSet()
 
-    blues = Simulation(simulations, ligand, ligand_mover, **opt)
+    blues = Simulation(simulations, ligand_mover, **opt)
     blues.run()
 
 parser = OptionParser()
