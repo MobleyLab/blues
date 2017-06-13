@@ -45,7 +45,7 @@ The `Simulation` class in `blues/simulation.py` serves as a wrapper for running 
 ###### For a detailed explanation of the BLUES framework or implementing new moves, check out the [README](devdocs/README.md) in devdocs.
 
 ### Implementing Custom moves
-Users can implement their own MC moves into NCMC by inheriting from an appropriate `blues.moves.Move` class and constructing a custom `move()` method that only takes in an Openmm context object as a parameter. The `move()` method will then access the positions of that context, change those positions, then update the positions of that context. For example if you would like to add a move that randomly translates a set of coordinates the pseudocode would look similar to this
+Users can implement their own MC moves into NCMC by inheriting from an appropriate `blues.moves.Move` class and constructing a custom `move()` method that only takes in an Openmm context object as a parameter. The `move()` method will then access the positions of that context, change those positions, then update the positions of that context. For example if you would like to add a move that randomly translates a set of coordinates the code would look similar to this pseudocode:
 
 ```python
 from blues.moves import Move
