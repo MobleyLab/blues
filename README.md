@@ -56,8 +56,9 @@ class TranslationMove(Move):
    		positions = context.context.getState(getPositions=True).getPositions(asNumpy=True)
    		#get positions from context
    		#randomly translate atom_indices
-   		newPositions = RandomTranslation(positions[atom_indices])
+   		newPositions = RandomTranslation(positions[self.atom_indices])
    		context.setPositions(newPositions)
+   		return context
 ```
 
 
