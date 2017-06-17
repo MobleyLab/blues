@@ -181,7 +181,7 @@ class Simulation(object):
         structure.save(outfname,overwrite=True)
         print('Saving Frame to', outfname)
 
-    def chooseMove(self):
+    def acceptReject(self):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.current_state['md']['state0']
@@ -224,7 +224,8 @@ class Simulation(object):
                 if verbose:
                     work_initial = self.getWorkInfo(self.nc_integrator, self.work_keys)
 
-                # Attempt NCMC Move
+                # Attempt selected MoveEngine Move at the halfway point
+                #to ensure protocol is symmetric
                 if self.nstepsNC / 2 == nc_step:
 
                     #Do move
@@ -234,7 +235,7 @@ class Simulation(object):
                     if write_ncmc and (nc_step+1) % write_ncmc == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
-                # Do 1 NCMC step
+                # Do 1 NCMC step with the integrator, alchemically modifying system
                 self.nc_integrator.step(1)
                 if write_ncmc and (nc_step+1) % write_ncmc == 0:
                     self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
@@ -245,8 +246,6 @@ class Simulation(object):
                     print('Initial work:', work_initial)
                     print('Final work:', work_final)
                     #TODO write out frame regardless if accepted/REJECTED
-                    # Embed in move function or here???
-                    #self.writeFrame(self.md_sim, 'MD-iter{}.pdb'.format(self.current_iter))
 
             except Exception as e:
                 print(e)
@@ -290,7 +289,7 @@ class Simulation(object):
             self.current_iter = int(n)
             self.setStateConditions()
             self.simulateNCMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
-            self.chooseMove()
+            self.acceptReject()
             self.simulateMD()
 
         # END OF NITER

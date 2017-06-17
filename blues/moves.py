@@ -17,39 +17,24 @@ import sys, traceback
 
 class Move(object):
 
-    """Model provides methods for calculating properties on the
-    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
-    Current methods calculate the object's atomic masses and center of masss.
-    Calculating the object's center of mass will get the positions
-    and total mass.
+    """Move provides methods for calculating properties on the
+    object 'move' (i.e ligand) being perturbed in the NCMC simulation.
+    This is the base Move class.
     Ex.
         from blues.ncmc import Model
         ligand = Model(structure, 'LIG')
         ligand.calculateProperties()
     Attributes
     ----------
-    ligand.resname : string specifying the residue name of the ligand
-    ligand.topology : openmm.topology of ligand
-    ligand.atom_indices : list of atom indicies of the ligand.
-    ligand.masses : list of particle masses of the ligand with units.
-    ligand.totalmass : integer of the total mass of the ligand.
-    #Dynamic attributes that must be updated with each iteration
-    ligand.center_of_mass : np.array of calculated center of mass of the ligand
-    ligand.positions : np.array of ligands positions
     """
 
     def __init__(self):
-        """Initialize the model.
-        Parameters
-        ----------
-        resname : str
-            String specifying the resiue name of the ligand.
-        structure: parmed.Structure
-            ParmEd Structure object of the model to be moved.
+        """Initialize the Move object
+        Currently empy.
         """
 
 class RandomLigandRotationMove(Move):
-    """Model provides methods for calculating properties on the
+    """Move that provides methods for calculating properties on the
     object 'model' (i.e ligand) being perturbed in the NCMC simulation.
     Current methods calculate the object's atomic masses and center of masss.
     Calculating the object's center of mass will get the positions
@@ -97,7 +82,7 @@ class RandomLigandRotationMove(Move):
         resname : str
             String specifying the resiue name of the ligand.
         structure: parmed.Structure
-            ParmEd Structure object of the model to be moved.
+            ParmEd Structure object of the atoms to be moved.
         Returns
         -------
         atom_indices : list of ints
@@ -112,11 +97,11 @@ class RandomLigandRotationMove(Move):
         return atom_indices
 
     def getMasses(self, topology):
-        """Returns a list of masses of the atoms in the model.
+        """Returns a list of masses of the specified ligand atoms.
         Parameters
         ----------
-        structure: parmed.Structure
-            ParmEd Structure object of the model to be moved.
+        topology: parmed.Topology
+            ParmEd topology object containing atoms of the system.
         """
         masses = unit.Quantity(np.zeros([int(topology.getNumAtoms()),1],np.float32), unit.dalton)
         for idx,atom in enumerate(topology.atoms()):
@@ -129,7 +114,7 @@ class RandomLigandRotationMove(Move):
         Parameters
         ----------
         structure: parmed.Structure
-            ParmEd Structure object of the model to be moved.
+            ParmEd positions of the atoms to be moved.
         masses : numpy.array
             np.array of particle masses
         """
@@ -146,7 +131,7 @@ class RandomLigandRotationMove(Move):
         """Function that performs a random rotation about the
         center of mass of the ligand.
         """
-#       TODO check if we need to deepcopy
+       #TODO: check if we need to deepcopy
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
 
         self.positions = positions[self.atom_indices]
@@ -197,7 +182,8 @@ class MoveEngine(object):
     simulation.
     Ex.
         from blues.ncmc import MoveProposal
-        mover = MoveProposal(model, 'random_rotation', nstepsNC)
+        probabilities = [0.25, 0.75]
+        mover = MoveProposal(Move, probabilities)
         #Get the dictionary of proposed moves
         mover.moves
     """
@@ -229,7 +215,10 @@ class MoveEngine(object):
         else:
             prob_sum = float(sum(probabilities))
             self.probs = [x/prob_sum for x in probabilities]
-        assert len(self.moves) == len(self.probs)
+        #if move and probabilitiy lists are different lengths throw error
+        if len(self.moves) != len(self.probs):
+            print('moves and probability list lengths need to match')
+            raise IndexError
 
 
     def runEngine(self, context):

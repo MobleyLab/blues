@@ -39,10 +39,14 @@ This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCM
 An example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move can be found in `blues/example.py`
 
 ### Actually using BLUES
-The heart of the package is found in `blues/ncmc_switching.py`. This holds the framework for NCMC. Particularly, it contains the integrator class that calculates the work done during the NCMC move. It also controls the lambda scaling of parameters. Currently the alchemy package is used to generate the lambda parameters for the ligand, which can potentially modify 5 parameters–sterics, electrostatics, bonds, angles, and torsions.
+The heart of the package is found in `blues/ncmc_switching.py`. This holds the framework for NCMC. Particularly, it contains the integrator class that calculates the work done during the NCMC move. It also controls the lambda scaling of parameters. Currently the openmmtools.alchemy package is used to generate the lambda parameters for the ligand, allowing alchemical modification of the sterics and electrostatics of the system.
 The `Simulation` class in `blues/simulation.py` serves as a wrapper for running NCMC simulations.
 
+
 ###### For a detailed explanation of the BLUES framework or implementing new moves, check out the [README](devdocs/README.md) in devdocs.
+To see an example of how to use BLUES check blues/example.py for an example script
+
+
 
 ### Implementing Custom moves
 Users can implement their own MC moves into NCMC by inheriting from an appropriate `blues.moves.Move` class and constructing a custom `move()` method that only takes in an Openmm context object as a parameter. The `move()` method will then access the positions of that context, change those positions, then update the positions of that context. For example if you would like to add a move that randomly translates a set of coordinates the code would look similar to this pseudocode:
