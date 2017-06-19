@@ -48,7 +48,7 @@ To see an example of how to use BLUES check blues/example.py for an example scri
 
 
 
-### Implementing Custom moves
+### Implementing Custom Moves
 Users can implement their own MC moves into NCMC by inheriting from an appropriate `blues.moves.Move` class and constructing a custom `move()` method that only takes in an Openmm context object as a parameter. The `move()` method will then access the positions of that context, change those positions, then update the positions of that context. For example if you would like to add a move that randomly translates a set of coordinates the code would look similar to this pseudocode:
 
 ```python
@@ -59,12 +59,16 @@ class TranslationMove(Move):
    	def move(context):
    		positions = context.context.getState(getPositions=True).getPositions(asNumpy=True)
    		#get positions from context
-   		#randomly translate atom_indices
+   		#use some function that translates atom_indices
    		newPositions = RandomTranslation(positions[self.atom_indices])
    		context.setPositions(newPositions)
    		return context
 ```
 
+###Combining Moves together
+If you're interested in combining moves together sequentially–say you'd like to perform a rotation and translation move together–instead of coding up a new `Move` class that performs that, you can instead leverage the functionality of existing `Move`s using the `CombinationMove` class. `CombinationMove` takes in a list of instantiated `Move` objects. The `CombinationMove`'s `move()` method perfroms the moves in either listed or reverse order. Replicating a rotation and translation move on t, then, can effectively be done by passing in an instantiated TranslationMove (from the pseudocode example above) and RandomLigandRotation.
+One important non-obvious thing to note about the CombinationMove class is that to ensure detailed balance is maintained, moves are done half the time in listed order and half the time in the reverse order.
+```
 
 ## Versions:
 - Version 0.0.1: Basic BLUES functionality/package
