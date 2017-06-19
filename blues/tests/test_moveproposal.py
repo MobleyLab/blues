@@ -1,13 +1,11 @@
-
-import unittest, os, parmed
+import unittest, parmed
 from blues import utils
-from blues import ncmc
-from simtk import openmm
+from blues.simulation import SimulationFactory
 import blues
 
-class MoveProposalTester(unittest.TestCase):
+class MoveEngineTester(unittest.TestCase):
     """
-    Test the MoveProposal class.
+    Test the MoveEngine class.
     """
     def setUp(self):
         # Obtain topologies/positions
@@ -26,12 +24,13 @@ class MoveProposalTester(unittest.TestCase):
                 'verbose' : False }
 
 
-        #Initialize the Model object
+        #Initialize the Move object
         self.move = blues.moves.RandomLigandRotationMove(structure, 'LIG')
         self.move.calculateProperties()
-        self.engine = blues.moves.MoveEngine(self.move)
+        self.engine = blues.engine.MoveEngine(self.move)
+        self.engine.selectMove()
         #Initialize the SimulationFactory object
-        sims = ncmc.SimulationFactory(structure, self.move, **self.opt)
+        sims = SimulationFactory(structure, self.move, **self.opt)
         system = sims.generateSystem(structure, **self.opt)
         alch_system = sims.generateAlchSystem(system, self.atom_indices)
         self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)

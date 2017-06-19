@@ -1,15 +1,16 @@
 
-import unittest, os, parmed
+import unittest, parmed
 from blues import utils
-from blues.ncmc import SimulationFactory
-from blues.moves import RandomLigandRotationMove, MoveEngine
-from blues.simulation import Simulation
+from blues.moves import RandomLigandRotationMove
+from blues.engine import MoveEngine
+from blues.simulation import Simulation, SimulationFactory
 from simtk import openmm
 from openmmtools import testsystems
-import simtk.unit as unit
+
+
 class BLUESTester(unittest.TestCase):
     """
-    Test the Model class.
+    Test the Simulation class.
     """
     def setUp(self):
         # Load the waterbox with toluene into a structure.
@@ -25,7 +26,7 @@ class BLUESTester(unittest.TestCase):
 
 
     def test_moveproperties(self):
-        # Model.structure must be residue selection.
+        # RandomLigandRotationMove.structure must be residue selection.
         move = RandomLigandRotationMove(self.full_struct, 'LIG')
         self.assertNotEqual(move.topology.getNumAtoms(), len(self.full_struct.atoms))
 
@@ -60,6 +61,7 @@ class BLUESTester(unittest.TestCase):
 
         nc_sim = sims.generateSimFromStruct(self.full_struct, alch_system, ncmc=True, **self.opt)
         self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
+
     def test_simulationRun(self):
         """Tests the Simulation.run() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
@@ -93,6 +95,5 @@ class BLUESTester(unittest.TestCase):
         asim = Simulation(sims, self.mover, **self.opt)
         asim.run()
 
-        #sims.createSimulationSet()
 if __name__ == "__main__":
         unittest.main()
