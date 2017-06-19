@@ -11,7 +11,8 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 """
 
 from __future__ import print_function
-from blues.moves import RandomLigandRotationMove, MoveEngine
+from blues.moves import RandomLigandRotationMove
+from blues.engine import MoveEngine
 from blues import utils, ncmc
 from blues.simulation import Simulation
 import parmed

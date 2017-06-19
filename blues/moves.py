@@ -181,9 +181,10 @@ class MoveEngine(object):
     """MoveEngine provides perturbation functions for the context during the NCMC
     simulation.
     Ex.
-        from blues.ncmc import MoveProposal
+        from blues.ncmc import MoveEngine
         probabilities = [0.25, 0.75]
-        mover = MoveProposal(Move, probabilities)
+        #Where move is a list of two Move objects
+        mover = MoveEngine(move, probabilities)
         #Get the dictionary of proposed moves
         mover.moves
     """
@@ -192,15 +193,15 @@ class MoveEngine(object):
         the context in the NCMC simulation.
         Parameters
         ----------
-        moves : blues.ncmc.Model object or list of blues.ncmc.Model-like objects
-            Specifies the possible moves to be performed
+        moves : blues.ncmc.Model object or list of n blues.ncmc.Model-like objects
+            Specifies the possible moves to be performed.
 
-        probabilities:
-            A list of n probabilities, which correspond to the likelyhood
-            of a Move object from moves being selected to perform its
-            corresponding move.
-            If probabilities=None (the default setting) then uniform
-            probabilities are given to each move
+        probabilities: list of floats, default=None
+            A list of n probabilities,
+            where probabilities[i] corresponds to the probaility of moves[i]
+            being selected to perform its associated move() method.
+
+            If None, uniform probabilities are assigned.
         """
 
     #make a list from moves if not a list

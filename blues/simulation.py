@@ -6,11 +6,163 @@ Contributors: Nathan M. Lim, David L. Mobley
 """
 from __future__ import print_function
 import numpy as np
-from simtk import unit
+from simtk import unit, openmm
 from simtk.openmm import app
 import parmed, math
 import mdtraj
-import sys, traceback
+import sys
+from openmmtools import alchemy
+from blues.ncmc_switching import NCMCVVAlchemicalIntegrator
+
+class SimulationFactory(object):
+    """SimulationFactory is used to generate the 3 required OpenMM Simulation
+    objects (MD, NCMC, ALCH) required for the BLUES run.
+    Ex.
+        from blues.ncmc import SimulationFactory
+        sims = SimulationFactory(structure, move_engine, **opt)
+        sims.createSimulationSet()
+    #TODO: add functionality for handling multiple alchemical regions
+    """
+    def __init__(self, structure, move_engine, **opt):
+        """Requires a parmed.Structure of the entire system and the ncmc.Model
+        object being perturbed.
+
+        Options is expected to be a dict of values. Ex:
+        nIter=5, nstepsNC=50, nstepsMD=10000,
+        temperature=300, friction=1, dt=0.002,
+        nonbondedMethod='PME', nonbondedCutoff=10, constraints='HBonds',
+        trajectory_interval=1000, reporter_interval=1000, platform=None,
+        verbose=False"""
+
+        #Structure of entire system
+        self.structure = structure
+        #Atom indicies from move_engine
+        #TODO: change atom_indices selection for multiple regions
+        self.atom_indices = move_engine.moves[0].atom_indices
+
+        self.system = None
+        self.alch_system = None
+        self.md = None
+        self.alch  = None
+        self.nc  = None
+
+        self.opt = opt
+    def generateAlchSystem(self, system, atom_indices):
+        """Returns the OpenMM System for alchemical perturbations.
+
+        Parameters
+        ----------
+        system : openmm.System
+            The OpenMM System object corresponding to the reference system.
+        atom_indices : list
+            Atom indicies of the move.
+        """
+        import logging
+        logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
+        factory = alchemy.AbsoluteAlchemicalFactory()
+        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
+        alch_system = factory.create_alchemical_system(system, alch_region)
+        return alch_system
+
+    def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
+                       constraints='HBonds', **opt):
+        """Returns the OpenMM System for the reference system.
+
+        Parameters
+        ----------
+        structure: parmed.Structure
+            ParmEd Structure object of the entire system to be simulated.
+        opt : optional parameters (i.e. cutoffs/constraints)
+        """
+        system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
+                            nonbondedCutoff=nonbondedCutoff*unit.angstroms,
+                            constraints=eval("app.%s" % constraints) )
+        return system
+
+    def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
+                             temperature=300, dt=0.002, friction=1,
+                             reporter_interval=1000,
+                             ncmc=False, platform=None,
+                             verbose=False, printfile=sys.stdout,  **opt):
+        """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
+
+        Parameters
+        ----------
+        structure: parmed.Structure
+            ParmEd Structure object of the entire system to be simulated.
+        system :
+        opt : optional parameters (i.e. cutoffs/constraints)
+        atom_indices : list
+            Atom indicies of the move.
+        """
+        if ncmc:
+            #During NCMC simulation, lambda parameters are controlled by function dict below
+            # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
+            # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
+            functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+
+            integrator = NCMCVVAlchemicalIntegrator(temperature*unit.kelvin,
+                                                    system,
+                                                    functions,
+                                                    nsteps=nstepsNC,
+                                                    direction='insert',
+                                                    timestep=0.001*unit.picoseconds,
+                                                    steps_per_propagation=1)
+        else:
+            integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
+                                                   friction/unit.picosecond,
+                                                   dt*unit.picoseconds)
+        #TODO SIMPLIFY TO 1 LINE.
+        #Specifying platform properties here used for local development.
+        if platform is None:
+            #Use the fastest available platform
+            simulation = app.Simulation(structure.topology, system, integrator)
+        else:
+            platform = openmm.Platform.getPlatformByName(platform)
+            #prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
+            simulation = app.Simulation(structure.topology, system, integrator, platform) #, prop)
+
+        if verbose:
+            # OpenMM platform information
+            mmver = openmm.version.version
+            mmplat = simulation.context.getPlatform()
+            print('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()), file=printfile)
+
+            # Host information
+            # ._asdict() is incompatible with py2.7
+            #from platform import uname
+            #for k,v in uname()._asdict().items():
+            #    print(k, ':', v, file=printfile)
+
+            # Platform properties
+            for prop in mmplat.getPropertyNames():
+                val = mmplat.getPropertyValue(simulation.context, prop)
+                print(prop, ':', val, file=printfile)
+
+        # Set initial positions/velocities
+        # Will get overwritten from saved State.
+        simulation.context.setPositions(structure.positions)
+        simulation.context.setVelocitiesToTemperature(temperature*unit.kelvin)
+
+        #TODO MOVE SIMULATION REPORTERS TO OWN FUNCTION.
+        simulation.reporters.append(app.StateDataReporter(sys.stdout, separator="\t",
+                                    reportInterval=reporter_interval,
+                                    step=True, totalSteps=nIter*nstepsMD,
+                                    time=True, speed=True, progress=True,
+                                    elapsedTime=True, remainingTime=True))
+
+        return simulation
+
+    def createSimulationSet(self):
+        """Function used to generate the 3 OpenMM Simulation objects."""
+        self.system = self.generateSystem(self.structure, **self.opt)
+        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices)
+
+        self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
+                                            ncmc=True, **self.opt)
 
 
 class Simulation(object):
@@ -18,11 +170,11 @@ class Simulation(object):
 
     Ex.
         import blues.ncmc
-        blues = ncmc.Simulation(sims, model, mover, **opt)
+        blues = ncmc.Simulation(sims, move_engine, **opt)
         blues.run()
 
     """
-    def __init__(self, simulations, mover, **opt):
+    def __init__(self, simulations, move_engine, **opt):
         """Initialize the BLUES Simulation object.
 
         Parameters
@@ -30,7 +182,7 @@ class Simulation(object):
         sims : blues.ncmc.SimulationFactory object
             SimulationFactory Object which carries the 3 required
             OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
-        mover : blues.ncmc.MoveEngine object
+        move_engine : blues.ncmc.MoveEngine object
             MoveProposal object which contains the dict of moves performed
             in the NCMC simulation.
         """
@@ -39,7 +191,7 @@ class Simulation(object):
         self.nc_context = simulations.nc.context
         self.nc_sim = simulations.nc
         self.nc_integrator = simulations.nc.context._integrator
-        self.move_engine = mover
+        self.move_engine = move_engine
 
         self.accept = 0
         self.reject = 0
@@ -217,6 +369,9 @@ class Simulation(object):
         if (self.current_iter == 0) and (write_ncmc):
             self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1)
             self.nc_sim.reporters.append(self.ncmc_reporter)
+        #choose a move to be performed according to move probabilities
+        #TODO: will have to change to work with multiple alch regions
+        self.move_engine.selectMove()
         for nc_step in range(self.nstepsNC):
             try:
                 self.current_stepNC = int(nc_step)

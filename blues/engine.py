@@ -21,7 +21,7 @@ class MoveEngine(object):
         moves : blues.ncmc.Model object or list of n blues.ncmc.Model-like objects
             Specifies the possible moves to be performed.
 
-        probabilities: list of floats, default=None
+        probabilities: list of floats, optional, default=None
             A list of n probabilities,
             where probabilities[i] corresponds to the probaility of moves[i]
             being selected to perform its associated move() method.
@@ -45,7 +45,15 @@ class MoveEngine(object):
         if len(self.moves) != len(self.probs):
             print('moves and probability list lengths need to match')
             raise IndexError
+        #use index in selecting move
+        self.selected_move = None
 
+    def selectMove(self):
+        """chooses the move which will be selected for a given NCMC
+        iteration
+        """
+        rand_num = np.random.choice(len(self.probs), p=self.probs)
+        self.selected_move = rand_num
 
     def runEngine(self, context):
         """Selects a random Move object based on its
@@ -56,9 +64,8 @@ class MoveEngine(object):
         context : openmm.context object
         OpenMM context whose positions should be moved.
         """
-        rand_num = np.random.choice(len(self.probs), p=self.probs)
         try:
-            new_context = self.moves[rand_num].move(context)
+            new_context = self.moves[self.selected_move].move(context)
         except Exception as e:
             #In case the move isn't properly implemented, print out useful info
             print('Error: move not implemented correctly, printing traceback:')
