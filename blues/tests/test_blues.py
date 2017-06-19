@@ -48,7 +48,8 @@ class BLUESTester(unittest.TestCase):
     def test_simulationfactory(self):
         #Initialize the SimulationFactory object
         move = RandomLigandRotationMove(self.full_struct, 'LIG')
-        sims = SimulationFactory(self.full_struct, move, **self.opt)
+        engine = MoveEngine(move)
+        sims = SimulationFactory(self.full_struct, engine, **self.opt)
 
         system = sims.generateSystem(self.full_struct, **self.opt)
         self.assertIsInstance(system, openmm.System)
@@ -82,8 +83,9 @@ class BLUESTester(unittest.TestCase):
         self.model.topology = structure.topology
         self.model.positions = structure.positions
         self.model.calculateProperties()
+        self.mover = MoveEngine(self.model)
         #Initialize the SimulationFactory object
-        sims = SimulationFactory(structure, self.model, **self.opt)
+        sims = SimulationFactory(structure, self.mover, **self.opt)
         #print(sims)
         system = sims.generateSystem(structure, **self.opt)
         simdict = sims.createSimulationSet()
@@ -91,7 +93,6 @@ class BLUESTester(unittest.TestCase):
         self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        self.mover = MoveEngine(self.model)
         asim = Simulation(sims, self.mover, **self.opt)
         asim.run()
 

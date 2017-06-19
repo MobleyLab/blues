@@ -13,8 +13,8 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 from __future__ import print_function
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
-from blues import utils, ncmc
-from blues.simulation import Simulation
+from blues import utils
+from blues.simulation import Simulation, SimulationFactory
 import parmed
 from simtk import openmm
 from optparse import OptionParser
@@ -42,7 +42,7 @@ def runNCMC(platform_name):
     ligand_mover = MoveEngine(ligand)
 
     # Generate the MD, NCMC, ALCHEMICAL Simulation objects
-    simulations = ncmc.SimulationFactory(struct, ligand, **opt)
+    simulations = SimulationFactory(struct, ligand_mover, **opt)
     simulations.createSimulationSet()
 
     blues = Simulation(simulations, ligand_mover, **opt)
