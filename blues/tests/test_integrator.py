@@ -1,12 +1,16 @@
-from openmmtools import testsystems, alchemy
-from openmmtools.alchemy import AlchemicalFactory, AlchemicalRegion
+from openmmtools import testsystems
+from openmmtools.alchemy import AbsoluteAlchemicalFactory, AlchemicalRegion
 from simtk.openmm.app import Simulation
 import simtk
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 def test_nonequilibrium_external_integrator():
+    """Moves the first atom during the third step of the integration
+    and checks to see that the AlchemicalExternalLangevinIntegrator
+    finds the correct energy change.
+    """
     testsystem = testsystems.AlanineDipeptideVacuum()
     functions = { 'lambda_sterics' : '1', 'lambda_electrostatics' : '1'}
-    factory = AlchemicalFactory(consistent_exceptions=False)
+    factory = AbsoluteAlchemicalFactory(consistent_exceptions=False)
     alanine_vacuum = testsystem.system
     alchemical_region = AlchemicalRegion(alchemical_atoms=range(22),
                         annihilate_electrostatics=True,  annihilate_sterics=True)
@@ -25,12 +29,14 @@ def test_nonequilibrium_external_integrator():
         simulation.step(1)
         protocol_work = simulation.integrator.getGlobalVariableByName("protocol_work")
         if i == 3:
+            #perform the displacement of an atom
             state = simulation.context.getState(getPositions=True)
             pos = state.getPositions(asNumpy=True)
             pos[0,1] = pos[0,1] + 0.5*simtk.unit.nanometers
             simulation.context.setPositions(pos)
     protocol_work = simulation.integrator.getLogAcceptanceProbability(simulation.context)
     print(protocol_work)
+    #find the work done for that displacement
     #protocol work is around 221.0 (in kT units), so acceptance is around -221.0
     assert -220.0 > protocol_work
     assert -223.0 < protocol_work

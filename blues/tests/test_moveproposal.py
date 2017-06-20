@@ -1,12 +1,11 @@
-
-import unittest, os, parmed
+import unittest, parmed
 from blues import utils
-from blues import ncmc
-from simtk import openmm
+from blues.simulation import SimulationFactory
+import blues
 
-class MoveProposalTester(unittest.TestCase):
+class MoveEngineTester(unittest.TestCase):
     """
-    Test the MoveProposal class.
+    Test the MoveEngine class.
     """
     def setUp(self):
         # Obtain topologies/positions
@@ -25,26 +24,22 @@ class MoveProposalTester(unittest.TestCase):
                 'verbose' : False }
 
 
-        #Initialize the Model object
-        self.model = ncmc.Model(structure, 'LIG')
-        self.model.calculateProperties()
+        #Initialize the Move object
+        self.move = blues.moves.RandomLigandRotationMove(structure, 'LIG')
+        self.move.calculateProperties()
+        self.engine = blues.engine.MoveEngine(self.move)
+        self.engine.selectMove()
         #Initialize the SimulationFactory object
-        sims = ncmc.SimulationFactory(structure, self.model, **self.opt)
+        sims = SimulationFactory(structure, self.engine, **self.opt)
         system = sims.generateSystem(structure, **self.opt)
-        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
+        alch_system = sims.generateAlchSystem(system, self.atom_indices)
         self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
 
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        self.mover = ncmc.MoveProposal(self.model, 'random_rotation', self.opt['nstepsNC'])
 
     def test_random_rotation(self):
-        model, nc_context = self.mover.moves['method'](self.model, self.nc_sim.context)
+        nc_context = self.engine.runEngine(self.nc_sim.context)
         rot_pos = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-        #for idx in self.atom_indices:
-        #    print('Initial')
-        #    print(initial_positions[idx,:]._value)
-        #    print('Rotated')
-        #    print(rot_pos[idx,:]._value)
         self.assertNotEqual(rot_pos.tolist(), self.initial_positions.tolist())
 
 if __name__ == "__main__":
