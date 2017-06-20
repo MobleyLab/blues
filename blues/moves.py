@@ -154,10 +154,10 @@ class RandomLigandRotationMove(Move):
 
 
 class CombinationMove(Move):
-    """Move object that allows Move object moves to be performed sequentially.
-    These moves are performed according to the order in move_list. To ensure
-    detailed balance, the moves have an equal chance to be performed in listed
-    or reverse order.
+    """Move object that allows Move object moves to be performed according to.
+    the order in move_list. 
+    To ensure detailed balance, the moves have an equal chance to be performed
+    in listed or reverse order.
     Parameters
     ----------
     move_list : list of blues.move.Move-like objects
