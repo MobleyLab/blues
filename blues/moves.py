@@ -373,7 +373,6 @@ class SmartDartMove(RandomLigandRotationMove):
             for residue in atom_indices:
                 newDartPos[residue] = newDartPos[residue] + vecMove._value
             context.setPositions(newDartPos)
-            newDartInfo = context.getState(True, True, False, True, True, False)
 
             return context
 
