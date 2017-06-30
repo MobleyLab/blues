@@ -348,7 +348,7 @@ class Simulation(object):
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
-            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
+            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (1.0/self.nc_integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
         if log_ncmc > randnum:
