@@ -113,6 +113,7 @@ class SimulationFactory(object):
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
                                                    dt*unit.picoseconds)
+        integrator.setRandomNumberSeed(2)
         #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
         if platform is None:
