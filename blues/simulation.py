@@ -57,11 +57,16 @@ class SimulationFactory(object):
         atom_indices : list
             Atom indicies of the move.
         """
-        import logging
-        logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
-        factory = alchemy.AbsoluteAlchemicalFactory()
-        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
-        alch_system = factory.create_alchemical_system(system, alch_region)
+        #TODO: add back in when alchemy issue is resolved
+        #import logging
+        #logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
+        #factory = alchemy.AbsoluteAlchemicalFactory()
+        #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
+        #alch_system = factory.create_alchemical_system(system, alch_region)
+
+        from alchemy import AbsoluteAlchemicalFactory                               
+        factory = AbsoluteAlchemicalFactory(system, ligand_atoms=atom_indices, annihilate_sterics=True, annihilate_electrostatics=True)
+        alch_system = factory.createPerturbedSystem()                         
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
