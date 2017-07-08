@@ -1,6 +1,6 @@
 # `BLUES`: Binding modes of Ligands Using Enhanced Sampling
 <img align="right" src="./images/blues.png" width="300">
-
+#debug
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes.
 
 Latest release: [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
