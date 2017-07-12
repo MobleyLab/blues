@@ -113,7 +113,7 @@ class RandomLigandRotationMove(Move):
         """Returns the calculated center of mass of the ligand as a np.array
         Parameters
         ----------
-        structure: parmed.Structure
+        positions: parmed.Structure
             ParmEd positions of the atoms to be moved.
         masses : numpy.array
             np.array of particle masses
@@ -153,9 +153,102 @@ class RandomLigandRotationMove(Move):
         return context
 
 
+class WaterTranslationMove(Move):
+
+    def __init__(self, structure, water_name='WAT', radius=2*unit.nanometers, before_ncmc=True):
+        self.water_name = water_name
+        self.water_residues = []
+        self.protein_atoms = []
+        residues = structure.topology.residues()
+        for res in residues:
+            if res.name == self.water_name:
+                water_mol = []
+                for atom in res.atoms():
+                    water_mol.append(atom.index)
+                self.water_residues.append()
+        for res in residues:
+            atom_names = []
+            atom_index = []
+            for atom in res.atoms():
+                atom_names.append(atom.name)
+                atom_index.append(atom.index)
+            if 'CA' in atom_names:
+                self.protein_atoms = self.protein_atoms+atom_index
+        self.atom_indices = self.water_residues[0]
+        self.topology_protein = structure[self.protein_atoms].topology
+        self.toplogy_water = structure[self.atom_indices].topology
+        self.water_mass = self.getMasses(self.topology_water)
+        self.protein_mass = self.getMasses(self.topology_protein)
+
+    def getMasses(self, topology):
+        """Returns a list of masses of the specified ligand atoms.
+        Parameters
+        ----------
+        topology: parmed.Topology
+            ParmEd topology object containing atoms of the system.
+        """
+        masses = unit.Quantity(np.zeros([int(topology.getNumAtoms()),1],np.float32), unit.dalton)
+        for idx,atom in enumerate(topology.atoms()):
+            masses[idx] = atom.element._mass
+        return masses
+
+
+    def getCenterOfMass(self, positions, masses):
+        """Returns the calculated center of mass of the ligand as a np.array
+        Parameters
+        ----------
+        positions: parmed.Structure
+            ParmEd positions of the atoms to be moved.
+        masses : numpy.array
+            np.array of particle masses
+        """
+        coordinates = np.asarray(positions._value, np.float32)
+        center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
+        return center_of_mass
+
+    def before_ncmc(self, nc_context):
+        start_state = nc_context.getState(getPositions=True, getVelocities=True)
+        start_pos = start_state.getPositions(asNumpy=True)
+        print('start_pos', start_pos[residueList[0]])
+        start_vel = start_state.getVelocities(asNumpy=True)
+        switch_pos = np.copy(start_pos)
+        switch_vel = np.copy(start_vel)
+        prot_com = self.getCenterofMass(switch_pos[self.protein_atoms],
+                            masses = self.protein_mass)
+        #pick random water within the sphere radius
+        dist_boolean = 0
+        #TODO use random.shuffle to pick random particles (limits upper bound)
+        while dist_boolean == 0:
+            #water_choice = np.random.choice(water_residues)
+            water_index = np.random.choice(range(len(self.water_residues)))
+            water_choice = self.water_residues[water_index]
+            oxygen_pos = start_pos[water_choice[0]]
+            water_distance = np.linalg.norm(oxygen_pos._value - prot_com._value)
+            print('distance', water_distance)
+            if water_distance <= (self.radius.value_in_unit(unit.nanometers)):
+                dist_boolean = 1
+            print('water_choice', water_choice)
+        #replace chosen water's positions/velocities with alchemical water
+        for i in range(3):
+            switch_pos[self.atom_indices[i]] = start_pos[water_choice[i]]
+            switch_vel[self.atom_indices[i]] = start_vel[water_choice[i]]
+            switch_pos[self.atom_indices[i]] = start_pos[self.atom_indices[i]]
+            switch_vel[self.atom_indices[i]] = start_vel[self.atom_indices[i]]
+        print('after_switch', switch_pos[self.atom_indices[0]])
+        nc_context.setPositions(switch_pos)
+        nc_context.setVelocities(switch_vel)
+
+        return nc_context
+
+
+    def move(self, nc_context):
+        return None
+
+
+
 class CombinationMove(Move):
     """Move object that allows Move object moves to be performed according to.
-    the order in move_list. 
+    the order in move_list.
     To ensure detailed balance, the moves have an equal chance to be performed
     in listed or reverse order.
     Parameters
