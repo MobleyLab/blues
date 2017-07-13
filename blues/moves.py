@@ -32,6 +32,8 @@ class Move(object):
         """Initialize the Move object
         Currently empy.
         """
+        self.before_ncmc = False
+        #self.atom_indices = []
 
 class RandomLigandRotationMove(Move):
     """Move that provides methods for calculating properties on the
@@ -155,17 +157,21 @@ class RandomLigandRotationMove(Move):
 
 class WaterTranslationMove(Move):
 
-    def __init__(self, structure, water_name='WAT', radius=2*unit.nanometers, before_ncmc=True):
+    def __init__(self, structure, water_name='WAT', radius=2*unit.nanometers, before_ncmc_check=True):
+        self.radius = radius
         self.water_name = water_name
         self.water_residues = []
         self.protein_atoms = []
+        self.before_ncmc_check = before_ncmc_check
         residues = structure.topology.residues()
         for res in residues:
             if res.name == self.water_name:
                 water_mol = []
                 for atom in res.atoms():
                     water_mol.append(atom.index)
-                self.water_residues.append()
+                self.water_residues.append(water_mol)
+        residues = structure.topology.residues()
+
         for res in residues:
             atom_names = []
             atom_index = []
@@ -176,9 +182,22 @@ class WaterTranslationMove(Move):
                 self.protein_atoms = self.protein_atoms+atom_index
         self.atom_indices = self.water_residues[0]
         self.topology_protein = structure[self.protein_atoms].topology
-        self.toplogy_water = structure[self.atom_indices].topology
+        self.topology_water = structure[self.atom_indices].topology
         self.water_mass = self.getMasses(self.topology_water)
         self.protein_mass = self.getMasses(self.topology_protein)
+
+    def _random_sphere_point(self, radius):
+        r = radius * ( np.random.random()**(1./3.) )
+        phi = np.random.uniform(0,2*np.pi)
+        costheta = np.random.uniform(-1,1)
+        u = np.random.random()
+        theta = np.arccos(costheta)
+        x = np.sin(theta) * np.cos(phi)
+        y = np.sin(theta) * np.sin(phi)
+        z = np.cos(theta)
+        sphere_point = np.array([x, y, z]) * r
+        return sphere_point
+
 
     def getMasses(self, topology):
         """Returns a list of masses of the specified ligand atoms.
@@ -202,6 +221,13 @@ class WaterTranslationMove(Move):
         masses : numpy.array
             np.array of particle masses
         """
+        print('masses', masses)
+        print('type', type(masses))
+        print('type2', type(masses[0]))
+        print('masses[0]', masses[0]/ unit.dalton * unit.dalton)
+        print('dir', dir(masses))
+        #print('value', positions.value_in_unit(positions.unit))
+        print(positions)
         coordinates = np.asarray(positions._value, np.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
@@ -209,11 +235,12 @@ class WaterTranslationMove(Move):
     def before_ncmc(self, nc_context):
         start_state = nc_context.getState(getPositions=True, getVelocities=True)
         start_pos = start_state.getPositions(asNumpy=True)
-        print('start_pos', start_pos[residueList[0]])
+        print('start_pos', start_pos[self.atom_indices[0]])
         start_vel = start_state.getVelocities(asNumpy=True)
-        switch_pos = np.copy(start_pos)
-        switch_vel = np.copy(start_vel)
-        prot_com = self.getCenterofMass(switch_pos[self.protein_atoms],
+        switch_pos = np.copy(start_pos)*start_pos.unit
+        switch_vel = np.copy(start_vel)*start_vel.unit
+        print('switch_pos', switch_pos)
+        prot_com = self.getCenterOfMass(switch_pos[self.protein_atoms],
                             masses = self.protein_mass)
         #pick random water within the sphere radius
         dist_boolean = 0
@@ -224,7 +251,7 @@ class WaterTranslationMove(Move):
             water_choice = self.water_residues[water_index]
             oxygen_pos = start_pos[water_choice[0]]
             water_distance = np.linalg.norm(oxygen_pos._value - prot_com._value)
-            print('distance', water_distance)
+            #print('distance', water_distance)
             if water_distance <= (self.radius.value_in_unit(unit.nanometers)):
                 dist_boolean = 1
             print('water_choice', water_choice)
@@ -232,8 +259,11 @@ class WaterTranslationMove(Move):
         for i in range(3):
             switch_pos[self.atom_indices[i]] = start_pos[water_choice[i]]
             switch_vel[self.atom_indices[i]] = start_vel[water_choice[i]]
-            switch_pos[self.atom_indices[i]] = start_pos[self.atom_indices[i]]
-            switch_vel[self.atom_indices[i]] = start_vel[self.atom_indices[i]]
+#            switch_pos[self.atom_indices[i]] = start_pos[self.atom_indices[i]]
+#            switch_vel[self.atom_indices[i]] = start_vel[self.atom_indices[i]]
+            switch_pos[water_choice[i]] = start_pos[self.atom_indices[i]]
+            switch_vel[water_choice[i]] = start_vel[self.atom_indices[i]]
+
         print('after_switch', switch_pos[self.atom_indices[0]])
         nc_context.setPositions(switch_pos)
         nc_context.setVelocities(switch_vel)
@@ -241,8 +271,28 @@ class WaterTranslationMove(Move):
         return nc_context
 
 
-    def move(self, nc_context):
-        return None
+    def move(self, context):
+        before_move_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        protein_pos = before_move_pos[self.protein_atoms]
+        prot_com = self.getCenterOfMass(positions=protein_pos, masses=self.protein_mass)
+        sphere_displacement = self._random_sphere_point(self.radius)
+        movePos = np.copy(before_move_pos)*before_move_pos.unit
+        print('movePos', movePos[self.atom_indices])
+        print('center of mass', prot_com)
+        print('Water coord', self.atom_indices)
+        water_dist = movePos[self.atom_indices[0]] - prot_com
+        print('water_dist._value', np.linalg.norm(water_dist._value))
+        print('self.radius._value', self.radius._value)
+        if np.linalg.norm(water_dist._value) <= self.radius._value:
+            for index, resnum in enumerate(self.atom_indices):
+                movePos[resnum] = movePos[resnum] - water_dist + sphere_displacement
+                print('before', before_move_pos[resnum])
+                print('after', movePos[resnum])
+            #TODO check units, rotate water molecule
+            #TODO make sure
+            #movePos[:] = movePos*unit.nanometers
+            context.setPositions(movePos)
+        return context
 
 
 

@@ -372,6 +372,7 @@ class Simulation(object):
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch regions
         self.move_engine.selectMove()
+        self.nc_context = self.move_engine.runBefore(self.nc_context)
         for nc_step in range(self.nstepsNC):
             try:
                 self.current_stepNC = int(nc_step)
