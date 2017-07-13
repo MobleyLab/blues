@@ -156,14 +156,31 @@ class RandomLigandRotationMove(Move):
 
 
 class WaterTranslationMove(Move):
+    """ Move that translates a random water within a specified radius of the protein's
+    center of mass to another point within that radius
 
-    def __init__(self, structure, water_name='WAT', radius=2*unit.nanometers, before_ncmc_check=True):
+    Parameters
+    ----------
+    structure:
+        topology: parmed.Topology
+            ParmEd topology object containing atoms of the system.
+        water_name: str, optional, default='WAT'
+            Residue name of the waters in the system.
+        radius: float*unit compatible with simtk.unit.nanometers, optional, default=2.0*unit.nanometers
+            Defines theadius within the protein center of mass to choose a water
+            and the radius in which to randomly translate that water.
+    """
+
+    def __init__(self, structure, water_name='WAT', radius=20.*unit.nanometers):
+        #initialize self attributes
         self.radius = radius
         self.water_name = water_name
         self.water_residues = []
         self.protein_atoms = []
-        self.before_ncmc_check = before_ncmc_check
+        self.before_ncmc_check = True
+        #go through the topology and identify water and protein residues
         residues = structure.topology.residues()
+        #looks for resiudes with water_name
         for res in residues:
             if res.name == self.water_name:
                 water_mol = []
@@ -171,7 +188,7 @@ class WaterTranslationMove(Move):
                     water_mol.append(atom.index)
                 self.water_residues.append(water_mol)
         residues = structure.topology.residues()
-
+        #looks for resiudes with a 'CA' atom name to identify protein residues
         for res in residues:
             atom_names = []
             atom_index = []
@@ -180,6 +197,10 @@ class WaterTranslationMove(Move):
                 atom_index.append(atom.index)
             if 'CA' in atom_names:
                 self.protein_atoms = self.protein_atoms+atom_index
+        #set more self attributes
+        #self.atom_indices is used to define the alchemically treated region
+        #of the system
+        #in this case the first water in the system
         self.atom_indices = self.water_residues[0]
         self.topology_protein = structure[self.protein_atoms].topology
         self.topology_water = structure[self.atom_indices].topology
@@ -187,6 +208,17 @@ class WaterTranslationMove(Move):
         self.protein_mass = self.getMasses(self.topology_protein)
 
     def _random_sphere_point(self, radius):
+        """function to generate a uniform random point
+        in a sphere of a specified radius.
+        Used to randomly translate the water molecule
+
+        Parameters
+        ----------
+        radius: float
+            Defines the radius of the sphere in which a point
+            will be uniformly randomly generated.
+        """
+
         r = radius * ( np.random.random()**(1./3.) )
         phi = np.random.uniform(0,2*np.pi)
         costheta = np.random.uniform(-1,1)
@@ -233,6 +265,19 @@ class WaterTranslationMove(Move):
         return center_of_mass
 
     def before_ncmc(self, nc_context):
+        """
+        Temporary function (until multiple alchemical regions are supported),
+        which is performed at the beginning of a ncmc iteration. Selects
+        a random water within self.radius of the protein's center of mass
+        and switches the positions and velocities
+        with the alchemical water defined by self.atom_indices, effecitvely
+        duplicating mulitple alchemical region support.
+
+        Parameters
+        ----------
+        nc_context: simtk.openmm Context object
+            The context which corresponds to the NCMC simulation.
+        """
         start_state = nc_context.getState(getPositions=True, getVelocities=True)
         start_pos = start_state.getPositions(asNumpy=True)
         print('start_pos', start_pos[self.atom_indices[0]])
@@ -259,8 +304,6 @@ class WaterTranslationMove(Move):
         for i in range(3):
             switch_pos[self.atom_indices[i]] = start_pos[water_choice[i]]
             switch_vel[self.atom_indices[i]] = start_vel[water_choice[i]]
-#            switch_pos[self.atom_indices[i]] = start_pos[self.atom_indices[i]]
-#            switch_vel[self.atom_indices[i]] = start_vel[self.atom_indices[i]]
             switch_pos[water_choice[i]] = start_pos[self.atom_indices[i]]
             switch_vel[water_choice[i]] = start_vel[self.atom_indices[i]]
 
@@ -272,8 +315,14 @@ class WaterTranslationMove(Move):
 
 
     def move(self, context):
+        """
+        This function is called by the blues.MoveEngine object during a simulation.
+        Translates the alchemical water randomly within a sphere of self.radius.
+        """
+        #get the position of the system from the context
         before_move_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         protein_pos = before_move_pos[self.protein_atoms]
+        #find the center of mass and the displacement
         prot_com = self.getCenterOfMass(positions=protein_pos, masses=self.protein_mass)
         sphere_displacement = self._random_sphere_point(self.radius)
         movePos = np.copy(before_move_pos)*before_move_pos.unit
@@ -281,16 +330,15 @@ class WaterTranslationMove(Move):
         print('center of mass', prot_com)
         print('Water coord', self.atom_indices)
         water_dist = movePos[self.atom_indices[0]] - prot_com
+        #TODO: make water within radius selection correctly handle PBC
         print('water_dist._value', np.linalg.norm(water_dist._value))
         print('self.radius._value', self.radius._value)
+        #if the alchemical water is within the radius, translate it
         if np.linalg.norm(water_dist._value) <= self.radius._value:
             for index, resnum in enumerate(self.atom_indices):
                 movePos[resnum] = movePos[resnum] - water_dist + sphere_displacement
                 print('before', before_move_pos[resnum])
                 print('after', movePos[resnum])
-            #TODO check units, rotate water molecule
-            #TODO make sure
-            #movePos[:] = movePos*unit.nanometers
             context.setPositions(movePos)
         return context
 
