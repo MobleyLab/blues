@@ -55,6 +55,39 @@ class MoveEngine(object):
         rand_num = np.random.choice(len(self.probs), p=self.probs)
         self.selected_move = rand_num
 
+    def runBefore(self, context):
+        """Selects a random Move object based on its
+        assigned probability and and performs its move() function
+        on a context.
+        Parameters
+        ----------
+        context : openmm.context object
+        OpenMM context whose positions should be moved.
+        """
+        if hasattr(self.moves[self.selected_move], 'before_ncmc_check'):
+            print('1')
+            if self.moves[self.selected_move].before_ncmc_check == True:
+                print('2')
+                try:
+                    new_context = self.moves[self.selected_move].before_ncmc(context)
+                except Exception as e:
+                    #In case the move isn't properly implemented, print out useful info
+                    print('Error: before_ncmc method not implemented correctly, printing traceback:')
+                    ex_type, ex, tb = sys.exc_info()
+                    traceback.print_tb(tb)
+                    print(e)
+                    raise SystemExit
+                return new_context
+            else:
+                print('3')
+                return context
+        else:
+            print('4')
+            return context
+
+
+
+
     def runEngine(self, context):
         """Selects a random Move object based on its
         assigned probability and and performs its move() function
