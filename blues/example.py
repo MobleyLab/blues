@@ -46,7 +46,7 @@ def runNCMC(platform_name):
     simulations.createSimulationSet()
 
     blues = Simulation(simulations, ligand_mover, **opt)
-    blues.run()
+    blues.runNCMC()
 
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
