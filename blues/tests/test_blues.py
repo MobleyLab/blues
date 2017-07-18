@@ -64,7 +64,7 @@ class BLUESTester(unittest.TestCase):
         self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
 
     def test_simulationRun(self):
-        """Tests the Simulation.run() function"""
+        """Tests the Simulation.runNCMC() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
@@ -94,7 +94,7 @@ class BLUESTester(unittest.TestCase):
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         asim = Simulation(sims, self.mover, **self.opt)
-        asim.run()
+        asim.runNCMC()
 
 if __name__ == "__main__":
         unittest.main()
