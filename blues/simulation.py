@@ -456,7 +456,7 @@ class Simulation(object):
             if (self.nstepsNC % 2) != 0:
                 raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.nstepsNC))
             if self.nstepsNC <= 0:
-                raise ValueError('nstepsNC needs to be even and greater than zero so that perturbations can be relaxed via NCMC (currently %i)' % (self.nstepsNC))
+                raise ValueError('nstepsNC needs to be even and greater than zero so that perturbations can be relaxed via NCMC (currently nstepsNC=%i)' % (self.nstepsNC))
 
         _ncmcSanityCheck()
         self.setStateConditions()
