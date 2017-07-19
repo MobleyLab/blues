@@ -518,14 +518,3 @@ class Simulation(object):
                 self.acceptRejectMC()
             self.simulateMD()
 
-
-
-
-
-
-
-
-
-
-
-
