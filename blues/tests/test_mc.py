@@ -35,7 +35,7 @@ class BLUESTester(unittest.TestCase):
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'platform' : None,
                 'verbose' : True,
-                'constraints' : None,
+                'constraints' : 'HBonds',
                 'mc_per_iter' : 1 }
 
         structure = self.full_struct
