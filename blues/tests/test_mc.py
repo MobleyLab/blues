@@ -30,13 +30,13 @@ class BLUESTester(unittest.TestCase):
     def test_simulationRun(self):
         """Tests the Simulation.runNCMC() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.00002,
-                'nIter' : 20, 'nstepsNC' : 2, 'nstepsMD' : 1,
+                'nIter' : 2, 'nstepsNC' : 2, 'nstepsMD' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'platform' : None,
                 'verbose' : True,
                 'constraints' : 'HBonds',
-                'mc_per_iter' : 1 }
+                'mc_per_iter' : 2 }
 
         structure = self.full_struct
         class SetRotationMove(RandomLigandRotationMove):
