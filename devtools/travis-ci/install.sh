@@ -16,10 +16,8 @@ bash $MINICONDA -b -p $MINICONDA_HOME
 # Configure miniconda
 export PIP_ARGS="-U"
 export PATH=$MINICONDA_HOME/bin:$PATH
-#hash -r
-conda config --set always_yes yes --set changeps1 no
-conda update --yes conda
-conda install --yes conda-build jinja2 anaconda-client pip
-#conda info -a
+conda config --add channels conda-forge
+conda install --yes conda\>=4.3 conda-build jinja2 anaconda-client pip
+
 # Restore original directory
 popd
