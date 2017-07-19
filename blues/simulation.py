@@ -76,8 +76,7 @@ class SimulationFactory(object):
         """
         system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
-                            constraints=None )
-                            #constraints=eval("app.%s" % constraints) )
+                            constraints=eval("app.%s" % constraints) )
         return system
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
