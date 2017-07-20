@@ -1,8 +1,9 @@
 """
-moves.py: Provides the two main classes, Move and MoveEngine
-which allow altering the positions of a
-subset of atoms in a context during a BLUES simulation to
-increase sampling.
+moves.py: Provides the main Move class which allows definition of moves
+which alter the positions of subsets of atoms in a context during a BLUES
+simulation, in order to increase sampling.
+Also provides functionality for CombinationMove definitions which consist of
+a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, David L. Mobley
@@ -170,7 +171,7 @@ class RandomLigandRotationMove(Move):
 
 
 class CombinationMove(Move):
-    """Move object that allows Move object moves to be performed according to.
+    """Move object that allows Move object moves to be performed according to
     the order in move_list.
     To ensure detailed balance, the moves have an equal chance to be performed
     in listed or reverse order.
