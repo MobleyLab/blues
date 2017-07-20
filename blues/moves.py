@@ -329,7 +329,7 @@ class SmartDartMove(RandomLigandRotationMove):
             vecMove = dart_switch - center
             #apply that vector to the ligand to actually translate the coordinates
             for atom in atom_indices:
-                newDartPos[atom] = newDartPos[atom] + vecMove.atom
+                newDartPos[atom] = newDartPos[atom] + vecMove._value
             #set the positions after darting
             context.setPositions(newDartPos)
 
