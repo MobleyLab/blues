@@ -63,7 +63,7 @@ class RandomLigandRotationMove(Move):
         resname : str
             String specifying the resiue name of the ligand.
         structure: parmed.Structure
-            ParmEd Structure object of the model to be moved.
+            ParmEd Structure object of the relevant system to be moved.
         """
 
         self.resname = resname
@@ -114,10 +114,15 @@ class RandomLigandRotationMove(Move):
         """Returns the calculated center of mass of the ligand as a np.array
         Parameters
         ----------
-        structure: parmed.Structure
+        positions: nx3 numpy array * simtk.unit compatible with simtk.unit.nanometers
             ParmEd positions of the atoms to be moved.
         masses : numpy.array
             np.array of particle masses
+
+        Returns
+        -------
+        center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
+            1x3 np.array of the center of mass of the given positions
         """
         coordinates = np.asarray(positions._value, np.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
@@ -131,6 +136,16 @@ class RandomLigandRotationMove(Move):
     def move(self, context):
         """Function that performs a random rotation about the
         center of mass of the ligand.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
         """
        #TODO: check if we need to deepcopy
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
@@ -156,7 +171,7 @@ class RandomLigandRotationMove(Move):
 
 class CombinationMove(Move):
     """Move object that allows Move object moves to be performed according to.
-    the order in move_list. 
+    the order in move_list.
     To ensure detailed balance, the moves have an equal chance to be performed
     in listed or reverse order.
     Parameters
@@ -167,6 +182,19 @@ class CombinationMove(Move):
         self.move_list = move_list
 
     def move(self, context):
+        """Performs the move() functions of the Moves in move_list on
+        a context.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
         rand = np.random.random()
         #to maintain detailed balance this executes both
         #the forward and reverse order moves with equal probability
@@ -179,7 +207,28 @@ class CombinationMove(Move):
 
 
 class SmartDartMove(RandomLigandRotationMove):
+    """
+    Move object that allows center of mass smart darting moves to be performed on a ligand,
+    allowing translations of a ligand between pre-defined regions in space.
+    Arguments
+    ---------
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    basis_particles: list of 3 ints
+        Specifies the 3 indices of the protein whose coordinates will be used
+        to define a new set of basis vectors.
+    dart_size: simtk.unit float object compatible with simtk.unit.nanometers unit,
+        optional, default=0.2*simtk.unit.nanometers
+        The radius of the darting region around each dart.
+    resname : str, optional, default='LIG'
+        String specifying the resiue name of the ligand.
+
+    References:
+    (1) I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
+        https://doi.org/10.1063/1.1358861
+    """
     def __init__(self, structure, basis_particles, dart_size=0.2*unit.nanometers, resname='LIG'):
+
         super(SmartDartMove, self).__init__(structure, resname=resname)
         self.dartboard = []
         self.n_dartboard = []
@@ -194,31 +243,36 @@ class SmartDartMove(RandomLigandRotationMove):
         Used to setup darts from a generic coordinate file, through MDtraj using the basis_particles to define
         new basis vectors, which allows dart centers to remain consistant through a simulation.
         This adds to the self.n_dartboard, which defines the centers used for smart darting.
-        Arguments
+
+        Parameters
         ---------
         system: simtk.openmm.system
-            Openmm System corresponding to the system to smart dart.
+            Openmm System corresponding to the whole system to smart dart.
         coord_files: list of str
-            List containing coordinate files of the system for smart darting.
-        basis_particles: list of 3 ints
-            Specifies the 3 indices of particles whose coordinates will be used
-            as basis vectors. If None is specified, uses those found in basis particles.
-            If None uses self.basis_particles instead.
-        Returns
-        -------
-        n_dartboard: list of 1x3 np.arrays
-            Center of mass coordinates of atom_indices particles in new basis set.
+            List containing coordinate files of the whole system for smart darting.
+        topology: str, optional, default=None
+            A path specifying a topology file matching the files in coord_files. Not
+            necessary if the coord_files already contain topologies.
+
         """
         n_dartboard = []
         dartboard = []
+        #loop over specified files and generate parmed structures from each
+        #then the center of masses of the ligand in each structureare found
+        #finally those center of masses are added to the `self.dartboard`s to
+        #be used in the actual smart darting move to define darting regions
         for coord_file in coord_files:
             if topology == None:
+                #if coord_file contains topology info, just load coord file
                 temp_md = parmed.load_file(coord_file)
             else:
+                #otherwise load file specified in topology
                 temp_md = parmed.load_file(topology, xyz=coord_file)
+            #get position values in terms of nanometers
             context_pos = temp_md.positions.in_units_of(unit.nanometers)
             lig_pos = np.asarray(context_pos._value)[self.atom_indices]*unit.nanometers
             particle_pos = np.asarray(context_pos._value)[self.basis_particles]*unit.nanometers
+            #calculate center of mass of ligand
             self.calculateProperties()
             self.center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
             #get particle positions
@@ -226,90 +280,78 @@ class SmartDartMove(RandomLigandRotationMove):
             #keep this in for now to check code is correct
             #old_coord should be equal to com
             old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
+            #add the center of mass in euclidian and new basis set (defined by the basis_particles)
             n_dartboard.append(new_coord)
             dartboard.append(old_coord)
-
         self.n_dartboard = n_dartboard
         self.dartboard = dartboard
 
-    def dartsFromMDTraj(self, system, file_list, topology=None):
-        """
-        Used to setup darts from a generic coordinate file, through MDtraj using the basis_particles to define
-        new basis vectors, which allows dart centers to remain consistant through a simulation.
-        This adds to the self.n_dartboard, which defines the centers used for smart darting.
-        Arguments
-        ---------
-        system: simtk.openmm.system
-            Openmm System corresponding to the system to smart dart.
-        file_list: list of str
-            List containing coordinate files of the system for smart darting.
-        basis_particles: list of 3 ints
-            Specifies the 3 indices of particles whose coordinates will be used
-            as basis vectors. If None is specified, uses those found in basis particles.
-            If None uses self.basis_particles instead.
-        Returns
-        -------
-        n_dartboard: list of 1x3 np.arrays
-            Center of mass coordinates of atom_indices particles in new basis set.
-        """
-        atom_indices = self.atom_indices
-        basis_particles = self.basis_particles
-        n_dartboard = []
-        dartboard = []
-        for md_file in file_list:
-            if topology == None:
-                temp_md = md.load(md_file)
-            else:
-                temp_md = md.load(md_file, top=topology)
-            context_pos = temp_md.openmm_positions(0)
-            context_pos = np.asarray(context_pos._value)*unit.nanometers
-            total_mass, mass_list = self.get_particle_masses(system, set_self=False, atom_indices=atom_indices)
-            com = self.calculate_com(pos_state=context_pos,
-                                    total_mass=total_mass,
-                                    mass_list=mass_list,
-                                    atom_indices=atom_indices)
-            #get particle positions
-            particle_pos = []
-            for particle in basis_particles:
-                particle_pos.append(context_pos[particle])
-            new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], com)
-            #keep this in for now to check code is correct
-            #old_coord should be equal to com
-            old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
-            n_dartboard.append(new_coord)
-            dartboard.append(old_coord)
-
-        self.n_dartboard = n_dartboard
-        self.dartboard = dartboard
 
     def move(self, nc_context):
         """
         Function for performing smart darting move with darts that
         depend on particle positions in the system
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
         """
 
         atom_indices = self.atom_indices
         context = nc_context
-
+        #get state info from context
         stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
+        #get the ligand positions
         lig_pos = np.asarray(oldDartPos._value)[self.atom_indices]*unit.nanometers
+        #updates the darting regions based on the current position of the basis particles
         self._findDart(context)
+        #find the ligand's current center of mass position
         center = self.getCenterOfMass(lig_pos, self.masses)
-        selectedboard, changevec = self._calc_from_center(com=center)
-        if selectedboard != None:
-            #TODO just use oldDartPos instead of using temp newDartPos
+        #calculate the distance of the center of mass to the center of each darting region
+        selected_dart, changevec = self._calc_from_center(com=center)
+        #selected_dart is the selected darting region
+
+        #if the center of mass was within one darting region, move the ligand to another region
+        if selected_dart != None:
             newDartPos = np.copy(oldDartPos)
-            comMove = self._reDart(changevec)
-            vecMove = comMove - center
-            for residue in atom_indices:
-                newDartPos[residue] = newDartPos[residue] + vecMove._value
+            #find the center of mass in the new darting region
+            dart_switch = self._reDart(changevec)
+            #find the vector that will translate the ligand to the new darting region
+            vecMove = dart_switch - center
+            #apply that vector to the ligand to actually translate the coordinates
+            for atom in atom_indices:
+                newDartPos[atom] = newDartPos[atom] + vecMove.atom
+            #set the positions after darting
             context.setPositions(newDartPos)
 
             return context
 
     def _calc_from_center(self, com):
+        """
+        Helper function that finds the distance of the current center of
+        mass to each dart center in self.dartboard
 
+        Parameters
+        --------
+        com: 1x3 np.array*simtk.unit.nanometers
+            Current center of mass coordinates of the ligand.
+        Returns
+        -------
+        selected_dart: simtk.unit.nanometers, or None
+            The distance of a dart to a center. Returns
+            None if the distance is greater than the darting region.
+        changevec: 1x3 np.array*simtk.unit.nanometers,
+            The vector from the ligand center of mass
+            to the center of a darting region.
+        """
         distList = []
         diffList = []
         indexList = []
@@ -320,34 +362,38 @@ class SmartDartMove(RandomLigandRotationMove):
             dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
             distList.append(dist)
             diffList.append(diff)
-        selected = []
+        selected_dart = []
         #Find the dart(s) less than self.dart_size
         for index, entry in enumerate(distList):
             if entry <= self.dart_size:
-                selected.append(entry)
+                selected_dart.append(entry)
                 diff = diffList[index]
                 indexList.append(index)
         #Dart error checking
         #to ensure reversibility the COM should only be
         #within self.dart_size of one dart
-        if len(selected) == 1:
-            return selected[0], diffList[indexList[0]]
-        elif len(selected) == 0:
+        if len(selected_dart) == 1:
+            return selected_dart[0], diffList[indexList[0]]
+        elif len(selected_dart) == 0:
             return None, diff
-        elif len(selected) >= 2:
+        elif len(selected_dart) >= 2:
             #COM should never be within two different darts
-            raise ValueError('sphere size overlap, check darts')
+            raise ValueError(' The spheres defining two darting regions have overlapped, ' +
+                             'which results in potential problems with detailed balance. ' +
+                             'We are terminating the simulation. Please check the size and ' +
+                             'identity of your darting regions defined by dart_size.')
             #TODO can treat cases using appropriate probablility correction
+            #see https://doi.org/10.1016/j.patcog.2011.02.006
 
     def _findDart(self, nc_context):
         """
-        Helper function to dynamically update dart positions based on positions
-        of other particles.
+        Helper function to dynamically update dart positions based on the current positions
+        of the basis particles.
         Arguments
         ---------
-        basis_particles: list of 3 ints
-            Specifies the 3 indices of particles whose coordinates will be used
-            as basis vectors. If None is specified, uses those found in basis particles
+        nc_context: Context object from simtk.openmm
+            Context from the ncmc simulation.
+
         Returns
         -------
         dart_list list of 1x3 np.arrays in units.nm
@@ -372,17 +418,32 @@ class SmartDartMove(RandomLigandRotationMove):
     def _reDart(self, changevec):
         """
         Helper function to choose a random dart and determine the vector
-        that would translate the COM to that dart center
+        that would translate the COM to that dart center + changevec.
+        This is called reDart in the sense that it helps to switch
+        the ligand to another darting region.
+
+        Parameters
+        ---------
+        changevec: 1x3 np.array * simtk.unit.nanometers
+            The vector difference of the ligand center of mass
+            to the closest dart center (if within the dart region).
+
+
+        Returns
+        -------
+        dart_switch: 1x3 np.array * simtk.unit.nanometers
+
         """
         dartindex = np.random.randint(len(self.dartboard))
         dvector = self.dartboard[dartindex]
-        chboard = dvector + changevec
-        return chboard
+        dart_switch = dvector + changevec
+        return dart_switch
 
     def _changeBasis(self, a, b):
         '''
         Changes positions of a particle (b) in the regular basis set to
-        another basis set (a).
+        another basis set (a). Used to recalculate the center of mass
+        in terms of the local coordinates defined by self.basis_particles.
         Arguments
         ---------
         a: 3x3 np.array
@@ -402,7 +463,8 @@ class SmartDartMove(RandomLigandRotationMove):
     def _undoBasis(self, a, b):
         '''
         Transforms positions in a transformed basis (b) to the regular
-        basis set.
+        basis set. Used to transform the dart positions in the local
+        coordinate basis set to the cartesian basis set.
         Arguments
         ---------
         a: 3x3 np.array
@@ -419,10 +481,9 @@ class SmartDartMove(RandomLigandRotationMove):
         changed_coord = np.dot(a,b.T)*unit.nanometers
         return changed_coord
 
-
     def _normalize(self, vector):
         '''Normalize a given vector
-        Arguemnts
+        Arguments
         ---------
         vector: 1xn np.array
             Vector to be normalized.

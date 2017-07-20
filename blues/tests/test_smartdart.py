@@ -49,6 +49,9 @@ class MoveProposalTester(unittest.TestCase):
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
     def test_smart_dart(self):
+        """Creates two darting regions, one at the center of mass origin,
+         and one displaced a little way from the center,
+         and checks to see if the alainine dipeptide correctly jumps between the two"""
         orig_pos = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         com = self.move.getCenterOfMass(orig_pos[self.move.atom_indices], self.move.masses)
         basis_part = self.move.basis_particles
@@ -57,14 +60,18 @@ class MoveProposalTester(unittest.TestCase):
         standard_dart = np.array([-0.0096823 ,  0.50751791,  0.060064  ])
 
         for i in range(20):
+            #set the new darts using the original settings
             self.move.n_dartboard = [com_new_coord, move_coord]
             nc_context = self.move.move(self.nc_sim.context)
             pos_new = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
             for x in range(3):
+                #postions of the coordinates either should be the same, or displaced by the standard_dart value
                 if pos_new[0][x]._value - orig_pos[0][x]._value == 0:
                     np.testing.assert_almost_equal(pos_new[0][x]._value, orig_pos[0][x]._value, decimal=1)
                 else:
                     np.testing.assert_almost_equal(pos_new[0][x]._value, (orig_pos[0][x]._value + standard_dart[x]), decimal=1)
+            print(pos_new)
+            #reset and rerun
             nc_context.setPositions(orig_pos)
 
 
