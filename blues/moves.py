@@ -211,8 +211,9 @@ class SmartDartMove(RandomLigandRotationMove):
     """
     Move object that allows center of mass smart darting moves to be performed on a ligand,
     allowing translations of a ligand between pre-defined regions in space.
-    Arguments
-    ---------
+
+    Parameters
+    ----------
     structure: parmed.Structure
         ParmEd Structure object of the relevant system to be moved.
     basis_particles: list of 3 ints
@@ -275,12 +276,12 @@ class SmartDartMove(RandomLigandRotationMove):
             particle_pos = np.asarray(context_pos._value)[self.basis_particles]*unit.nanometers
             #calculate center of mass of ligand
             self.calculateProperties()
-            self.center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
+            center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
             #get particle positions
-            new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], self.center_of_mass)
-            #keep this in for now to check code is correct
+            new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], center_of_mass)
             #old_coord should be equal to com
             old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
+            np.testing.assert_almost_equal(old_coord._value, center_of_mass._value, decimal=1)
             #add the center of mass in euclidian and new basis set (defined by the basis_particles)
             n_dartboard.append(new_coord)
             dartboard.append(old_coord)
@@ -445,8 +446,11 @@ class SmartDartMove(RandomLigandRotationMove):
         Changes positions of a particle (b) in the regular basis set to
         another basis set (a). Used to recalculate the center of mass
         in terms of the local coordinates defined by self.basis_particles.
-        Arguments
-        ---------
+        Used to change between the basis sets defined from the basis_particles
+        and the normal euclidian basis set.
+
+        Parameters
+        ----------
         a: 3x3 np.array
             Defines vectors that will create the new basis.
         b: 1x3 np.array
@@ -466,8 +470,8 @@ class SmartDartMove(RandomLigandRotationMove):
         Transforms positions in a transformed basis (b) to the regular
         basis set. Used to transform the dart positions in the local
         coordinate basis set to the cartesian basis set.
-        Arguments
-        ---------
+        Parameters
+        ----------
         a: 3x3 np.array
             Defines vectors that defined the new basis.
         b: 1x3 np.array
@@ -484,8 +488,8 @@ class SmartDartMove(RandomLigandRotationMove):
 
     def _normalize(self, vector):
         '''Normalize a given vector
-        Arguments
-        ---------
+        Parameters
+        ----------
         vector: 1xn np.array
             Vector to be normalized.
         Returns
