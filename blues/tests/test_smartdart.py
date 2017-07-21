@@ -75,7 +75,7 @@ class MoveProposalTester(unittest.TestCase):
             #reset and rerun
             nc_context.setPositions(orig_pos)
 
-class MoveProposalTester(unittest.TestCase):
+class SmartDartTester(unittest.TestCase):
     """
     Test the MoveProposal class.
     """
@@ -141,9 +141,10 @@ class MoveProposalTester(unittest.TestCase):
             #reset and rerun
             nc_context.setPositions(orig_pos)
 
-class MoveEngineTester(unittest.TestCase):
+class DartLoaderTester(unittest.TestCase):
     """
-    Test the MoveEngine class.
+    Test if darts are made successfully
+    using SmartDartMove.dartsFromParmEd.
     """
     def setUp(self):
         # Obtain topologies/positions
@@ -162,7 +163,7 @@ class MoveEngineTester(unittest.TestCase):
                 'verbose' : False }
 
 
-        #Initialize the Move object
+        #Initialize the SmartDartMove object
         self.move = SmartDartMove(structure, basis_particles=[100, 110, 150], resname='LIG', )
         self.move.calculateProperties()
         self.engine = MoveEngine(self.move)
@@ -176,6 +177,7 @@ class MoveEngineTester(unittest.TestCase):
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
     def test_dartsFromParmEd(self):
+        #load files to see if there are any errors
         prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
         inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
         self.move.dartsFromParmEd(coord_files=[inpcrd], topology=prmtop)
