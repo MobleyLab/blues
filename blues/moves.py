@@ -13,8 +13,6 @@ import parmed
 from simtk import unit
 import mdtraj
 import numpy as np
-import sys, traceback
-import mdtraj as md
 
 
 class Move(object):
@@ -99,11 +97,22 @@ class RandomLigandRotationMove(Move):
         return atom_indices
 
     def getMasses(self, topology):
-        """Returns a list of masses of the specified ligand atoms.
+        """
+        Returns a list of masses of the specified ligand atoms.
+
         Parameters
         ----------
         topology: parmed.Topology
             ParmEd topology object containing atoms of the system.
+
+        Returns
+        -------
+        masses: 1xn numpy.array * simtk.unit.dalton
+            array of masses of len(self.atom_indices), denoting
+            the masses of the atoms in self.atom_indices
+        totalmass: float* simtk.unit.dalton
+            The sum of the mass found in masses
+
         """
         masses = unit.Quantity(np.zeros([int(topology.getNumAtoms()),1],np.float32), unit.dalton)
         for idx,atom in enumerate(topology.atoms()):
@@ -124,6 +133,7 @@ class RandomLigandRotationMove(Move):
         -------
         center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
             1x3 np.array of the center of mass of the given positions
+
         """
         coordinates = np.asarray(positions._value, np.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
@@ -148,7 +158,6 @@ class RandomLigandRotationMove(Move):
             The same input context, but whose positions were changed by this function.
 
         """
-       #TODO: check if we need to deepcopy
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
 
         self.positions = positions[self.atom_indices]
@@ -171,8 +180,11 @@ class RandomLigandRotationMove(Move):
 
 
 class CombinationMove(Move):
-    """Move object that allows Move object moves to be performed according to.
-    the order in move_list. To ensure detailed balance, the moves have an equal chance to be per    formed in listed or reverse order.
+    """Move object that allows Move object moves to be performed according to
+    the order in move_list.
+    To ensure detailed balance, the moves have an equal chance to be performed
+    in listed or reverse order.
+
     Parameters
     ----------
     move_list : list of blues.move.Move-like objects
@@ -226,6 +238,7 @@ class SmartDartMove(RandomLigandRotationMove):
     References:
     (1) I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
         https://doi.org/10.1063/1.1358861
+
     """
     def __init__(self, structure, basis_particles, dart_size=0.2*unit.nanometers, resname='LIG'):
 
@@ -255,6 +268,7 @@ class SmartDartMove(RandomLigandRotationMove):
             necessary if the coord_files already contain topologies.
 
         """
+
         n_dartboard = []
         dartboard = []
         #loop over specified files and generate parmed structures from each
@@ -351,7 +365,9 @@ class SmartDartMove(RandomLigandRotationMove):
         changevec: 1x3 np.array*simtk.unit.nanometers,
             The vector from the ligand center of mass
             to the center of a darting region.
+
         """
+
         distList = []
         diffList = []
         indexList = []
@@ -398,8 +414,10 @@ class SmartDartMove(RandomLigandRotationMove):
         -------
         dart_list list of 1x3 np.arrays in units.nm
             new dart positions calculated from the particle_pairs
-            and particle_weights
+            and particle_weights.
+
         """
+
         basis_particles = self.basis_particles
         #make sure there's an equal number of particle pair lists
         #and particle weight lists
@@ -434,13 +452,14 @@ class SmartDartMove(RandomLigandRotationMove):
         dart_switch: 1x3 np.array * simtk.unit.nanometers
 
         """
+
         dartindex = np.random.randint(len(self.dartboard))
         dvector = self.dartboard[dartindex]
         dart_switch = dvector + changevec
         return dart_switch
 
     def _changeBasis(self, a, b):
-        '''
+        """
         Changes positions of a particle (b) in the regular basis set to
         another basis set (a). Used to recalculate the center of mass
         in terms of the local coordinates defined by self.basis_particles.
@@ -458,16 +477,19 @@ class SmartDartMove(RandomLigandRotationMove):
         -------
         changed_coord: 1x3 np.array
             Coordinates of b in new basis.
-        '''
+
+        """
+
         ainv = np.linalg.inv(a.T)
         changed_coord = np.dot(ainv,b.T)*unit.nanometers
         return changed_coord
 
     def _undoBasis(self, a, b):
-        '''
+        """
         Transforms positions in a transformed basis (b) to the regular
         basis set. Used to transform the dart positions in the local
         coordinate basis set to the cartesian basis set.
+
         Parameters
         ----------
         a: 3x3 np.array
@@ -479,13 +501,15 @@ class SmartDartMove(RandomLigandRotationMove):
         -------
         changed_coord: 1x3 np.array
             Coordinates of b in new basis.
-        '''
+        """
+
         a = a.T
         changed_coord = np.dot(a,b.T)*unit.nanometers
         return changed_coord
 
     def _normalize(self, vector):
-        '''Normalize a given vector
+        """Normalize a given vector
+
         Parameters
         ----------
         vector: 1xn np.array
@@ -494,15 +518,31 @@ class SmartDartMove(RandomLigandRotationMove):
         -------
         unit_vec: 1xn np.array
             Normalized vector.
-        '''
+
+        """
+
         magnitude = np.sqrt(np.sum(vector*vector))
         unit_vec = vector / magnitude
         return unit_vec
 
     def _localCoord(self, particle1, particle2, particle3):
-        '''Defines a new coordinate system using 3 particles
+        """
+        Defines a new coordinate system using 3 particles
         returning the new basis set vectors
-        '''
+
+        Parameters
+        ----------
+        particle1, particle2, particle3: 1x3 np.array
+            np.array corresponding to a given particle's positions
+
+        Returns
+        -------
+        vec1, vec2, vec3: 1x3 np.array
+            Basis vectors of the coordinate system defined
+            by particles1-3.
+
+        """
+
         part2 = particle2 - particle1
         part3 = particle3 - particle1
         vec1 = part2
@@ -511,9 +551,19 @@ class SmartDartMove(RandomLigandRotationMove):
         return vec1, vec2, vec3
 
     def _findNewCoord(self, particle1, particle2, particle3, center):
-        '''Finds the coordinates of a given center in a new coordinate
-            system defined by particles1-3
-        '''
+        """
+        Finds the coordinates of a given center in the standard basis
+            in terms of a new basis defined by particles1-3
+
+        Parameters
+        ----------
+        particle1, particle2, particle3: 1x3 np.array
+            np.array corresponding to a given particle's positions
+        center: 1x3 np.array * simtk.unit compatible with simtk.unit.nanometers
+            Coordinate of the center of mass in the standard basis set.
+
+        """
+
         #calculate new basis set
         vec1, vec2, vec3 = self._localCoord(particle1, particle2, particle3)
         basis_set = np.zeros((3,3))*unit.nanometers
@@ -528,10 +578,18 @@ class SmartDartMove(RandomLigandRotationMove):
         return new_coord
 
     def _findOldCoord(self, particle1, particle2, particle3, center):
-        '''Finds the coordinates of a given center (defined by a different basis
-        given by particles1-3) back in euclidian coordinates
-            system defined by particles1-3
-        '''
+        """
+        Finds the coordinates of a given center (defined by a different basis
+        given by particles1-3) back in the euclidian coordinates
+
+        Parameters
+        ----------
+        particle1, particle2, particle3: 1x3 np.array
+            np.array corresponding to a given particle's positions
+        center: 1x3 np.array * simtk.unit compatible with simtk.unit.nanometers
+            Coordinate of the center of mass in the non-standard basis set.
+
+        """
 
         vec1, vec2, vec3 = self._localCoord(particle1, particle2, particle3)
         basis_set = np.zeros((3,3))*unit.nanometers
