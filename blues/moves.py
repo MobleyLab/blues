@@ -257,6 +257,10 @@ class SmartDartMove(RandomLigandRotationMove):
                  self_dart=False, resname='LIG'):
 
         super(SmartDartMove, self).__init__(structure, resname=resname)
+
+        if len(coord_files) < 2:
+            raise ValueError('You should include at least two files in coord_files '+
+                             'in order to benefit from smart darting')
         self.dartboard = []
         self.n_dartboard = []
         self.particle_pairs = []
@@ -471,7 +475,7 @@ class SmartDartMove(RandomLigandRotationMove):
         dart_switch: 1x3 np.array * simtk.unit.nanometers
 
         """
-        dartindex = range(len(self.dartboard))
+        dartindex = list(range(len(self.dartboard)))
         if self.self_dart == False:
             dartindex.pop(selected_dart)
         dartindex = np.random.choice(dartindex)
