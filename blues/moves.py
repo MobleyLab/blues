@@ -220,7 +220,10 @@ class CombinationMove(Move):
 class SmartDartMove(RandomLigandRotationMove):
     """
     Move object that allows center of mass smart darting moves to be performed on a ligand,
-    allowing translations of a ligand between pre-defined regions in space.
+    allowing translations of a ligand between pre-defined regions in space. The
+    `SmartDartMove.move()` method translates the ligand to the locations of the ligand
+    found in the coord_files. These locations are defined in terms of the basis_particles.
+    These locations are picked with a uniform probability.
 
     Parameters
     ----------
@@ -229,18 +232,29 @@ class SmartDartMove(RandomLigandRotationMove):
     basis_particles: list of 3 ints
         Specifies the 3 indices of the protein whose coordinates will be used
         to define a new set of basis vectors.
-    dart_size: simtk.unit float object compatible with simtk.unit.nanometers unit,
+    coord_files: list of str
+        List containing paths to coordinate files of the whole system for smart darting.
+    topology: str, optional, default=None
+        A path specifying a topology file matching the files in coord_files. Not
+        necessary if the coord_files already contain topologies (ex. PDBs).
+    dart_radius: simtk.unit float object compatible with simtk.unit.nanometers unit,
         optional, default=0.2*simtk.unit.nanometers
         The radius of the darting region around each dart.
+    self_dart: boolean, optional, default='False'
+        When performing the center of mass darting in `SmartDartMove.move()`,this
+        specifies whether or not to include the darting region where the center
+        of mass currently resides as an option to dart to.
     resname : str, optional, default='LIG'
-        String specifying the resiue name of the ligand.
+        String specifying the residue name of the ligand.
 
     References:
     (1) I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
         https://doi.org/10.1063/1.1358861
 
     """
-    def __init__(self, structure, basis_particles, dart_size=0.2*unit.nanometers, resname='LIG'):
+    def __init__(self, structure, basis_particles, coord_files,
+                 topology=None, dart_radius=0.2*unit.nanometers,
+                 self_dart=False, resname='LIG'):
 
         super(SmartDartMove, self).__init__(structure, resname=resname)
         self.dartboard = []
@@ -248,8 +262,10 @@ class SmartDartMove(RandomLigandRotationMove):
         self.particle_pairs = []
         self.particle_weights = []
         self.basis_particles = basis_particles
-        self.dart_size = dart_size
+        self.dart_radius = dart_radius
         self.calculateProperties()
+        self.self_dart = self_dart
+        self.dartsFromParmEd(coord_files, topology)
 
     def dartsFromParmEd(self, coord_files, topology=None):
         """
@@ -304,7 +320,7 @@ class SmartDartMove(RandomLigandRotationMove):
     def move(self, nc_context):
         """
         Function for performing smart darting move with darts that
-        depend on particle positions in the system
+        depend on particle positions in the system.
 
         Parameters
         ----------
@@ -319,6 +335,9 @@ class SmartDartMove(RandomLigandRotationMove):
         """
 
         atom_indices = self.atom_indices
+        if len(self.n_dartboard) == 0:
+            raise ValueError('No darts are specified. Make sure you use ' +
+                'SmartDartMove.dartsFromParmed() before using the move() function')
         context = nc_context
         #get state info from context
         stateinfo = context.getState(True, True, False, True, True, False)
@@ -337,7 +356,7 @@ class SmartDartMove(RandomLigandRotationMove):
         if selected_dart != None:
             newDartPos = np.copy(oldDartPos)
             #find the center of mass in the new darting region
-            dart_switch = self._reDart(changevec)
+            dart_switch = self._reDart(selected_dart, changevec)
             #find the vector that will translate the ligand to the new darting region
             vecMove = dart_switch - center
             #apply that vector to the ligand to actually translate the coordinates
@@ -379,15 +398,15 @@ class SmartDartMove(RandomLigandRotationMove):
             distList.append(dist)
             diffList.append(diff)
         selected_dart = []
-        #Find the dart(s) less than self.dart_size
+        #Find the dart(s) less than self.dart_radius
         for index, entry in enumerate(distList):
-            if entry <= self.dart_size:
-                selected_dart.append(entry)
+            if entry <= self.dart_radius:
+                selected_dart.append(index)
                 diff = diffList[index]
                 indexList.append(index)
         #Dart error checking
         #to ensure reversibility the COM should only be
-        #within self.dart_size of one dart
+        #within self.dart_radius of one dart
         if len(selected_dart) == 1:
             return selected_dart[0], diffList[indexList[0]]
         elif len(selected_dart) == 0:
@@ -397,7 +416,7 @@ class SmartDartMove(RandomLigandRotationMove):
             raise ValueError(' The spheres defining two darting regions have overlapped, ' +
                              'which results in potential problems with detailed balance. ' +
                              'We are terminating the simulation. Please check the size and ' +
-                             'identity of your darting regions defined by dart_size.')
+                             'identity of your darting regions defined by dart_radius.')
             #TODO can treat cases using appropriate probablility correction
             #see https://doi.org/10.1016/j.patcog.2011.02.006
 
@@ -433,7 +452,7 @@ class SmartDartMove(RandomLigandRotationMove):
         self.dartboard = dart_list[:]
         return dart_list
 
-    def _reDart(self, changevec):
+    def _reDart(self, selected_dart, changevec):
         """
         Helper function to choose a random dart and determine the vector
         that would translate the COM to that dart center + changevec.
@@ -452,8 +471,10 @@ class SmartDartMove(RandomLigandRotationMove):
         dart_switch: 1x3 np.array * simtk.unit.nanometers
 
         """
-
-        dartindex = np.random.randint(len(self.dartboard))
+        dartindex = range(len(self.dartboard))
+        if self.self_dart == False:
+            dartindex.pop(selected_dart)
+        dartindex = np.random.choice(dartindex)
         dvector = self.dartboard[dartindex]
         dart_switch = dvector + changevec
         return dart_switch
