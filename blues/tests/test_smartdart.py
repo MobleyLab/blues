@@ -35,7 +35,7 @@ class SmartDartTester(unittest.TestCase):
         #Initialize the Model object
         basis_particles = [0,2,7]
         self.move = SmartDartMove(structure, basis_particles=basis_particles,
-                                coord_files=[inpcrd],
+                                coord_files=[inpcrd, inpcrd],
                                 topology=prmtop,
                                 resname='ALA', self_dart=True)
         self.move.atom_indices = range(22)
@@ -141,7 +141,7 @@ class DartLoaderTester(unittest.TestCase):
         #Initialize the SmartDartMove object
         self.move = SmartDartMove(structure,
             basis_particles=[100, 110, 150],
-            coord_files = [inpcrd], topology=prmtop,
+            coord_files = [inpcrd, inpcrd], topology=prmtop,
             self_dart=False, resname='LIG', )
         self.engine = MoveEngine(self.move)
         self.engine.selectMove()
