@@ -1,0 +1,825 @@
+INFO-09:25:09 Options: nonbondedMethod = NoCutoff
+INFO-09:25:09 Options: dt = 0.002
+INFO-09:25:09 Options: write_ncmc = False
+INFO-09:25:09 Options: nstepsMD = 2
+INFO-09:25:09 Options: verbose = True
+INFO-09:25:09 Options: platform = None
+INFO-09:25:09 Options: trajectory_interval = 1
+INFO-09:25:09 Options: nstepsNC = 100
+INFO-09:25:09 Options: friction = 1
+INFO-09:25:09 Options: temperature = 300.0
+INFO-09:25:09 Options: nIter = 2
+INFO-09:25:09 Options: constraints = HBonds
+INFO-09:25:09 Options: reporter_interval = 1
+INFO-09:25:09 Options: nprop = 1
+INFO-09:25:09 Options: write_move = False
+INFO-09:25:09 Options: outfname = blues-test
+INFO-09:25:15 Running 2 BLUES iterations...
+INFO-09:25:15 Iterations = 2
+INFO-09:25:15 Timestep = 0.002 ps
+INFO-09:25:15 NCMC Steps = 100
+INFO-09:25:15 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-09:25:15 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-09:25:15 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-09:25:15 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-09:25:15 	100.0 NCMC Steps/iter
+INFO-09:25:15 	0.2 NCMC ps/iter
+INFO-09:25:15 MD Steps = 2
+INFO-09:25:15 	0.004 MD ps/iter
+INFO-09:25:15 Total Simulation Time = 0.40800000000000003 ps
+INFO-09:25:15 	Total NCMC time = 0 ps
+INFO-09:25:15 	Total MD time = 0 ps
+INFO-09:25:15 	Trajectory Interval = 0.10200000000000001 ps
+INFO-09:25:15 		2.0 frames/iter
+INFO-09:25:16 Options: nonbondedMethod = PME
+INFO-09:25:16 Options: nonbondedMethod = PME
+INFO-09:25:16 Options: dt = 0.002
+INFO-09:25:16 Options: dt = 0.002
+INFO-09:25:16 Options: nstepsMD = 2
+INFO-09:25:16 Options: nstepsMD = 2
+INFO-09:25:16 Options: verbose = True
+INFO-09:25:16 Options: verbose = True
+INFO-09:25:16 Options: platform = None
+INFO-09:25:16 Options: platform = None
+INFO-09:25:16 Options: trajectory_interval = 1
+INFO-09:25:16 Options: trajectory_interval = 1
+INFO-09:25:16 Options: nstepsNC = 4
+INFO-09:25:16 Options: nstepsNC = 4
+INFO-09:25:16 Options: friction = 1
+INFO-09:25:16 Options: friction = 1
+INFO-09:25:16 Options: temperature = 300.0
+INFO-09:25:16 Options: temperature = 300.0
+INFO-09:25:16 Options: nonbondedCutoff = 10
+INFO-09:25:16 Options: nonbondedCutoff = 10
+INFO-09:25:16 Options: nIter = 2
+INFO-09:25:16 Options: nIter = 2
+INFO-09:25:16 Options: constraints = HBonds
+INFO-09:25:16 Options: constraints = HBonds
+INFO-09:25:16 Options: reporter_interval = 1
+INFO-09:25:16 Options: reporter_interval = 1
+INFO-09:25:16 Options: nprop = 1
+INFO-09:25:16 Options: nprop = 1
+INFO-09:25:16 Options: outfname = blues-test
+INFO-09:25:16 Options: outfname = blues-test
+INFO-09:33:45 Options: nonbondedMethod = NoCutoff
+INFO-09:33:45 Options: write_move = False
+INFO-09:33:45 Options: write_ncmc = False
+INFO-09:33:45 Options: temperature = 300.0
+INFO-09:33:45 Options: trajectory_interval = 1
+INFO-09:33:45 Options: outfname = blues-test
+INFO-09:33:45 Options: reporter_interval = 1
+INFO-09:33:45 Options: nprop = 1
+INFO-09:33:45 Options: nstepsNC = 100
+INFO-09:33:45 Options: nIter = 2
+INFO-09:33:45 Options: platform = None
+INFO-09:33:45 Options: dt = 0.002
+INFO-09:33:45 Options: constraints = HBonds
+INFO-09:33:45 Options: nstepsMD = 2
+INFO-09:33:45 Options: verbose = True
+INFO-09:33:45 Options: friction = 1
+INFO-09:33:50 Running 2 BLUES iterations...
+INFO-09:33:50 Iterations = 2
+INFO-09:33:50 Timestep = 0.002 ps
+INFO-09:33:50 NCMC Steps = 100
+INFO-09:33:50 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-09:33:50 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-09:33:50 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-09:33:50 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-09:33:50 	100.0 NCMC Steps/iter
+INFO-09:33:50 	0.2 NCMC ps/iter
+INFO-09:33:50 MD Steps = 2
+INFO-09:33:50 	0.004 MD ps/iter
+INFO-09:33:50 Total Simulation Time = 0.40800000000000003 ps
+INFO-09:33:50 	Total NCMC time = 0 ps
+INFO-09:33:50 	Total MD time = 0 ps
+INFO-09:33:50 	Trajectory Interval = 0.10200000000000001 ps
+INFO-09:33:50 		2.0 frames/iter
+INFO-09:33:51 Options: nonbondedMethod = PME
+INFO-09:33:51 Options: nonbondedMethod = PME
+INFO-09:33:51 Options: temperature = 300.0
+INFO-09:33:51 Options: temperature = 300.0
+INFO-09:33:51 Options: trajectory_interval = 1
+INFO-09:33:51 Options: trajectory_interval = 1
+INFO-09:33:51 Options: outfname = blues-test
+INFO-09:33:51 Options: outfname = blues-test
+INFO-09:33:51 Options: reporter_interval = 1
+INFO-09:33:51 Options: reporter_interval = 1
+INFO-09:33:51 Options: nprop = 1
+INFO-09:33:51 Options: nprop = 1
+INFO-09:33:51 Options: nstepsNC = 4
+INFO-09:33:51 Options: nstepsNC = 4
+INFO-09:33:51 Options: nIter = 2
+INFO-09:33:51 Options: nIter = 2
+INFO-09:33:51 Options: platform = None
+INFO-09:33:51 Options: platform = None
+INFO-09:33:51 Options: dt = 0.002
+INFO-09:33:51 Options: dt = 0.002
+INFO-09:33:51 Options: constraints = HBonds
+INFO-09:33:51 Options: constraints = HBonds
+INFO-09:33:51 Options: nonbondedCutoff = 10
+INFO-09:33:51 Options: nonbondedCutoff = 10
+INFO-09:33:51 Options: nstepsMD = 2
+INFO-09:33:51 Options: nstepsMD = 2
+INFO-09:33:51 Options: verbose = True
+INFO-09:33:51 Options: verbose = True
+INFO-09:33:51 Options: friction = 1
+INFO-09:33:51 Options: friction = 1
+INFO-10:21:45 Options: nIter = 2
+INFO-10:21:45 Options: nstepsMD = 2
+INFO-10:21:45 Options: nonbondedMethod = NoCutoff
+INFO-10:21:45 Options: trajectory_interval = 1
+INFO-10:21:45 Options: nstepsNC = 100
+INFO-10:21:45 Options: dt = 0.002
+INFO-10:21:45 Options: temperature = 300.0
+INFO-10:21:45 Options: friction = 1
+INFO-10:21:45 Options: platform = None
+INFO-10:21:45 Options: verbose = True
+INFO-10:21:45 Options: write_move = False
+INFO-10:21:45 Options: nprop = 1
+INFO-10:21:45 Options: constraints = HBonds
+INFO-10:21:45 Options: outfname = blues-test
+INFO-10:21:45 Options: reporter_interval = 1
+INFO-10:21:45 Options: write_ncmc = False
+INFO-10:21:50 Running 2 BLUES iterations...
+INFO-10:21:50 Iterations = 2
+INFO-10:21:50 Timestep = 0.002 ps
+INFO-10:21:50 NCMC Steps = 100
+INFO-10:21:50 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-10:21:50 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-10:21:50 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-10:21:50 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-10:21:50 	100.0 NCMC Steps/iter
+INFO-10:21:50 	0.2 NCMC ps/iter
+INFO-10:21:50 MD Steps = 2
+INFO-10:21:50 	0.004 MD ps/iter
+INFO-10:21:50 Total Simulation Time = 0.40800000000000003 ps
+INFO-10:21:50 	Total NCMC time = 0 ps
+INFO-10:21:50 	Total MD time = 0 ps
+INFO-10:21:50 	Trajectory Interval = 0.10200000000000001 ps
+INFO-10:21:50 		2.0 frames/iter
+INFO-10:21:51 Options: nIter = 2
+INFO-10:21:51 Options: nIter = 2
+INFO-10:21:51 Options: nstepsMD = 2
+INFO-10:21:51 Options: nstepsMD = 2
+INFO-10:21:51 Options: nonbondedMethod = PME
+INFO-10:21:51 Options: nonbondedMethod = PME
+INFO-10:21:51 Options: trajectory_interval = 1
+INFO-10:21:51 Options: trajectory_interval = 1
+INFO-10:21:51 Options: temperature = 300.0
+INFO-10:21:51 Options: temperature = 300.0
+INFO-10:21:51 Options: dt = 0.002
+INFO-10:21:51 Options: dt = 0.002
+INFO-10:21:51 Options: nstepsNC = 4
+INFO-10:21:51 Options: nstepsNC = 4
+INFO-10:21:51 Options: friction = 1
+INFO-10:21:51 Options: friction = 1
+INFO-10:21:51 Options: platform = None
+INFO-10:21:51 Options: platform = None
+INFO-10:21:51 Options: verbose = True
+INFO-10:21:51 Options: verbose = True
+INFO-10:21:51 Options: nprop = 1
+INFO-10:21:51 Options: nprop = 1
+INFO-10:21:51 Options: constraints = HBonds
+INFO-10:21:51 Options: constraints = HBonds
+INFO-10:21:51 Options: outfname = blues-test
+INFO-10:21:51 Options: outfname = blues-test
+INFO-10:21:51 Options: nonbondedCutoff = 10
+INFO-10:21:51 Options: nonbondedCutoff = 10
+INFO-10:21:51 Options: reporter_interval = 1
+INFO-10:21:51 Options: reporter_interval = 1
+INFO-10:51:12 Options: verbose = True
+INFO-10:51:12 Options: write_ncmc = False
+INFO-10:51:12 Options: nstepsMD = 2
+INFO-10:51:12 Options: temperature = 300.0
+INFO-10:51:12 Options: nstepsNC = 100
+INFO-10:51:12 Options: reporter_interval = 1
+INFO-10:51:12 Options: trajectory_interval = 1
+INFO-10:51:12 Options: dt = 0.002
+INFO-10:51:12 Options: platform = None
+INFO-10:51:12 Options: outfname = blues-test
+INFO-10:51:12 Options: friction = 1
+INFO-10:51:12 Options: write_move = False
+INFO-10:51:12 Options: constraints = HBonds
+INFO-10:51:12 Options: nprop = 1
+INFO-10:51:12 Options: nIter = 2
+INFO-10:51:12 Options: nonbondedMethod = NoCutoff
+INFO-10:51:17 Running 2 BLUES iterations...
+INFO-10:51:17 Iterations = 2
+INFO-10:51:17 Timestep = 0.002 ps
+INFO-10:51:17 NCMC Steps = 100
+INFO-10:51:17 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-10:51:17 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-10:51:17 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-10:51:17 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-10:51:17 	100.0 NCMC Steps/iter
+INFO-10:51:17 	0.2 NCMC ps/iter
+INFO-10:51:17 MD Steps = 2
+INFO-10:51:17 	0.004 MD ps/iter
+INFO-10:51:17 Total Simulation Time = 0.40800000000000003 ps
+INFO-10:51:17 	Total NCMC time = 0 ps
+INFO-10:51:17 	Total MD time = 0 ps
+INFO-10:51:17 	Trajectory Interval = 0.10200000000000001 ps
+INFO-10:51:17 		2.0 frames/iter
+INFO-10:51:18 Options: verbose = True
+INFO-10:51:18 Options: verbose = True
+INFO-10:51:18 Options: nstepsMD = 2
+INFO-10:51:18 Options: nstepsMD = 2
+INFO-10:51:18 Options: temperature = 300.0
+INFO-10:51:18 Options: temperature = 300.0
+INFO-10:51:18 Options: nstepsNC = 4
+INFO-10:51:18 Options: nstepsNC = 4
+INFO-10:51:18 Options: trajectory_interval = 1
+INFO-10:51:18 Options: trajectory_interval = 1
+INFO-10:51:18 Options: outfname = blues-test
+INFO-10:51:18 Options: outfname = blues-test
+INFO-10:51:18 Options: dt = 0.002
+INFO-10:51:18 Options: dt = 0.002
+INFO-10:51:18 Options: platform = None
+INFO-10:51:18 Options: platform = None
+INFO-10:51:18 Options: reporter_interval = 1
+INFO-10:51:18 Options: reporter_interval = 1
+INFO-10:51:18 Options: friction = 1
+INFO-10:51:18 Options: friction = 1
+INFO-10:51:18 Options: nonbondedCutoff = 10
+INFO-10:51:18 Options: nonbondedCutoff = 10
+INFO-10:51:18 Options: constraints = HBonds
+INFO-10:51:18 Options: constraints = HBonds
+INFO-10:51:18 Options: nprop = 1
+INFO-10:51:18 Options: nprop = 1
+INFO-10:51:18 Options: nIter = 2
+INFO-10:51:18 Options: nIter = 2
+INFO-10:51:18 Options: nonbondedMethod = PME
+INFO-10:51:18 Options: nonbondedMethod = PME
+INFO-10:57:30 Options: friction = 1
+INFO-10:57:30 Options: nprop = 1
+INFO-10:57:30 Options: reporter_interval = 1
+INFO-10:57:30 Options: nonbondedMethod = NoCutoff
+INFO-10:57:30 Options: nstepsNC = 100
+INFO-10:57:30 Options: write_move = False
+INFO-10:57:30 Options: temperature = 300.0
+INFO-10:57:30 Options: write_ncmc = False
+INFO-10:57:30 Options: platform = None
+INFO-10:57:30 Options: nstepsMD = 2
+INFO-10:57:30 Options: trajectory_interval = 1
+INFO-10:57:30 Options: constraints = HBonds
+INFO-10:57:30 Options: outfname = blues-test
+INFO-10:57:30 Options: verbose = True
+INFO-10:57:30 Options: dt = 0.002
+INFO-10:57:30 Options: nIter = 2
+INFO-10:57:35 Running 2 BLUES iterations...
+INFO-10:57:35 Iterations = 2
+INFO-10:57:35 Timestep = 0.002 ps
+INFO-10:57:35 NCMC Steps = 100
+INFO-10:57:35 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-10:57:35 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-10:57:35 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-10:57:35 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-10:57:35 	100.0 NCMC Steps/iter
+INFO-10:57:35 	0.2 NCMC ps/iter
+INFO-10:57:35 MD Steps = 2
+INFO-10:57:35 	0.004 MD ps/iter
+INFO-10:57:35 Total Simulation Time = 0.40800000000000003 ps
+INFO-10:57:35 	Total NCMC time = 0 ps
+INFO-10:57:35 	Total MD time = 0 ps
+INFO-10:57:35 	Trajectory Interval = 0.10200000000000001 ps
+INFO-10:57:35 		2.0 frames/iter
+INFO-10:57:36 [Iter 0] Advancing 100 NCMC steps...
+ERROR-10:57:36 'RandomLigandRotationMove' object has no attribute 'make_NCMC_move'
+INFO-10:57:36 Options: friction = 1
+INFO-10:57:36 Options: friction = 1
+INFO-10:57:36 Options: temperature = 300.0
+INFO-10:57:36 Options: temperature = 300.0
+INFO-10:57:36 Options: reporter_interval = 1
+INFO-10:57:36 Options: reporter_interval = 1
+INFO-10:57:36 Options: verbose = True
+INFO-10:57:36 Options: verbose = True
+INFO-10:57:36 Options: nonbondedMethod = PME
+INFO-10:57:36 Options: nonbondedMethod = PME
+INFO-10:57:36 Options: nprop = 1
+INFO-10:57:36 Options: nprop = 1
+INFO-10:57:36 Options: platform = None
+INFO-10:57:36 Options: platform = None
+INFO-10:57:36 Options: nonbondedCutoff = 10
+INFO-10:57:36 Options: nonbondedCutoff = 10
+INFO-10:57:36 Options: nstepsMD = 2
+INFO-10:57:36 Options: nstepsMD = 2
+INFO-10:57:36 Options: trajectory_interval = 1
+INFO-10:57:36 Options: trajectory_interval = 1
+INFO-10:57:36 Options: constraints = HBonds
+INFO-10:57:36 Options: constraints = HBonds
+INFO-10:57:36 Options: outfname = blues-test
+INFO-10:57:36 Options: outfname = blues-test
+INFO-10:57:36 Options: nstepsNC = 4
+INFO-10:57:36 Options: nstepsNC = 4
+INFO-10:57:36 Options: dt = 0.002
+INFO-10:57:36 Options: dt = 0.002
+INFO-10:57:36 Options: nIter = 2
+INFO-10:57:36 Options: nIter = 2
+INFO-11:45:48 Options: outfname = blues-test
+INFO-11:45:48 Options: platform = None
+INFO-11:45:48 Options: temperature = 300.0
+INFO-11:45:48 Options: nprop = 1
+INFO-11:45:48 Options: constraints = HBonds
+INFO-11:45:48 Options: nonbondedMethod = NoCutoff
+INFO-11:45:48 Options: verbose = True
+INFO-11:45:48 Options: trajectory_interval = 1
+INFO-11:45:48 Options: nstepsNC = 100
+INFO-11:45:48 Options: write_ncmc = False
+INFO-11:45:48 Options: dt = 0.002
+INFO-11:45:48 Options: write_move = False
+INFO-11:45:48 Options: nIter = 2
+INFO-11:45:48 Options: nstepsMD = 2
+INFO-11:45:48 Options: reporter_interval = 1
+INFO-11:45:48 Options: friction = 1
+INFO-11:45:54 Running 2 BLUES iterations...
+INFO-11:45:54 Iterations = 2
+INFO-11:45:54 Timestep = 0.002 ps
+INFO-11:45:54 NCMC Steps = 100
+INFO-11:45:54 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-11:45:54 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-11:45:54 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-11:45:54 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-11:45:54 	100.0 NCMC Steps/iter
+INFO-11:45:54 	0.2 NCMC ps/iter
+INFO-11:45:54 MD Steps = 2
+INFO-11:45:54 	0.004 MD ps/iter
+INFO-11:45:54 Total Simulation Time = 0.40800000000000003 ps
+INFO-11:45:54 	Total NCMC time = 0 ps
+INFO-11:45:54 	Total MD time = 0 ps
+INFO-11:45:54 	Trajectory Interval = 0.10200000000000001 ps
+INFO-11:45:54 		2.0 frames/iter
+INFO-11:45:55 [Iter 0] Advancing 100 NCMC steps...
+ERROR-11:45:55 'RandomLigandRotationMove' object has no attribute 'make_NCMC_move'
+INFO-11:45:55 Options: outfname = blues-test
+INFO-11:45:55 Options: outfname = blues-test
+INFO-11:45:55 Options: nIter = 2
+INFO-11:45:55 Options: nIter = 2
+INFO-11:45:55 Options: platform = None
+INFO-11:45:55 Options: platform = None
+INFO-11:45:55 Options: temperature = 300.0
+INFO-11:45:55 Options: temperature = 300.0
+INFO-11:45:55 Options: nprop = 1
+INFO-11:45:55 Options: nprop = 1
+INFO-11:45:55 Options: nonbondedMethod = PME
+INFO-11:45:55 Options: nonbondedMethod = PME
+INFO-11:45:55 Options: constraints = HBonds
+INFO-11:45:55 Options: constraints = HBonds
+INFO-11:45:55 Options: verbose = True
+INFO-11:45:55 Options: verbose = True
+INFO-11:45:55 Options: nonbondedCutoff = 10
+INFO-11:45:55 Options: nonbondedCutoff = 10
+INFO-11:45:55 Options: trajectory_interval = 1
+INFO-11:45:55 Options: trajectory_interval = 1
+INFO-11:45:55 Options: nstepsNC = 4
+INFO-11:45:55 Options: nstepsNC = 4
+INFO-11:45:55 Options: dt = 0.002
+INFO-11:45:55 Options: dt = 0.002
+INFO-11:45:55 Options: nstepsMD = 2
+INFO-11:45:55 Options: nstepsMD = 2
+INFO-11:45:55 Options: reporter_interval = 1
+INFO-11:45:55 Options: reporter_interval = 1
+INFO-11:45:55 Options: friction = 1
+INFO-11:45:55 Options: friction = 1
+INFO-11:46:47 Options: verbose = True
+INFO-11:46:47 Options: dt = 0.002
+INFO-11:46:47 Options: nonbondedMethod = NoCutoff
+INFO-11:46:47 Options: trajectory_interval = 1
+INFO-11:46:47 Options: write_ncmc = False
+INFO-11:46:47 Options: temperature = 300.0
+INFO-11:46:47 Options: reporter_interval = 1
+INFO-11:46:47 Options: platform = None
+INFO-11:46:47 Options: friction = 1
+INFO-11:46:47 Options: write_move = False
+INFO-11:46:47 Options: nstepsNC = 100
+INFO-11:46:47 Options: constraints = HBonds
+INFO-11:46:47 Options: outfname = blues-test
+INFO-11:46:47 Options: nprop = 1
+INFO-11:46:47 Options: nIter = 2
+INFO-11:46:47 Options: nstepsMD = 2
+INFO-11:46:52 Running 2 BLUES iterations...
+INFO-11:46:52 Iterations = 2
+INFO-11:46:52 Timestep = 0.002 ps
+INFO-11:46:52 NCMC Steps = 100
+INFO-11:46:52 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-11:46:52 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-11:46:52 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-11:46:52 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-11:46:52 	100.0 NCMC Steps/iter
+INFO-11:46:52 	0.2 NCMC ps/iter
+INFO-11:46:52 MD Steps = 2
+INFO-11:46:52 	0.004 MD ps/iter
+INFO-11:46:52 Total Simulation Time = 0.40800000000000003 ps
+INFO-11:46:52 	Total NCMC time = 0 ps
+INFO-11:46:52 	Total MD time = 0 ps
+INFO-11:46:52 	Trajectory Interval = 0.10200000000000001 ps
+INFO-11:46:52 		2.0 frames/iter
+INFO-11:46:54 [Iter 0] Advancing 100 NCMC steps...
+ERROR-11:46:54 'RandomLigandRotationMove' object has no attribute 'make_NCMC_move'
+INFO-11:46:54 Options: verbose = True
+INFO-11:46:54 Options: verbose = True
+INFO-11:46:54 Options: dt = 0.002
+INFO-11:46:54 Options: dt = 0.002
+INFO-11:46:54 Options: nonbondedCutoff = 10
+INFO-11:46:54 Options: nonbondedCutoff = 10
+INFO-11:46:54 Options: trajectory_interval = 1
+INFO-11:46:54 Options: trajectory_interval = 1
+INFO-11:46:54 Options: outfname = blues-test
+INFO-11:46:54 Options: outfname = blues-test
+INFO-11:46:54 Options: nonbondedMethod = PME
+INFO-11:46:54 Options: nonbondedMethod = PME
+INFO-11:46:54 Options: reporter_interval = 1
+INFO-11:46:54 Options: reporter_interval = 1
+INFO-11:46:54 Options: platform = None
+INFO-11:46:54 Options: platform = None
+INFO-11:46:54 Options: friction = 1
+INFO-11:46:54 Options: friction = 1
+INFO-11:46:54 Options: nstepsNC = 4
+INFO-11:46:54 Options: nstepsNC = 4
+INFO-11:46:54 Options: constraints = HBonds
+INFO-11:46:54 Options: constraints = HBonds
+INFO-11:46:54 Options: temperature = 300.0
+INFO-11:46:54 Options: temperature = 300.0
+INFO-11:46:54 Options: nprop = 1
+INFO-11:46:54 Options: nprop = 1
+INFO-11:46:54 Options: nIter = 2
+INFO-11:46:54 Options: nIter = 2
+INFO-11:46:54 Options: nstepsMD = 2
+INFO-11:46:54 Options: nstepsMD = 2
+INFO-12:37:04 Options: write_ncmc = False
+INFO-12:37:04 Options: nstepsNC = 100
+INFO-12:37:04 Options: outfname = blues-test
+INFO-12:37:04 Options: trajectory_interval = 1
+INFO-12:37:04 Options: nprop = 1
+INFO-12:37:04 Options: dt = 0.002
+INFO-12:37:04 Options: nIter = 2
+INFO-12:37:04 Options: nstepsMD = 2
+INFO-12:37:04 Options: friction = 1
+INFO-12:37:04 Options: write_move = False
+INFO-12:37:04 Options: temperature = 300.0
+INFO-12:37:04 Options: platform = None
+INFO-12:37:04 Options: nonbondedMethod = NoCutoff
+INFO-12:37:04 Options: constraints = HBonds
+INFO-12:37:04 Options: reporter_interval = 1
+INFO-12:37:04 Options: verbose = True
+INFO-12:37:10 Running 2 BLUES iterations...
+INFO-12:37:10 Iterations = 2
+INFO-12:37:10 Timestep = 0.002 ps
+INFO-12:37:10 NCMC Steps = 100
+INFO-12:37:10 	Adding 1 extra propgation steps in lambda [0.2, 0.8]
+INFO-12:37:10 	Lambda: 0.0 -> 0.2 = 20.0 NCMC Steps
+INFO-12:37:10 	Lambda: 0.2 -> 0.8 = 60.0 NCMC Steps
+INFO-12:37:10 	Lambda: 0.8 -> 1.0 = 20.0 NCMC Steps
+INFO-12:37:10 	100.0 NCMC Steps/iter
+INFO-12:37:10 	0.2 NCMC ps/iter
+INFO-12:37:10 MD Steps = 2
+INFO-12:37:10 	0.004 MD ps/iter
+INFO-12:37:10 Total Simulation Time = 0.40800000000000003 ps
+INFO-12:37:10 	Total NCMC time = 0 ps
+INFO-12:37:10 	Total MD time = 0 ps
+INFO-12:37:10 	Trajectory Interval = 0.10200000000000001 ps
+INFO-12:37:10 		2.0 frames/iter
+INFO-12:37:11 [Iter 0] Advancing 100 NCMC steps...
+INFO-12:37:11 [NCMC] "Step"	"Speed (ns/day)"	"Acc. Moves"	"Iter"
+INFO-12:37:11 0		1.99		0		0
+INFO-12:37:11 1		28.1		0		0
+INFO-12:37:11 2		30.1		0		0
+INFO-12:37:11 3		30.3		0		0
+INFO-12:37:11 4		29.9		0		0
+INFO-12:37:11 5		28.7		0		0
+INFO-12:37:11 6		26.7		0		0
+INFO-12:37:11 7		30.5		0		0
+INFO-12:37:11 8		30.7		0		0
+INFO-12:37:11 9		35.9		0		0
+INFO-12:37:11 10		36.6		0		0
+INFO-12:37:11 11		34		0		0
+INFO-12:37:11 12		32.3		0		0
+INFO-12:37:11 13		32.3		0		0
+INFO-12:37:11 14		32.8		0		0
+INFO-12:37:11 15		34.2		0		0
+INFO-12:37:11 16		28.6		0		0
+INFO-12:37:11 17		32.2		0		0
+INFO-12:37:11 18		33.3		0		0
+INFO-12:37:11 19		34.4		0		0
+INFO-12:37:11 20		38		0		0
+INFO-12:37:11 21		38		0		0
+INFO-12:37:11 22		39.4		0		0
+INFO-12:37:11 23		36.7		0		0
+INFO-12:37:11 24		32.9		0		0
+INFO-12:37:11 25		35.2		0		0
+INFO-12:37:11 26		39.4		0		0
+INFO-12:37:11 27		37.7		0		0
+INFO-12:37:11 28		34.6		0		0
+INFO-12:37:11 29		38		0		0
+INFO-12:37:11 30		38.2		0		0
+INFO-12:37:11 31		37.2		0		0
+INFO-12:37:11 32		35.2		0		0
+INFO-12:37:11 33		35.5		0		0
+INFO-12:37:11 34		34.6		0		0
+INFO-12:37:11 35		38.1		0		0
+INFO-12:37:11 36		38.9		0		0
+INFO-12:37:11 37		38.8		0		0
+INFO-12:37:11 38		35.8		0		0
+INFO-12:37:11 39		38.8		0		0
+INFO-12:37:11 40		39.3		0		0
+INFO-12:37:11 41		30.3		0		0
+INFO-12:37:11 42		36		0		0
+INFO-12:37:11 43		35.9		0		0
+INFO-12:37:11 44		36.9		0		0
+INFO-12:37:11 45		37.7		0		0
+INFO-12:37:11 46		37.6		0		0
+INFO-12:37:11 47		37.9		0		0
+INFO-12:37:11 48		37.8		0		0
+INFO-12:37:11 49		38.2		0		0
+INFO-12:37:11 Performing RandomLigandRotationMove...
+INFO-12:37:11 50		17.3		0		0
+INFO-12:37:11 51		34.3		0		0
+INFO-12:37:11 52		38.5		0		0
+INFO-12:37:11 53		36.5		0		0
+INFO-12:37:11 54		37.3		0		0
+INFO-12:37:11 55		34.3		0		0
+INFO-12:37:11 56		38.5		0		0
+INFO-12:37:11 57		37.7		0		0
+INFO-12:37:11 58		25.8		0		0
+INFO-12:37:11 59		9.24		0		0
+INFO-12:37:11 60		9.57		0		0
+INFO-12:37:11 61		9.34		0		0
+INFO-12:37:12 62		9.73		0		0
+INFO-12:37:12 63		9.29		0		0
+INFO-12:37:12 64		9.5		0		0
+INFO-12:37:12 65		9.8		0		0
+INFO-12:37:12 66		9.59		0		0
+INFO-12:37:12 67		9.49		0		0
+INFO-12:37:12 68		9.36		0		0
+INFO-12:37:12 69		9.62		0		0
+INFO-12:37:12 70		9.49		0		0
+INFO-12:37:12 71		9.65		0		0
+INFO-12:37:12 72		9.72		0		0
+INFO-12:37:12 73		9.81		0		0
+INFO-12:37:12 74		9.37		0		0
+INFO-12:37:12 75		9.33		0		0
+INFO-12:37:12 76		9.04		0		0
+INFO-12:37:12 77		9.55		0		0
+INFO-12:37:12 78		9.59		0		0
+INFO-12:37:12 79		9.87		0		0
+INFO-12:37:12 80		8.38		0		0
+INFO-12:37:12 81		8.2		0		0
+INFO-12:37:12 82		8.36		0		0
+INFO-12:37:12 83		8.32		0		0
+INFO-12:37:12 84		8.09		0		0
+INFO-12:37:12 85		8.1		0		0
+INFO-12:37:12 86		7.92		0		0
+INFO-12:37:12 87		7.81		0		0
+INFO-12:37:12 88		8.24		0		0
+INFO-12:37:12 89		8.05		0		0
+INFO-12:37:12 90		8.17		0		0
+INFO-12:37:12 91		8.33		0		0
+INFO-12:37:12 92		8.33		0		0
+INFO-12:37:12 93		8.51		0		0
+INFO-12:37:12 94		8.23		0		0
+INFO-12:37:12 95		8.19		0		0
+INFO-12:37:12 96		8.13		0		0
+INFO-12:37:12 97		8.28		0		0
+INFO-12:37:12 98		8.2		0		0
+INFO-12:37:12 99		7.88		0		0
+INFO-12:37:14 NCMC MOVE REJECTED: log_ncmc -1.2144503791709726 < -0.47374377448889105
+INFO-12:37:14 [Iter 0] Advancing 2 MD steps...
+INFO-12:37:15 [Iter 1] Advancing 100 NCMC steps...
+INFO-12:37:15 0		5.92		0		1
+INFO-12:37:15 1		7.95		0		1
+INFO-12:37:15 2		7.37		0		1
+INFO-12:37:15 3		8.24		0		1
+INFO-12:37:15 4		8.33		0		1
+INFO-12:37:15 5		8.08		0		1
+INFO-12:37:15 6		8.42		0		1
+INFO-12:37:15 7		8.16		0		1
+INFO-12:37:15 8		7.83		0		1
+INFO-12:37:15 9		7.91		0		1
+INFO-12:37:15 10		8.04		0		1
+INFO-12:37:15 11		8.18		0		1
+INFO-12:37:15 12		8.12		0		1
+INFO-12:37:15 13		8.01		0		1
+INFO-12:37:15 14		7.96		0		1
+INFO-12:37:15 15		7.27		0		1
+INFO-12:37:15 16		7.9		0		1
+INFO-12:37:15 17		7.91		0		1
+INFO-12:37:15 18		8.01		0		1
+INFO-12:37:16 19		8.01		0		1
+INFO-12:37:16 20		8.98		0		1
+INFO-12:37:16 21		9		0		1
+INFO-12:37:16 22		9.3		0		1
+INFO-12:37:16 23		8.95		0		1
+INFO-12:37:16 24		9.47		0		1
+INFO-12:37:16 25		8.87		0		1
+INFO-12:37:16 26		9.6		0		1
+INFO-12:37:16 27		9.14		0		1
+INFO-12:37:16 28		9.31		0		1
+INFO-12:37:16 29		9.23		0		1
+INFO-12:37:16 30		9.34		0		1
+INFO-12:37:16 31		9.61		0		1
+INFO-12:37:16 32		9.16		0		1
+INFO-12:37:16 33		9.51		0		1
+INFO-12:37:16 34		9.44		0		1
+INFO-12:37:16 35		9.26		0		1
+INFO-12:37:16 36		9.73		0		1
+INFO-12:37:16 37		9.63		0		1
+INFO-12:37:16 38		9.61		0		1
+INFO-12:37:16 39		9.02		0		1
+INFO-12:37:16 40		8.82		0		1
+INFO-12:37:16 41		9.35		0		1
+INFO-12:37:16 42		9.85		0		1
+INFO-12:37:16 43		9.59		0		1
+INFO-12:37:16 44		9.85		0		1
+INFO-12:37:16 45		9.26		0		1
+INFO-12:37:16 46		9.73		0		1
+INFO-12:37:16 47		9.74		0		1
+INFO-12:37:16 48		9.59		0		1
+INFO-12:37:16 49		9.68		0		1
+INFO-12:37:16 Performing RandomLigandRotationMove...
+INFO-12:37:16 50		5.71		0		1
+INFO-12:37:16 51		9.52		0		1
+INFO-12:37:16 52		9.62		0		1
+INFO-12:37:16 53		9.48		0		1
+INFO-12:37:16 54		9.74		0		1
+INFO-12:37:16 55		9.57		0		1
+INFO-12:37:16 56		9.78		0		1
+INFO-12:37:16 57		9.42		0		1
+INFO-12:37:16 58		9.36		0		1
+INFO-12:37:16 59		9.31		0		1
+INFO-12:37:16 60		9.09		0		1
+INFO-12:37:16 61		9.32		0		1
+INFO-12:37:16 62		9.7		0		1
+INFO-12:37:16 63		9.76		0		1
+INFO-12:37:16 64		9.59		0		1
+INFO-12:37:16 65		9.7		0		1
+INFO-12:37:16 66		9.61		0		1
+INFO-12:37:16 67		8.51		0		1
+INFO-12:37:16 68		8.64		0		1
+INFO-12:37:17 69		8.68		0		1
+INFO-12:37:17 70		9.1		0		1
+INFO-12:37:17 71		9.68		0		1
+INFO-12:37:17 72		9.63		0		1
+INFO-12:37:17 73		9.39		0		1
+INFO-12:37:17 74		9.77		0		1
+INFO-12:37:17 75		9.21		0		1
+INFO-12:37:17 76		9.38		0		1
+INFO-12:37:17 77		9.05		0		1
+INFO-12:37:17 78		8.91		0		1
+INFO-12:37:17 79		9.23		0		1
+INFO-12:37:17 80		8.42		0		1
+INFO-12:37:17 81		8.33		0		1
+INFO-12:37:17 82		8.07		0		1
+INFO-12:37:17 83		8.04		0		1
+INFO-12:37:17 84		8.09		0		1
+INFO-12:37:17 85		7.97		0		1
+INFO-12:37:17 86		8.32		0		1
+INFO-12:37:17 87		8.06		0		1
+INFO-12:37:17 88		8.2		0		1
+INFO-12:37:17 89		8.3		0		1
+INFO-12:37:17 90		8.35		0		1
+INFO-12:37:17 91		8.23		0		1
+INFO-12:37:17 92		8.3		0		1
+INFO-12:37:17 93		8.42		0		1
+INFO-12:37:17 94		8.42		0		1
+INFO-12:37:17 95		7.93		0		1
+INFO-12:37:17 96		7.66		0		1
+INFO-12:37:17 97		8.08		0		1
+INFO-12:37:17 98		8.26		0		1
+INFO-12:37:17 99		8.17		0		1
+INFO-12:37:17 NCMC MOVE ACCEPTED: log_ncmc -0.04945082337868863 > randnum -2.2966705410378254
+INFO-12:37:17 [Iter 1] Advancing 2 MD steps...
+INFO-12:37:17 [Iter 2] Advancing 100 NCMC steps...
+INFO-12:37:17 0		5.91		1		2
+INFO-12:37:17 1		8.34		1		2
+INFO-12:37:17 2		8.27		1		2
+INFO-12:37:17 3		8.17		1		2
+INFO-12:37:17 4		8.12		1		2
+INFO-12:37:17 5		8.01		1		2
+INFO-12:37:17 6		7.92		1		2
+INFO-12:37:17 7		7.85		1		2
+INFO-12:37:17 8		7.4		1		2
+INFO-12:37:17 9		7.72		1		2
+INFO-12:37:17 10		7.12		1		2
+INFO-12:37:17 11		7.32		1		2
+INFO-12:37:18 12		7.99		1		2
+INFO-12:37:18 13		8		1		2
+INFO-12:37:18 14		7.38		1		2
+INFO-12:37:18 15		7.77		1		2
+INFO-12:37:18 16		8.09		1		2
+INFO-12:37:18 17		8.24		1		2
+INFO-12:37:18 18		8.44		1		2
+INFO-12:37:18 19		8.16		1		2
+INFO-12:37:18 20		9.47		1		2
+INFO-12:37:18 21		9.88		1		2
+INFO-12:37:18 22		9.67		1		2
+INFO-12:37:18 23		9.5		1		2
+INFO-12:37:18 24		9.63		1		2
+INFO-12:37:18 25		9		1		2
+INFO-12:37:18 26		9.42		1		2
+INFO-12:37:18 27		9.49		1		2
+INFO-12:37:18 28		9.65		1		2
+INFO-12:37:18 29		9.66		1		2
+INFO-12:37:18 30		9.69		1		2
+INFO-12:37:18 31		9.65		1		2
+INFO-12:37:18 32		9.67		1		2
+INFO-12:37:18 33		9.71		1		2
+INFO-12:37:18 34		9.72		1		2
+INFO-12:37:18 35		9.38		1		2
+INFO-12:37:18 36		9.69		1		2
+INFO-12:37:18 37		9.74		1		2
+INFO-12:37:18 38		9.53		1		2
+INFO-12:37:18 39		9.74		1		2
+INFO-12:37:18 40		9.71		1		2
+INFO-12:37:18 41		9.76		1		2
+INFO-12:37:18 42		9.32		1		2
+INFO-12:37:18 43		9.63		1		2
+INFO-12:37:18 44		9.54		1		2
+INFO-12:37:18 45		9.67		1		2
+INFO-12:37:18 46		9.79		1		2
+INFO-12:37:18 47		9.46		1		2
+INFO-12:37:18 48		9.53		1		2
+INFO-12:37:18 49		9.62		1		2
+INFO-12:37:18 Performing RandomLigandRotationMove...
+INFO-12:37:18 50		5.6		1		2
+INFO-12:37:18 51		9.61		1		2
+INFO-12:37:18 52		9.46		1		2
+INFO-12:37:18 53		9.61		1		2
+INFO-12:37:18 54		9.56		1		2
+INFO-12:37:18 55		9.68		1		2
+INFO-12:37:18 56		9.52		1		2
+INFO-12:37:18 57		9.6		1		2
+INFO-12:37:18 58		9.31		1		2
+INFO-12:37:18 59		9.47		1		2
+INFO-12:37:18 60		9.13		1		2
+INFO-12:37:18 61		9.56		1		2
+INFO-12:37:19 62		9.38		1		2
+INFO-12:37:19 63		9.65		1		2
+INFO-12:37:19 64		9.69		1		2
+INFO-12:37:19 65		9.66		1		2
+INFO-12:37:19 66		9.79		1		2
+INFO-12:37:19 67		9.52		1		2
+INFO-12:37:19 68		9.49		1		2
+INFO-12:37:19 69		9.52		1		2
+INFO-12:37:19 70		9.46		1		2
+INFO-12:37:19 71		9.49		1		2
+INFO-12:37:19 72		9.49		1		2
+INFO-12:37:19 73		9.64		1		2
+INFO-12:37:19 74		9.53		1		2
+INFO-12:37:19 75		9.66		1		2
+INFO-12:37:19 76		9.27		1		2
+INFO-12:37:19 77		9.63		1		2
+INFO-12:37:19 78		9.53		1		2
+INFO-12:37:19 79		9.77		1		2
+INFO-12:37:19 80		8.22		1		2
+INFO-12:37:19 81		8.09		1		2
+INFO-12:37:19 82		8.39		1		2
+INFO-12:37:19 83		8.12		1		2
+INFO-12:37:19 84		8.37		1		2
+INFO-12:37:19 85		8.5		1		2
+INFO-12:37:19 86		8.19		1		2
+INFO-12:37:19 87		8.28		1		2
+INFO-12:37:19 88		8.37		1		2
+INFO-12:37:19 89		8.39		1		2
+INFO-12:37:19 90		8.49		1		2
+INFO-12:37:19 91		8.12		1		2
+INFO-12:37:19 92		8.37		1		2
+INFO-12:37:19 93		8.28		1		2
+INFO-12:37:19 94		8.11		1		2
+INFO-12:37:19 95		8.63		1		2
+INFO-12:37:19 96		8.24		1		2
+INFO-12:37:19 97		8.42		1		2
+INFO-12:37:19 98		8.39		1		2
+INFO-12:37:19 99		8.35		1		2
+INFO-12:37:19 NCMC MOVE ACCEPTED: log_ncmc -0.2860133543398392 > randnum -0.5285091720761659
+INFO-12:37:19 [Iter 2] Advancing 2 MD steps...
+INFO-12:37:19 Acceptance Ratio: 0.6666666666666666
+INFO-12:37:19 nIter: 2 
+INFO-12:37:20 Options: nonbondedCutoff = 10
+INFO-12:37:20 Options: nonbondedCutoff = 10
+INFO-12:37:20 Options: nstepsNC = 4
+INFO-12:37:20 Options: nstepsNC = 4
+INFO-12:37:20 Options: outfname = blues-test
+INFO-12:37:20 Options: outfname = blues-test
+INFO-12:37:20 Options: nIter = 2
+INFO-12:37:20 Options: nIter = 2
+INFO-12:37:20 Options: nprop = 1
+INFO-12:37:20 Options: nprop = 1
+INFO-12:37:20 Options: dt = 0.002
+INFO-12:37:20 Options: dt = 0.002
+INFO-12:37:20 Options: trajectory_interval = 1
+INFO-12:37:20 Options: trajectory_interval = 1
+INFO-12:37:20 Options: nstepsMD = 2
+INFO-12:37:20 Options: nstepsMD = 2
+INFO-12:37:20 Options: friction = 1
+INFO-12:37:20 Options: friction = 1
+INFO-12:37:20 Options: temperature = 300.0
+INFO-12:37:20 Options: temperature = 300.0
+INFO-12:37:20 Options: platform = None
+INFO-12:37:20 Options: platform = None
+INFO-12:37:20 Options: nonbondedMethod = PME
+INFO-12:37:20 Options: nonbondedMethod = PME
+INFO-12:37:20 Options: constraints = HBonds
+INFO-12:37:20 Options: constraints = HBonds
+INFO-12:37:20 Options: reporter_interval = 1
+INFO-12:37:20 Options: reporter_interval = 1
+INFO-12:37:20 Options: verbose = True
+INFO-12:37:20 Options: verbose = True
