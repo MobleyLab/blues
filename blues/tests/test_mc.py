@@ -95,8 +95,8 @@ class BLUESTester(unittest.TestCase):
         self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        asim = Simulation(sims, self.mover, **self.opt)
-        #monkeypatch to access log_ncmc acceptance value
+        mc_sim = Simulation(sims, self.mover, **self.opt)
+        #monkeypatch to access acceptance value
         def nacceptRejectMC(self):
             """Function that chooses to accept or reject the proposed move.
             """
@@ -115,14 +115,14 @@ class BLUESTester(unittest.TestCase):
                 self.md_sim.context.setPositions(md_state0['positions'])
             self.log_ncmc = log_ncmc
             self.md_sim.context.setVelocitiesToTemperature(self.temperature)
-        asim.acceptRejectMC = nacceptRejectMC
-        nacceptRejectMC.__get__(asim)
-        asim.acceptRejectMC = types.MethodType(nacceptRejectMC, asim)
-        asim.runMC()
+        mc_sim.acceptRejectMC = nacceptRejectMC
+        nacceptRejectMC.__get__(mc_sim)
+        mc_sim.acceptRejectMC = types.MethodType(nacceptRejectMC, mc_sim)
+        mc_sim.runMC()
         #get log acceptance
-        print(asim.log_ncmc)
+        print(mc_sim.log_ncmc)
         #if mc is working, should be around -24.1
-        assert asim.log_ncmc <= -23.8 and asim.log_ncmc >= -24.3
+        assert mc_sim.log_ncmc <= -23.8 and mc_sim.log_ncmc >= -24.3
 
 if __name__ == "__main__":
         unittest.main()
