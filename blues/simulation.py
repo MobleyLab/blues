@@ -487,16 +487,16 @@ class Simulation(object):
         """
         md_state0 = self.current_state['md']['state0']
         md_state1 = self.current_state['md']['state1']
-        log_ncmc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_integrator.kT)
+        log_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_integrator.kT)
         randnum =  math.log(np.random.random())
 
-        if log_ncmc > randnum:
+        if log_mc > randnum:
             self.accept += 1
-            print('MC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+            print('MC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state1['positions'])
         else:
             self.reject += 1
-            print('MC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+            print('MC MOVE REJECTED: log_ncmc {} < {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state0['positions'])
 
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
