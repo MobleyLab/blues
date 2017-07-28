@@ -28,7 +28,7 @@ class BLUESTester(unittest.TestCase):
 
 
     def test_simulationRun(self):
-        """Tests the Simulation.runNCMC() function"""
+        """Tests the Simulation.runMC() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.00002,
                 'nIter' : 2, 'nstepsNC' : 2, 'nstepsMD' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
@@ -96,7 +96,7 @@ class BLUESTester(unittest.TestCase):
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         asim = Simulation(sims, self.mover, **self.opt)
-        #monkeypatch to get log_ncmc acceptance
+        #monkeypatch to access log_ncmc acceptance value
         def nacceptRejectMC(self):
             """Function that chooses to accept or reject the proposed move.
             """
@@ -107,11 +107,11 @@ class BLUESTester(unittest.TestCase):
 
             if log_ncmc > randnum:
                 self.accept += 1
-                print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+                print('MC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
                 self.md_sim.context.setPositions(md_state1['positions'])
             else:
                 self.reject += 1
-                print('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+                print('MC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
                 self.md_sim.context.setPositions(md_state0['positions'])
             self.log_ncmc = log_ncmc
             self.md_sim.context.setVelocitiesToTemperature(self.temperature)
