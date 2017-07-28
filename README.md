@@ -39,7 +39,7 @@ This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCM
 An example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move can be found in `blues/example.py`
 
 ### Actually using BLUES
-The heart of the package is found in `blues/ncmc_switching.py`. This holds the framework for NCMC. Particularly, it contains the integrator class that calculates the work done during the NCMC move. It also controls the lambda scaling of parameters. Currently the openmmtools.alchemy package is used to generate the lambda parameters for the ligand, allowing alchemical modification of the sterics and electrostatics of the system.
+The integrator of `BLUES` contains the framework necessary for NCMC.  Specifically, the integrator class calculates the work done during a NCMC move. It also controls the lambda scaling of parameters. The integrator that BLUES uses inherits from `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator` to keep track of the work done outside integration steps, allowing Monte Carlo (MC) moves to be incorporated together with the NCMC thermodynamic perturbation protocol. Currently the `openmmtools.alchemy` package is used to generate the lambda parameters for the ligand, allowing alchemical modification of the sterics and electrostatics of the system.
 The `Simulation` class in `blues/simulation.py` serves as a wrapper for running NCMC simulations.
 
 
@@ -57,6 +57,7 @@ class TranslationMove(Move):
    	def __init__(self, atom_indices):
    		self.atom_indices = atom_indices
    	def move(context):
+   	"""pseudocode for move"""
    		positions = context.context.getState(getPositions=True).getPositions(asNumpy=True)
    		#get positions from context
    		#use some function that translates atom_indices
@@ -65,7 +66,7 @@ class TranslationMove(Move):
    		return context
 ```
 
-### Combining Moves together
+### Combining Moves
 If you're interested in combining moves together sequentially–say you'd like to perform a rotation and translation move together–instead of coding up a new `Move` class that performs that, you can instead leverage the functionality of existing `Move`s using the `CombinationMove` class. `CombinationMove` takes in a list of instantiated `Move` objects. The `CombinationMove`'s `move()` method perfroms the moves in either listed or reverse order. Replicating a rotation and translation move on t, then, can effectively be done by passing in an instantiated TranslationMove (from the pseudocode example above) and RandomLigandRotation.
 One important non-obvious thing to note about the CombinationMove class is that to ensure detailed balance is maintained, moves are done half the time in listed order and half the time in the reverse order.
 ```
