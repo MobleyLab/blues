@@ -491,11 +491,11 @@ class Simulation(object):
 
         if log_ncmc > randnum:
             self.accept += 1
-            print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+            print('MC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(md_state1['positions'])
         else:
             self.reject += 1
-            print('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+            print('MC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(md_state0['positions'])
 
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
