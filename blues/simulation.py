@@ -105,7 +105,7 @@ class SimulationFactory(object):
                                    splitting= "H V R O R V H",
                                    temperature=temperature*unit.kelvin,
                                    nsteps_neq=nstepsNC,
-                                   timestep=nc_timestep*unit.femtoseconds,
+                                   timestep=2.0*unit.femtoseconds,
                                    )
 
         else:
