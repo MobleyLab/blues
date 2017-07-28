@@ -12,7 +12,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
 
     As opposed to `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator`,
     which this inherits from, the AlchemicalExternalLangevinIntegrator integrator also takes
-    into account work done outside the nonequilibrium switching (between integration steps).
+    into account work done outside the nonequilibrium switching portion(between integration steps).
     For example if a molecule is rotated between integration steps, this integrator would
     correctly account for the work caused by that rotation.
 
