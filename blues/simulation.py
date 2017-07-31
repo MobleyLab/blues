@@ -59,7 +59,7 @@ class SimulationFactory(object):
         """
         import logging
         logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
-        factory = alchemy.AbsoluteAlchemicalFactory()
+        factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
         alch_system = factory.create_alchemical_system(system, alch_region)
         return alch_system
@@ -198,7 +198,14 @@ class Simulation(object):
         self.accept_ratio = 0
 
         self.nIter = int(opt['nIter'])
-        self.nstepsNC = int(opt['nstepsNC'])
+
+        #if nstepsNC not specified, set it to 0
+        #will be caught if NCMC simulation is run
+        if 'nstepsNC' in opt:
+            self.nstepsNC = int(opt['nstepsNC'])
+        else:
+            self.nstepsNC = 0
+
         self.nstepsMD = int(opt['nstepsMD'])
 
         self.current_iter = 0
@@ -230,6 +237,11 @@ class Simulation(object):
                 self.ncmc_outfile = 'ncmc_output.dcd'
         else:
             self.write_ncmc = None
+        #controls how many mc moves are performed during each iteration
+        if 'mc_per_iter' in opt:
+            self.mc_per_iter = opt['mc_per_iter']
+        else:
+            self.mc_per_iter = 1
 
         #specify nc integrator variables to report in verbose output
         self.work_keys = [ 'lambda', 'shadow_work',
@@ -333,7 +345,7 @@ class Simulation(object):
         structure.save(outfname,overwrite=True)
         print('Saving Frame to', outfname)
 
-    def acceptReject(self):
+    def acceptRejectNCMC(self):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.current_state['md']['state0']
@@ -357,7 +369,7 @@ class Simulation(object):
             self.md_sim.context.setPositions(nc_state1['positions'])
         else:
             self.reject += 1
-            print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
+            print('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
             self.nc_context.setPositions(md_state0['positions'])
 
         self.nc_integrator.reset()
@@ -433,21 +445,75 @@ class Simulation(object):
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
 
-    def run(self):
+    def runNCMC(self):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state.
         """
         #set inital conditions
+        def _ncmcSanityCheck():
+            """Fuction that checks self attributes to see if they make sense for an NCMC simulation"""
+            if (self.nstepsNC % 2) != 0:
+                raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.nstepsNC))
+            if self.nstepsNC <= 0:
+                raise ValueError('nstepsNC needs to be even and greater than zero so that perturbations can be relaxed via NCMC (currently nstepsNC=%i)' % (self.nstepsNC))
+
+        _ncmcSanityCheck()
         self.setStateConditions()
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
             self.simulateNCMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
-            self.acceptReject()
+            self.acceptRejectNCMC()
             self.simulateMD()
 
         # END OF NITER
         self.accept_ratio = self.accept/float(self.nIter)
         print('Acceptance Ratio', self.accept_ratio)
         print('nIter ', self.nIter)
+
+    def simulateMC(self):
+        """Function that performs the MC simulation."""
+
+        #choose a move to be performed according to move probabilities
+        self.move_engine.selectMove()
+        #change coordinates according to Moves in MoveEngine
+        new_context = self.move_engine.runEngine(self.md_sim.context)
+        md_state1 = self.getStateInfo(new_context, self.state_keys)
+        self.setSimState('md', 'state1', md_state1)
+
+    def acceptRejectMC(self):
+        """Function that chooses to accept or reject the proposed move.
+        """
+        md_state0 = self.current_state['md']['state0']
+        md_state1 = self.current_state['md']['state1']
+        log_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_integrator.kT)
+        randnum =  math.log(np.random.random())
+
+        if log_mc > randnum:
+            self.accept += 1
+            print('MC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_mc, randnum) )
+            self.md_sim.context.setPositions(md_state1['positions'])
+        else:
+            self.reject += 1
+            print('MC MOVE REJECTED: log_ncmc {} < {}'.format(log_mc, randnum) )
+            self.md_sim.context.setPositions(md_state0['positions'])
+
+        self.md_sim.context.setVelocitiesToTemperature(self.temperature)
+
+    def runMC(self):
+        """Function that runs the BLUES engine to iterate over the actions:
+        perform proposed move, accepts/rejects move,
+        then performs the MD simulation from the accepted or rejected state.
+        """
+
+        #set inital conditions
+        self.setStateConditions()
+        for n in range(self.nIter):
+            self.current_iter = int(n)
+            for i in range(self.mc_per_iter):
+                self.setStateConditions()
+                self.simulateMC()
+                self.acceptRejectMC()
+            self.simulateMD()
+
