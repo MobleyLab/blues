@@ -21,6 +21,5 @@ conda config --set always_yes yes --set changeps1 no
 conda update --yes conda
 conda install --yes conda-build jinja2 anaconda-client pip
 conda info -a
-conda config --show
 # Restore original directory
 popd
