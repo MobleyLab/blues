@@ -6,14 +6,16 @@ _OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
 
 class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
     """
-    NOTE: Currently a vestigal integrator (not used in the other parts of
-    the BLUES code). May possibly be used in a later release.
-
     Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
     The functions can use this to create more complex protocols for other global parameters.
-    This also takes into account work done outside the nonequilibrium switching between steps,
-    for example the work done if a molecule is rotated.
+
+    As opposed to `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator`,
+    which this inherits from, the AlchemicalExternalLangevinIntegrator integrator also takes
+    into account work done outside the nonequilibrium switching portion(between integration steps).
+    For example if a molecule is rotated between integration steps, this integrator would
+    correctly account for the work caused by that rotation.
+
     Propagator is based on Langevin splitting, as described below.
     One way to divide the Langevin system is into three parts which can each be solved "exactly:"
         - R: Linear "drift" / Constrained "drift"

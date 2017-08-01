@@ -12,7 +12,7 @@ import parmed, math
 import mdtraj
 import sys
 from openmmtools import alchemy
-from blues.ncmc_switching import NCMCVVAlchemicalIntegrator
+from blues.integrators import AlchemicalExternalLangevinIntegrator
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -101,14 +101,13 @@ class SimulationFactory(object):
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
             functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+            integrator = AlchemicalExternalLangevinIntegrator(alchemical_functions=functions,
+                                   splitting= "H V R O R V H",
+                                   temperature=temperature*unit.kelvin,
+                                   nsteps_neq=nstepsNC,
+                                   timestep=2.0*unit.femtoseconds,
+                                   )
 
-            integrator = NCMCVVAlchemicalIntegrator(temperature*unit.kelvin,
-                                                    system,
-                                                    functions,
-                                                    nsteps=nstepsNC,
-                                                    direction='insert',
-                                                    timestep=0.001*unit.picoseconds,
-                                                    steps_per_propagation=1)
         else:
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
