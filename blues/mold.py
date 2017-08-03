@@ -136,16 +136,12 @@ class MolDart(RandomLigandRotationMove):
         super(MolDart, self).__init__(structure, resname)
         self.dartboard = []
         self.dart_size = []
-        print('initizalizing dart', dart_size._value, type(dart_size._value))
-        print(self.atom_indices)
-        if type(dart_size._value) == list:
-            if len(dart_size) != len(atom_indices):
+        if type(dart_size) == list:
+            if len(dart_size) != len(self.atom_indices):
                 raise ValueError('mismatch between length of dart_size (%i) and atom_indices (%i)' % (len(dart_size), len(atom_indices)) )
             self.dart_size = dart_size
         elif type(dart_size._value) == int or type(dart_size._value) == float:
-            print('adding the same size darts')
             for entry in self.atom_indices:
-                print('appending dart')
                 self.dart_size.append(dart_size.value_in_unit(unit.nanometers))
             self.dart_size = self.dart_size*unit.nanometers
 
@@ -157,6 +153,7 @@ class MolDart(RandomLigandRotationMove):
         self.internal_zmat = []
         self.buildlist = None
         self.rigid_move = rigid_move
+        self.ref_traj = None
         #chemcoords reads in xyz files only, so we need to use mdtraj
         #to get the ligand coordinates in an xyz file
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
@@ -169,9 +166,11 @@ class MolDart(RandomLigandRotationMove):
             xyz = cc.Cartesian.read_xyz(fname)
         #get the construction table so internal coordinates are consistent
         self.buildlist = xyz.get_construction_table()
-
+        ref_traj = md.load(pdb_files[0])[0]
+        self.ref_traj = ref_traj
         for j, pdb_file in enumerate(pdb_files):
             traj = md.load(pdb_file)[0]
+ #           traj.superpose(reference=ref_traj, atom_indices=fit_atoms, ref_atom_indices=fit_atoms)
             self.binding_mode_traj.append(copy.deepcopy(traj))
             #get internal representation
             self.internal_xyz.append(copy.deepcopy(xyz))
@@ -310,10 +309,12 @@ class MolDart(RandomLigandRotationMove):
 
         #fit different binding modes to current protein
         #to remove rotational changes
-        for pose in self.binding_mode_traj:
-            pose = pose.superpose(reference=self.sim_traj,
+        print('fit_atoms', self.fit_atoms)
+        print('ref_traj', self.ref_traj)
+        self.sim_traj.superpose(reference=self.ref_traj,
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms)
+        for pose in self.binding_mode_traj:
             pose_coord = pose.xyz[0]
             #find the dart vectors and distances to each protein
             #append the list to a storage list
