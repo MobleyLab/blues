@@ -168,9 +168,12 @@ class MolDart(RandomLigandRotationMove):
         self.buildlist = xyz.get_construction_table()
         ref_traj = md.load(pdb_files[0])[0]
         self.ref_traj = ref_traj
+        self.ref_traj.save('posr.pdb')
         for j, pdb_file in enumerate(pdb_files):
             traj = md.load(pdb_file)[0]
- #           traj.superpose(reference=ref_traj, atom_indices=fit_atoms, ref_atom_indices=fit_atoms)
+            traj.superpose(reference=ref_traj, atom_indices=fit_atoms, ref_atom_indices=fit_atoms)
+            save_name='pos'+str(j)+'.pdb'
+            traj.save(save_name)
             self.binding_mode_traj.append(copy.deepcopy(traj))
             #get internal representation
             self.internal_xyz.append(copy.deepcopy(xyz))
@@ -538,6 +541,7 @@ class MolDart(RandomLigandRotationMove):
         print('rot_mat', rot_mat)
         other_rot = kabsch(change_three, ref_three, vector_list[0][1])
         print('other_rot', other_rot)
+        ####
         dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
         vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
@@ -568,6 +572,7 @@ class MolDart(RandomLigandRotationMove):
         #get xyz from internal coordinates
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
 
+
         #TODO make sure to sort new xyz
 
         #overlay new xyz onto the first atom of
@@ -577,6 +582,7 @@ class MolDart(RandomLigandRotationMove):
                 #TODO from friday: set units for xyz_first_pos and then go about doing the rotation to reorient the molecule after moving
                 nc_pos[:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.) * unit.nanometers
             print('putting', nc_pos[sel_atom])
+        print('all atoms', nc_pos[self.atom_indices])
 
         return nc_pos
         #use rot and translation to dart to another pose
