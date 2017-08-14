@@ -12,7 +12,17 @@ import parmed, math
 import mdtraj
 import sys
 from openmmtools import alchemy
-from blues.ncmc_switching import NCMCVVAlchemicalIntegrator
+from blues.ncmc_switching import NCMCVVAlchemicalIntegrator, oldNCMCVVAlchemicalIntegrator
+
+
+def zero_allother_masses( system, indexlist):
+    num_atoms = system.getNumParticles()
+    for index in range(num_atoms):
+        if index in indexlist:
+            pass
+        else:
+            system.setParticleMass(index, 0*unit.daltons)
+
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -47,7 +57,12 @@ class SimulationFactory(object):
         self.nc  = None
 
         self.opt = opt
-    def generateAlchSystem(self, system, atom_indices):
+        if 'printfile' in opt:
+            self.printfile = opt['printfile']
+        else:
+            self.printfile=sys.stdout
+
+    def generateAlchSystem(self, system, atom_indices, **opt):
         """Returns the OpenMM System for alchemical perturbations.
 
         Parameters
@@ -57,11 +72,48 @@ class SimulationFactory(object):
         atom_indices : list
             Atom indicies of the move.
         """
-        import logging
-        logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
-        factory = alchemy.AbsoluteAlchemicalFactory()
-        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
-        alch_system = factory.create_alchemical_system(system, alch_region)
+        if 'new_alch_factory' in opt:
+            new_alch_factory = opt['new_alch_factory']
+        else:
+            new_alch_factory = True
+        if 'annihilate_sterics' in opt:
+            annihilate_sterics = opt['annihilate_sterics']
+        else:
+            annihilate_sterics=False
+        if 'annihilate_electrostatics' in opt:
+            annihilate_electrostatics = opt['annihilate_electrostatics']
+        else:
+            annihilate_electrostatics=True
+        if 'softcore_beta' in opt:
+            softcore_beta = opt['softcore_beta']
+        else:
+            softcore_beta = 0.0
+
+        print('annihilate_electrostatics', annihilate_electrostatics, file=self.printfile)
+        print('annihilate_sterics', annihilate_sterics, file=self.printfile)
+        print('softcore_beta', softcore_beta, file=self.printfile)
+        if new_alch_factory:
+            import logging
+            print('using newer alchemical factory', file=self.printfile)
+            logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
+            factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
+            alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices,
+                                                annihilate_sterics=annihilate_sterics,
+                                                annihilate_electrostatics=annihilate_electrostatics,
+                                                softcore_beta=softcore_beta)
+            alch_system = factory.create_alchemical_system(system, alch_region)
+
+        else:
+            print('using older alchemical factory')
+            from alchemy import AbsoluteAlchemicalFactory
+            factory = AbsoluteAlchemicalFactory(system, ligand_atoms=atom_indices, annihilate_sterics=True, annihilate_electrostatics=True,
+                                                    disable_alchemical_dispersion_correction=True)
+            alch_system = factory.createPerturbedSystem()
+        if 'zero_list' in opt:
+            zero_allother_masses(alch_system, opt['zero_list'])
+        else:
+            pass
+
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
@@ -74,16 +126,30 @@ class SimulationFactory(object):
             ParmEd Structure object of the entire system to be simulated.
         opt : optional parameters (i.e. cutoffs/constraints)
         """
-        system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
+        if constraints is not None:
+        
+            system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
                             constraints=eval("app.%s" % constraints) )
+        else:
+            system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
+                          nonbondedCutoff=nonbondedCutoff*unit.angstroms )
+
+        if 'barostat' in opt:
+            if opt['barostat'] == True:
+                system.addForce(openmm.openmm.MonteCarloBarostat(1*unit.bar, 300*unit.kelvin))
+        else:
+            pass
+
         return system
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
                              reporter_interval=1000,
                              ncmc=False, platform=None,
-                             verbose=False, printfile=sys.stdout,  **opt):
+                             verbose=False, printfile=sys.stdout,
+                             nc_timestep=2,  new_integrator=True, new_alch_factory=True,
+                             **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
 
         Parameters
@@ -95,20 +161,54 @@ class SimulationFactory(object):
         atom_indices : list
             Atom indicies of the move.
         """
+
         if ncmc:
             #During NCMC simulation, lambda parameters are controlled by function dict below
             # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
-            functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+            if 'functions' in opt:
+                functions = opt['functions']
+
+            else:
+                functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+                print('lambdas', functions, file=self.printfile)
+
+            if 0:
+                print('edited lambda sterics', file=self.printfile)
+                functions = { 'lambda_sterics' : 'min(1, (1/0.6)*abs(lambda-0.5)+0.5)',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
 
-            integrator = NCMCVVAlchemicalIntegrator(temperature*unit.kelvin,
+            if 'collision_rate' in opt:
+                collision_rate = opt['collision_rate']/unit.picoseconds
+            else:
+                collision_rate = 1.0/unit.picoseconds
+
+            if new_integrator:
+                print('just kidding, running new integrator', file=self.printfile)
+                from blues.integrators import AlchemicalExternalLangevinIntegrator
+                integrator = AlchemicalExternalLangevinIntegrator(alchemical_functions=functions,
+#                                       splitting= "V R O H O R V",
+#                                       splitting= "V R R R R O H O R R R R V",
+                                       splitting= "H V R O R V H",
+#                                       splitting= "H { V R O R V } H",
+
+
+                                       temperature=temperature*unit.kelvin,
+                                       nsteps_neq=nstepsNC,
+                                       timestep=nc_timestep*unit.femtoseconds,
+                                       collision_rate=collision_rate
+                                       )
+            else:
+                print('using old (perses) integrator with 1 steps per propogation', file=self.printfile)
+                integrator = oldNCMCVVAlchemicalIntegrator(temperature*unit.kelvin,
                                                     system,
                                                     functions,
                                                     nsteps=nstepsNC,
                                                     direction='insert',
-                                                    timestep=0.001*unit.picoseconds,
+                                                    timestep=nc_timestep*unit.femtoseconds,
                                                     steps_per_propagation=1)
+
         else:
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
@@ -157,7 +257,7 @@ class SimulationFactory(object):
     def createSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.opt)
-        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices)
+        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
 
         self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
         self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
@@ -230,10 +330,17 @@ class Simulation(object):
                 self.ncmc_outfile = 'ncmc_output.dcd'
         else:
             self.write_ncmc = None
+        if 'printfile' in opt:
+            self.printfile = opt['printfile']
+        else:
+            self.printfile=sys.stdout
 
         #specify nc integrator variables to report in verbose output
-        self.work_keys = [ 'lambda', 'shadow_work',
-                          'protocol_work', 'Eold', 'Enew']
+#        self.work_keys = [ 'lambda', 'shadow_work',
+#                          'protocol_work', 'Eold', 'Enew']
+
+        self.work_keys = [ 'step',
+                          'protocol_work']
 
         self.state_keys = { 'getPositions' : True,
                        'getVelocities' : True,
@@ -266,6 +373,7 @@ class Simulation(object):
         """
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
+        self.nc_context.setPeriodicBoxVectors(*md_state0['box_vectors'])
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
         self.setSimState('md', 'state0', md_state0)
@@ -291,6 +399,7 @@ class Simulation(object):
         stateinfo['velocities'] = state.getVelocities(asNumpy=True)
         stateinfo['potential_energy'] = state.getPotentialEnergy()
         stateinfo['kinetic_energy'] = state.getKineticEnergy()
+        stateinfo['box_vectors'] = state.getPeriodicBoxVectors()
         return stateinfo
 
     def getWorkInfo(self, nc_integrator, parameters):
@@ -345,6 +454,7 @@ class Simulation(object):
 
         # Compute Alchemical Correction Term
         if np.isnan(log_ncmc) == False:
+            self.alch_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
@@ -353,13 +463,16 @@ class Simulation(object):
 
         if log_ncmc > randnum:
             self.accept += 1
-            print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+            print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum), file=self.printfile )
+            self.md_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
             self.md_sim.context.setPositions(nc_state1['positions'])
+
         else:
             self.reject += 1
-            print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum) )
+            print('NCMC MOVE REJECTED: {} < {}'.format(log_ncmc, randnum), file=self.printfile)
             self.nc_context.setPositions(md_state0['positions'])
 
+        print('acceptance ratio', float(self.accept)/float(self.current_iter+1), file=self.printfile)
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
@@ -398,8 +511,8 @@ class Simulation(object):
                 if verbose:
                     # Calculate Work/Energies After Step.
                     work_final = self.getWorkInfo(self.nc_integrator, self.work_keys)
-                    print('Initial work:', work_initial)
-                    print('Final work:', work_final)
+#                    print('Initial work:', work_initial)
+                    print('Final work:', work_final, file=self.printfile)
                     #TODO write out frame regardless if accepted/REJECTED
 
             except Exception as e:
@@ -430,6 +543,7 @@ class Simulation(object):
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         self.setSimState('md', 'state0', md_state0)
         # Set NC poistions to last positions from MD
+        self.nc_context.setPeriodicBoxVectors(*md_state0['box_vectors'])
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
 
