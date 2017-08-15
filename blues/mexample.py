@@ -11,33 +11,42 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 """
 
 from __future__ import print_function
-from blues.moves import RandomLigandRotationMove
+from blues.mold import MolDart
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
 import parmed
 from simtk import openmm
 from optparse import OptionParser
+import mdtraj as md
+from simtk import unit
 
 def runNCMC(platform_name):
     #Define some options
-    opt = {'temperature': 300.0, 'friction': 1, 'dt': 0.002,
-            'nIter': 10, 'nstepsNC': 10, 'nstepsMD': 5000,
-            'nonbondedMethod': 'PME', 'nonbondedCutoff': 10,
-            'constraints': 'HBonds', 'trajectory_interval': 1000,
-            'reporter_interval': 1000,
-            'platform': platform_name,
-            'verbose': False}
+    opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
+            'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 5000,
+            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
+            'trajectory_interval' : 1000, 'reporter_interval' : 1000,
+            'platform' : platform_name,
+            'verbose' : True }
 
     #Generate the ParmEd Structure
-    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')
+    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
     inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
     struct = parmed.load_file(prmtop, xyz=inpcrd)
 
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
-    ligand = RandomLigandRotationMove(struct, 'LIG')
-    ligand.calculateProperties()
+    traj = md.load(inpcrd, top=prmtop)
+    fit_atoms = traj.top.select("resid 50 to 155 and name CA")
+    fit_atoms = traj.top.select("protein")
+
+    ligand = MolDart(structure=struct, resname='LIG',
+                                      dart_size=0.3*unit.nanometers,
+                                      pdb_files=['posA.pdb', 'posB.pdb'],
+                                      xyz_file='tolA.xyz',
+                                      fit_atoms=fit_atoms,
+                                      )
 
     # Initialize object that proposes moves.
     ligand_mover = MoveEngine(ligand)
@@ -47,7 +56,7 @@ def runNCMC(platform_name):
     simulations.createSimulationSet()
 
     blues = Simulation(simulations, ligand_mover, **opt)
-    blues.runNCMC()
+    blues.run()
 
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
