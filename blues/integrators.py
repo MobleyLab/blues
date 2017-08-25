@@ -170,10 +170,9 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     def reset(self):
         self.setGlobalVariableByName("step", 0)
         self.setGlobalVariableByName("lambda", 0.0)
-#        self.setGlobalVariableByName("total_work", 0.0)
+        self.setGlobalVariableByName("lambda_step", 0.0)
         self.setGlobalVariableByName("protocol_work", 0.0)
         self.setGlobalVariableByName("shadow_work", 0.0)
         self.setGlobalVariableByName("first_step", 0)
         self.setGlobalVariableByName("perturbed_pe", 0.0)
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
-
