@@ -361,7 +361,7 @@ class Simulation(object):
         structure.save(outfname,overwrite=True)
         print('Saving Frame to', outfname)
 
-    def acceptRejectNCMC(self):
+    def acceptRejectNCMC(self, write_move=False):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.current_state['md']['state0']
@@ -383,6 +383,8 @@ class Simulation(object):
             self.accept += 1
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
+            if write_move:
+                self.writeFrame(self.md_sim, 'acc-it%s-nc%s.pdb' %(self.current_iter,self.nstepsNC))
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
@@ -480,7 +482,7 @@ class Simulation(object):
             self.current_iter = int(n)
             self.setStateConditions()
             self.simulateNCMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
-            self.acceptRejectNCMC()
+            self.acceptRejectNCMC(write_move=False)
             self.simulateMD()
 
         # END OF NITER
