@@ -173,7 +173,7 @@ class SimulationFactory(object):
     def createSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.opt)
-        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices)
+        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
 
         self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
         self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
