@@ -214,20 +214,20 @@ class Simulation(object):
         self.accept_ratio = 0
 
         self.nIter = int(opt['nIter'])
-
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
         if 'nstepsNC' in opt:
             self.nstepsNC = int(opt['nstepsNC'])
+            self.movestep = self.nstepsNC / 2
         else:
             self.nstepsNC = 0
-
         self.nstepsMD = int(opt['nstepsMD'])
+        self._getStepParameters()
+
 
         self.current_iter = 0
         self.current_stepNC = 0
         self.current_stepMD = 0
-
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
                                'nc'   : { 'state0' : {}, 'state1' : {} },
                                'alch' : { 'state0' : {}, 'state1' : {} }
@@ -270,6 +270,7 @@ class Simulation(object):
                        'getParameters': True,
                        'enforcePeriodicBox' : True}
 
+
     def setSimState(self, simkey, stateidx, stateinfo):
         """Stores the dict of Positions, Velocities, Potential/Kinetic energies
         of the state before and after a NCMC step or iteration.
@@ -298,6 +299,20 @@ class Simulation(object):
         self.nc_context.setVelocities(md_state0['velocities'])
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
+
+    def _getStepParameters(self):
+        initial_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
+        initial_step = self.nc_integrator.getGlobalVariableByName('step')
+        initial_lambda_step = self.nc_integrator.getGlobalVariableByName('lambda_step')
+        self.nc_integrator.step(1)
+        final_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
+        final_step = self.nc_integrator.getGlobalVariableByName('step')
+        final_lambda_step = self.nc_integrator.getGlobalVariableByName('lambda_step')
+        self.nc_integrator.reset()
+
+        self.d_lambda = final_lambda - initial_lambda
+        self.d_step = final_step - initial_step
+        self.d_lambda_step = final_lambda_step - initial_lambda_step
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
@@ -393,7 +408,7 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(self.temperature)
 
-    def simulateNCMC(self, verbose=False, write_ncmc=False):
+    def simulateNCMC(self, verbose=False, write_ncmc=False, nprop=5, reporter_interval=1000):
         """Function that performs the NCMC simulation."""
         #append nc reporter at the first step
         if (self.current_iter == 0) and (write_ncmc):
@@ -411,19 +426,28 @@ class Simulation(object):
 
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
-                if self.nstepsNC / 2 == nc_step:
-
+                if self.movestep == nc_step:
                     #Do move
                     print('[Iter {}] Performing NCMC move'.format(self.current_iter))
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
 
-                    if write_ncmc and (nc_step+1) % write_ncmc == 0:
-                        self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
-
+                # Add extra propagation steps
+                current_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
+                if current_lambda >= 0.2 and current_lambda <= 0.8:
+                    for n in range(nprop):
+                        self.nc_integrator.setGlobalVariableByName('lambda', self.nc_integrator.getGlobalVariableByName('lambda') - self.d_lambda)
+                        self.nc_integrator.setGlobalVariableByName('step', self.nc_integrator.getGlobalVariableByName('step') - self.d_step)
+                        self.nc_integrator.setGlobalVariableByName('lambda_step', self.nc_integrator.getGlobalVariableByName('lambda_step') - self.d_lambda_step)
+                        self.nc_integrator.step(1)
                 # Do 1 NCMC step with the integrator, alchemically modifying system
                 self.nc_integrator.step(1)
-                if write_ncmc and (nc_step+1) % write_ncmc == 0:
-                    self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
+
+                if nc_step % reporter_interval == 0:
+                    if verbose:
+                        workinfo = self.getWorkInfo(self.nc_integrator, ['step','lambda','lambda_step', 'protocol_work'])
+                        print('\tStep = {step}  Lambda = {lambda}  Work = {protocol_work} Lambda_step = {lambda_step}'.format(**workinfo))
+                    if write_ncmc:
+                        self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
                 if verbose:
                     # Calculate Work/Energies After Step.
