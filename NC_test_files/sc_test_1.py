@@ -40,8 +40,8 @@ def runNCMC(platform_name, relaxstepsNC, themdsteps):
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
             'trajectory_interval' : 1000, 'reporter_interval' : 1000,
             'platform' : platform_name,
-            'verbose' : True,
-            'write_ncmc' : 100
+            'verbose' : False,
+            'write_ncmc' : False
             }
 
     #Generate the ParmEd Structure
