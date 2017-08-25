@@ -19,19 +19,27 @@ import parmed
 from simtk import openmm
 from optparse import OptionParser
 
-def runNCMC(platform_name):
-    #Define some options
-    opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 5000,
-            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-            'trajectory_interval' : 1000, 'reporter_interval' : 1000,
-            'platform' : platform_name,
-            'verbose' : True }
-
+def runNCMC(platform_name, nstepsNC, outfname):
     #Generate the ParmEd Structure
     prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
     inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
     struct = parmed.load_file(prmtop, xyz=inpcrd)
+    print('Structure:', struct.topology)
+
+    #Atom selection for zeroing masses
+    mask = parmed.amber.AmberMask(struct,"(:LIG<:5.0)&!(:HOH,NA,CL)")
+    site_idx = [i for i in mask.Selected()]
+
+    #Define some options
+    opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
+            'nIter' : 250, 'nstepsNC' : nstepsNC, 'nstepsMD' : 10000,
+            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
+            'trajectory_interval' : 1000, 'reporter_interval' : 5000, 'write_ncmc' : False,
+            'platform' : platform_name, 'zero_list' : site_idx,
+            'verbose' : True }
+    print('Options:')
+    for k,v in opt.items():
+        print('\t', k,v)
 
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
@@ -45,13 +53,19 @@ def runNCMC(platform_name):
     simulations = SimulationFactory(struct, ligand_mover, **opt)
     simulations.createSimulationSet()
 
+    traj_reporter = openmm.app.DCDReporter(outfname+'-nc{}.dcd'.format(nstepsNC), opt['trajectory_interval'])
+    simulations.md.reporters.append(traj_reporter)
+
     blues = Simulation(simulations, ligand_mover, **opt)
     blues.runNCMC()
 
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
                   help='run BLUES example without GPU platform')
-(options, args) = parser.parse_args()
+parser.add_option('-n','--ncmc', dest='nstepsNC', type='int', default=5000,
+                  help='number of NCMC steps')
+parser.add_option('-o','--output', dest='outfname', type='str', default="blues",
+                  help='Filename for output DCD')
 
 platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
 
