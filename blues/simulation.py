@@ -74,7 +74,7 @@ class SimulationFactory(object):
         alch_system = factory.create_alchemical_system(system, alch_region)
 
         if 'zero_list' in opt:
-            print('Zeroing masses of atoms:', len(opt['zero_list']))
+            print('Zeroing masses of %s atoms:' % len(opt['zero_list']))
             alch_system = self.zero_allother_masses(alch_system, opt['zero_list'])
         else:
             pass
@@ -506,7 +506,7 @@ class Simulation(object):
             self.current_iter = int(n)
             self.setStateConditions()
             self.simulateNCMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
-            self.acceptRejectNCMC(write_move=False)
+            self.acceptRejectNCMC(write_move=True)
             self.simulateMD()
 
         # END OF NITER
