@@ -47,7 +47,17 @@ class SimulationFactory(object):
         self.nc  = None
 
         self.opt = opt
-    def generateAlchSystem(self, system, atom_indices):
+
+    def zero_allother_masses(self, system, indexlist):
+        num_atoms = system.getNumParticles()
+        for index in range(num_atoms):
+            if index in indexlist:
+                pass
+            else:
+                system.setParticleMass(index, 0*unit.daltons)
+        return system
+
+    def generateAlchSystem(self, system, atom_indices, **opt):
         """Returns the OpenMM System for alchemical perturbations.
 
         Parameters
@@ -62,6 +72,13 @@ class SimulationFactory(object):
         factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
         alch_system = factory.create_alchemical_system(system, alch_region)
+
+        if 'zero_list' in opt:
+            print('Zeroing masses of atoms:', len(opt['zero_list']))
+            alch_system = self.zero_allother_masses(alch_system, opt['zero_list'])
+        else:
+            pass
+
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
@@ -515,4 +532,3 @@ class Simulation(object):
                 self.simulateMC()
                 self.acceptRejectMC()
             self.simulateMD()
-
