@@ -32,11 +32,11 @@ def runNCMC(platform_name, nstepsNC, outfname):
 
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 250, 'nstepsNC' : nstepsNC, 'nstepsMD' : 10000,
+            'nIter' : 100, 'nstepsNC' : nstepsNC, 'nstepsMD' : 10000,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
             'trajectory_interval' : 1000, 'reporter_interval' : 5000, 'write_ncmc' : False,
             'platform' : platform_name, 'zero_list' : site_idx,
-            'verbose' : True }
+            'verbose' : False }
     print('Options:')
     for k,v in opt.items():
         print('\t', k,v)
@@ -66,16 +66,17 @@ parser.add_option('-n','--ncmc', dest='nstepsNC', type='int', default=5000,
                   help='number of NCMC steps')
 parser.add_option('-o','--output', dest='outfname', type='str', default="blues",
                   help='Filename for output DCD')
+(options, args) = parser.parse_args()
 
 platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
 
-if 'OpenCL' in platformNames:
-    runNCMC('OpenCL')
-elif 'CUDA' in platformNames:
-    runNCMC('CUDA')
+if 'CUDA' in platformNames:
+    runNCMC('CUDA', options.nstepsNC, options.outfname)
+elif 'OpenCL' in platformNames:
+    runNCMC('OpenCL',options.nstepsNC, options.outfname)
 else:
     if options.force:
-        runNCMC('CPU')
+        runNCMC('CPU', options.nstepsNC, options.outfname)
     else:
         print('WARNING: Could not find a valid CUDA/OpenCL platform. BLUES is not recommended on CPUs.')
         print("To run on CPU: 'python blues/example.py -f'")
