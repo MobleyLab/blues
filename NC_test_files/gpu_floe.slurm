@@ -119,7 +119,7 @@ slurm_startjob
 
 # Copy data back to the submission directory:
 if [ "$copy_local" = "yes" ]; then
-  rsync -avhP --ignore-existing $work_dir/ $SLURM_SUBMIT_DIR/
+  rsync -avhP --update $work_dir $SLURM_SUBMIT_DIR/
   if (( $? == 0)); then
     cd $SLURM_SUBMIT_DIR
     rm -rf $work_dir
