@@ -74,7 +74,7 @@ class SimulationFactory(object):
         alch_system = factory.create_alchemical_system(system, alch_region)
 
         if 'zero_list' in opt:
-            print('Zeroing masses of %s atoms:' % len(opt['zero_list']))
+            print('Zeroing masses of %s atoms' % len(opt['zero_list']))
             alch_system = self.zero_allother_masses(alch_system, opt['zero_list'])
         else:
             pass
@@ -212,7 +212,7 @@ class Simulation(object):
         self.accept = 0
         self.reject = 0
         self.accept_ratio = 0
-
+        self.opt = opt
         self.nIter = int(opt['nIter'])
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
@@ -374,7 +374,7 @@ class Simulation(object):
                                    xyz=state.getPositions())
 
         structure.save(outfname,overwrite=True)
-        print('Saving Frame to', outfname)
+        print('\tSaving Frame to', outfname)
 
     def acceptRejectNCMC(self, write_move=False):
         """Function that chooses to accept or reject the proposed move.
@@ -443,9 +443,8 @@ class Simulation(object):
                 self.nc_integrator.step(1)
 
                 if nc_step % reporter_interval == 0:
-                    if verbose:
-                        workinfo = self.getWorkInfo(self.nc_integrator, ['step','lambda','lambda_step', 'protocol_work'])
-                        print('\tStep = {step}  Lambda = {lambda}  Work = {protocol_work} Lambda_step = {lambda_step}'.format(**workinfo))
+                    workinfo = self.getWorkInfo(self.nc_integrator, ['step','lambda','lambda_step', 'protocol_work'])
+                    print('\tStep = {step}  Lambda = {lambda}  Work = {protocol_work} Lambda_step = {lambda_step}'.format(**workinfo))
                     if write_ncmc:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
@@ -505,8 +504,8 @@ class Simulation(object):
         for n in range(self.nIter):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC(verbose=self.verbose, write_ncmc=self.write_ncmc)
-            self.acceptRejectNCMC(write_move=True)
+            self.simulateNCMC(verbose=self.verbose, write_ncmc=self.write_ncmc, nprop=self.opt['nprop'])
+            self.acceptRejectNCMC(write_move=self.opt['write_move'])
             self.simulateMD()
 
         # END OF NITER

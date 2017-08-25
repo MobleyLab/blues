@@ -32,9 +32,10 @@ def runNCMC(platform_name, nstepsNC, outfname):
 
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 100, 'nstepsNC' : nstepsNC, 'nstepsMD' : 10000,
+            'nIter' : 100, 'nstepsNC' : nstepsNC, 'nstepsMD' : 5000, 'nprop' : 5,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-            'trajectory_interval' : 1000, 'reporter_interval' : 5000, 'write_ncmc' : False,
+            'trajectory_interval' : 1000, 'reporter_interval' : 5000,
+            'write_ncmc' : False, 'write_move' : True,
             'platform' : platform_name, 'zero_list' : site_idx,
             'verbose' : False }
     print('Options:')
