@@ -481,7 +481,7 @@ class Simulation(object):
         # END OF NITER
         self.accept_ratio = self.accept/float(nIter)
         self.logger.info('Acceptance Ratio: %s' % self.accept_ratio)
-        self.logger.info('nIter: %s ' % self.nIter)
+        self.logger.info('nIter: %s ' % nIter)
 
     def simulateMC(self):
         """Function that performs the MC simulation."""
