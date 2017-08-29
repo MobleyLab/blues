@@ -120,7 +120,7 @@ def find_package_data(data_root, package_root):
 write_version_py()
 setup(
     name='blues',
-    author = "Samuel Gill, David Mobley, and others",
+    author = "Samuel C. Gill, Nathan M. Lim, David L. Mobley, and others",
     author_email='dmobley@uci.edu',
     description = ("NCMC moves in OpenMM to enhance ligand sampling"),
     long_description=read('README.md'),
