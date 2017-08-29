@@ -94,7 +94,7 @@ class BLUESTester(unittest.TestCase):
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         asim = Simulation(sims, self.mover, **self.opt)
-        asim.runNCMC()
+        asim.run(self.opt['nIter'])
 
 if __name__ == "__main__":
         unittest.main()
