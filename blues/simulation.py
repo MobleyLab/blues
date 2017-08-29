@@ -221,14 +221,13 @@ class Simulation(object):
                             }
 
         #attach ncmc reporter if specified
-        if 'write_ncmc' in opt:
-            self.write_ncmc = opt['write_ncmc']
-            if 'ncmc_outfile' in opt:
-                self.ncmc_outfile = opt['ncmc_outfile']
-            else:
-                self.ncmc_outfile = 'ncmc_output.dcd'
+        if 'ncmc_traj' in self.opt:
+            # Add reporter to NCMC Simulation useful for debugging:
+            self.ncmc_reporter = app.dcdreporter.DCDReporter('{ncmc_traj}.dcd'.format(**self.opt), 1)
+            self.nc_sim.reporters.append(self.ncmc_reporter)
         else:
-            self.write_ncmc = None
+            pass
+
 
         #controls how many mc moves are performed during each iteration
         if 'mc_per_iter' in opt:
@@ -376,7 +375,7 @@ class Simulation(object):
             self.logger.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
-                self.writeFrame(self.md_sim, 'acc-it%s-nc%s.pdb' %(self.current_iter,self.nstepsNC))
+                self.writeFrame(self.md_sim, 'acc-it%s.pdb' %(self.current_iter))
         else:
             self.reject += 1
             self.logger.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
@@ -385,16 +384,11 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def simulateNCMC(self, nstepsNC=5000, nprop=5, write_ncmc=False,
+    def simulateNCMC(self, nstepsNC=5000, nprop=5, ncmc_traj=None,
                     reporter_interval=1000, **opt):
         """Function that performs the NCMC simulation."""
 
         self.logger.info('[Iter %i] Starting NCMC Simulation with %i NCMC steps...' % (self.current_iter, nstepsNC))
-
-        #append nc reporter at the first step
-        if (self.current_iter == 0) and (write_ncmc):
-            self.ncmc_reporter = app.dcdreporter.DCDReporter(self.ncmc_outfile, 1)
-            self.nc_sim.reporters.append(self.ncmc_reporter)
 
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch regions
@@ -409,13 +403,14 @@ class Simulation(object):
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
 
                 # Add extra propagation steps
-                current_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
-                if current_lambda >= 0.2 and current_lambda <= 0.8:
-                    for n in range(int(nprop)):
-                        self.nc_integrator.setGlobalVariableByName('lambda', self.nc_integrator.getGlobalVariableByName('lambda') - self.d_lambda)
-                        self.nc_integrator.setGlobalVariableByName('step', self.nc_integrator.getGlobalVariableByName('step') - self.d_step)
-                        self.nc_integrator.setGlobalVariableByName('lambda_step', self.nc_integrator.getGlobalVariableByName('lambda_step') - self.d_lambda_step)
-                        self.nc_integrator.step(1)
+                if nprop > 1:
+                    current_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
+                    if current_lambda >= 0.2 and current_lambda <= 0.8:
+                        for n in range(int(nprop)):
+                            self.nc_integrator.setGlobalVariableByName('lambda', self.nc_integrator.getGlobalVariableByName('lambda') - self.d_lambda)
+                            self.nc_integrator.setGlobalVariableByName('step', self.nc_integrator.getGlobalVariableByName('step') - self.d_step)
+                            self.nc_integrator.setGlobalVariableByName('lambda_step', self.nc_integrator.getGlobalVariableByName('lambda_step') - self.d_lambda_step)
+                            self.nc_integrator.step(1)
 
                 # Do 1 NCMC step with the integrator
                 self.nc_integrator.step(1)
@@ -431,7 +426,7 @@ class Simulation(object):
                     # Print energies at every step
                     work = self.getWorkInfo(self.nc_integrator, self.work_keys)
                     self.logger.debug('%s' % work)
-                if write_ncmc:
+                if ncmc_traj:
                     self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
             except Exception as e:

@@ -48,7 +48,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10,
             'constraints': 'HBonds', 'freeze_distance' : 5.0,
             'trajectory_interval' : 100, 'reporter_interval' : 100,
-            'write_ncmc' : False, 'write_move' : True,
+            'ncmc_traj' : None, 'write_move' : True,
             'platform' : platform_name,
             'verbose' : False}
     for k,v in opt.items():
