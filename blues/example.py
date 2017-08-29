@@ -20,22 +20,27 @@ from simtk import openmm
 from optparse import OptionParser
 import sys
 import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
-formatter = logging.Formatter('%(asctime)s-%(levelname)s-%(message)s')
+def init_logger():
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s-%(levelname)s-%(message)s')
+    # Write to File
+    fh = logging.FileHandler('blues-example.log')
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
-#fh = logging.FileHandler('log_filename.txt')
-#fh.setLevel(logging.DEBUG)
-#fh.setFormatter(formatter)
-#logger.addHandler(fh)
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+    # Stream to terminal
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    return logger
 
 def runNCMC(platform_name, nstepsNC, nprop, outfname):
+
+    logger = init_logger()
     #Generate the ParmEd Structure
     prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
     inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
@@ -44,7 +49,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
 
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 10, 'nstepsNC' : nstepsNC, 'nstepsMD' : 1000, 'nprop' : nprop,
+            'nIter' : 100, 'nstepsNC' : nstepsNC, 'nstepsMD' : 5000, 'nprop' : nprop,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10,
             'constraints': 'HBonds', 'freeze_distance' : 5.0,
             'trajectory_interval' : 100, 'reporter_interval' : 100,
@@ -83,7 +88,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
                   help='run BLUES example without GPU platform')
-parser.add_option('-n','--ncmc', dest='nstepsNC', type='int', default=500,
+parser.add_option('-n','--ncmc', dest='nstepsNC', type='int', default=5000,
                   help='number of NCMC steps')
 parser.add_option('-p','--nprop', dest='nprop', type='int', default=5,
                   help='number of propgation steps')
@@ -91,8 +96,9 @@ parser.add_option('-o','--output', dest='outfname', type='str', default="blues",
                   help='Filename for output DCD')
 (options, args) = parser.parse_args()
 
-platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
 
+
+platformNames = [openmm.Platform.getPlatform(i).getName() for i in range(openmm.Platform.getNumPlatforms())]
 if 'CUDA' in platformNames:
     runNCMC('CUDA', options.nstepsNC, options.nprop, options.outfname)
 elif 'OpenCL' in platformNames:
