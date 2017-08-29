@@ -29,7 +29,7 @@ class BLUESTester(unittest.TestCase):
 
     def test_simulationRun(self):
         """Tests the Simulation.runMC() function"""
-        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
+        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.00002,
                 'nIter' : 2, 'nstepsNC' : 2, 'nstepsMD' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
