@@ -76,6 +76,7 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.0.2](http://dx.doi.org/10.5281/zenodo.438714): Maintenance release fixing a critical bug and improving organization as a package.
 - [Version 0.0.3](http://dx.doi.org/10.5281/zenodo.569065): Refactored BLUES functionality and design.
 - [Version 0.0.4](http://dx.doi.org/10.5281/zenodo.569074): Minor bug fixes plus a functionality problem on some GPU configs.
+- [Version 0.1.0](http://dx.doi.org/10.5281/zenodo.837900): Refactored move proposals, added Monte Carlo functionality, Smart Darting moves, and changed alchemical integrator.
 
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.
