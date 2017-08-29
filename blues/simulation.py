@@ -353,7 +353,7 @@ class Simulation(object):
         structure.save(outfname,overwrite=True)
         self.logger.info('\tSaving Frame to: %s' % outfname)
 
-    def acceptRejectNCMC(self, temperature, write_move=False, **opt):
+    def acceptRejectNCMC(self, temperature=300, write_move=False, **opt):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.current_state['md']['state0']
@@ -493,7 +493,7 @@ class Simulation(object):
         md_state1 = self.getStateInfo(new_context, self.state_keys)
         self.setSimState('md', 'state1', md_state1)
 
-    def acceptRejectMC(self, temperature, **opt):
+    def acceptRejectMC(self, temperature=300, **opt):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.current_state['md']['state0']
@@ -503,13 +503,13 @@ class Simulation(object):
 
         if log_mc > randnum:
             self.accept += 1
-            self.logger.info('MC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_mc, randnum) )
+            self.logger.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state1['positions'])
         else:
             self.reject += 1
-            self.logger.info('MC MOVE REJECTED: log_ncmc {} < {}'.format(log_mc, randnum) )
+            self.logger.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state0['positions'])
-
+        self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
     def runMC(self, nIter=100):
@@ -525,5 +525,5 @@ class Simulation(object):
             for i in range(self.mc_per_iter):
                 self.setStateConditions()
                 self.simulateMC()
-                self.acceptRejectMC()
-            self.simulateMD()
+                self.acceptRejectMC(**self.opt)
+            self.simulateMD(**self.opt)
