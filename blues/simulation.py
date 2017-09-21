@@ -125,7 +125,7 @@ class SimulationFactory(object):
                                    splitting= "H V R O R V H",
                                    temperature=temperature*unit.kelvin,
                                    nsteps_neq=nstepsNC,
-                                   timestep=dt*unit.picoseconds,
+                                   timestep=1.0*unit.femtoseconds,
                                    )
 
         else:
@@ -374,8 +374,7 @@ class Simulation(object):
             self.accept += 1
             self.logger.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
-            if write_move:
-                self.writeFrame(self.md_sim, 'acc-it%s.pdb' %(self.current_iter))
+            self.writeFrame(self.md_sim, 'acc-it%s-nc%s.pdb' %(self.current_iter,self.nstepsNC))
         else:
             self.reject += 1
             self.logger.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
@@ -430,7 +429,14 @@ class Simulation(object):
                     self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
 
             except Exception as e:
-                self.logger.error(e)
+                stepsrem = self.nstepsNC - self.current_stepNC
+                for i in range(stepsrem):
+                    if write_ncmc:
+                        try:
+                            self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
+                        except ValueError:
+                            self.ncmc_reporter.report(self.nc_sim, self.md_sim.context.getState(getPositions=True, getVelocities=True))
+                print(e)
                 break
 
         nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
