@@ -60,7 +60,8 @@ class SimulationFactory(object):
         import logging
         logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
         factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
-        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
+        #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
+        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, annihilate_electrostatics=True, annihilate_sterics=True)
         alch_system = factory.create_alchemical_system(system, alch_region)
         return alch_system
 
@@ -366,6 +367,7 @@ class Simulation(object):
             self.accept += 1
             print('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
+            self.writeFrame(self.md_sim, 'acc-it%s-nc%s.pdb' %(self.current_iter,self.nstepsNC))
         else:
             self.reject += 1
             print('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
