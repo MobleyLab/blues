@@ -69,8 +69,8 @@ class SimulationFactory(object):
         """
         logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
         factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
-        #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
-        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, annihilate_electrostatics=True, annihilate_sterics=True)
+        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
+        #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, annihilate_electrostatics=True, annihilate_sterics=True)
         alch_system = factory.create_alchemical_system(system, alch_region)
 
 
