@@ -47,6 +47,16 @@ class SimulationFactory(object):
         self.nc  = None
 
         self.opt = opt
+
+    def _zero_allother_masses(self, system, indexlist):
+        num_atoms = system.getNumParticles()
+        for index in range(num_atoms):
+            if index in indexlist:
+                pass
+            else:
+                system.setParticleMass(index, 0*unit.daltons)
+        return system
+
     def generateAlchSystem(self, system, atom_indices):
         """Returns the OpenMM System for alchemical perturbations.
 
@@ -63,6 +73,16 @@ class SimulationFactory(object):
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
         #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, annihilate_electrostatics=True, annihilate_sterics=True)
         alch_system = factory.create_alchemical_system(system, alch_region)
+
+        if freeze_distance:
+            #Atom selection for zeroing protein atom masses
+            mask = parmed.amber.AmberMask(self.structure,"(:111<:%f)&!(:HOH,NA,CL)" % freeze_distance )
+            site_idx = [i for i in mask.Selected()]
+            self.logger.info('Zeroing mass of %s protein atoms %.1f Angstroms from LIG' % (len(site_idx), freeze_distance))
+            alch_system = self.zero_allother_masses(alch_system, site_idx)
+        else:
+            pass
+
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
