@@ -272,7 +272,7 @@ class SideChainMove(object):
                 # if heavy, find what residue it is associated with
                 myres = OEAtomGetResidue(atom)
                 # check if the residue number is amongst the list of residues
-                if myres.GetResidueNumber() in residue_list:
+                if myres.GetResidueNumber() in residue_list and myres.GetName() != "HOH":
                     # store the atom location in a query atom dict keyed by its atom index
                     qry_atoms.update({atom : atom.GetIdx()})
                     print('Found atom %s in residue number %i %s'%(atom,myres.GetResidueNumber(),myres.GetName()))
