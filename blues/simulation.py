@@ -57,7 +57,7 @@ class SimulationFactory(object):
                 system.setParticleMass(index, 0*unit.daltons)
         return system
 
-    def generateAlchSystem(self, system, atom_indices):
+    def generateAlchSystem(self, system, atom_indices, freeze_distance=0, **opt):
         """Returns the OpenMM System for alchemical perturbations.
 
         Parameters
