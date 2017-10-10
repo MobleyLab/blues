@@ -73,14 +73,17 @@ class SimulationFactory(object):
         alch_system = factory.create_alchemical_system(system, alch_region)
 
 
-        if freeze_distance:
+        if isinstance(freeze_distance, int) or isinstance(freeze_distance, float):
             #Atom selection for zeroing protein atom masses
             mask = parmed.amber.AmberMask(self.structure,"(:LIG<:%f)&!(:HOH,NA,CL)" % freeze_distance )
             site_idx = [i for i in mask.Selected()]
             self.logger.info('Zeroing mass of %s protein atoms %.1f Angstroms from LIG' % (len(site_idx), freeze_distance))
             alch_system = self._zero_allother_masses(alch_system, site_idx)
         else:
-            pass
+            self.logger.info('Zeroing mass of atoms NOT specified in list')
+
+            alch_system = self._zero_allother_masses(alch_system, freeze_distance)
+
 
         return alch_system
 
@@ -384,7 +387,7 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def simulateNCMC(self, nstepsNC=5000, nprop=5, ncmc_traj=None,
+    def simulateNCMC(self, nstepsNC=5000, nprop=1, ncmc_traj=None,
                     reporter_interval=1000, **opt):
         """Function that performs the NCMC simulation."""
 
@@ -405,15 +408,17 @@ class Simulation(object):
                 # Add extra propagation steps
                 if nprop > 1:
                     current_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
-                    if current_lambda >= 0.2 and current_lambda <= 0.8:
+                    if current_lambda > 0.2 and current_lambda <= 0.8:
                         for n in range(int(nprop)):
                             self.nc_integrator.setGlobalVariableByName('lambda', self.nc_integrator.getGlobalVariableByName('lambda') - self.d_lambda)
                             self.nc_integrator.setGlobalVariableByName('step', self.nc_integrator.getGlobalVariableByName('step') - self.d_step)
                             self.nc_integrator.setGlobalVariableByName('lambda_step', self.nc_integrator.getGlobalVariableByName('lambda_step') - self.d_lambda_step)
+                            #self.logger.info(self.nc_integrator.getGlobalVariableByName('protocol_work'))
                             self.nc_integrator.step(1)
 
                 # Do 1 NCMC step with the integrator
                 self.nc_integrator.step(1)
+                #self.logger.info(self.nc_integrator.getGlobalVariableByName('protocol_work'))
 
                 # Print out NCMC info to show progress.
                 if nc_step % reporter_interval == 0:
