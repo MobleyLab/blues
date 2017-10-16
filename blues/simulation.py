@@ -228,7 +228,7 @@ class Simulation(object):
 
         #Get Lambda step parameters for extra propagation
         self._getAlchStepParameters()
-        self._getSimulationInfo()
+
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
                                'nc'   : { 'state0' : {}, 'state1' : {} },
@@ -502,6 +502,7 @@ class Simulation(object):
         then performs the MD simulation from the NCMC state.
         """
         logger.info('Running %i BLUES iterations...' % (nIter))
+        self._getSimulationInfo()
         #set inital conditions
         self.setStateConditions()
         for n in range(int(nIter)):
