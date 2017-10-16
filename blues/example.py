@@ -41,6 +41,7 @@ def init_logger():
 def runNCMC(platform_name, nstepsNC, nprop, outfname):
 
     logger = init_logger()
+
     #Generate the ParmEd Structure
     prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
     inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
@@ -52,10 +53,11 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
             'nIter' : 100, 'nstepsNC' : nstepsNC, 'nstepsMD' : 5000, 'nprop' : nprop,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10,
             'constraints': 'HBonds', 'freeze_distance' : 5.0,
-            'trajectory_interval' : 100, 'reporter_interval' : 100,
+            'trajectory_interval' : 1000, 'reporter_interval' : 1000,
             'ncmc_traj' : None, 'write_move' : True,
             'platform' : platform_name,
             'verbose' : False}
+            
     for k,v in opt.items():
         logger.debug('Options: {} = {}'.format(k,v))
 
