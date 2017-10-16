@@ -18,7 +18,7 @@ class BLUESTester(unittest.TestCase):
         self.inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
         self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2,
+                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'platform' : None,
