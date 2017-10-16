@@ -292,9 +292,9 @@ class Simulation(object):
         self.setSimState('nc', 'state0', nc_state0)
 
     def _getSimulationInfo(self):
-        partNC = 0.2 / (1/ self.opt['nstepsNC'])
-        propNC = (partNC * 3) * self.opt['nprop']
-        totalNC = (partNC * 2) + propNC
+        partNC = 0.2 / (1.0/ self.opt['nstepsNC'])
+        propNC = (partNC * 3.0) * self.opt['nprop']
+        totalNC = (partNC * 2.0) + propNC
         timeNC = totalNC * self.opt['dt']
         timeMD = self.opt['nstepsMD'] * self.opt['dt']
         timetraj = self.opt['trajectory_interval'] * self.opt['dt']
