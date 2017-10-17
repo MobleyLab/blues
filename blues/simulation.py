@@ -34,7 +34,6 @@ class SimulationFactory(object):
         nonbondedMethod='PME', nonbondedCutoff=10, constraints='HBonds',
         trajectory_interval=1000, reporter_interval=1000, platform=None,
         verbose=False"""
-        #logger = opt['Logger'] #logging.getLogger(__name__)
         #Structure of entire system
         self.structure = structure
         #Atom indicies from move_engine
@@ -116,7 +115,8 @@ class SimulationFactory(object):
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
-                             reporter_interval=1000,
+                             reporter_interval=1000, nprop=1,
+                             prop_lambda_min=0.2, prop_lambda_max=0.8,
                              ncmc=False, platform=None, verbose=False,
                              **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
@@ -141,6 +141,9 @@ class SimulationFactory(object):
                                    temperature=temperature*unit.kelvin,
                                    nsteps_neq=nstepsNC,
                                    timestep=dt*unit.picoseconds,
+                                   nprop=nprop,
+                                   prop_lambda_min=0.2,
+                                   prop_lambda_max=0.8
                                    )
 
         else:
@@ -154,8 +157,7 @@ class SimulationFactory(object):
             simulation = app.Simulation(structure.topology, system, integrator)
         else:
             platform = openmm.Platform.getPlatformByName(platform)
-            #prop = dict(DeviceIndex='2') # For local testing with multi-GPU Mac.
-            simulation = app.Simulation(structure.topology, system, integrator, platform)#, prop)
+            simulation = app.Simulation(structure.topology, system, integrator, platform)
 
         if verbose:
             # OpenMM platform information
@@ -206,7 +208,6 @@ class Simulation(object):
             MoveProposal object which contains the dict of moves performed
             in the NCMC simulation.
         """
-        #logger = opt['Logger']#logging.getLogger(__name__)
         self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
@@ -225,9 +226,6 @@ class Simulation(object):
             raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (nstepsNC))
         else:
             self.movestep = int(self.opt['nstepsNC']) / 2
-
-        #Get Lambda step parameters for extra propagation
-        self._getAlchStepParameters()
 
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
@@ -316,16 +314,6 @@ class Simulation(object):
         logger.info('\tTotal NCMC time = %s ps' % (int(timeNC) * int(self.opt['nIter'])))
         logger.info('\tTotal MD time = %s ps' % (int(timeMD) * int(self.opt['nIter'])))
 
-    def _getAlchStepParameters(self):
-        initial_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
-        initial_lambda_step = self.nc_integrator.getGlobalVariableByName('lambda_step')
-        self.nc_integrator.step(1)
-        final_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
-        final_lambda_step = self.nc_integrator.getGlobalVariableByName('lambda_step')
-        self.nc_integrator.reset()
-
-        self.d_lambda = final_lambda - initial_lambda
-        self.d_lambda_step = final_lambda_step - initial_lambda_step
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
@@ -422,7 +410,7 @@ class Simulation(object):
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def simulateNCMC(self, nstepsNC=5000, nprop=5, ncmc_traj=None,
+    def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
                     reporter_interval=1000, verbose=False, **opt):
         """Function that performs the NCMC simulation."""
 
@@ -439,16 +427,6 @@ class Simulation(object):
                     #Do move
                     logger.info('Step = %s Performing NCMC move...' % nc_step)
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
-
-                # Add extra propagation steps
-                if nprop > 1:
-                    current_lambda = self.nc_integrator.getGlobalVariableByName('lambda')
-                    if 0.2 < current_lambda <= 0.8:
-                        for n in range(int(nprop)):
-                            self.nc_integrator.setGlobalVariableByName('lambda', self.nc_integrator.getGlobalVariableByName('lambda') - self.d_lambda)
-                            self.nc_integrator.setGlobalVariableByName('step', self.nc_integrator.getGlobalVariableByName('step') - 1.0)
-                            self.nc_integrator.setGlobalVariableByName('lambda_step', self.nc_integrator.getGlobalVariableByName('lambda_step') - self.d_lambda_step)
-                            self.nc_integrator.step(1)
 
                 # Do 1 NCMC step with the integrator
                 self.nc_integrator.step(1)
