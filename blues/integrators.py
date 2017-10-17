@@ -68,7 +68,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
                  measure_shadow_work=False,
                  measure_heat=True,
                  nsteps_neq=100,
-                 nprops=1,
+                 nprop=1,
                  prop_lambda_min=0.2,
                  prop_lambda_max=0.8,
                  *args, **kwargs):
@@ -116,7 +116,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("perturbed_pe", 0)
         self.addGlobalVariable("unperturbed_pe", 0)
         self.addGlobalVariable("first_step", 0)
-        self.addGlobalVariable("nprops", nprops)
+        self.addGlobalVariable("nprop", nprop)
         self.addGlobalVariable("prop", 1)
         self.addGlobalVariable("prop_lambda_min", prop_lambda_min)
         self.addGlobalVariable("prop_lambda_max", prop_lambda_max)
@@ -168,7 +168,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.beginIfBlock("lambda > prop_lambda_min")
             self.beginIfBlock("lambda <= prop_lambda_max")
 
-            self.beginWhileBlock("prop < nprops")
+            self.beginWhileBlock("prop < nprop")
 #            self.beginIfBlock("( lambda >= prop_lambda_min ) and ( lambda < prop_lambda_max )")
 
 #            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
