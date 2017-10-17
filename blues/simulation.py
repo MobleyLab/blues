@@ -101,11 +101,17 @@ class SimulationFactory(object):
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
             functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+            if 'nprops' in opt:
+                nprops = opt['nprops']
+            else:
+                nprops = 1
+
             integrator = AlchemicalExternalLangevinIntegrator(alchemical_functions=functions,
                                    splitting= "H V R O R V H",
                                    temperature=temperature*unit.kelvin,
                                    nsteps_neq=nstepsNC,
                                    timestep=2.0*unit.femtoseconds,
+                                   nprops=nprops
                                    )
 
         else:
