@@ -169,9 +169,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.beginIfBlock("lambda <= prop_lambda_max")
 
             self.beginWhileBlock("prop < nprop")
-#            self.beginIfBlock("( lambda >= prop_lambda_min ) and ( lambda < prop_lambda_max )")
-
-#            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
             self.addComputeGlobal("prop", "prop + 1")
 
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
@@ -191,7 +188,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         TODO: Extend this to be able to handle force groups?
         """
         # Store initial potential energy
-        print('aaaaaa')
         self.beginIfBlock("prop = 1")
         self.addComputeGlobal("debug", "debug + 1")
         self.addComputeGlobal("Eold", "energy")
@@ -218,7 +214,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     def reset(self):
         self.setGlobalVariableByName("step", 0)
         self.setGlobalVariableByName("lambda", 0.0)
-#        self.setGlobalVariableByName("total_work", 0.0)
         self.setGlobalVariableByName("protocol_work", 0.0)
         self.setGlobalVariableByName("shadow_work", 0.0)
         self.setGlobalVariableByName("first_step", 0)
