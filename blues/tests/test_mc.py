@@ -20,7 +20,7 @@ class BLUESTester(unittest.TestCase):
         self.inpcrd = get_data_filename("data/alanine-dipeptide-explicit/alanine-dipeptide.crd")
         self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.00002,
-                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2,
+                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'platform' : None,
@@ -30,7 +30,7 @@ class BLUESTester(unittest.TestCase):
     def test_simulationRun(self):
         """Tests the Simulation.runMC() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.00002,
-                'nIter' : 2, 'nstepsNC' : 2, 'nstepsMD' : 1,
+                'nIter' : 2, 'nstepsNC' : 2, 'nstepsMD' : 1, 'nprop' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'platform' : None,
@@ -97,32 +97,32 @@ class BLUESTester(unittest.TestCase):
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         mc_sim = Simulation(sims, self.mover, **self.opt)
         #monkeypatch to access acceptance value
-        def nacceptRejectMC(self):
+        def nacceptRejectMC(self, temperature=300, **opt):
             """Function that chooses to accept or reject the proposed move.
             """
             md_state0 = self.current_state['md']['state0']
             md_state1 = self.current_state['md']['state1']
-            log_ncmc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_integrator.kT)
+            log_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_integrator.kT)
             randnum =  math.log(np.random.random())
 
-            if log_ncmc > randnum:
+            if log_mc > randnum:
                 self.accept += 1
-                print('MC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+                print('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
                 self.md_sim.context.setPositions(md_state1['positions'])
             else:
                 self.reject += 1
-                print('MC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+                print('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
                 self.md_sim.context.setPositions(md_state0['positions'])
-            self.log_ncmc = log_ncmc
-            self.md_sim.context.setVelocitiesToTemperature(self.temperature)
+            self.log_mc = log_mc
+            self.md_sim.context.setVelocitiesToTemperature(self.opt['temperature'])
         mc_sim.acceptRejectMC = nacceptRejectMC
         nacceptRejectMC.__get__(mc_sim)
         mc_sim.acceptRejectMC = types.MethodType(nacceptRejectMC, mc_sim)
-        mc_sim.runMC()
+        mc_sim.runMC(self.opt['nIter'])
         #get log acceptance
-        print(mc_sim.log_ncmc)
+        print(mc_sim.log_mc)
         #if mc is working, should be around -24.1
-        assert mc_sim.log_ncmc <= -23.8 and mc_sim.log_ncmc >= -24.3
+        assert mc_sim.log_mc <= -23.8 and mc_sim.log_mc >= -24.3
 
 if __name__ == "__main__":
         unittest.main()
