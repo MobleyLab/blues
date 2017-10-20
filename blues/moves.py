@@ -184,24 +184,6 @@ class RandomLigandRotationMove(Move):
         self.positions = positions[self.atom_indices]
         return context
 
-def pDB2OEMol(pdbfile):
-    '''This function takes in a pdbfile as a string (e.g. 'protein.pdb') and reads it into and OEGraphMol'''
-
-    # check if file exists
-    if os.path.isfile(pdbfile):
-        # read file into an input stream
-        ifs = oemolistream(pdbfile)
-        # set the format of the input stream to pdb (other wise SMI default)
-        ifs.SetFormat(OEFormat_PDB)
-        # create OEMol destination
-        pdb_OEMol = OEGraphMol()
-        # assign input stream to OEMol
-        OEReadMolecule(ifs, pdb_OEMol)
-        return pdb_OEMol
-    else:
-        print('PDB filename not found.')
-
-
 class SideChainMove(object):
     """Move that provides methods for:
         1. calculating the properties needed to rotate a sidechain residue
@@ -216,14 +198,14 @@ class SideChainMove(object):
         The class contains functions to randomly select a bond and angle to be rotated
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
-    def __init__(self, parmed_struct, residue_list):
-        self.parmed_struct = parmed_struct
+    def __init__(self, structure, residue_list):
+        self.structure = structure
         self.residue_list = residue_list
-        self.all_atoms = self.getAllAtoms()
-        self.rot_bond_atoms, self.rot_bonds, self.qry_atoms, self.oestructure = self.getRotBondAtoms()
+        self.all_atoms = [atom.index for atom in self.structure.topology.atoms()]
+        self.rot_bond_atoms, self.rot_bonds, self.qry_atoms, self.molecule = self.getRotBondAtoms()
 
     def getBackboneAtoms(self, molecule):
-        '''This function takes a OEGraphMol PDB structure and returns a list of backbone atoms'''
+        """This function takes a OEGraphMol and returns a list of backbone atoms"""
 
         backbone_atoms = []
         # Call this function to find atoms and bonds
@@ -238,21 +220,11 @@ class SideChainMove(object):
 
         return backbone_atoms
 
-    def getAllAtoms(self):
-
-        atom_indices = []
-        struct = self.parmed_struct
-        topology = struct.topology
-        for atom in topology.atoms():
-            atom_indices.append(atom.index)
-        return atom_indices
-
-
     def getTargetAtoms(self, molecule, residue_list):
-        '''This function takes a OEGraphMol PDB structure and a list of residue numbers and
+        """This function takes a OEGraphMol PDB structure and a list of residue numbers and
             generates a dictionary containing all the atom pointers and indicies for the
             non-backbone, atoms of those target residues, as well as a list of backbone atoms.
-            Note: The atom indicies start at 0 and are thus -1 from the PDB file indicies'''
+            Note: The atom indicies start at 0 and are thus -1 from the PDB file indicies"""
 
         # Call this function to find atoms and bonds
         OEFindRingAtomsAndBonds(molecule)
@@ -264,7 +236,7 @@ class SideChainMove(object):
 
         reslib = []
 
-        print('Searching residue list for atoms...')
+        #print('Searching residue list for atoms...')
         # loop through all the atoms in the PDB OEGraphMol structure
         for atom in molecule.GetAtoms():
             # check if the atom is in backbone
@@ -275,10 +247,10 @@ class SideChainMove(object):
                 if myres.GetResidueNumber() in residue_list and myres.GetName() != "HOH":
                     # store the atom location in a query atom dict keyed by its atom index
                     qry_atoms.update({atom : atom.GetIdx()})
-                    print('Found atom %s in residue number %i %s'%(atom,myres.GetResidueNumber(),myres.GetName()))
+                    #print('Found atom %s in residue number %i %s'%(atom,myres.GetResidueNumber(),myres.GetName()))
                     if myres not in reslib:
                         reslib.append(myres)
-        print('\n')
+
         return qry_atoms, backbone_atoms
 
     def findHeavyRotBonds(self, pdb_OEMol, qry_atoms):
@@ -305,20 +277,16 @@ class SideChainMove(object):
                     # if the bond has not been added to dictionary already..
                     # (as would happen if one of the atom pairs was previously looped over)
                     if bond not in rot_bonds:
-                        # print the bond index
-                        print('Bond number',bond, 'is rotatable, non-terminal, and contains only heavy atoms')
+                        #print('Bond number',bond, 'is rotatable, non-terminal, and contains only heavy atoms')
                         # store bond pointer (key) and atom indicies in dictionary if not already there
                         #rot_bonds.update({bond : {'AtomIdx_1' : bond.GetBgnIdx(), 'AtomIdx_2': bond.GetEndIdx()}})
                         rot_bonds.update({bond : myres.GetResidueNumber()})
 
-        # Return dictionary with bond atom indicies keyed by bond index
-
         return rot_bonds
 
-    #gets the atoms that are connected "upstream" of each rotbond
 
     def getRotAtoms(self, rotbonds, molecule, backbone_atoms):
-        '''This function identifies and stores neighboring, upstream atoms for a given sidechain bond'''
+        """This function identifies and stores neighboring, upstream atoms for a given sidechain bond"""
         backbone = backbone_atoms
         query_list = []
         idx_list = []
@@ -340,12 +308,6 @@ class SideChainMove(object):
 
             idx_list.append(ax1.GetIdx())
             idx_list.append(ax2.GetIdx())
-
-            # add axis atoms to query atom_list
-            #if ax1 not in query_list and ax1.GetIdx() not in backbone:
-            #    query_list.append(ax1)
-            #if ax2 not in query_list and ax2.GetIdx() not in backbone:
-            #    query_list.append(ax2)
 
             if ax1 not in query_list and ax1.GetIdx() not in backbone_atoms:
                 query_list.append(ax1)
@@ -369,53 +331,51 @@ class SideChainMove(object):
                     idx_list.append(y)
 
             rot_atom_dict[resnum].update({thisbond : list(idx_list)})
-            print("Moving these atoms:", idx_list)
+            #print("Moving these atoms:", idx_list)
 
         return rot_atom_dict
 
 
     def getRotBondAtoms(self):
-        '''This function takes in a PDB filename (as a string) and list of residue numbers.  It returns
+        """This function takes in a PDB filename (as a string) and list of residue numbers.  It returns
             a nested dictionary of rotatable bonds (containing only heavy atoms), that are keyed by residue number,
             then keyed by bond pointer, containing values of atom indicies [axis1, axis2, atoms to be rotated]
-            **Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies'''
+            **Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies"""
+
 
         # read .pdb file into OEGraphMol
-        pdbfile = self.parmed_struct.save('protein.pdb', overwrite = True)
-        structure = pDB2OEMol('protein.pdb')
-        print('\nPDB file opened into OEGraphMol\n')
+        pdbfile = 'protein.pdb'
+        self.structure.save(pdbfile, overwrite = True)
+        molecule = OEGraphMol()
+        with oemolistream(pdbfile) as ifs:
+            ifs.SetFormat(OEFormat_PDB)
+            OEReadMolecule(ifs, molecule)
+
         # Generate dictionary containing locations and indicies of heavy residue atoms
-        print('Dictionary of all query atoms generated from residue list\n')
-        qry_atoms, backbone_atoms = self.getTargetAtoms(structure, self.residue_list)
+        #print('Dictionary of all query atoms generated from residue list\n')
+        qry_atoms, backbone_atoms = self.getTargetAtoms(molecule, self.residue_list)
         # Identify bonds containing query atoms and return dictionary of indicies
-        rot_bonds = self.findHeavyRotBonds(structure, qry_atoms)
+        rot_bonds = self.findHeavyRotBonds(molecule, qry_atoms)
         # Generate dictionary of residues, bonds and atoms to be rotated
-        rot_atoms = self.getRotAtoms(rot_bonds, structure, backbone_atoms)
-        return rot_atoms, rot_bonds, qry_atoms, structure
+        rot_atoms = self.getRotAtoms(rot_bonds, molecule, backbone_atoms)
+        return rot_atoms, rot_bonds, qry_atoms, molecule
 
     def chooseBondandTheta(self):
-        '''This function takes a dictionary containing nested dictionary, keyed by res#,
+        """This function takes a dictionary containing nested dictionary, keyed by res#,
         then keyed by bond_ptrs, containing a list of atoms to move, randomly selects a bond,
         and generates a random angle (radians).  It returns the atoms associated with the
-        the selected bond, the pointer for the selected bond and the randomly generated angle'''
+        the selected bond, the pointer for the selected bond and the randomly generated angle"""
 
-        struct = self.parmed_struct
-        my_rot_atoms = self.rot_bond_atoms
-
-        res_choice = random.choice(list(my_rot_atoms.keys()))
-
-        bond_choice = random.choice(list(my_rot_atoms[res_choice].keys()))
-
-        targetatoms = my_rot_atoms[res_choice][bond_choice]
-
+        res_choice = random.choice(list(self.rot_bond_atoms.keys()))
+        bond_choice = random.choice(list(self.rot_bond_atoms[res_choice].keys()))
+        targetatoms = self.rot_bond_atoms[res_choice][bond_choice]
         theta_ran = random.random()*2*math.pi
-        #theta_ran = 0.0
 
         return theta_ran, targetatoms, res_choice, bond_choice
 
     def rotation_matrix(self, axis, theta):
-        ''' This function returns the rotation matrix associated with counterclockwise rotation
-        about the given axis by theta radians. '''
+        """This function returns the rotation matrix associated with counterclockwise rotation
+        about the given axis by theta radians."""
         axis = np.asarray(axis)
         axis = axis/math.sqrt(np.dot(axis, axis))
         a = math.cos(theta/2.0)
@@ -427,20 +387,20 @@ class SideChainMove(object):
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
 
-    def move(self, nc_context, verbose = False):
-        ''' This rotates the target atoms around a selected bond by angle theta and updates
-        the atom coordinates in the parmed structure as well as the ncmc context object '''
+    def move(self, nc_context, verbose=False):
+        """This rotates the target atoms around a selected bond by angle theta and updates
+        the atom coordinates in the parmed structure as well as the ncmc context object"""
 
 
         # determine the axis, theta, residue, and bond + atoms to be rotated
-        my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-        print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
+        theta, target_atoms, res, bond = self.chooseBondandTheta()
+        print('Rotating %s in %s by %.2f radians' %(bond, res, theta))
 
         #retrieve the current positions
         initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
         nc_positions = copy.deepcopy(initial_positions)
 
-        model = copy.copy(self.parmed_struct)
+        model = copy.copy(self.structure)
 
         # set the parmed model to the same coordinates as the context
         for idx, atom in enumerate(self.all_atoms):
@@ -449,9 +409,9 @@ class SideChainMove(object):
                 print(atom, idx)
                 print(nc_positions[atom], model.positions[atom])
 
-            model.atoms[atom].xx = nc_positions[atom][0]/nc_positions.unit*10
-            model.atoms[atom].xy = nc_positions[atom][1]/nc_positions.unit*10
-            model.atoms[atom].xz = nc_positions[atom][2]/nc_positions.unit*10
+            model.atoms[atom].xx = nc_positions[atom][0].value_in_unit(unit.angstroms)
+            model.atoms[atom].xy = nc_positions[atom][1].value_in_unit(unit.angstroms)
+            model.atoms[atom].xz = nc_positions[atom][2].value_in_unit(unit.angstroms)
 
             if verbose:
                 print('After:')
@@ -460,24 +420,24 @@ class SideChainMove(object):
         positions = model.positions
 
         # find the rotation axis using the updated positions
-        axis1 = my_target_atoms[0]
-        axis2 = my_target_atoms[1]
+        axis1 = target_atoms[0]
+        axis2 = target_atoms[1]
         rot_axis = (positions[axis1] - positions[axis2])/positions.unit
 
         #calculate the rotation matrix
-        my_rot_matrix = self.rotation_matrix(rot_axis, my_theta)
+        rot_matrix = self.rotation_matrix(rot_axis, theta)
 
         # apply the rotation matrix to the target atoms
-        for idx, atom in enumerate (my_target_atoms):
+        for idx, atom in enumerate(target_atoms):
 
             my_position = positions[atom]
 
             if verbose: print('The current position for %i is: %s'%(atom, my_position))
 
             # find the reduced position (substract out axis)
-            red_position = (my_position - model.positions[axis2])/positions.unit
+            red_position = (my_position - model.positions[axis2])._value
             # find the new positions by multiplying by rot matrix
-            new_position = np.dot(my_rot_matrix, red_position)*positions.unit + positions[axis2]
+            new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
 
             if verbose: print("The new position should be:",new_position)
 
@@ -495,16 +455,14 @@ class SideChainMove(object):
             if verbose: print('The updated position for this atom is:', model.positions[atom])
 
         # update the actual ncmc context object with the new positions
-        nc_context.setPositions(nc_positions/nc_positions.unit)
+        nc_context.setPositions(nc_positions)
 
-        # update the class parmed_struct positions
-        self.parmed_struct.positions = model.positions
+        # update the class structure positions
+        self.structure.positions = model.positions
 
         if verbose:
-            filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
+            filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
             mod_prot = model.save(filename, overwrite = True)
-
-        print("\nMove completed")
         return nc_context
 
 class CombinationMove(Move):
