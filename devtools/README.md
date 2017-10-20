@@ -15,4 +15,4 @@ After issuing a new release, the conda package needs to be updated on the channe
 1. Clone the repository or from a **clean** directory, navigate to the top `blues/`.
 2. Build the python3.5 package with `conda build --python 3.5 .`
 3. Build the python2.7 package with `conda build --python 2.7 .`
-4. Upload the packages to the [MobleyLab](https://anaconda.org/mobleylab/blues/files) anaconda channel
+4. Upload the packages to the [MobleyLab](https://anaconda.org/mobleylab/blues/files) anaconda channel.
