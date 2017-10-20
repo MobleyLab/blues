@@ -10,7 +10,6 @@ build:
   script: python setup.py install
 
 requirements:
-  # Packages required to build the package.
   build:
     - python
     - pytest
