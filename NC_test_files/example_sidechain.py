@@ -99,7 +99,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     dihedraldata = md.compute_dihedrals(traj, indicies)
     with open("dihedrals-%iNC.txt" %(nstepsNC), 'w') as output:
         for value in dihedraldata:
-            datafile.write("%s\n" % str(value)[1:-1])
+            output.write("%s\n" % str(value)[1:-1])
 
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
