@@ -200,35 +200,40 @@ class SideChainMove(object):
 
     def __init__(self, structure, residue_list):
         self.structure = structure
+        self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
         self.all_atoms = [atom.index for atom in self.structure.topology.atoms()]
-        self.rot_bond_atoms, self.rot_bonds, self.qry_atoms, self.molecule = self.getRotBondAtoms()
+        self.rot_atoms, self.rot_bonds, self.qry_atoms = self.getRotBondAtoms()
+        self.atom_indices = self.rot_atoms
+
+    def _pmdStructureToOEMol(self):
+
+        from oeommtools.utils import openmmTop_to_oemol
+        top = self.structure.topology
+        pos = self.structure.positions
+        molecule = openmmTop_to_oemol(top, pos, verbose=False)
+        OEPerceiveResidues(molecule, OEPreserveResInfo_All)
+        OEPerceiveResidues(molecule)
+        OEFindRingAtomsAndBonds(molecule)
+
+        return molecule
 
     def getBackboneAtoms(self, molecule):
         """This function takes a OEGraphMol and returns a list of backbone atoms"""
 
         backbone_atoms = []
-        # Call this function to find atoms and bonds
-        OEFindRingAtomsAndBonds(molecule)
-
-        if not OEHasResidues(molecule):
-                OEPerceiveResidues(molecule, OEPreserveResInfo_All)
-        aiter = molecule.GetAtoms(OEIsBackboneAtom())
-        for atom in aiter:
+        pred = OEIsBackboneAtom()
+        for atom in molecule.GetAtoms(pred):
             bb_atom_idx = atom.GetIdx()
             backbone_atoms.append(bb_atom_idx)
 
         return backbone_atoms
 
-    def getTargetAtoms(self, molecule, residue_list):
+    def getTargetAtoms(self, molecule, backbone_atoms, residue_list):
         """This function takes a OEGraphMol PDB structure and a list of residue numbers and
             generates a dictionary containing all the atom pointers and indicies for the
             non-backbone, atoms of those target residues, as well as a list of backbone atoms.
             Note: The atom indicies start at 0 and are thus -1 from the PDB file indicies"""
-
-        # Call this function to find atoms and bonds
-        OEFindRingAtomsAndBonds(molecule)
-        backbone_atoms = self.getBackboneAtoms(molecule)
 
         # create and clear dictionary to store atoms that make up residue list
         qry_atoms = {}
@@ -259,9 +264,6 @@ class SideChainMove(object):
             It stores and returns the bond indicies (keys) and the two atom indicies for each bond in a dictionary
             **Note: atom indicies start at 0, so are offset by 1 compared to pdb)'''
 
-        # Call this function to find atoms and bonds
-        OEFindRingAtomsAndBonds(pdb_OEMol)
-
         # create and clear dictionary to store bond and atom indicies that are rotatable + heavy
         rot_bonds = {}
         rot_bonds.clear()
@@ -283,7 +285,6 @@ class SideChainMove(object):
                         rot_bonds.update({bond : myres.GetResidueNumber()})
 
         return rot_bonds
-
 
     def getRotAtoms(self, rotbonds, molecule, backbone_atoms):
         """This function identifies and stores neighboring, upstream atoms for a given sidechain bond"""
@@ -335,30 +336,23 @@ class SideChainMove(object):
 
         return rot_atom_dict
 
-
     def getRotBondAtoms(self):
         """This function takes in a PDB filename (as a string) and list of residue numbers.  It returns
             a nested dictionary of rotatable bonds (containing only heavy atoms), that are keyed by residue number,
             then keyed by bond pointer, containing values of atom indicies [axis1, axis2, atoms to be rotated]
             **Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies"""
-
-
-        # read .pdb file into OEGraphMol
-        pdbfile = 'protein.pdb'
-        self.structure.save(pdbfile, overwrite = True)
-        molecule = OEGraphMol()
-        with oemolistream(pdbfile) as ifs:
-            ifs.SetFormat(OEFormat_PDB)
-            OEReadMolecule(ifs, molecule)
+        backbone_atoms = self.getBackboneAtoms(self.molecule)
 
         # Generate dictionary containing locations and indicies of heavy residue atoms
         #print('Dictionary of all query atoms generated from residue list\n')
-        qry_atoms, backbone_atoms = self.getTargetAtoms(molecule, self.residue_list)
+        qry_atoms, backbone_atoms = self.getTargetAtoms(self.molecule, backbone_atoms, self.residue_list)
+
         # Identify bonds containing query atoms and return dictionary of indicies
-        rot_bonds = self.findHeavyRotBonds(molecule, qry_atoms)
+        rot_bonds = self.findHeavyRotBonds(self.molecule, qry_atoms)
+
         # Generate dictionary of residues, bonds and atoms to be rotated
-        rot_atoms = self.getRotAtoms(rot_bonds, molecule, backbone_atoms)
-        return rot_atoms, rot_bonds, qry_atoms, molecule
+        rot_atoms = self.getRotAtoms(rot_bonds, self.molecule, backbone_atoms)
+        return rot_atoms, rot_bonds, qry_atoms
 
     def chooseBondandTheta(self):
         """This function takes a dictionary containing nested dictionary, keyed by res#,
@@ -366,9 +360,9 @@ class SideChainMove(object):
         and generates a random angle (radians).  It returns the atoms associated with the
         the selected bond, the pointer for the selected bond and the randomly generated angle"""
 
-        res_choice = random.choice(list(self.rot_bond_atoms.keys()))
-        bond_choice = random.choice(list(self.rot_bond_atoms[res_choice].keys()))
-        targetatoms = self.rot_bond_atoms[res_choice][bond_choice]
+        res_choice = random.choice(list(self.rot_atoms.keys()))
+        bond_choice = random.choice(list(self.rot_atoms[res_choice].keys()))
+        targetatoms = self.rot_atoms[res_choice][bond_choice]
         theta_ran = random.random()*2*math.pi
 
         return theta_ran, targetatoms, res_choice, bond_choice
@@ -394,7 +388,7 @@ class SideChainMove(object):
 
         # determine the axis, theta, residue, and bond + atoms to be rotated
         theta, target_atoms, res, bond = self.chooseBondandTheta()
-        print('Rotating %s in %s by %.2f radians' %(bond, res, theta))
+        print('Rotating bond: %s in resnum: %s by %.2f radians' %(bond, res, theta))
 
         #retrieve the current positions
         initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
