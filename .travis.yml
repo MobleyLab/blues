@@ -24,7 +24,12 @@ install:
     - conda info -a
     - conda build --python $python devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
+    # Use beta version for partial bond orders
+    - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import ope
     - conda list
+    # Unpack encrypted OpenEye license file
+    - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
+    - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
 
 script:
  - py.test -v blues
@@ -37,3 +42,5 @@ env:
   global:
     - ORGNAME="omnia"
     - PACKAGENAME="blues"
+    - OE_LICENSE="$HOME/oe_license.txt"
+    - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
