@@ -66,7 +66,6 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
     ligand = SideChainMove(struct, [1])
-    ligand.atom_indices = ligand.rot_bond_atoms
 
     # Initialize object that proposes moves.
     ligand_mover = MoveEngine(ligand)
