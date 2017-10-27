@@ -24,8 +24,9 @@ install:
     - conda info -a
     - conda build --python $python devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
+    - conda install -c openeye/label/Orion oeommtools
     # Use beta version for partial bond orders
-    - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import ope
+    - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     - conda list
     # Unpack encrypted OpenEye license file
     - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
