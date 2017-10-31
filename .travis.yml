@@ -22,8 +22,8 @@ install:
     - conda config --set always_yes true --set changeps1 no
     - conda config --add channels ${ORGNAME}
     - conda create -q -n testenv python=$python
-    - source activate testenv
     - conda install conda-build
+    - source activate testenv
     - conda info -a
     - conda install -c openeye/label/Orion oeommtools
     # Use beta version for partial bond orders
