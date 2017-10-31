@@ -19,6 +19,10 @@ script:
     - conda config --add channel ${ORGNAME}
     - conda create -q -n testenv python=$python
     - source activate testenv
+    - conda install --yes -c omnia openmmtools
+    - conda install --yes -c omnia parmed
+    - conda install --yes -c omnia mdtraj
+    - conda install --yes -c openeye/label/Orion oeommtools
     # Use beta version for partial bond orders
     - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     - conda build --python $python devtools/conda-recipe
