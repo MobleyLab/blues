@@ -12,10 +12,7 @@ install:
     - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
     - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
 script:
-    #- wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    #- bash miniconda.sh -b -p $HOME/miniconda
-    #- export PATH=$HOME/miniconda/bin:$PATH
-    #- hash -r
+    - conda config --set always_yes true --set changeps1 no
     - conda config --add channels ${ORGNAME}
     - conda create -q -n testenv python=$python
     - source activate testenv
