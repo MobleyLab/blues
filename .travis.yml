@@ -10,6 +10,7 @@ before_install:
     - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
     - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
 install:
+    - export PYTHONUNBUFFERED=true
     - if [[ $python == 2.7 ]]; then
         wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
       else
@@ -21,16 +22,14 @@ install:
     - conda config --set always_yes true --set changeps1 no
     - conda config --add channels ${ORGNAME}
     - conda create -q -n testenv python=$python
-    - conda install conda-build
-
     - source activate testenv
+    - conda install conda-build
     - conda info -a
     - conda install -c openeye/label/Orion oeommtools
     # Use beta version for partial bond orders
     - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     - conda build --python $python devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
-
     - conda list
 
 
