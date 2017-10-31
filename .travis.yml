@@ -23,7 +23,7 @@ script:
     # Use beta version for partial bond orders
     - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     - conda build --python $python devtools/conda-recipe
-    - conda install --yes --use-local blues
+    - conda install --yes -c local blues
     - conda list
     - py.test -v blues
 
