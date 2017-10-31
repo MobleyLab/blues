@@ -28,10 +28,7 @@ script:
     - conda build --python $python devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
     - conda list
-
-
-script:
- - py.test -v blues
+    - py.test -v blues
 
 env:
   matrix:
