@@ -11,15 +11,24 @@ Latest release: [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.o
 - [BLUES v2](https://doi.org/10.26434/chemrxiv.5406907.v2) - ChemRxiv September 25, 2017
 
 ## Manifest
-
-* `utils/` - some helper scripts for various things (not directly associated with BLUES)
-* `blues/` - simple toolkit illustrating the use of RJMCMC to sample over SMARTS-specified atom types; also contains forcefield.py for handling SMIRFF forcefield format.
-* `run_scripts/` - example scripts to run blues
-* `systems/` - some example systems to run blues on.
+* `blues/` -  Source code and example scripts for BLUES toolkit
+* `devdocs/` - Class diagrams for developers
+* `devtools/` - Developer tools and documentation for conda, travis, and issuing a release
+* `images/` - Images/logo for repository
+* `notebooks` - Jupyter notebooks for testing/development
 
 ## Prerequisites
-BLUES compatible with MacOSX/Linux with Python 2.7/3.5
+BLUES compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still work with Python 2.7)
 Install [miniconda](http://conda.pydata.org/miniconda.html) according to your systems
+
+## Requirements
+Starting from v1.2, you will need the OpenEye toolkits and related tools:
+```bash
+conda install -c openeye/label/Orion oeommtools
+
+# Requires openeye license
+pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits
+```
 
 ## Installation
 Recommended: Install from conda
@@ -81,5 +90,7 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.0.4](http://dx.doi.org/10.5281/zenodo.569074): Minor bug fixes plus a functionality problem on some GPU configs.
 - [Version 0.1.0](http://dx.doi.org/10.5281/zenodo.837900): Refactored move proposals, added Monte Carlo functionality, Smart Darting moves, and changed alchemical integrator.
 - [Version 0.1.1](https://doi.org/10.5281/zenodo.1028925): Features to boost move acceptance such as freezing atoms in the NCMC simulation and adding extra propagation steps in the alchemical integrator.
+- [Version 0.1.2]: Incorporation of SideChainMove functionality (Contributor: Kalistyn Burley)
+
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.

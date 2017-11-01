@@ -1,13 +1,8 @@
 """
-example.py: Provides an example script to run BLUES and
-benchmark the run on a given platform
+example_sidechain.py: Provides an example script to run BLUES with sidechain rotations
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, David L. Mobley
-
-* Benchmarking related code adapted from:
-https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
-(Authors: Peter Eastman)
+Contributors: Kalistyn Burley, Nathan M. Lim, David L. Mobley
 """
 
 from __future__ import print_function
