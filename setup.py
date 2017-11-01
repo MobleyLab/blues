@@ -16,7 +16,7 @@ import subprocess
 DOCLINES = __doc__.split("\n")
 
 ########################
-VERSION = "0.1.1"  # Primary base version of the build
+VERSION = "0.1.2"  # Primary base version of the build
 DEVBUILD = "1"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
@@ -120,7 +120,7 @@ def find_package_data(data_root, package_root):
 write_version_py()
 setup(
     name='blues',
-    author = "Samuel C. Gill, Nathan M. Lim, David L. Mobley, and others",
+    author = "Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley, and others",
     author_email='dmobley@uci.edu',
     description = ("NCMC moves in OpenMM to enhance ligand sampling"),
     long_description=read('README.md'),

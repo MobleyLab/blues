@@ -6,7 +6,7 @@ Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, David L. Mobley
+Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley 
 """
 
 import parmed
