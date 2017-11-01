@@ -11,7 +11,7 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 """
 
 from __future__ import print_function
-from blues.moves import RandomLigandRotationMove
+from blues.moves import RandomLigandRotationMove, SideChainMove
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
@@ -43,19 +43,21 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     logger = init_logger()
 
     #Generate the ParmEd Structure
-    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
-    inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
+    prmtop = utils.get_data_filename('blues', 'tests/data/vacDivaline.prmtop')
+    inpcrd = utils.get_data_filename('blues', 'tests/data/vacDivaline.inpcrd')
     struct = parmed.load_file(prmtop, xyz=inpcrd)
     logger.info('Structure: %s' % struct.topology)
 
     #Define some options
-    opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 100, 'nstepsNC' : nstepsNC, 'nstepsMD' : 5000, 'nprop' : nprop,
+    opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.004,
+            'hydrogenMass' : 3.024,
+            'nIter' : 100, 'nstepsNC' : nstepsNC, 'nstepsMD' : 1000, 'nprop' : nprop,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10,
-            'constraints': 'HBonds', 'freeze_distance' : 5.0,
-            'trajectory_interval' : 1000, 'reporter_interval' : 1000,
-            'ncmc_traj' : None, 'write_move' : True,
+            'constraints': 'HBonds',
+            'trajectory_interval' : 100, 'reporter_interval' : 250,
+            'ncmc_traj' : None, 'write_move' : False,
             'platform' : platform_name,
+            'outfname' : 'vacDivaline',
             'verbose' : False}
 
     for k,v in opt.items():
@@ -63,8 +65,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
 
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
-    ligand = RandomLigandRotationMove(struct, 'LIG')
-    ligand.calculateProperties()
+    ligand = SideChainMove(struct, [1])
 
     # Initialize object that proposes moves.
     ligand_mover = MoveEngine(ligand)
@@ -74,7 +75,8 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     simulations.createSimulationSet()
 
     # Add reporters to MD simulation.
-    traj_reporter = openmm.app.DCDReporter(outfname+'-nc{}.dcd'.format(nstepsNC), opt['trajectory_interval'])
+    trajfile = outfname+'-nc{}.dcd'.format(nstepsNC)
+    traj_reporter = openmm.app.DCDReporter(trajfile, opt['trajectory_interval'])
     progress_reporter = openmm.app.StateDataReporter(sys.stdout, separator="\t",
                                 reportInterval=opt['reporter_interval'],
                                 step=True, totalSteps=opt['nIter']*opt['nstepsMD'],
@@ -87,12 +89,23 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     blues = Simulation(simulations, ligand_mover, **opt)
     blues.run(opt['nIter'])
 
+
+    #Analysis
+    import mdtraj as md
+    import numpy as np
+    traj = md.load_dcd(trajfile, top='protein.pdb')
+    indicies = np.array([[0, 4, 6, 8]])
+    dihedraldata = md.compute_dihedrals(traj, indicies)
+    with open("dihedrals-%iNC.txt" %(nstepsNC), 'w') as output:
+        for value in dihedraldata:
+            output.write("%s\n" % str(value)[1:-1])
+
 parser = OptionParser()
 parser.add_option('-f', '--force', action='store_true', default=False,
                   help='run BLUES example without GPU platform')
 parser.add_option('-n','--ncmc', dest='nstepsNC', type='int', default=5000,
                   help='number of NCMC steps')
-parser.add_option('-p','--nprop', dest='nprop', type='int', default=5,
+parser.add_option('-p','--nprop', dest='nprop', type='int', default=3,
                   help='number of propgation steps')
 parser.add_option('-o','--output', dest='outfname', type='str', default="blues",
                   help='Filename for output DCD')

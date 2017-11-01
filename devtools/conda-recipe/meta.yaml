@@ -25,7 +25,8 @@ requirements:
     - openmmtools
     - mdtraj >=1.8.0
     - openmm >=7.1.0rc1
-
+    - parmed
+    
 test:
   requires:
     - pytest
