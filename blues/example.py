@@ -24,7 +24,7 @@ import logging
 def init_logger():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s-%(levelname)s-%(message)s')
+    formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
     # Write to File
     fh = logging.FileHandler('blues-example.log')
     fh.setLevel(logging.INFO)
@@ -57,7 +57,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
             'ncmc_traj' : None, 'write_move' : True,
             'platform' : platform_name,
             'verbose' : False}
-            
+
     for k,v in opt.items():
         logger.debug('Options: {} = {}'.format(k,v))
 
