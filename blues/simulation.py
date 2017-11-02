@@ -428,16 +428,21 @@ class Simulation(object):
         self.log.info('[NCMC-Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
 
         #choose a move to be performed according to move probabilities
-        #TODO: will have to change to work with multiple alch regions
+        #TODO: will have to change to work with multiple alch region
         self.move_engine.selectMove()
+        move_idx = self.move_engine.selected_move
+        move_name = self.move_engine.moves[move_idx].__class__.__name__
+        start = datetime.now()
         for nc_step in range(int(nstepsNC)):
+
             try:
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
-                    self.log.info('Step = %s Performing NCMC move...' % nc_step)
+                    self.log.info('Performing %s...' % move_name)
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
+
 
                 # Do 1 NCMC step with the integrator
                 self.nc_integrator.step(1)
@@ -487,22 +492,22 @@ class Simulation(object):
         self.nc_context.setVelocities(md_state0['velocities'])
 
     def _report(self,start,nc_step):
-        #Timers for NCMC simulation
+
         end = datetime.now()
         elapsed = end -start
         time = elapsed.seconds + elapsed.microseconds*1e-6
         steps = int(nc_step*1.0/time)
-        speed = (self.opt['dt']*unit.picoseconds*nc_step*86400/time).value_in_unit(unit.nanoseconds)
+        speed = ((self.opt['dt']*unit.picoseconds)*nc_step*86400/time).value_in_unit(unit.nanoseconds)
         speed = "{:.2f}".format(speed)
-
         headers = ['Progress (%)', 'Step', 'Speed (ns/day)', 'Acc. Ratio (%)']
         if self.current_iter == 0 and nc_step == 0:
-            logger.info('[NCMC] "%s"' % ('"'+'\t'+'"').join(headers))
-        #progress = "{:.1%}".format(self.current_iter/self.opt['nIter'])
+            self.log.info('[NCMC] "%s"' % ('"'+'\t'+'"').join(headers))
+        #progress = "{:.2%}".format(self.current_iter/self.opt['nIter'])
         progress = "{:.1%}".format(nc_step/self.opt['nstepsNC'])
+
         self.accept_ratio = "{:.2%}".format(self.accept/float(self.current_iter+1.0))
         values = [progress, nc_step, speed, self.accept_ratio]
-        print('\t\t'.join(str(v) for v in values))
+        self.log.info('\t\t'.join(str(v) for v in values))
 
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
