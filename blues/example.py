@@ -56,6 +56,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
             'trajectory_interval' : 1000, 'reporter_interval' : 1000,
             'ncmc_traj' : None, 'write_move' : True,
             'platform' : platform_name,
+            'outfname' : 't4-tol',
             'verbose' : False}
 
     for k,v in opt.items():
@@ -78,8 +79,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     progress_reporter = openmm.app.StateDataReporter(sys.stdout, separator="\t",
                                 reportInterval=opt['reporter_interval'],
                                 step=True, totalSteps=opt['nIter']*opt['nstepsMD'],
-                                time=True, speed=True, progress=True,
-                                elapsedTime=True, remainingTime=True)
+                                time=True, speed=True, progress=True, remainingTime=True)
     simulations.md.reporters.append(traj_reporter)
     simulations.md.reporters.append(progress_reporter)
 
