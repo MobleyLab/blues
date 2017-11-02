@@ -10,6 +10,7 @@ from simtk.openmm import app
 import parmed, math
 import mdtraj
 import sys
+from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
@@ -322,7 +323,7 @@ class Simulation(object):
         self.log.info('Total Simulation Time = %s ps' % totaltime)
         self.log.info('\tTotal NCMC time = %s ps' % (int(timeNC) * int(self.opt['nIter'])))
         self.log.info('\tTotal MD time = %s ps' % (int(timeMD) * int(self.opt['nIter'])))
-
+        self.totalNC = totalNC
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
@@ -442,8 +443,9 @@ class Simulation(object):
 
                 # Print out NCMC info to show progress.
                 if nc_step % reporter_interval == 0:
-                    workinfo = self.getWorkInfo(self.nc_integrator, ['step','lambda','lambda_step', 'protocol_work'])
-                    self.log.info('Step = {step}  Lambda = {lambda}  Work = {protocol_work} Lambda_step = {lambda_step}'.format(**workinfo))
+                    self._report(start, nc_step)
+                    #workinfo = self.getWorkInfo(self.nc_integrator, ['step','lambda','lambda_step', 'protocol_work'])
+                    #self.log.info('Step = {step}  Lambda = {lambda}  Work = {protocol_work} Lambda_step = {lambda_step}'.format(**workinfo))
 
 
                 ###DEBUG options at every NCMC step
@@ -482,6 +484,24 @@ class Simulation(object):
         # Set NC poistions to last positions from MD
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
+
+    def _report(self,start,nc_step):
+        #Timers for NCMC simulation
+        end = datetime.now()
+        elapsed = end -start
+        time = elapsed.seconds + elapsed.microseconds*1e-6
+        steps = int(nc_step*1.0/time)
+        speed = (self.opt['dt']*unit.picoseconds*nc_step*86400/time).value_in_unit(unit.nanoseconds)
+        speed = "{:.2f}".format(speed)
+
+        headers = ['Progress (%)', 'Step', 'Speed (ns/day)', 'Acc. Ratio (%)']
+        if self.current_iter == 0 and nc_step == 0:
+            logger.info('[NCMC] "%s"' % ('"'+'\t'+'"').join(headers))
+        #progress = "{:.1%}".format(self.current_iter/self.opt['nIter'])
+        progress = "{:.1%}".format(nc_step/self.opt['nstepsNC'])
+        self.accept_ratio = "{:.2%}".format(self.accept/float(self.current_iter+1.0))
+        values = [progress, nc_step, speed, self.accept_ratio]
+        print('\t\t'.join(str(v) for v in values))
 
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
