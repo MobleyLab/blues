@@ -24,7 +24,7 @@ class SideChainTester(unittest.TestCase):
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-                'trajectory_interval' : 10, 'reporter_interval' : 10,
+                'trajectory_interval' : 10, 'reporter_interval' : 10, 'outfname' : 'vacDivaline',
                 'platform' : None,
                 'verbose' : False }
         self.sidechain = SideChainMove(self.struct, [1])
