@@ -426,17 +426,15 @@ class Simulation(object):
     def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
                     reporter_interval=1000, verbose=False, **opt):
         """Function that performs the NCMC simulation."""
-        self.log.info('[NCMC-Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
+        self.log.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch region
         self.move_engine.selectMove()
         move_idx = self.move_engine.selected_move
         move_name = self.move_engine.moves[move_idx].__class__.__name__
-
-        start = time.time()
-        self._initialSimulationTime = self.nc_context.getState().getTime()
         for nc_step in range(int(nstepsNC)):
-
+            start = time.time()
+            self._initialSimulationTime = self.nc_context.getState().getTime()
             try:
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
@@ -460,7 +458,6 @@ class Simulation(object):
                 self.log.error(e)
                 break
 
-
             self._report(start, nc_step)
 
         nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
@@ -469,7 +466,7 @@ class Simulation(object):
     def simulateMD(self, nstepsMD=5000, **opt):
         """Function that performs the MD simulation."""
 
-        self.log.info('[MD-Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
+        self.log.info('[Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
 
         md_state0 = self.current_state['md']['state0']
         try:
@@ -490,18 +487,18 @@ class Simulation(object):
 
     def _report(self,start,nc_step):
         end = time.time()
-        elapsed = end-start
-        elapsedDays = (elapsed/86400.0)
-        elapsedNs = (self.nc_context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
-        speed = (elapsedNs/elapsedDays)
-        speed = "%.3g" % speed
-        headers = ['Progress (%)', 'Step', 'Speed (ns/day)', 'Acc. Moves', 'Iter']
+        headers = ['Step', 'Speed (ns/day)', 'Acc. Moves', 'Iter']
         if self.current_iter == 0 and nc_step == 0:
             self.log.info('[NCMC] "%s"' % ('"'+'\t'+'"').join(headers))
-        #progress = "{:.2%}".format(self.current_iter/self.opt['nIter'])
-        progress = "{:.1%}".format(nc_step/self.opt['nstepsNC'])
-        values = [progress, nc_step, speed, self.accept, self.current_iter]
-        if nc_step % self.opt['reporter_interval'] == 0:
+        if nc_step % self.opt['reporter_interval'] == 0 or nc_step+1 == self.opt['nstepsNC']:
+            elapsed = end-start
+            elapsedDays = (elapsed/86400.0)
+            elapsedNs = (self.nc_context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
+            speed = (elapsedNs/elapsedDays)
+            speed = "%.3g" % speed
+            #progress = "{:.2%}".format(self.current_iter/self.opt['nIter'])
+            #progress = "{:.1%}".format(nc_step/self.opt['nstepsNC'])
+            values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
     def run(self, nIter=100):
