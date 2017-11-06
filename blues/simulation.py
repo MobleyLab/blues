@@ -242,10 +242,6 @@ class Simulation(object):
                                'nc'   : { 'state0' : {}, 'state1' : {} },
                                'alch' : { 'state0' : {}, 'state1' : {} }
                             }
-        self.ncmc_progress = openmm.app.StateDataReporter(sys.stdout, separator="\t",
-                                    reportInterval=opt['reporter_interval'],
-                                    step=True, totalSteps=opt['nIter']*opt['nstepsNC'],
-                                    time=True, speed=True, progress=True, remainingTime=True)
         #attach ncmc reporter if specified
         if 'ncmc_traj' in self.opt:
             # Add reporter to NCMC Simulation useful for debugging:
@@ -496,8 +492,6 @@ class Simulation(object):
             elapsedNs = (self.nc_context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
             speed = (elapsedNs/elapsedDays)
             speed = "%.3g" % speed
-            #progress = "{:.2%}".format(self.current_iter/self.opt['nIter'])
-            #progress = "{:.1%}".format(nc_step/self.opt['nstepsNC'])
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
