@@ -16,32 +16,14 @@ from optparse import OptionParser
 import sys
 import logging
 
-def init_logger():
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
-    # Write to File
-    fh = logging.FileHandler('blues-example.log')
-    fh.setLevel(logging.INFO)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    # Stream to terminal
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    return logger
 
 def runNCMC(platform_name, nstepsNC, nprop, outfname):
-
-    logger = init_logger()
 
     #Generate the ParmEd Structure
     prmtop = utils.get_data_filename('blues', 'tests/data/vacDivaline.prmtop')
     inpcrd = utils.get_data_filename('blues', 'tests/data/vacDivaline.inpcrd')
     struct = parmed.load_file(prmtop, xyz=inpcrd)
-    logger.info('Structure: %s' % struct.topology)
+    print('Structure: %s' % struct.topology)
 
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.004,
@@ -54,10 +36,6 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
             'platform' : platform_name,
             'outfname' : 'vacDivaline',
             'verbose' : False}
-
-    for k,v in opt.items():
-        logger.debug('Options: {} = {}'.format(k,v))
-
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
     ligand = SideChainMove(struct, [1])

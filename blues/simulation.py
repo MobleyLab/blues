@@ -15,6 +15,24 @@ from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 
+def init_logger():
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
+    # Write to File
+    fh = logging.FileHandler('blues-example.log')
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    # Stream to terminal
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    return logger
+logger = init_logger()
+
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
     objects (MD, NCMC, ALCH) required for the BLUES run.
@@ -39,7 +57,6 @@ class SimulationFactory(object):
         else:
             self.log = logging.getLogger(__name__)
 
-
         #Structure of entire system
         self.structure = structure
         #Atom indicies from move_engine
@@ -53,6 +70,8 @@ class SimulationFactory(object):
         self.nc  = None
 
         self.opt = opt
+        for k,v in opt.items():
+            self.log.info('Options: {} = {}'.format(k,v))
 
     def _zero_allother_masses(self, system, indexlist):
         num_atoms = system.getNumParticles()
