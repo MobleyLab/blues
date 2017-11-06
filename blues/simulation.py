@@ -15,12 +15,12 @@ from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 
-def init_logger():
+def init_logger(outfname):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
     # Write to File
-    fh = logging.FileHandler('blues-example.log')
+    fh = logging.FileHandler(outfname+'-blues.log')
     fh.setLevel(logging.INFO)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
@@ -31,7 +31,6 @@ def init_logger():
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
-logger = init_logger()
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -55,7 +54,7 @@ class SimulationFactory(object):
         if 'Logger' in opt:
             self.log = opt['Logger']
         else:
-            self.log = logging.getLogger(__name__)
+            self.log = init_logger(opt['outfname'])
 
         #Structure of entire system
         self.structure = structure
@@ -237,6 +236,7 @@ class Simulation(object):
             self.log = opt['Logger']
         else:
             self.log = logging.getLogger(__name__)
+
         self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
