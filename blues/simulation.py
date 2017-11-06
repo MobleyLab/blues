@@ -15,12 +15,12 @@ from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 
-def init_logger(outfname):
+def init_logger(outfname='blues'):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
     # Write to File
-    fh = logging.FileHandler(outfname+'-blues.log')
+    fh = logging.FileHandler(outfname+'.log')
     fh.setLevel(logging.INFO)
     fh.setFormatter(formatter)
     logger.addHandler(fh)

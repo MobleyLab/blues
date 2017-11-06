@@ -20,6 +20,7 @@ class MoveEngineTester(unittest.TestCase):
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
+                'outfname' : 'moveproposal-test',
                 'platform' : None,
                 'verbose' : False }
 

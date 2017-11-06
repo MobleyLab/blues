@@ -22,7 +22,7 @@ class BLUESTester(unittest.TestCase):
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.00002,
                 'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-                'trajectory_interval' : 1, 'reporter_interval' : 1,
+                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'mc-test',
                 'platform' : None,
                 'verbose' : True }
 
@@ -33,6 +33,7 @@ class BLUESTester(unittest.TestCase):
                 'nIter' : 2, 'nstepsNC' : 2, 'nstepsMD' : 1, 'nprop' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
+                'outfname' : 'mc-test',
                 'platform' : None,
                 'verbose' : True,
                 'constraints' : 'HBonds',
