@@ -15,6 +15,7 @@ import copy
 import tempfile
 import types
 from blues.mold_helper import give_cartesian_edit
+from blues.icdart.dartnew import makeDartDict, checkDart
 
 def checkDifference(a, b, radius):
     def getDihedralDifference(dihedral):
@@ -124,31 +125,19 @@ class MolDart(RandomLigandRotationMove):
          If no list is given the darts are assumed to be of uniform size.
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
-    symmetric_atoms: default=None
-        Not currently implemented
     rigid_move: boolean, default=False:
         If True, will ignore internal coordinate changes while darting
         and will effectively perform a rigid body rotation between darts
         instead.
 
     """
-    def __init__(self, structure, pdb_files, fit_atoms, dart_size, resname='LIG', symmetric_atoms=None, rigid_move=False):
+    def __init__(self, structure, pdb_files, fit_atoms, resname='LIG', rigid_move=False):
         super(MolDart, self).__init__(structure, resname)
-        self.dartboard = []
-        self.dart_size = []
-        if type(dart_size) == list:
-            if len(dart_size) != len(self.atom_indices):
-                raise ValueError('mismatch between length of dart_size (%i) and atom_indices (%i)' % (len(dart_size), len(atom_indices)) )
-            self.dart_size = dart_size
-        elif type(dart_size._value) == int or type(dart_size._value) == float:
-            for entry in self.atom_indices:
-                self.dart_size.append(dart_size.value_in_unit(unit.nanometers))
-            self.dart_size = self.dart_size*unit.nanometers
 
         self.binding_mode_traj = []
+        self.binding_mode_pos = []
         self.fit_atoms = fit_atoms
         self.ligand_pos = None
-        self.symmetric_atoms = symmetric_atoms
         self.internal_xyz = []
         self.internal_zmat = []
         self.buildlist = None
@@ -169,7 +158,7 @@ class MolDart(RandomLigandRotationMove):
         self.buildlist = xyz.get_construction_table()
         ref_traj = md.load(pdb_files[0])[0]
         self.ref_traj = ref_traj
-        self.ref_traj.save('posr.pdb')
+        #self.ref_traj.save('posr.pdb')
         for j, pdb_file in enumerate(pdb_files):
             traj = md.load(pdb_file)[0]
             traj.superpose(reference=ref_traj, atom_indices=fit_atoms,
@@ -187,93 +176,16 @@ class MolDart(RandomLigandRotationMove):
                     self.internal_xyz[j]._frame.set_value(i, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10)
             self.internal_zmat.append(self.internal_xyz[j].give_zmat(construction_table=self.buildlist))
 
-
+        self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
+        print(self.binding_mode_pos)
+        print(self.buildlist.index)
+        print(self.buildlist.index[1])
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
+        self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
+        print('dartself', self.darts)
+        print('binding_mode_pos', self.binding_mode_pos[0])
 
-
-    def dist_from_dart_center(self, sim_atom_pos, binding_mode_atom_pos, symmetric_atoms=None):
-        """Function to calculate the distances from the dart centers from all given poses.
-        Parameters
-        ----------
-        sim_atom_pos: nx3 np.array
-            simulation positions of the ligand atoms
-        binding_mode_atom_pos: nx3 np.array
-            positions of the ligand atoms from a given poses
-        symmetric_atoms: list of lists
-            list of symmetric atoms (not yet implemented)
-
-        Returns
-        -------
-        sim_atom_pos: nx3 np.array
-            Simulation positions of the ligand atoms
-        diff_list: list of n floats
-            List of distances between each simulation dart center and
-            the corresponding reference dart center.
-
-        diff_list: list of n 1x3 np.arrays
-            List of the vectors between each simulation dart center
-            and its corresponding reference dart center.
-        """
-        if symmetric_atoms == None:
-            symmetric_atoms = self.symmetric_atoms
-
-        num_lig_atoms = len(self.atom_indices)
-
-        dist_list = np.zeros((num_lig_atoms, 1))
-        diff_list = np.zeros((num_lig_atoms, 3))
-        #Find the distances of the center to each dart, appending
-        #the results to dist_list
-        #TODO change to handle np.arrays instead
-
-        for index, dart in enumerate(binding_mode_atom_pos):
-            diff = sim_atom_pos[index] - dart
-            dist = np.sqrt(np.sum((diff)*(diff)))
-            diff_list[index] = diff
-            dist_list[index] = dist
-
-        if symmetric_atoms != None:
-            print('checking for symmetric equivalents')
-            #make temporary pos to compare distances with
-            #loop over symmetric groups
-            for symm_group in symmetric_atoms:
-                compare_diff =[]
-                compare_dist =[]
-                #find the original index, which correspods with the position in temp_sim_pos
-                original_index = [self.atom_indices.index(x) for x in symm_group]
-                #create permutations of the symmetric atom indices
-                iter_symm = itertools.permutations(original_index)
-                dist_subset = [dist_list[x] for x in original_index]
-                #iterate over the permutations
-                xcounter = 0
-                for x in iter_symm:
-                    print('xcounter', xcounter)
-                    xcounter = xcounter+1
-                    for i, atom in enumerate(x):
-                        #i is the index, atom is the original_atom index
-                        #switch original_index with permutation
-                        temp_sim_pos = np.copy(sim_atom_pos)
-                        temp_sim_pos[original_index[i]] = sim_atom_pos[atom]
-                        diff = temp_sim_pos[original_index[i]] - binding_mode_atom_pos[original_index[i]]
-                        dist = np.sqrt(np.sum((diff)*(diff)))
-                        compare_diff.append(diff)
-                        compare_dist.append(dist)
-                        print('dist', compare_dist)
-                    if np.sum(compare_dist) < np.sum(dist_subset):
-                        print('better symmetric equivalent found')
-                        #replace changed variables
-                        sim_atom_pos[:] = temp_sim_pos
-                        #replace diff_list and dist_list with updated values
-                        for i, atom in enumerate(x):
-                            diff_list[atom] = compare_diff[i]
-                            dist_list[atom] = compare_dist[i]
-                            #TODO might wanna trade velocities too
-                    compare_diff =[]
-                    compare_dist =[]
-
-
-
-        return sim_atom_pos, dist_list, diff_list
 
     def poseDart(self, context, atom_indices):
         """Check whether molecule is within a dart, and
@@ -299,13 +211,11 @@ class MolDart(RandomLigandRotationMove):
 
         """
         total_diff_list = []
-        total_dist_list = []
-        symm_pos_list = []
 
-        nc_pos = context.getState(getPositions=True).getPositions()
+        nc_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         #update sim_traj positions for superposing binding modes
-        self.sim_traj.xyz = nc_pos._value
-        self.sim_ref.xyz = nc_pos._value
+        self.sim_traj.xyz[0] = nc_pos._value
+        self.sim_ref.xyz[0] = nc_pos._value
         #make a temp_pos to specify dart centers to compare
         #distances between each dart and binding mode reference
         temp_pos = []
@@ -324,46 +234,37 @@ class MolDart(RandomLigandRotationMove):
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
                             )
-        for pose in self.binding_mode_traj:
-            pose_coord = pose.xyz[0]
-            #find the dart vectors and distances to each protein
-            #append the list to a storage list
-            temp_binding_mode_pos = np.zeros((num_lig_atoms, 3))
 
-            for index, atom in enumerate(atom_indices):
-                temp_binding_mode_pos[index] = pose_coord[atom]
-            temp_pos, temp_dist, temp_diff = self.dist_from_dart_center(temp_pos, temp_binding_mode_pos)
 
-            #TODO: replace the actual simulation position/velocities with the symmetric equivalents if found!!!!
-            total_diff_list.append(temp_diff[:])
-            total_dist_list.append(temp_dist[:])
-            symm_pos_list.append(np.copy(temp_pos)*unit.nanometers)
-            print('making copy')
-            print('symm_list', symm_pos_list)
-            print('original', temp_pos)
+        xyz_ref = copy.deepcopy(self.internal_xyz[0])
+        for index, entry in enumerate(['x', 'y', 'z']):
+            for i in range(len(self.atom_indices)):
+                sel_atom = self.atom_indices[i]
+                #set the pandas series with the appropriate data
+                #multiply by 10 since openmm works in nm and cc works in angstroms
+                print(nc_pos[sel_atom])
+                print(nc_pos[sel_atom][index])
+                #print(nc_pos[:,index])
+                xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
+        current_zmat = xyz_ref.give_zmat(construction_table=self.buildlist)
 
-        selected = []
-        #check to see which poses fall within the dart size
-        for index, single_pose in enumerate(total_dist_list):
-            counter = 0
-            for atomnumber,dist in enumerate(single_pose):
-                if dist <= self.dart_size[atomnumber]._value:
-                    counter += 1
-            if counter == len(atom_indices):
-                selected.append(index)
-            print('counter for pose', index, 'is ', counter)
+        selected = checkDart(self.internal_zmat, current_pos=nc_pos[self.atom_indices]._value*10,
+                    current_zmat=current_zmat, pos_list=self.binding_mode_pos,
+                    construction_table=self.buildlist,
+                    dart_storage=self.darts
+                    )
         if len(selected) == 1:
             #returns binding mode index, and the diff_list
             #diff_list will be used to dart
-            return selected[0], total_diff_list[selected[0]], symm_pos_list[selected[0]]
+            return selected
         elif len(selected) == 0:
-            return None, total_diff_list, None
+            return None
         elif len(selected) >= 2:
             print('overlapping darts', selected)
             #COM should never be within two different darts
             raise ValueError('sphere size overlap, check darts')
 
-    def moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, symm_pos, bond_compare=True, rigid_move=False):
+    def moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, bond_compare=True, rigid_move=False):
         """
         Helper function to choose a random pose and determine the vector
         that would translate the current particles to that dart center
@@ -403,9 +304,6 @@ class MolDart(RandomLigandRotationMove):
                             )
         self.sim_traj.save('posz.pdb')
 
-        for i, atom_num in enumerate(atom_indices):
-            nc_pos[atom_num] = symm_pos[i]
-
         rand_index = np.random.randint(len(self.binding_mode_traj))
         ###temp to encourage going to other binding modes
         while rand_index == binding_mode_index:
@@ -427,9 +325,11 @@ class MolDart(RandomLigandRotationMove):
             zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
             #get appropriate comparision zmat
             zmat_compare = self.internal_zmat[binding_mode_index]
-            change_list = ['angle', 'dihedral']
-            if bond_compare == True:
-                change_list.append('bond')
+            change_list = ['bond', 'angle', 'dihedral']
+            #change_list = ['angle', 'dihedral']
+
+            #change_list = ['dihedral']
+
             if rigid_move == False:
                 for i in change_list:
                     zmat_diff._frame[i] = zmat_diff._frame[i] - zmat_compare._frame[i]
@@ -498,8 +398,9 @@ class MolDart(RandomLigandRotationMove):
         ref_three = np.zeros((3,3))
         dart_three = np.zeros((3,3))
         dart_ref = np.zeros((3,3))
+
         for i in range(3):
-            sim_three[i] = nc_pos[atom_indices[self.buildlist.index.get_values()[i]]]
+            sim_three[i] = self.sim_traj.xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
             print('using index', [atom_indices[self.buildlist.index.get_values()[i]]])
             self.buildlist.index.get_values()[i]
 
@@ -543,8 +444,11 @@ class MolDart(RandomLigandRotationMove):
         print('new angle1', np.degrees(calc_angle(ad_vec, nvec2_sim)))
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
+        print('ch_three', change_three)
+        print('ref_three', ref_three)
+        print('sim_three', sim_three)
         print('change before rot', change_three)
-##        rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
+        rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
         print('ref_three', ref_three)
         print('sim_three', sim_three)
         print('change_three', change_three)
@@ -553,18 +457,18 @@ class MolDart(RandomLigandRotationMove):
         #perform the same angle change on new coordinate
         centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
-##        print('rot_mat', rot_mat)
+        print('rot_mat', rot_mat)
 ##        other_rot = kabsch(change_three, ref_three, vector_list[0][1])
  ##       print('other_rot', other_rot)
         ####
-##        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
         vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
         print('angle after centroid rotation', np.degrees(calc_angle(vec1_dart, vec2_dart)) )
         dart_angle = self.internal_zmat[rand_index]._frame['angle'][self.buildlist.index.get_values()[2]]
         angle_change = dart_angle - angle_diff
         print('angle_change', angle_change)
-        if 0:
+        if 1:
             ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
             ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
             print(self.internal_zmat[rand_index]._frame['bond'][self.buildlist.index.get_values()[1]])
@@ -609,11 +513,16 @@ class MolDart(RandomLigandRotationMove):
                 sel_atom = self.atom_indices[i]
                 #TODO from friday: set units for xyz_first_pos and then go about doing the rotation to reorient the molecule after moving
 #                print('original', nc_pos[sel_atom])
-                nc_pos[:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.) * unit.nanometers
-        self.sim_traj.xyz = nc_pos._value
+                #nc_pos[:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.) * unit.nanometers
+                #nc_pos[:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.) * unit.nanometers
+                self.sim_traj.xyz[0][:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.)
+
+        #self.sim_traj.xyz[0] = nc_pos._value
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
                 ref_atom_indices=self.fit_atoms
                 )
+        self.sim_traj.save('zz.pdb')
+        self.sim_ref.save('ww.pdb')
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
         print('nc_pos', nc_pos)
 #            print('putting', nc_pos[sel_atom])
@@ -641,11 +550,11 @@ class MolDart(RandomLigandRotationMove):
 
         """
         oldDartPos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        selected_pose, diff_list, symm_list = self.poseDart(context, self.atom_indices)
+        selected_pose = self.poseDart(context, self.atom_indices)
         #now self.binding_mode_pos should be fitted to structure at this point
         #use the first entry
 
-        if selected_pose == None:
+        if selected_pose is None:
             print('no pose found')
         else:
             print('yes pose found')
@@ -658,8 +567,10 @@ class MolDart(RandomLigandRotationMove):
 
             new_pos = self.moldRedart(atom_indices=self.atom_indices,
                                             binding_mode_pos=self.binding_mode_traj,
-                                            binding_mode_index=selected_pose,
-                                            nc_pos=oldDartPos, symm_pos=symm_list,
-                                            rigid_move=self.rigid_move)
+                                            binding_mode_index=selected_pose[0],
+                                            nc_pos=oldDartPos,
+                                            rigid_move=True)
+
+                                            #rigid_move=self.rigid_move)
             context.setPositions(new_pos)
         return context

@@ -392,14 +392,15 @@ class Simulation(object):
 
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
-                if self.nstepsNC / 2 == nc_step:
+                if int(self.nstepsNC / 2) == nc_step:
 
                     #Do move
                     print('[Iter {}] Performing NCMC move'.format(self.current_iter))
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
 
-                    if write_ncmc and (nc_step+1) % write_ncmc == 0:
+                    if write_ncmc:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
+
 
                 # Do 1 NCMC step with the integrator, alchemically modifying system
                 self.nc_integrator.step(1)
