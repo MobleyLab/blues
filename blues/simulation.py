@@ -9,10 +9,28 @@ from simtk import unit, openmm
 from simtk.openmm import app
 import parmed, math
 import mdtraj
-import sys
+import sys, time
+from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
+
+def init_logger(outfname='blues'):
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
+    # Write to File
+    fh = logging.FileHandler(outfname+'.log')
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    # Stream to terminal
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    return logger
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -36,8 +54,7 @@ class SimulationFactory(object):
         if 'Logger' in opt:
             self.log = opt['Logger']
         else:
-            self.log = logging.getLogger(__name__)
-
+            self.log = init_logger(opt['outfname'])
 
         #Structure of entire system
         self.structure = structure
@@ -52,6 +69,8 @@ class SimulationFactory(object):
         self.nc  = None
 
         self.opt = opt
+        for k,v in opt.items():
+            self.log.info('Options: {} = {}'.format(k,v))
 
     def _zero_allother_masses(self, system, indexlist):
         num_atoms = system.getNumParticles()
@@ -218,6 +237,7 @@ class Simulation(object):
             self.log = opt['Logger']
         else:
             self.log = logging.getLogger(__name__)
+
         self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
@@ -242,7 +262,6 @@ class Simulation(object):
                                'nc'   : { 'state0' : {}, 'state1' : {} },
                                'alch' : { 'state0' : {}, 'state1' : {} }
                             }
-
         #attach ncmc reporter if specified
         if 'ncmc_traj' in self.opt:
             # Add reporter to NCMC Simulation useful for debugging:
@@ -323,7 +342,6 @@ class Simulation(object):
         self.log.info('Total Simulation Time = %s ps' % totaltime)
         self.log.info('\tTotal NCMC time = %s ps' % (int(timeNC) * int(self.opt['nIter'])))
         self.log.info('\tTotal MD time = %s ps' % (int(timeMD) * int(self.opt['nIter'])))
-
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
@@ -423,29 +441,25 @@ class Simulation(object):
     def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
                     reporter_interval=1000, verbose=False, **opt):
         """Function that performs the NCMC simulation."""
-
-        self.log.info('[NCMC-Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
-
+        self.log.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
         #choose a move to be performed according to move probabilities
-        #TODO: will have to change to work with multiple alch regions
+        #TODO: will have to change to work with multiple alch region
         self.move_engine.selectMove()
+        move_idx = self.move_engine.selected_move
+        move_name = self.move_engine.moves[move_idx].__class__.__name__
         for nc_step in range(int(nstepsNC)):
+            start = time.time()
+            self._initialSimulationTime = self.nc_context.getState().getTime()
             try:
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
-                    self.log.info('Step = %s Performing NCMC move...' % nc_step)
+                    self.log.info('Performing %s...' % move_name)
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
 
                 # Do 1 NCMC step with the integrator
                 self.nc_integrator.step(1)
-
-                # Print out NCMC info to show progress.
-                if nc_step % reporter_interval == 0:
-                    workinfo = self.getWorkInfo(self.nc_integrator, ['step','lambda','lambda_step', 'protocol_work'])
-                    self.log.info('Step = {step}  Lambda = {lambda}  Work = {protocol_work} Lambda_step = {lambda_step}'.format(**workinfo))
-
 
                 ###DEBUG options at every NCMC step
                 if verbose:
@@ -453,11 +467,13 @@ class Simulation(object):
                     work = self.getWorkInfo(self.nc_integrator, self.work_keys)
                     self.log.debug('%s' % work)
                 if ncmc_traj:
-                    self.ncmc_reporter.report(self.nc_sim, self.nc_sim.context.getState(getPositions=True, getVelocities=True))
+                    self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
 
             except Exception as e:
                 self.log.error(e)
                 break
+
+            self._report(start, nc_step)
 
         nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
@@ -465,7 +481,7 @@ class Simulation(object):
     def simulateMD(self, nstepsMD=5000, **opt):
         """Function that performs the MD simulation."""
 
-        self.log.info('[MD-Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
+        self.log.info('[Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
 
         md_state0 = self.current_state['md']['state0']
         try:
@@ -483,6 +499,20 @@ class Simulation(object):
         # Set NC poistions to last positions from MD
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
+
+    def _report(self,start,nc_step):
+        end = time.time()
+        headers = ['Step', 'Speed (ns/day)', 'Acc. Moves', 'Iter']
+        if self.current_iter == 0 and nc_step == 0:
+            self.log.info('[NCMC] "%s"' % ('"'+'\t'+'"').join(headers))
+        if nc_step % self.opt['reporter_interval'] == 0 or nc_step+1 == self.opt['nstepsNC']:
+            elapsed = end-start
+            elapsedDays = (elapsed/86400.0)
+            elapsedNs = (self.nc_context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
+            speed = (elapsedNs/elapsedDays)
+            speed = "%.3g" % speed
+            values = [nc_step, speed, self.accept, self.current_iter]
+            self.log.info('\t\t'.join(str(v) for v in values))
 
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:

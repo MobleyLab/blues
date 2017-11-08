@@ -20,7 +20,7 @@ class BLUESTester(unittest.TestCase):
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-                'trajectory_interval' : 1, 'reporter_interval' : 1,
+                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
                 'platform' : None,
                 'verbose' : True }
 
@@ -68,7 +68,7 @@ class BLUESTester(unittest.TestCase):
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
-                'trajectory_interval' : 1, 'reporter_interval' : 1,
+                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
                 'platform' : None, 'write_ncmc' : False, 'write_move' : False,
                 'verbose' : True }
 
