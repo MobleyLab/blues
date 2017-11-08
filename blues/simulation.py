@@ -341,7 +341,6 @@ class Simulation(object):
         self.log.info('Total Simulation Time = %s ps' % totaltime)
         self.log.info('\tTotal NCMC time = %s ps' % (int(timeNC) * int(self.opt['nIter'])))
         self.log.info('\tTotal MD time = %s ps' % (int(timeMD) * int(self.opt['nIter'])))
-        self.totalNC = totalNC
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
