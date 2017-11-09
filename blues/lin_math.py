@@ -126,44 +126,6 @@ def getRotTrans(ares, bres, center):
     rot, trans, centa, centb, centroid_difference = rigid_transform_3D(ares, bres, center)
     return rot, centroid_difference
 
-def old_getRotTrans(ares, bres, center):
-    '''
-    Get rotation and translation of rigid pose
-
-    Arguments
-    ---------
-    apos: nx3 np.array
-        simulation positions
-    bpos: nx3 np.array
-        comparison positions
-    residueList
-    '''
-    rot, trans, centa, centb, centroid_difference = rigid_transform_3D(ares, bres, center)
-    return rot, centroid_difference
-
-
-def old_old_getRotTrans(apos, bpos, residueList=None):
-    '''
-    Get rotation and translation of rigid pose
-
-    Arguments
-    ---------
-    apos: nx3 np.array
-        simulation positions
-    bpos: nx3 np.array
-        comparison positions
-    residueList
-    '''
-    if type(residueList) == type(None):
-        residueList = self.residueList
-    a_new = apos[:]
-    a_res = np.zeros((len(residueList),3))
-    b_res = np.zeros((len(residueList),3))
-    for index, i in enumerate(residueList):
-        a_res[index] = apos[i]
-        b_res[index] = bpos[i]
-    rot, trans, centa, centb, centroid_difference = rigid_transform_3D(a_res, b_res)
-    return rot, centroid_difference
 
 def kabsch(p, q, center):
     """

@@ -114,7 +114,6 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
         angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
         dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
-        print('dart_angle', np.degrees(np.arccos(dart_angle)))
         return np.degrees(np.arccos(dart_angle))
     def angle_calc(angle1, angle2):
         angle = np.arccos(angle1.dot(angle2) / ( np.linalg.norm(angle1) * np.linalg.norm(angle2) ) )
@@ -128,7 +127,6 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
 
 
     vector_list = findCentralAngle(construction_table)
-    print('vector_list', vector_list)
     #find translation differences in positions of first two atoms to reference structure
     #find the appropriate rotation to transform the structure back
     #repeat for second bond
@@ -139,20 +137,14 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     dart_ref = np.zeros((3,3))
     for i in range(3):
         #sim_three[i] = binding_mode_pos[construction_table.index.get_values()[i]]
-        print('adebug', construction_table.index[i])
-        print('bdebug', binding_mode_pos[binding_mode_index][construction_table.index[i]])
         sim_three[i] = binding_mode_pos[binding_mode_index][construction_table.index[i]]
-        print('using index', binding_mode_pos[binding_mode_index][construction_table.index[i]])
         construction_table.index.get_values()[i]
         #TODO: change this to get data from Cartesian class
         ref_three[i] = binding_mode_pos[comparison_index][construction_table.index.get_values()[i]]
 
         dart_three[i] = binding_mode_pos[comparison_index][construction_table.index.get_values()[i]]
         dart_ref[i] = binding_mode_pos[comparison_index][construction_table.index.get_values()[i]]
-        print('dart3 1', dart_three)
-    print('debugging')
-    print('before sim', sim_three)
-    print('before ref', ref_three)
+
     change_three = np.copy(sim_three)
     vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
     vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
@@ -160,42 +152,23 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
 
 
     #calculate rotation from ref pos to sim pos
-    print('vec1_ref', vec1_ref)
-    print('vec1_sim', vec1_sim)
-    print('before_rotation_sim_angle', test_angle(sim_three, vector_list))
-    print('before_rotation_dart_angle', test_angle(dart_three, vector_list))
 
     #change angle of one vector
     ###edits
-    print('d1', internal_zmat[binding_mode_index]._frame['angle'])
 
     ###
     ref_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.get_values()[2]]
-    print('sim angle', np.degrees(calc_angle(vec1_sim, vec2_sim)))
-    print('ref_angle', ref_angle)
     angle_diff = ref_angle - np.degrees(calc_angle(vec1_sim, vec2_sim))
-    print('angle_diff', angle_diff)
     ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=False)
-    print('check that this is a bond length', internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.get_values()[1]])
     ad_vec = ad_vec / np.linalg.norm(ad_vec) * internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.get_values()[2]]/10.
-    print('ad_vec length', np.linalg.norm(ad_vec))
     #apply changed vector to center coordinate to get new position of first particle
-    print('change before before rot', change_three)
     rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
 
     nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.get_values()[2]]/10.
     rot_angle = np.rad2deg(np.arccos(( (np.trace(rot_mat)-1) )/2.0 ))
-    print('new angle1', np.degrees(calc_angle(ad_vec, nvec2_sim)))
     change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
     change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
-    print('change before rot', change_three)
-    print('ref_three', ref_three)
-    print('sim_three', sim_three)
-    print('change_three', change_three)
-    print('centroid movement', centroid, np.linalg.norm(centroid))
-    print('rot_mat', rot_mat)
 
-    print('rot_mat', rot_mat, 'angle', np.rad2deg(np.arccos(( (np.trace(rot_mat)-1) )/2.0 ) ))
     centroid_orig = dart_three[vector_list[0][1]]
 
     dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
@@ -207,14 +180,10 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     ####
     vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
     vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-    print('angle after centroid rotation', np.degrees(calc_angle(vec1_dart, vec2_dart)) )
     dart_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.get_values()[2]]
     angle_change = dart_angle - angle_diff
-    print('angle_change', angle_change)
 
     for i, vectors in enumerate([sim_three, ref_three, dart_three]):
-        print(i)
-        print(vectors[0],vectors[1],vectors[2])
         test_angle(vectors, vector_list)
     #get xyz from internal coordinates
 

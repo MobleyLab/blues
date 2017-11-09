@@ -6,7 +6,7 @@ import numpy as np
 import mdtraj as md
 from mdtraj.formats.xyzfile import XYZTrajectoryFile
 from mdtraj.utils import in_units_of
-from blues.lin_math import calc_rotation_matrix, adjust_angle, kabsch
+from blues.lin_math import adjust_angle, kabsch
 from blues.lin_math import getRotTrans
 from blues.moves import RandomLigandRotationMove
 import itertools
@@ -66,39 +66,12 @@ def rigidDart(apos, bpos, rot, centroid_difference, atom_indices):
         a_new[atom_indices[index]] = b_new[index]
     return a_new
 
-def calc_rotation_matrix(vec_ref, vec_target):
-    '''calculate the rotation matrix that will rotate vec_ref to vec_target
-    Arguments
-    ---------
-    vec_ref: np.array
-        Vector to calculate rotation matrix to vec_target
-    vec_target: np.array
-        Target vector to rotate to.
-    '''
-    #get normalized vectors
-    a = np.array(vec_target) / np.linalg.norm(vec_target)
-    b = np.array(vec_ref) / np.linalg.norm(vec_ref)
-    #get cross product to get norm of plane these vectors are in
-    v = np.cross(a,b)
-    vec_cos = np.inner(a,b) / (np.linalg.norm(a) * np.linalg.norm(b))
-    #create skew symmetric matrix
-    vx = np.array([[0, -v[2], v[1]],
-                    [v[2], 0, -v[1]],
-                    [-v[1], v[0], 0]
-                    ])
-    I = np.identity(3)
-    #actually calculate rotation matrix
-    R = I + vx + vx.dot(vx)*(1/(1+vec_cos))
-    return R
-
 def apply_rotation(array, rot_matrix, rotation_center):
-    print('before rotation', array)
     n_rows = np.shape(array)[0]
     sub_vec = np.tile(array[rotation_center], (n_rows,1))
     rotated_array = array - sub_vec
     rotated_array = rotated_array.dot(rot_matrix)
     rotated_array = rotated_array + sub_vec
-    print('rotated_array', rotated_array)
     return rotated_array
 
 
@@ -177,14 +150,9 @@ class MolDart(RandomLigandRotationMove):
             self.internal_zmat.append(self.internal_xyz[j].give_zmat(construction_table=self.buildlist))
 
         self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
-        print(self.binding_mode_pos)
-        print(self.buildlist.index)
-        print(self.buildlist.index[1])
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
-        print('dartself', self.darts)
-        print('binding_mode_pos', self.binding_mode_pos[0])
 
 
     def poseDart(self, context, atom_indices):
@@ -210,7 +178,6 @@ class MolDart(RandomLigandRotationMove):
             List of symmetric atoms
 
         """
-        total_diff_list = []
 
         nc_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         #update sim_traj positions for superposing binding modes
@@ -228,8 +195,6 @@ class MolDart(RandomLigandRotationMove):
 
         #fit different binding modes to current protein
         #to remove rotational changes
-        print('fit_atoms', self.fit_atoms)
-        print('ref_traj', self.ref_traj)
         self.sim_traj.superpose(reference=self.ref_traj,
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
@@ -242,9 +207,6 @@ class MolDart(RandomLigandRotationMove):
                 sel_atom = self.atom_indices[i]
                 #set the pandas series with the appropriate data
                 #multiply by 10 since openmm works in nm and cc works in angstroms
-                print(nc_pos[sel_atom])
-                print(nc_pos[sel_atom][index])
-                #print(nc_pos[:,index])
                 xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
         current_zmat = xyz_ref.give_zmat(construction_table=self.buildlist)
 
@@ -302,7 +264,6 @@ class MolDart(RandomLigandRotationMove):
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
                             )
-        self.sim_traj.save('posz.pdb')
 
         rand_index = np.random.randint(len(self.binding_mode_traj))
         ###temp to encourage going to other binding modes
@@ -320,7 +281,6 @@ class MolDart(RandomLigandRotationMove):
                 xyz_ref._frame.set_value(i, entry, (nc_pos[:,index][sel_atom]._value*10))
 
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
-        print('zmat_new', zmat_new)
         if 1:
             zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
             #get appropriate comparision zmat
@@ -375,7 +335,6 @@ class MolDart(RandomLigandRotationMove):
             angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
             angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
             dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
-            print('dart_angle', np.degrees(np.arccos(dart_angle)))
             return np.degrees(np.arccos(dart_angle))
         def angle_calc(angle1, angle2):
             angle = np.arccos(angle1.dot(angle2) / ( np.linalg.norm(angle1) * np.linalg.norm(angle2) ) )
@@ -389,7 +348,6 @@ class MolDart(RandomLigandRotationMove):
 
 
         vector_list = findCentralAngle(self.buildlist)
-        print('vector_list', vector_list)
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
@@ -401,16 +359,11 @@ class MolDart(RandomLigandRotationMove):
 
         for i in range(3):
             sim_three[i] = self.sim_traj.xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
-            print('using index', [atom_indices[self.buildlist.index.get_values()[i]]])
             self.buildlist.index.get_values()[i]
 
             ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
             dart_ref[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
-            print('dart3 1', dart_three)
-        print('debugging')
-        print('before sim', sim_three)
-        print('before ref', ref_three)
         change_three = np.copy(sim_three)
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
         vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
@@ -418,119 +371,50 @@ class MolDart(RandomLigandRotationMove):
 
 
         #calculate rotation from ref pos to sim pos
-        print('vec1_ref', vec1_ref)
-        print('vec1_sim', vec1_sim)
-        print('before_rotation_sim_angle', test_angle(sim_three, vector_list))
-        print('before_rotation_dart_angle', test_angle(dart_three, vector_list))
 
         #change angle of one vector
-        ###edits
-        print('d1', self.internal_zmat[binding_mode_index]._frame['angle'])
-
-        ###
         ref_angle = self.internal_zmat[binding_mode_index]._frame['angle'][self.buildlist.index.get_values()[2]]
-        print('sim angle', np.degrees(calc_angle(vec1_sim, vec2_sim)))
-        print('ref_angle', ref_angle)
         angle_diff = ref_angle - np.degrees(calc_angle(vec1_sim, vec2_sim))
-        print('angle_diff', angle_diff)
         ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=False)
-        print('check that this is a bond length', self.internal_zmat[binding_mode_index]._frame['bond'][self.buildlist.index.get_values()[1]])
         ad_vec = ad_vec / np.linalg.norm(ad_vec) * self.internal_zmat[binding_mode_index]._frame['bond'][self.buildlist.index.get_values()[2]]/10.
-        print('ad_vec length', np.linalg.norm(ad_vec))
         #apply changed vector to center coordinate to get new position of first particle
-        print('change before before rot', change_three)
 
         nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * self.internal_zmat[binding_mode_index]._frame['bond'][self.buildlist.index.get_values()[2]]/10.
-        print('new angle1', np.degrees(calc_angle(ad_vec, nvec2_sim)))
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
-        print('ch_three', change_three)
-        print('ref_three', ref_three)
-        print('sim_three', sim_three)
-        print('change before rot', change_three)
         rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
-        print('ref_three', ref_three)
-        print('sim_three', sim_three)
-        print('change_three', change_three)
-##        print('centroid movement', centroid, np.linalg.norm(centroid))
-        #TODO CONTINUE FROM HERE
         #perform the same angle change on new coordinate
         centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
-        print('rot_mat', rot_mat)
-##        other_rot = kabsch(change_three, ref_three, vector_list[0][1])
- ##       print('other_rot', other_rot)
-        ####
         dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
         vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-        print('angle after centroid rotation', np.degrees(calc_angle(vec1_dart, vec2_dart)) )
         dart_angle = self.internal_zmat[rand_index]._frame['angle'][self.buildlist.index.get_values()[2]]
         angle_change = dart_angle - angle_diff
-        print('angle_change', angle_change)
         if 1:
             ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
             ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
-            print(self.internal_zmat[rand_index]._frame['bond'][self.buildlist.index.get_values()[1]])
-            print('length ad_dartvec', np.linalg.norm(ad_dartvec))
             nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
-            print(self.internal_zmat[rand_index]._frame['bond'][self.buildlist.index.get_values()[2]]/10.)
-            print('length nvec2_dart', np.linalg.norm(nvec2_dart))
-            print('new angle2', np.degrees(calc_angle(ad_dartvec, nvec2_dart)))
             dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
             dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
 
-        print('dart_three after', dart_three)
 
         for i, vectors in enumerate([sim_three, ref_three, dart_three]):
-            print(i)
-            print(vectors[0],vectors[1],vectors[2])
             test_angle(vectors, vector_list)
-        print('zmat_new at end', zmat_new)
-        print('selected_lig', self.binding_mode_traj[1].xyz[0][self.atom_indices])
         zmat_new.give_cartesian_edit = types.MethodType(give_cartesian_edit, zmat_new)
         #get xyz from internal coordinates
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
-        print('xyz_new',)
 
-        #TODO make sure to sort new xyz
-
-        #overlay new xyz onto the first atom of
-#        for index, entry in enumerate(['x', 'y', 'z']):
-#            for i in range(len(self.atom_indices)):
-#                sel_atom = self.atom_indices[i]
-                #TODO from friday: set units for xyz_first_pos and then go about doing the rotation to reorient the molecule after moving
-#                print('original', nc_pos[sel_atom])
-#                nc_pos[:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.) * unit.nanometers
-#            print('putting', nc_pos[sel_atom])
-#        print('all atoms', nc_pos[self.atom_indices])
-
-###
-#        print(self.ref_traj[self.atom_indices])
-        print('self.ref_traj', self.ref_traj.xyz[0][self.atom_indices])
         for i in range(len(self.atom_indices)):
             for index, entry in enumerate(['x', 'y', 'z']):
                 sel_atom = self.atom_indices[i]
-                #TODO from friday: set units for xyz_first_pos and then go about doing the rotation to reorient the molecule after moving
-#                print('original', nc_pos[sel_atom])
-                #nc_pos[:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.) * unit.nanometers
-                #nc_pos[:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.) * unit.nanometers
                 self.sim_traj.xyz[0][:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.)
 
-        #self.sim_traj.xyz[0] = nc_pos._value
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
                 ref_atom_indices=self.fit_atoms
                 )
-        self.sim_traj.save('zz.pdb')
-        self.sim_ref.save('ww.pdb')
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
-        print('nc_pos', nc_pos)
-#            print('putting', nc_pos[sel_atom])
-        print('all atoms', nc_pos[self.atom_indices])
-###
-#need to fit ligand coordinates back in terms of the original simulation
         return nc_pos
-        #use rot and translation to dart to another pose
 
     def move(self, context):
         """
