@@ -117,6 +117,8 @@ class MolDart(RandomLigandRotationMove):
         self.rigid_move = rigid_move
         self.ref_traj = None
         self.sim_ref = None
+        self.moves_attempted = 0
+        self.times_within_dart = 0
         #chemcoords reads in xyz files only, so we need to use mdtraj
         #to get the ligand coordinates in an xyz file
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
@@ -146,7 +148,9 @@ class MolDart(RandomLigandRotationMove):
             for index, entry in enumerate(['x', 'y', 'z']):
                 for i in range(len(self.atom_indices)):
                     sel_atom = self.atom_indices[i]
-                    self.internal_xyz[j]._frame.set_value(i, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10)
+#                    self.internal_xyz[j]._frame.set_value(i, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10)
+                    self.internal_xyz[j]._frame.at[i, entry] = self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10
+                    #self.internal_xyz[j]._frame.set_value(i, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10)
             self.internal_zmat.append(self.internal_xyz[j].give_zmat(construction_table=self.buildlist))
 
         self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
@@ -207,7 +211,10 @@ class MolDart(RandomLigandRotationMove):
                 sel_atom = self.atom_indices[i]
                 #set the pandas series with the appropriate data
                 #multiply by 10 since openmm works in nm and cc works in angstroms
-                xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
+#                xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
+                xyz_ref._frame.at[i, entry] = nc_pos[sel_atom][index]._value*10
+                #xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
+
         current_zmat = xyz_ref.give_zmat(construction_table=self.buildlist)
 
         selected = checkDart(self.internal_zmat, current_pos=nc_pos[self.atom_indices]._value*10,
@@ -278,17 +285,18 @@ class MolDart(RandomLigandRotationMove):
                 sel_atom = self.atom_indices[i]
                 #set the pandas series with the appropriate data
                 #multiply by 10 since openmm works in nm and cc works in angstroms
-                xyz_ref._frame.set_value(i, entry, (nc_pos[:,index][sel_atom]._value*10))
+                xyz_ref._frame.at[i, entry] = nc_pos[:,index][sel_atom]._value*10
+
 
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         if 1:
             zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
             #get appropriate comparision zmat
             zmat_compare = self.internal_zmat[binding_mode_index]
-            change_list = ['bond', 'angle', 'dihedral']
+            #change_list = ['bond', 'angle', 'dihedral']
             #change_list = ['angle', 'dihedral']
 
-            #change_list = ['dihedral']
+            change_list = ['dihedral']
 
             if rigid_move == False:
                 for i in change_list:
@@ -433,6 +441,7 @@ class MolDart(RandomLigandRotationMove):
             The same input context, but whose positions were changed by this function.
 
         """
+        self.moves_attempted += 1
         oldDartPos = context.getState(getPositions=True).getPositions(asNumpy=True)
         selected_pose = self.poseDart(context, self.atom_indices)
         #now self.binding_mode_pos should be fitted to structure at this point
@@ -442,6 +451,8 @@ class MolDart(RandomLigandRotationMove):
             print('no pose found')
         else:
             print('yes pose found')
+            self.times_within_dart += 1
+
             #use moldRedart instead
             #calculate changes in angle/dihedral compared to reference
             #apply angle/dihedral changes to new pose

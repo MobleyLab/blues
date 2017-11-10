@@ -84,10 +84,10 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     def findCentralAngle(buildlist):
         connection_list = []
         index_list = [0,1,2]
-        for i in buildlist.index.get_values()[:3]:
+        for i in buildlist.index.values[:3]:
             connection_list.append(buildlist['b'][i])
         #count the number of bonds to the first buildatom
-        counts = connection_list.count(construction_table.index.get_values()[0])
+        counts = connection_list.count(construction_table.index.values[0])
         #if 2 then the first atom is the center atom
         if counts == 2:
             center_index = 0
@@ -136,14 +136,13 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     dart_three = np.zeros((3,3))
     dart_ref = np.zeros((3,3))
     for i in range(3):
-        #sim_three[i] = binding_mode_pos[construction_table.index.get_values()[i]]
         sim_three[i] = binding_mode_pos[binding_mode_index][construction_table.index[i]]
-        construction_table.index.get_values()[i]
+        construction_table.index.values[i]
         #TODO: change this to get data from Cartesian class
-        ref_three[i] = binding_mode_pos[comparison_index][construction_table.index.get_values()[i]]
+        ref_three[i] = binding_mode_pos[comparison_index][construction_table.index.values[i]]
 
-        dart_three[i] = binding_mode_pos[comparison_index][construction_table.index.get_values()[i]]
-        dart_ref[i] = binding_mode_pos[comparison_index][construction_table.index.get_values()[i]]
+        dart_three[i] = binding_mode_pos[comparison_index][construction_table.index.values[i]]
+        dart_ref[i] = binding_mode_pos[comparison_index][construction_table.index.values[i]]
 
     change_three = np.copy(sim_three)
     vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
@@ -157,14 +156,15 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     ###edits
 
     ###
-    ref_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.get_values()[2]]
+    ref_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.values[2]]
+
     angle_diff = ref_angle - np.degrees(calc_angle(vec1_sim, vec2_sim))
     ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=False)
-    ad_vec = ad_vec / np.linalg.norm(ad_vec) * internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.get_values()[2]]/10.
+    ad_vec = ad_vec / np.linalg.norm(ad_vec) * internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.values[2]]/10.
     #apply changed vector to center coordinate to get new position of first particle
     rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
 
-    nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.get_values()[2]]/10.
+    nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.values[2]]/10.
     rot_angle = np.rad2deg(np.arccos(( (np.trace(rot_mat)-1) )/2.0 ))
     change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
     change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
@@ -180,7 +180,7 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     ####
     vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
     vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-    dart_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.get_values()[2]]
+    dart_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.values[2]]
     angle_change = dart_angle - angle_diff
 
     for i, vectors in enumerate([sim_three, ref_three, dart_three]):

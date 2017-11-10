@@ -83,9 +83,8 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
     for i in internal_mat[0].index[3:]:
         for key, df in iteritems(diff_dict):
             for pose in df.columns[1:]:
-                if df['atom'].get_value(i) != 'H':
-                    dihedral_dict[i].append(df[pose].get_value(i))
-                    #df[pose].get_value(i)>= 0.6
+                if df['atom'].iat[i] != 'H':
+                    dihedral_dict[i].append(df[pose].loc[i])
 
     #remove redundant entries in dict
     for key, di_list in iteritems(dihedral_dict):
@@ -101,10 +100,10 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
 
     ndf = None
     entry_counter = 0
-
     for key, di_list in iteritems(dihedral_dict):
         for idx, di in enumerate(di_list):
             #temp_frame = pd.DataFrame(data=[key, di], columns=['atomnum', 'diff'])
+#            temp_frame = pd.DataFrame(data={'atomnum':key, 'diff':di}, index=[entry_counter])
             temp_frame = pd.DataFrame(data={'atomnum':key, 'diff':di}, index=[entry_counter])
             entry_counter = entry_counter +1
             if ndf is None:
@@ -131,10 +130,11 @@ def compareDihedral(internal_mat, atom_index, diff_spread, posedart_dict, inRadi
     if inRadians==True:
         diff_spread = np.rad2deg(diff_spread)
     for posenum, zmat in enumerate(internal_mat):
-        comparison = zmat['dihedral'].get_value(atom_index)
+        comparison = zmat['dihedral'].iat[atom_index]
+
         for other_posenum, other_zmat in enumerate(internal_mat):
             if posenum != other_posenum:
-                other_comparison = other_zmat['dihedral'].get_value(atom_index)
+                other_comparison = other_zmat['dihedral'].iat[atom_index]
                 result = compare_dihedral_edit(comparison, other_comparison, cutoff=diff_spread)
                 if result == 1:
                     posedart_copy['pose_'+str(posenum)]['dihedral'][atom_index].append(other_posenum)
@@ -143,7 +143,7 @@ def compareDihedral(internal_mat, atom_index, diff_spread, posedart_dict, inRadi
     return posedart_copy
 
 def fcompare_dihedral(a, b, atomnum, cutoff=80.0, construction_table=None):
-    a_di, b_di = a['dihedral'].get_value(atomnum), b['dihedral'].get_value(atomnum)
+    a_di, b_di = a['dihedral'].iat[atomnum], b['dihedral'].iat[atomnum]
 
     #originally in radians, convert to degrees
     a_dir, b_dir = np.deg2rad(a_di), np.deg2rad(b_di)
@@ -185,11 +185,9 @@ def createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage):
             last_repeat[key] = {0}-{0}
 
 
-
-
     for idx, i in list(zip(dihedral_df.index.tolist(), dihedral_df['atomnum'])):
         #updates posedart_dict with overlaps of poses for each dart
-        posedart_copy = compareDihedral(internal_mat, atom_index=i, diff_spread=dihedral_df['diff'].get_value(idx)/2.0, posedart_dict=posedart_dict)
+        posedart_copy = compareDihedral(internal_mat, atom_index=i, diff_spread=dihedral_df['diff'].iat[idx]/2.0, posedart_dict=posedart_dict)
         #checks if darts separate all poses from each other if still 0
         dart_check = 0
 
@@ -210,7 +208,7 @@ def createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage):
                 print('selected internal coordinates separate all poses')
         dboolean = 0
         for key, value in iteritems(unison_dict):
-            if last_repeat[key] is None and unison_dict[key] < len(internal_mat):
+            if last_repeat[key] is None and unison_dict[key] < len(internal_mat)-1:
                 dboolean += 1
             try:
                 if value < last_repeat[key]:
@@ -219,7 +217,7 @@ def createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage):
                 pass
         if dboolean > 0:
             posedart_dict = copy.deepcopy(posedart_copy)
-            dart_storage['dihedral'][i] = dihedral_df['diff'].get_value(idx)/2.0
+            dart_storage['dihedral'][i] = dihedral_df['diff'].iat[idx]/2.0
             for key, value in iteritems(unison_dict):
                 last_repeat[key] = unison_dict[key]
 
@@ -373,7 +371,7 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
                 if len(unison) > 0 and last_repeat[key] is not None:
                     dart_check += 1
                     last_repeat[key] = len(unison)
-                elif last_repeat[key] is None and len(unison) < len(internal_mat) and len(unison) > 0:
+                elif last_repeat[key] is None and len(unison) < len(internal_mat)-1 and len(unison) > 0:
                     dart_check += 1
                     posedart_dict = copy.deepcopy(posedart_copy)
                     #TODO decide if it should be in angles or radians
@@ -477,7 +475,7 @@ def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
                 dart_check += 1
                 last_repeat[key] = len(unison)
 
-            elif last_repeat[key] is None and len(unison) < len(internal_mat) and len(unison) > 0:
+            elif last_repeat[key] is None and len(unison) < len(internal_mat)-1 and len(unison) > 0:
                 dart_check += 1
                 posedart_dict = copy.deepcopy(posedart_copy)
                 #TODO decide if it should be in angles or radians
@@ -600,11 +598,12 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         if len(dihedral_atoms) > 0:
             for atom_index in dihedral_atoms:
                 dihedral_output[atom_index] = []
-                current_dihedral = current_internal['dihedral'].get_value(atom_index)
+                current_dihedral = current_internal['dihedral'].iat[atom_index]
 
                 for posenum, zmat in enumerate(internal_mat):
-                    comparison = zmat['dihedral'].get_value(atom_index)
+                    comparison = zmat['dihedral'].iat[atom_index]
                     dihedral_diff = abs(current_dihedral - comparison)
+
 
                     if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]):
                         dihedral_output[atom_index].append(posenum)
@@ -623,8 +622,6 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     trans_list = createTranslationDarts(combo_zmat, trans_mat, dart_storage)
 
     rot_list = compareRotation(rot_mat, combo_zmat, dart_storage)
-    #TODO: from current_internal get current_pos
-#    dihedral_output = compareDihedral(zmat_dummy, internal_mat, dart_storage)
     dihedral_output = compareDihedral(current_zmat, internal_mat, dart_storage)
 
     set_output = (addSet([dihedral_output, rot_list, trans_list]))
