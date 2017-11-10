@@ -139,8 +139,7 @@ class SimulationFactory(object):
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
-                             reporter_interval=1000, nprop=1,
-                             prop_lambda_min=0.2, prop_lambda_max=0.8,
+                             reporter_interval=1000, nprop=1, prop_lambda=0.3,
                              ncmc=False, platform=None, verbose=True,
                              **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
@@ -166,10 +165,8 @@ class SimulationFactory(object):
                                    nsteps_neq=nstepsNC,
                                    timestep=dt*unit.picoseconds,
                                    nprop=nprop,
-                                   prop_lambda_min=0.2,
-                                   prop_lambda_max=0.8
+                                   prop_lambda=prop_lambda
                                    )
-
         else:
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
@@ -318,29 +315,52 @@ class Simulation(object):
         self.setSimState('nc', 'state0', nc_state0)
 
     def _getSimulationInfo(self):
-        partNC = 0.2 / (1.0/ self.opt['nstepsNC'])
-        propNC = (partNC * 3.0) * self.opt['nprop']
-        totalNC = (partNC * 2.0) + propNC
-        timeNC = totalNC * self.opt['dt']
-        timeMD = self.opt['nstepsMD'] * self.opt['dt']
-        timetraj = self.opt['trajectory_interval'] * self.opt['dt']
-        totaltime = (timeNC + timeMD) * self.opt['nIter']
-
+        """Prints out simulation timing and related information."""
         self.log.info('Iterations = %s' % self.opt['nIter'])
         self.log.info('Timestep = %s ps' % self.opt['dt'])
         self.log.info('NCMC Steps = %s' % self.opt['nstepsNC'])
-        self.log.info('\tnprop = %s' % self.opt['nprop'])
-        self.log.info('\tLambda: 0.0 -> 0.2 = %s NCMC Steps' % partNC)
-        self.log.info('\tLambda: 0.2 -> 0.8 = %s NCMC Steps' % propNC)
-        self.log.info('\tLambda: 0.8 -> 1.0 = %s NCMC Steps' % partNC)
-        self.log.info('\t%s NCMC Steps/iter' % totalNC)
-        self.log.info('\t%s NCMC ps/iter' % timeNC)
+
+        prop_lambda = self.nc_integrator._prop_lambda
+        prop_range = round(prop_lambda[1] - prop_lambda[0],4)
+        if prop_range >= 0.0:
+            self.log.info('\tAdding {} extra propgation steps in lambda [{}, {}]'.format(self.opt['nprop'], prop_lambda[0],prop_lambda[1]))
+            #Get number of NCMC steps before extra propagation
+            normal_ncmc_steps = round(prop_lambda[0] * self.opt['nstepsNC'],4)
+
+            #Get number of NCMC steps for extra propagation
+            extra_ncmc_steps = (prop_range * self.opt['nstepsNC']) * self.opt['nprop']
+
+            self.log.info('\tLambda: 0.0 -> %s = %s NCMC Steps' % (prop_lambda[0],normal_ncmc_steps))
+            self.log.info('\tLambda: %s -> %s = %s NCMC Steps' % (prop_lambda[0],prop_lambda[1],extra_ncmc_steps))
+            self.log.info('\tLambda: %s -> 1.0 = %s NCMC Steps' % (prop_lambda[1],normal_ncmc_steps))
+
+            #Get total number of NCMC steps including extra propagation
+            total_ncmc_steps = (normal_ncmc_steps * 2.0) + extra_ncmc_steps
+            self.log.info('\t%s NCMC Steps/iter' % total_ncmc_steps)
+
+        else:
+            total_ncmc_steps = self.opt['nstepsNC']
+
+        #Total NCMC simulation time
+        time_ncmc_steps = total_ncmc_steps * self.opt['dt']
+        self.log.info('\t%s NCMC ps/iter' % time_ncmc_steps)
+
+        #Total MD simulation time
+        time_md_steps = self.opt['nstepsMD'] * self.opt['dt']
         self.log.info('MD Steps = %s' % self.opt['nstepsMD'])
-        self.log.info('\t%s MD ps/iter' % timeMD)
-        self.log.info('\tTrajectory Interval = %s ps' % timetraj)
+        self.log.info('\t%s MD ps/iter' % time_md_steps)
+
+        #Total BLUES simulation time
+        totaltime = (time_ncmc_steps + time_md_steps) * self.opt['nIter']
         self.log.info('Total Simulation Time = %s ps' % totaltime)
-        self.log.info('\tTotal NCMC time = %s ps' % (int(timeNC) * int(self.opt['nIter'])))
-        self.log.info('\tTotal MD time = %s ps' % (int(timeMD) * int(self.opt['nIter'])))
+        self.log.info('\tTotal NCMC time = %s ps' % (int(time_ncmc_steps) * int(self.opt['nIter'])))
+        self.log.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(self.opt['nIter'])))
+
+        #Get trajectory frame interval timing for BLUES simulation
+        frame_iter = self.opt['nstepsMD'] / self.opt['trajectory_interval']
+        timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
+        self.log.info('\tTrajectory Interval = %s ps' % timetraj_frame)
+        self.log.info('\t\t%s frames/iter' % frame_iter )
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
