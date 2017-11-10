@@ -69,8 +69,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
                  measure_heat=True,
                  nsteps_neq=100,
                  nprop=1,
-                 prop_lambda_min=0.2,
-                 prop_lambda_max=0.8,
+                 prop_lambda=0.3,
                  *args, **kwargs):
         """
         Parameters
@@ -110,6 +109,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
                                                                nsteps_neq=nsteps_neq
                                                                )
 
+        self._prop_lambda = self._get_prop_lambda(prop_lambda)
+
         # add some global variables relevant to the integrator
         kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
         kT = kB * temperature
@@ -118,17 +119,27 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("first_step", 0)
         self.addGlobalVariable("nprop", nprop)
         self.addGlobalVariable("prop", 1)
-        self.addGlobalVariable("prop_lambda_min", prop_lambda_min)
-        self.addGlobalVariable("prop_lambda_max", prop_lambda_max)
+        self.addGlobalVariable("prop_lambda_min", self._prop_lambda[0])
+        self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
         self._registered_step_types['H'] = (self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
-
-
 
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
             self.addGlobalVariable('shadow_work', 0)
+
+    def _get_prop_lambda(self, prop_lambda):
+        prop_lambda_max = round(prop_lambda + 0.5,4)
+        prop_lambda_min = round(0.5 - prop_lambda,4)
+        prop_range = prop_lambda_max - prop_lambda_min
+
+        #Set values to outside [0, 1.0] to skip IfBlock
+        if prop_range <= 0.0:
+            prop_lambda_min = 2.0
+            prop_lambda_max = -1.0
+
+        return prop_lambda_min, prop_lambda_max
 
     def _add_integrator_steps(self):
         """
