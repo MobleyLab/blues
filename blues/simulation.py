@@ -152,6 +152,13 @@ class SimulationFactory(object):
         opt : optional parameters (i.e. cutoffs/constraints)
         atom_indices : list
             Atom indicies of the move.
+        prop_lambda : float (Default = 0.3)
+            Defines the region in which to add extra propagation
+            steps during the NCMC simulation from the midpoint 0.5.
+            i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.
+        nprop : int (Default: 1)
+            Controls the number of propagation steps to add in the lambda
+            region defined by `prop_lambda`
         """
         if ncmc:
             #During NCMC simulation, lambda parameters are controlled by function dict below
