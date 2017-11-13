@@ -97,6 +97,13 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             Accumulate the heat exchanged with the bath in each step, in the global `heat`
         nsteps_neq : int, default: 100
             Number of steps in nonequilibrium protocol. Default 100
+        prop_lambda : float (Default = 0.3)
+            Defines the region in which to add extra propagation
+            steps during the NCMC simulation from the midpoint 0.5.
+            i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.
+        nprop : int (Default: 1)
+            Controls the number of propagation steps to add in the lambda
+            region defined by `prop_lambda`.
         """
 
         # call the base class constructor
