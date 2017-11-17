@@ -6,7 +6,7 @@ Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley 
+Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
@@ -363,7 +363,7 @@ class SideChainMove(object):
         res_choice = random.choice(list(self.rot_atoms.keys()))
         bond_choice = random.choice(list(self.rot_atoms[res_choice].keys()))
         targetatoms = self.rot_atoms[res_choice][bond_choice]
-        theta_ran = random.random()*2*math.pi
+        theta_ran = random.random()*2*math.pi-math.pi
 
         return theta_ran, targetatoms, res_choice, bond_choice
 
