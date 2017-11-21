@@ -252,6 +252,7 @@ class Simulation(object):
         self.accept = 0
         self.reject = 0
         self.accept_ratio = 0
+        self.move_ct = 0
 
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
@@ -540,6 +541,27 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
+    def evalDihedral(self, pdb, positions):
+        traj = mdtraj.load(pdb)
+        traj.xyz = np.asarray(positions)
+        indices = np.array([[1733, 1735, 1737, 1739]])
+        dihedralangle = mdtraj.compute_dihedrals(traj, indices)
+        if -1.3 <= dihedralangle <= -0.9:
+            eval = True
+        elif -2.93482 <= dihedralangle <= -3.14159:
+            eval = True
+        elif 0.9 <= dihedralangle <= 1.3:
+            eval = True
+        elif 2.96 <= dihedralangle <= 3.14159:
+            eval = True
+        else:
+            eval = False
+        if eval == False:
+            print("no ncmc --> dihedral not ok")
+        if eval == True:
+            print("Dihedral ok --> NCMC proceed")
+        return(eval)
+
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
@@ -549,15 +571,22 @@ class Simulation(object):
         self._getSimulationInfo()
         #set inital conditions
         self.setStateConditions()
-        for n in range(int(nIter)):
-            self.current_iter = int(n)
-            self.setStateConditions()
-            self.simulateNCMC(**self.opt)
-            self.acceptRejectNCMC(**self.opt)
+
+        #
+        while self.move_ct <= nIter:
+            self.current_iter = int(self.move_ct)
+            positions = self.nc_context.getState(getPositions=True).getPositions(asNumpy=True)
+            if self.evalDihedral('protein.pdb', positions):
+            #for n in range(int(nIter)):
+                #self.current_iter = int(n)
+                self.setStateConditions()
+                self.simulateNCMC(**self.opt)
+                self.acceptRejectNCMC(**self.opt)
+                self.move_ct += 1
             self.simulateMD(**self.opt)
 
         # END OF NITER
-        self.accept_ratio = self.accept/float(nIter)
+        self.accept_ratio = self.accept/float(self.mv_ct)
         self.log.info('Acceptance Ratio: %s' % self.accept_ratio)
         self.log.info('nIter: %s ' % nIter)
 
@@ -589,6 +618,8 @@ class Simulation(object):
             self.md_sim.context.setPositions(md_state0['positions'])
         self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
+
+
 
     def runMC(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:

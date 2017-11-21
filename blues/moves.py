@@ -413,50 +413,95 @@ class SideChainMove(object):
 
         positions = model.positions
 
-        # find the rotation axis using the updated positions
-        axis1 = target_atoms[0]
-        axis2 = target_atoms[1]
-        rot_axis = (positions[axis1] - positions[axis2])/positions.unit
+        ##*** to test of rotamer biasing of valine improves acceptance
+        # Retrieve current rotamer angle
+        dihedralatoms = np.array([[1733, 1735, 1737, 1739]])
+        dihedralangle = getDihedral('protein.pdb',dihedralatoms,initial_positions)
+        print("This is the current dihedral angle:", dihedralangle)
 
-        #calculate the rotation matrix
-        rot_matrix = self.rotation_matrix(rot_axis, theta)
+        # set while attribute for rotamer as true or false
+        rotamerOK = False
+        moveOK = False
+        # check if current rotamer position within designated ranges
+        # This should ultimately be written as a function that takes in the residue identity (ie valine)
+        # and bond and then refers to a library of rotamers for that particular residue/bond
+        if -2.00 <= dihedralangle <= -0.44:
+            rotamerOK = True
+        elif -2.88 <= dihedralangle <= -3.14159:
+            rotamerOK = True
+        elif 0.52 <= dihedralangle <= 2.007:
+            rotamerOK = True
+        elif 2.356 <= dihedralangle <= 3.14159:
+            rotamerOK = True
 
-        # apply the rotation matrix to the target atoms
-        for idx, atom in enumerate(target_atoms):
+        # check if current position plus proposed theta is within distribution
+        # this should also be simplified to use the rotamer checking function (to be written)  described above
+        if rotamerOK:
+            my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
+            moveOK = False
+            while moveOK == False:
+                proposed = math.degrees(dihedralangle + my_theta)
+            # if not within rotamer distribution, generate new theta
+                if -1.3 <= proposed <= -0.9:
+                    moveOK = True
+                elif -2.93482 <= proposed <= -3.14159:
+                    moveOK = True
+                elif 0.9 <= proposed <= 1.3:
+                    moveOK = True
+                elif 2.96 <= proposed <= 3.14159:
+                    moveOK = True
+                else:
+                    if verbose: print("Proposed theta rejected",my_theta)
+                    my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
 
-            my_position = positions[atom]
+            print('This is the accepted theta', my_theta)
 
-            if verbose: print('The current position for %i is: %s'%(atom, my_position))
+        if rotamerOK and moveOK:
+            print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
+            # find the rotation axis using the updated positions
+            axis1 = target_atoms[0]
+            axis2 = target_atoms[1]
+            rot_axis = (positions[axis1] - positions[axis2])/positions.unit
 
-            # find the reduced position (substract out axis)
-            red_position = (my_position - model.positions[axis2])._value
-            # find the new positions by multiplying by rot matrix
-            new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
+            #calculate the rotation matrix
+            rot_matrix = self.rotation_matrix(rot_axis, theta)
 
-            if verbose: print("The new position should be:",new_position)
+            # apply the rotation matrix to the target atoms
+            for idx, atom in enumerate(target_atoms):
 
-            positions[atom] = new_position
-            # Update the parmed model with the new positions
-            model.atoms[atom].xx = new_position[0]/positions.unit
-            model.atoms[atom].xy = new_position[1]/positions.unit
-            model.atoms[atom].xz = new_position[2]/positions.unit
+                my_position = positions[atom]
 
-            #update the copied ncmc context array with the new positions
-            nc_positions[atom][0] = model.atoms[atom].xx*nc_positions.unit/10
-            nc_positions[atom][1] = model.atoms[atom].xy*nc_positions.unit/10
-            nc_positions[atom][2] = model.atoms[atom].xz*nc_positions.unit/10
+                if verbose: print('The current position for %i is: %s'%(atom, my_position))
 
-            if verbose: print('The updated position for this atom is:', model.positions[atom])
+                # find the reduced position (substract out axis)
+                red_position = (my_position - model.positions[axis2])._value
+                # find the new positions by multiplying by rot matrix
+                new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
 
-        # update the actual ncmc context object with the new positions
-        nc_context.setPositions(nc_positions)
+                if verbose: print("The new position should be:",new_position)
 
-        # update the class structure positions
-        self.structure.positions = model.positions
+                positions[atom] = new_position
+                # Update the parmed model with the new positions
+                model.atoms[atom].xx = new_position[0]/positions.unit
+                model.atoms[atom].xy = new_position[1]/positions.unit
+                model.atoms[atom].xz = new_position[2]/positions.unit
 
-        if verbose:
-            filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
-            mod_prot = model.save(filename, overwrite = True)
+                #update the copied ncmc context array with the new positions
+                nc_positions[atom][0] = model.atoms[atom].xx*nc_positions.unit/10
+                nc_positions[atom][1] = model.atoms[atom].xy*nc_positions.unit/10
+                nc_positions[atom][2] = model.atoms[atom].xz*nc_positions.unit/10
+
+                if verbose: print('The updated position for this atom is:', model.positions[atom])
+
+            # update the actual ncmc context object with the new positions
+            nc_context.setPositions(nc_positions)
+
+            # update the class structure positions
+            self.structure.positions = model.positions
+
+            if verbose:
+                filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
+                mod_prot = model.save(filename, overwrite = True)
         return nc_context
 
 class CombinationMove(Move):
