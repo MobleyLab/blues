@@ -569,19 +569,18 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
-    def evalDihedral(self, positions):
-        topology = mdtraj.Topology.from_openmm(self.md_sim.topology)
-        traj = mdtraj.Trajectory(np.asarray(positions),topology)
-        #traj.xyz = np.asarray(positions)
-        indices = np.array([[0,4,6,8]])
+   def evalDihedral(self, pdb, positions):
+        traj = mdtraj.load(pdb)
+        traj.xyz = np.asarray(positions)
+        indices = np.array([[1733, 1735, 1737, 1739]])
         dihedralangle = mdtraj.compute_dihedrals(traj, indices)
         if -1.3 <= dihedralangle <= -0.9:
             eval = True
-        elif -2.94159 <= dihedralangle <= -3.14159:
+        elif -2.93482 <= dihedralangle <= -3.14159:
             eval = True
         elif 0.9 <= dihedralangle <= 1.3:
             eval = True
-        elif 2.94159 <= dihedralangle <= 3.14159:
+        elif 2.96 <= dihedralangle <= 3.14159:
             eval = True
         else:
             eval = False
@@ -589,7 +588,6 @@ class Simulation(object):
             print("no ncmc --> dihedral not ok")
         if eval == True:
             print("Dihedral ok --> NCMC proceed")
-            print("In the simulation.py script, this is the dihedral angle %f" %(dihedralangle))
         return(eval)
 
     def run(self, nIter=100):
@@ -603,10 +601,10 @@ class Simulation(object):
         self.setStateConditions()
 
         #
-        while self.accept <= nIter:
+        while self.move_ct <= nIter:
             self.current_iter = int(self.move_ct)
             positions = self.nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-            if self.evalDihedral(positions):
+            if self.evalDihedral('protein.pdb', positions):
             #for n in range(int(nIter)):
                 #self.current_iter = int(n)
                 self.setStateConditions()
@@ -616,7 +614,7 @@ class Simulation(object):
             self.simulateMD(**self.opt)
 
         # END OF NITER
-        self.accept_ratio = self.accept/float(self.move_ct)
+        self.accept_ratio = self.accept/float(self.mv_ct)
         self.log.info('Acceptance Ratio: %s' % self.accept_ratio)
         self.log.info('nIter: %s ' % nIter)
 
