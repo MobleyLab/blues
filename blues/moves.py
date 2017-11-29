@@ -507,7 +507,7 @@ class SideChainMove(Move):
         ##*** to test of rotamer biasing of valine improves acceptance
         # Retrieve current rotamer angle
         dihedralatoms = np.array([[1733, 1735, 1737, 1739]])
-        dihedralangle = getDihedral('protein.pdb',dihedralatoms,initial_positions)
+        dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
         print("This is the current dihedral angle:", dihedralangle)
 
         # set while attribute for rotamer as true or false
