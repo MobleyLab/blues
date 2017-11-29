@@ -380,6 +380,12 @@ class SideChainMove(object):
                          [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
+    def getDihedral(self, positions, atomlist):
+        """This function computes the dihedral angle for the given atoms at the given positions"""
+        top = self.structure.topology
+        traj = mdtraj.Trajectory(np.asarray(positions),top)
+        angle = mdtraj.compute_dihedrals(traj, atomlist)
+        return angle
 
     def move(self, nc_context, verbose=False):
         """This rotates the target atoms around a selected bond by angle theta and updates
@@ -388,7 +394,7 @@ class SideChainMove(object):
 
         # determine the axis, theta, residue, and bond + atoms to be rotated
         theta, target_atoms, res, bond = self.chooseBondandTheta()
-        print('Rotating bond: %s in resnum: %s by %.2f radians' %(bond, res, theta))
+        #print('Rotating bond: %s in resnum: %s by %.2f radians' %(bond, res, theta))
 
         #retrieve the current positions
         initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
@@ -416,7 +422,7 @@ class SideChainMove(object):
         ##*** to test of rotamer biasing of valine improves acceptance
         # Retrieve current rotamer angle
         dihedralatoms = np.array([[1733, 1735, 1737, 1739]])
-        dihedralangle = getDihedral('protein.pdb',dihedralatoms,initial_positions)
+        dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
         print("This is the current dihedral angle:", dihedralangle)
 
         # set while attribute for rotamer as true or false
