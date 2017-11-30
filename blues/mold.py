@@ -291,12 +291,14 @@ class MolDart(RandomLigandRotationMove):
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         if 1:
             zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
+            zmat_traj = copy.deepcopy(xyz_ref.give_zmat(construction_table=self.buildlist))
             #get appropriate comparision zmat
             zmat_compare = self.internal_zmat[binding_mode_index]
             #change_list = ['bond', 'angle', 'dihedral']
             #change_list = ['angle', 'dihedral']
 
             change_list = ['dihedral']
+            old_list = ['bond', 'angle']
 
             if rigid_move == False:
                 for i in change_list:
@@ -306,6 +308,9 @@ class MolDart(RandomLigandRotationMove):
                     zmat_new._frame[i] = zmat_diff._frame[i] + zmat_new._frame[i]
             else:
                 pass
+
+            for param in old_list:
+                zmat_new._frame[param] = zmat_traj._frame[param]
 
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
