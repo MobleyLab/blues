@@ -481,11 +481,14 @@ class Simulation(object):
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
+
                     #Do move
                     self.log.info('Performing %s...' % move_name)
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    if ncmc_traj:
+                        self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
 
-                # Do 1 NCMC step with the integrator
+
                 self.nc_integrator.step(1)
 
                 ###DEBUG options at every NCMC step

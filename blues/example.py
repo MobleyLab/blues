@@ -25,7 +25,7 @@ import logging
 def runNCMC(platform_name, nstepsNC, nprop, outfname):
 
     #Generate the ParmEd Structure
-    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
+    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')
     inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
     struct = parmed.load_file(prmtop, xyz=inpcrd)
     print('Structure: %s' % struct.topology)
