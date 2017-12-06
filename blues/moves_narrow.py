@@ -421,7 +421,7 @@ class SideChainMove(object):
 
         ##*** to test of rotamer biasing of valine improves acceptance
         # Retrieve current rotamer angle
-        dihedralatoms = np.array([[1735, 1737, 1739, 1741]])
+        dihedralatoms = np.array([[1733, 1735, 1737, 1739]])
         dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
         print("This is the current dihedral angle:", dihedralangle)
 
@@ -511,7 +511,7 @@ class SideChainMove(object):
         return nc_context
 
 class CombinationMove(Move):
-    """Move object that allows Move object moves to be performed according to.
+    """Move object that allows Move object moves to be performed according to
     the order in move_list.
     To ensure detailed balance, the moves have an equal chance to be performed
     in listed or reverse order.
@@ -824,19 +824,136 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        context : openmm.context object
-        OpenMM context whose positions should be moved.
-        """
-        rand_num = np.random.choice(len(self.probs), p=self.probs)
-        try:
-            new_context = self.moves[rand_num].move(context)
-        except Exception as e:
-            #In case the move isn't properly implemented, print out useful info
-            print('Error: move not implemented correctly, printing traceback:')
-            ex_type, ex, tb = sys.exc_info()
-            traceback.print_tb(tb)
-            print(e)
-            raise SystemExit
+        a: 3x3 np.array
+            Defines vectors that will create the new basis.
+        b: 1x3 np.array
+            Defines position of particle to be transformed into
+            new basis set.
+        Returns
+        -------
+        changed_coord: 1x3 np.array
+            Coordinates of b in new basis.
 
-        return new_context
->>>>>>> Added sidechain move class
+        """
+
+        ainv = np.linalg.inv(a.T)
+        changed_coord = np.dot(ainv,b.T)*unit.nanometers
+        return changed_coord
+
+    def _undoBasis(self, a, b):
+        """
+        Transforms positions in a transformed basis (b) to the regular
+        basis set. Used to transform the dart positions in the local
+        coordinate basis set to the cartesian basis set.
+
+        Parameters
+        ----------
+        a: 3x3 np.array
+            Defines vectors that defined the new basis.
+        b: 1x3 np.array
+            Defines position of particle to be transformed into
+            regular basis set.
+        Returns
+        -------
+        changed_coord: 1x3 np.array
+            Coordinates of b in new basis.
+        """
+
+        a = a.T
+        changed_coord = np.dot(a,b.T)*unit.nanometers
+        return changed_coord
+
+    def _normalize(self, vector):
+        """Normalize a given vector
+
+        Parameters
+        ----------
+        vector: 1xn np.array
+            Vector to be normalized.
+        Returns
+        -------
+        unit_vec: 1xn np.array
+            Normalized vector.
+
+        """
+
+        magnitude = np.sqrt(np.sum(vector*vector))
+        unit_vec = vector / magnitude
+        return unit_vec
+
+    def _localCoord(self, particle1, particle2, particle3):
+        """
+        Defines a new coordinate system using 3 particles
+        returning the new basis set vectors
+
+        Parameters
+        ----------
+        particle1, particle2, particle3: 1x3 np.array
+            np.array corresponding to a given particle's positions
+
+        Returns
+        -------
+        vec1, vec2, vec3: 1x3 np.array
+            Basis vectors of the coordinate system defined
+            by particles1-3.
+
+        """
+
+        part2 = particle2 - particle1
+        part3 = particle3 - particle1
+        vec1 = part2
+        vec2= part3
+        vec3 = np.cross(vec1,vec2)*unit.nanometers
+        return vec1, vec2, vec3
+
+    def _findNewCoord(self, particle1, particle2, particle3, center):
+        """
+        Finds the coordinates of a given center in the standard basis
+            in terms of a new basis defined by particles1-3
+
+        Parameters
+        ----------
+        particle1, particle2, particle3: 1x3 np.array
+            np.array corresponding to a given particle's positions
+        center: 1x3 np.array * simtk.unit compatible with simtk.unit.nanometers
+            Coordinate of the center of mass in the standard basis set.
+
+        """
+
+        #calculate new basis set
+        vec1, vec2, vec3 = self._localCoord(particle1, particle2, particle3)
+        basis_set = np.zeros((3,3))*unit.nanometers
+        basis_set[0] = vec1
+        basis_set[1] = vec2
+        basis_set[2] = vec3
+        #since the origin is centered at particle1 by convention
+        #subtract to account for this
+        recenter = center - particle1
+        #find coordinate in new coordinate system
+        new_coord = self._changeBasis(basis_set, recenter)
+        return new_coord
+
+    def _findOldCoord(self, particle1, particle2, particle3, center):
+        """
+        Finds the coordinates of a given center (defined by a different basis
+        given by particles1-3) back in the euclidian coordinates
+
+        Parameters
+        ----------
+        particle1, particle2, particle3: 1x3 np.array
+            np.array corresponding to a given particle's positions
+        center: 1x3 np.array * simtk.unit compatible with simtk.unit.nanometers
+            Coordinate of the center of mass in the non-standard basis set.
+
+        """
+
+        vec1, vec2, vec3 = self._localCoord(particle1, particle2, particle3)
+        basis_set = np.zeros((3,3))*unit.nanometers
+        basis_set[0] = vec1
+        basis_set[1] = vec2
+        basis_set[2] = vec3
+        #since the origin is centered at particle1 by convention
+        #subtract to account for this
+        old_coord = self._undoBasis(basis_set, center)
+        adjusted_center = old_coord + particle1
+        return adjusted_center

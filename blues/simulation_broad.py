@@ -105,6 +105,7 @@ class SimulationFactory(object):
         #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, annihilate_electrostatics=True, annihilate_sterics=True)
         alch_system = factory.create_alchemical_system(system, alch_region)
 
+
         if freeze_distance:
             #Atom selection for zeroing protein atom masses
             mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance,freeze_solvent))
@@ -547,13 +548,13 @@ class Simulation(object):
         #traj.xyz = np.asarray(positions)
         indices = np.array([[1735, 1737, 1739, 1741]])
         dihedralangle = mdtraj.compute_dihedrals(traj, indices)
-        if -1.3 <= dihedralangle <= -0.9:
+        if -2.00 <= dihedralangle <= -0.44:
             eval = True
-        elif -2.93482 <= dihedralangle <= -3.14159:
+        elif -2.88 <= dihedralangle <= -3.14159:
             eval = True
-        elif 0.9 <= dihedralangle <= 1.3:
+        elif 0.52 <= dihedralangle <= 2.007:
             eval = True
-        elif 2.96 <= dihedralangle <= 3.14159:
+        elif 2.356 <= dihedralangle <= 3.14159:
             eval = True
         else:
             eval = False
@@ -583,10 +584,8 @@ class Simulation(object):
                 self.setStateConditions()
                 self.simulateNCMC(**self.opt)
                 self.acceptRejectNCMC(**self.opt)
-                self.move_ct += 1
             self.simulateMD(**self.opt)
             self.move_ct += 1
-
         # END OF NITER
         self.accept_ratio = self.accept/float(self.move_ct)
         self.log.info('Acceptance Ratio: %s' % self.accept_ratio)
