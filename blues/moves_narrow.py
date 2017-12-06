@@ -421,7 +421,7 @@ class SideChainMove(object):
 
         ##*** to test of rotamer biasing of valine improves acceptance
         # Retrieve current rotamer angle
-        dihedralatoms = np.array([[1735, 1737, 1739, 1741]])
+        dihedralatoms = np.array([[1733, 1735, 1737, 1739]])
         dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
         print("This is the current dihedral angle:", dihedralangle)
 

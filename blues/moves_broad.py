@@ -448,13 +448,13 @@ class SideChainMove(object):
             while moveOK == False:
                 proposed = math.degrees(dihedralangle + my_theta)
             # if not within rotamer distribution, generate new theta
-                if -1.3 <= proposed <= -0.9:
+                if -2.0 <= proposed <= -0.44:
                     moveOK = True
-                elif -2.93482 <= proposed <= -3.14159:
+                elif -2.88 <= proposed <= -3.14159:
                     moveOK = True
-                elif 0.9 <= proposed <= 1.3:
+                elif 0.52 <= proposed <= 2.007:
                     moveOK = True
-                elif 2.96 <= proposed <= 3.14159:
+                elif 2.356 <= proposed <= 3.14159:
                     moveOK = True
                 else:
                     if verbose: print("Proposed theta rejected",my_theta)
