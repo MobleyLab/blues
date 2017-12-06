@@ -39,91 +39,6 @@ class Move(object):
         Currently empy.
         """
 
-    def initializeSystem(self, system, integrator):
-        """If the system or integrator needs to be modified to perform the move
-        (ex. adding a force) this method is called during the start
-        of the simulation to change the system or integrator to accomodate that.
-
-        Parameters
-        ----------
-        system : simtk.openmm.System object
-            System to be modified.
-        integrator : simtk.openmm.Integrator object
-            Integrator to be modified.
-        Returns
-        -------
-        system : simtk.openmm.System object
-            The modified System object.
-        integrator : simtk.openmm.Integrator object
-            The modified Integrator object.
-
-        """
-        new_sys = system
-        new_int = integrator
-        return new_sys, new_int
-
-    def beforeMove(self, context):
-        """This method is called at the start of the NCMC portion if the
-        context needs to be checked or modified before performing the move
-        at the halfway point.
-
-        Parameters
-        ----------
-        context: simtk.openmm.Context object
-            Context containing the positions to be moved.
-
-        Returns
-        -------
-        context: simtk.openmm.Context object
-            The same input context, but whose context were changed by this function.
-
-        """
-        return context
-        
-    def afterMove(self, context):
-        """This method is called at the end of the NCMC portion if the
-        context needs to be checked or modified before performing the move
-        at the halfway point.
-
-        Parameters
-        ----------
-        context: simtk.openmm.Context object
-            Context containing the positions to be moved.
-
-        Returns
-        -------
-        context: simtk.openmm.Context object
-            The same input context, but whose context were changed by this function.
-
-        """
-
-        return context
-        
-    def _error(self, context):
-        """This method is called if running during NCMC portion results
-        in an error. This allows portions of the context, such as the
-        context parameters that would not be fixed by just reverting the
-        positions/velocities of the context.
-
-        Parameters
-        ----------
-        context: simtk.openmm.Context object
-            Context containing the positions to be moved.
-
-        Returns
-        -------
-        context: simtk.openmm.Context object
-            The same input context, but whose context were changed by this function.
-
-        """
-
-        return context
-
-    def move(self, context):
-        return context
-
-
-
 class RandomLigandRotationMove(Move):
     """Move that provides methods for calculating properties on the
     object 'model' (i.e ligand) being perturbed in the NCMC simulation.
@@ -269,7 +184,7 @@ class RandomLigandRotationMove(Move):
         self.positions = positions[self.atom_indices]
         return context
 
-class SideChainMove(Move):
+class SideChainMove(object):
     """Move that provides methods for:
         1. calculating the properties needed to rotate a sidechain residue
         of a structure in the NCMC simulation
@@ -506,7 +421,7 @@ class SideChainMove(Move):
 
         ##*** to test of rotamer biasing of valine improves acceptance
         # Retrieve current rotamer angle
-        dihedralatoms = np.array([[1735, 1737, 1739, 1741]])
+        dihedralatoms = np.array([[1733, 1735, 1737, 1739]])
         dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
         print("This is the current dihedral angle:", dihedralangle)
 
