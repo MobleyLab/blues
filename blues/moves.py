@@ -107,7 +107,7 @@ class RandomLigandRotationMove(Move):
         Returns a list of masses of the specified ligand atoms.
 
         Parameters
-        ----------
+	----------
         topology: parmed.Topology
             ParmEd topology object containing atoms of the system.
 
@@ -459,6 +459,169 @@ class SideChainMove(object):
             mod_prot = model.save(filename, overwrite = True)
         return nc_context
 
+class RotatableBondMove(object):
+    """
+       Edited by Sukanya
+       Move that provides methods for:
+        1. calculating the properties needed to rotate a rotatable bond
+        of a structure in the NCMC simulation
+        2. Executing a rotation of a random 'rotatable' bond in the designated 
+        small molecule by a random angle of rotation: 'theta'
+
+        Calculated properties include: needs to be updated **** 
+
+        The class contains functions to randomly select a bond and angle to be rotated
+        and applies a rotation matrix to the target atoms to update their coordinates"""
+  
+    def __init__(self, structure, prmtop, dihedral_atoms, resname='LIG'): 
+        """Initialize the model.
+        Parameters
+        ----------
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the relevant system to be moved.
+        prmtop: prmtop file
+            This is a quick fix for now to generate a stripped prmtop.
+        dihedral_atoms: an array of characters
+            Contains the four atoms defining the dihedral angle
+
+        """
+        self.structure = structure
+        self.molecule = self._pmdStructureToOEMol(prmtop)
+        self.atom_indices = self.getAtomIndices(structure, self.resname)
+        self.dihedral_atoms = dihedral_atoms
+        self.positions = structure[self.atom_indices].positions
+
+    def _pmdStructureToOEMol(self, prmtop, resname):
+
+        from oeommtools.utils import openmmTop_to_oemol
+        pos = self.positions
+        structure_LIG = parmed.load_file(prmtop)
+        structure_LIG.positions = pos
+        mask = "!(:%s)" %resname
+        structure_LIG.strip(mask)
+        top = structure_LIG.topology
+        molecule = openmmTop_to_oemol(top, pos, verbose=False)
+        OEPerceiveBondOrders(molecule)
+        OEAssignAromaticFlags(molecule)
+        OEFindRingAtomsAndBonds(molecule)
+
+        return molecule
+         
+    def getAtomIndices(self, structure, resname):
+        """
+        Get atom indices of a ligand from ParmEd Structure.
+        Arguments
+        ---------
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the atoms to be moved.
+        Returns
+        -------
+        atom_indices : list of ints
+            list of atoms in the coordinate file matching lig_resname
+        """
+#       TODO: Add option for resnum to better select residue names
+        atom_indices = []
+        topology = structure.topology
+        for atom in topology.atoms():
+            if str(resname) in atom.residue.name:
+                atom_indices.append(atom.index)
+        return atom_indices
+
+    def move(self, context):
+        """Function that performs a random rotation about the
+        center of mass of the ligand.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+
+        self.positions = positions[self.atom_indices]
+#        self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
+#        reduced_pos = self.positions - self.center_of_mass
+
+        # Define random torsional move on the ligand
+        rand_torsion = random.randrange ( - math.pi, math.pi )
+        print(OEGetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12"))) )
+        OESetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12")), 2) 
+        print(OEGetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12"))) )
+
+        # Update ligand positions in nc_sim
+        updated_pos = self.molecule.GetCoords()
+            
+        for index, atomidx in enumerate(self.atom_indices):
+            positions[atomidx] = rot_move[index]
+        context.setPositions(positions)
+#        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+#        self.positions = positions[self.atom_indices]
+        return context
+
+
+'''
+    def _pmdStructureToOEMol(self):
+
+        from oeommtools.utils import openmmTop_to_oemol
+        top = self.structure.topology
+        pos = self.structure.positions
+        molecule = openmmTop_to_oemol(top, pos, verbose=False)
+        OEPerceiveResidues(molecule, OEPreserveResInfo_All)
+        OEPerceiveResidues(molecule)
+        OEFindRingAtomsAndBonds(molecule)
+
+        return molecule
+
+    def __init__(self, structure, resname='LIG'):
+        """Initialize the model.
+        Parameters
+        ----------
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the relevant system to be moved.
+        """
+
+        self.resname = resname
+        self.atom_indices = self.getAtomIndices(structure, self.resname)
+        self.topology = structure[self.atom_indices].topology
+        self.totalmass = 0
+        self.masses = []
+
+        self.center_of_mass = None
+        self.positions = structure[self.atom_indices].positions
+
+    def getAtomIndices(self, structure, resname):
+        """
+        Get atom indices of a ligand from ParmEd Structure.
+        Arguments
+        ---------
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the atoms to be moved.
+        Returns
+        -------
+        atom_indices : list of ints
+            list of atoms in the coordinate file matching lig_resname
+        """
+#       TODO: Add option for resnum to better select residue names
+        atom_indices = []
+        topology = structure.topology
+        for atom in topology.atoms():
+            if str(resname) in atom.residue.name:
+                atom_indices.append(atom.index)
+        return atom_indices
+'''
 class CombinationMove(Move):
     """Move object that allows Move object moves to be performed according to
     the order in move_list.
