@@ -553,75 +553,27 @@ class RotatableBondMove(object):
 
         # Define random torsional move on the ligand
         rand_torsion = random.randrange ( - math.pi, math.pi )
-        print(OEGetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12"))) )
-        OESetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12")), 2) 
-        print(OEGetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12"))) )
+        atom1 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[0]))
+        atom2 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[0]))
+        atom3 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[0]))
+        atom4 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[0]))
+        print(OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4 )) 
+        OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) 
+        print(OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4 )) 
+#        print(OEGetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12"))) )
+#        OESetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12")), 2) 
+#        print(OEGetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12"))) )
 
         # Update ligand positions in nc_sim
         updated_pos = self.molecule.GetCoords()
             
         for index, atomidx in enumerate(self.atom_indices):
-            positions[atomidx] = rot_move[index]
+            positions[atomidx] = updated_pos[index]
         context.setPositions(positions)
 #        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
 #        self.positions = positions[self.atom_indices]
         return context
 
-
-'''
-    def _pmdStructureToOEMol(self):
-
-        from oeommtools.utils import openmmTop_to_oemol
-        top = self.structure.topology
-        pos = self.structure.positions
-        molecule = openmmTop_to_oemol(top, pos, verbose=False)
-        OEPerceiveResidues(molecule, OEPreserveResInfo_All)
-        OEPerceiveResidues(molecule)
-        OEFindRingAtomsAndBonds(molecule)
-
-        return molecule
-
-    def __init__(self, structure, resname='LIG'):
-        """Initialize the model.
-        Parameters
-        ----------
-        resname : str
-            String specifying the resiue name of the ligand.
-        structure: parmed.Structure
-            ParmEd Structure object of the relevant system to be moved.
-        """
-
-        self.resname = resname
-        self.atom_indices = self.getAtomIndices(structure, self.resname)
-        self.topology = structure[self.atom_indices].topology
-        self.totalmass = 0
-        self.masses = []
-
-        self.center_of_mass = None
-        self.positions = structure[self.atom_indices].positions
-
-    def getAtomIndices(self, structure, resname):
-        """
-        Get atom indices of a ligand from ParmEd Structure.
-        Arguments
-        ---------
-        resname : str
-            String specifying the resiue name of the ligand.
-        structure: parmed.Structure
-            ParmEd Structure object of the atoms to be moved.
-        Returns
-        -------
-        atom_indices : list of ints
-            list of atoms in the coordinate file matching lig_resname
-        """
-#       TODO: Add option for resnum to better select residue names
-        atom_indices = []
-        topology = structure.topology
-        for atom in topology.atoms():
-            if str(resname) in atom.residue.name:
-                atom_indices.append(atom.index)
-        return atom_indices
-'''
 class CombinationMove(Move):
     """Move object that allows Move object moves to be performed according to
     the order in move_list.
