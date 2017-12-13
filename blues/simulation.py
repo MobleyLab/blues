@@ -13,6 +13,7 @@ import sys, time
 from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
+from parmed.openmm import NetCDFReporter
 import logging
 
 def init_logger(outfname='blues'):
@@ -269,7 +270,8 @@ class Simulation(object):
         #attach ncmc reporter if specified
         if 'ncmc_traj' in self.opt:
             # Add reporter to NCMC Simulation useful for debugging:
-            self.ncmc_reporter = app.dcdreporter.DCDReporter('{ncmc_traj}.dcd'.format(**self.opt), 1)
+#            self.ncmc_reporter = app.dcdreporter.DCDReporter('{ncmc_traj}.dcd'.format(**self.opt), 1)
+            self.ncmc_reporter = NetCDFReporter('{ncmc_traj}.nv'.format(**self.opt), self.opt['reporter_interval'], crds=True)
             self.nc_sim.reporters.append(self.ncmc_reporter)
         else:
             pass
