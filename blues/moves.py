@@ -18,7 +18,7 @@ import math
 import copy
 import random
 import os
-from openeye.oechem import *
+#from openeye.oechem import *
 
 
 class Move(object):
@@ -38,6 +38,17 @@ class Move(object):
         """Initialize the Move object
         Currently empy.
         """
+    def beforeMove(self, context):
+        return context
+        
+    def afterMove(self, context):
+        return context
+
+
+    def move(self, context):
+        return context
+
+
 
 class RandomLigandRotationMove(Move):
     """Move that provides methods for calculating properties on the
