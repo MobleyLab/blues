@@ -478,6 +478,9 @@ class Simulation(object):
             start = time.time()
             self._initialSimulationTime = self.nc_context.getState().getTime()
             try:
+                #Attempt anything related to the move before protocol is performed
+                if nc_step == 0:
+                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_context)
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
@@ -495,6 +498,10 @@ class Simulation(object):
                     self.log.debug('%s' % work)
                 if ncmc_traj:
                     self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
+
+                #Attempt anything related to the move after protocol is performed
+                if nc_step == nstepsNC-1:
+                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_context)
 
             except Exception as e:
                 self.log.error(e)
