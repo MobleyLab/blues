@@ -548,6 +548,21 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
+    def _initialize_moves(self):
+        state = self.nc_sim.context.getState(getPositions=True, getVelocities=True)
+        print('box vectors', state.getPeriodicBoxVectors())
+        pos = state.getPositions()
+        vel = state.getVelocities()
+        print(self.nc_sim.context.getSystem().getForces())
+        for move in self.move_engine.moves:
+            system = self.nc_sim.system
+            new_sys = move.initializeSystem(system)
+            self.nc_sim.system = new_sys
+        self.nc_sim.context.reinitialize()
+        self.nc_sim.context.setPositions(pos)
+        self.nc_sim.context.setVelocities(vel)
+
+
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
@@ -556,6 +571,7 @@ class Simulation(object):
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
+        self._initialize_moves()
         self.setStateConditions()
         for n in range(int(nIter)):
             self.current_iter = int(n)
