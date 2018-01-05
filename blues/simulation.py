@@ -548,27 +548,19 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
-    def evalDihedral(self, positions):
-        topology = mdtraj.Topology.from_openmm(self.md_sim.topology)
-        traj = mdtraj.Trajectory(np.asarray(positions),topology)
-        #traj.xyz = np.asarray(positions)
-        indices = np.array([[1735, 1737, 1739, 1741]])
-        dihedralangle = mdtraj.compute_dihedrals(traj, indices)
-        if -1.3 <= dihedralangle <= -0.9:
-            eval = True
-        elif -2.93482 <= dihedralangle <= -3.14159:
-            eval = True
-        elif 0.9 <= dihedralangle <= 1.3:
-            eval = True
-        elif 2.96 <= dihedralangle <= 3.14159:
-            eval = True
-        else:
-            eval = False
-        if eval == False:
-            print("no ncmc --> dihedral not ok")
-        if eval == True:
-            print("Dihedral ok --> NCMC proceed")
-        return(eval)
+   def _initialize_moves(self):
+        state = self.nc_sim.context.getState(getPositions=True, getVelocities=True)
+        print('box vectors', state.getPeriodicBoxVectors())
+        pos = state.getPositions()
+        vel = state.getVelocities()
+        print(self.nc_sim.context.getSystem().getForces())
+        for move in self.move_engine.moves:
+            system = self.nc_sim.system
+            new_sys = move.initializeSystem(system)
+            self.nc_sim.system = new_sys
+        self.nc_sim.context.reinitialize()
+        self.nc_sim.context.setPositions(pos)
+        self.nc_sim.context.setVelocities(vel)
 
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
@@ -578,6 +570,7 @@ class Simulation(object):
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
+        self._initialize_moves()
         self.setStateConditions()
 
         #

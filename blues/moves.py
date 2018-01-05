@@ -10,7 +10,7 @@ Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
-from simtk import unit
+from simtk import unit, openmm
 import mdtraj
 import numpy as np
 import sys, traceback
@@ -38,6 +38,25 @@ class Move(object):
         """Initialize the Move object
         Currently empy.
         """
+
+    def initializeSystem(self, system):
+        """If the system needs to be modified to perform the move
+        ex. adding a force this method is called during the start
+        of the simulation to change the system.
+
+        Parameters
+        ----------
+        system : simtk.openmm.System object
+            System to be modified.
+
+        Returns
+        -------
+        system : simtk.openmm.System object
+            The modified System object.
+        """
+        new_sys = system
+        return new_sys
+
     def beforeMove(self, context):
         return context
         
