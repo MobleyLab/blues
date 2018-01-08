@@ -505,6 +505,7 @@ class Simulation(object):
 
             except Exception as e:
                 self.log.error(e)
+                self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_context)
                 break
 
             self._report(start, nc_step)
@@ -556,7 +557,8 @@ class Simulation(object):
         print(self.nc_sim.context.getSystem().getForces())
         for move in self.move_engine.moves:
             system = self.nc_sim.system
-            new_sys = move.initializeSystem(system)
+            integrator = self.nc_sim.integrator
+            new_sys, new_integrator = move.initializeSystem(system, integrator)
             self.nc_sim.system = new_sys
         self.nc_sim.context.reinitialize()
         self.nc_sim.context.setPositions(pos)
