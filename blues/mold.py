@@ -458,25 +458,32 @@ class MolDart(RandomLigandRotationMove):
     def initializeSystem(self, system, integrator):
         structure = self.structure
         new_sys = system
-        new_int = copy.deepcopy(integrator)
+        new_int = integrator
+        #new_int = copy.deepcopy(integrator)
         new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
         new_int._system_parameters = {system_parameter for system_parameter in new_int._alchemical_functions.keys()}
         for index, pose in enumerate(self.binding_mode_traj):
             pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
             new_sys = add_restraints(new_sys, structure, pose_pos, self.atom_indices, index)
-
+        print(new_int._alchemical_functions)
         return new_sys, integrator
 
 
     def beforeMove(self, context):
         """Check if in a pose. If so turn on `restraints_pose` for that pose
         """
+        print(context.getParameters().keys())
         selected_list = self.poseDart(context, self.atom_indices)
         if len(selected_list) >= 1:
             self.selected_pose = np.random.choice(selected_list, replace=False)
-            context.setParameter('restraints_pose'+str(self.selected_pose), 1)
+            print('keys during move', context.getParameters().keys())
+            context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
+            print('values before', context.getParameters().values())
+
+
         else: 
             self.selected_restraint = None
+        return context
 
     def afterMove(self, context):
         """Check if in the same pose at the end as the specified restraint.
@@ -485,11 +492,16 @@ class MolDart(RandomLigandRotationMove):
         selected_list = self.poseDart(context, self.atom_indices)
         if self.selected_pose not in selected_list:
             self.acceptance_ratio = 0
-        context.setParameter('restraints_pose'+str(self.selected_pose), 0)
+        context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
+        print('keys after move', context.getParameters().keys())
+        print('values after', context.getParameters().values())
+
+
+        return context
 
     def _error(self, context):
         for i in range(len(self.binding_mode_traj)):
-            context.setParameter('restraints_pose'+str(i), 0)
+            context.setParameter('restraint_pose_'+str(i), 0)
 
 
 
@@ -514,7 +526,7 @@ class MolDart(RandomLigandRotationMove):
         self.moves_attempted += 1
         oldDartPos = context.getState(getPositions=True).getPositions(asNumpy=True)
         selected_list = self.poseDart(context, self.atom_indices)
-        context.setParameter('restraints_pose'+str(self.selected_pose), 0)
+        context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
 
         if len(selected_list) == 0:
             print('no pose found')
@@ -542,7 +554,7 @@ class MolDart(RandomLigandRotationMove):
 
             context.setPositions(new_pos)
             overlap_after = self.poseDart(context, self.atom_indices)
-            context.setParameter('restraints_pose'+str(self.selected_pose), 1)
+            context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
 
             print('overlap after', overlap_after)
             # to maintain detailed balance, check to see the overlap of the start and end darting regions

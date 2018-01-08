@@ -14,7 +14,7 @@ from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
-
+import copy
 def init_logger(outfname='blues'):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -62,7 +62,7 @@ class SimulationFactory(object):
         #Atom indicies from move_engine
         #TODO: change atom_indices selection for multiple regions
         self.atom_indices = move_engine.moves[0].atom_indices
-
+        self.move_engine = move_engine
         self.system = None
         self.alch_system = None
         self.md = None
@@ -139,7 +139,7 @@ class SimulationFactory(object):
                             hydrogenMass=hydrogenMass)
         return system
 
-    def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
+    def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
                              reporter_interval=1000, nprop=1, prop_lambda=0.3,
                              ncmc=False, platform=None, verbose=True,
@@ -176,10 +176,15 @@ class SimulationFactory(object):
                                    nprop=nprop,
                                    prop_lambda=prop_lambda
                                    )
+
+            for move in move_engine.moves:
+                system, integrator = move.initializeSystem(system, integrator)
+
         else:
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
                                                    dt*unit.picoseconds)
+
         #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
         if platform is None:
@@ -211,9 +216,9 @@ class SimulationFactory(object):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
-        self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
-        self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
+        self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, self.move_engine, self.alch_system,
                                             ncmc=True, **self.opt)
 
 
@@ -500,7 +505,7 @@ class Simulation(object):
         move_name = self.move_engine.moves[move_idx].__class__.__name__
         for nc_step in range(int(nstepsNC)):
             start = time.time()
-            self._initialSimulationTime = self.nc_context.getState().getTime()
+            self._initialSimulationTime = self.nc_sim.context.getState().getTime()
             try:
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
@@ -580,7 +585,7 @@ class Simulation(object):
         if nc_step % self.opt['reporter_interval'] == 0 or nc_step+1 == self.opt['nstepsNC']:
             elapsed = end-start
             elapsedDays = (elapsed/86400.0)
-            elapsedNs = (self.nc_context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
+            elapsedNs = (self.nc_sim.context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
             speed = (elapsedNs/elapsedDays)
             speed = "%.3g" % speed
             values = [nc_step, speed, self.accept, self.current_iter]
@@ -591,15 +596,30 @@ class Simulation(object):
         print('box vectors', state.getPeriodicBoxVectors())
         pos = state.getPositions()
         vel = state.getVelocities()
-        print(self.nc_sim.context.getSystem().getForces())
+        print(self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
         for move in self.move_engine.moves:
-            system = self.nc_sim.system
+            system = self.nc_sim.context.getSystem()
             integrator = self.nc_sim.integrator
             new_sys, new_integrator = move.initializeSystem(system, integrator)
             self.nc_sim.system = new_sys
-        self.nc_sim.context.reinitialize()
+            inter = copy.deepcopy(new_integrator)
+            #print('new', self.nc_sim.system.getForces(), len(self.nc_sim.system.getForces()))
+            print('new', self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
+        top = self.nc_sim.topology
+        #platform = self.nc_sim.platform
+        #self.nc_sim = app.Simulation(top, new_sys, new_integrator, platform)
+
+        self.nc_sim = app.Simulation(top, new_sys, inter)
+
+        print('keys', self.nc_sim.context.getParameters().keys())
+        #self.nc_sim.context.reinitialize()
         self.nc_sim.context.setPositions(pos)
         self.nc_sim.context.setVelocities(vel)
+        self.nc_context = self.nc_sim.context
+        print('norm call', self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
+        print('context var', self.nc_context.getSystem().getForces(), len(self.nc_context.getSystem().getForces()))
+
+
 
 
     def run(self, nIter=100):
@@ -610,11 +630,14 @@ class Simulation(object):
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
-        self._initialize_moves()
+        ###self._initialize_moves()
+        print('beginning', self.nc_sim.context.getParameters().keys())
         self.setStateConditions()
         for n in range(int(nIter)):
+            print('iter', self.nc_sim.context.getParameters().keys())
             self.current_iter = int(n)
             self.setStateConditions()
+            print('state_cond', self.nc_sim.context.getParameters().keys())
             self.simulateNCMC(**self.opt)
             self.acceptRejectNCMC(**self.opt)
             self.simulateMD(**self.opt)
