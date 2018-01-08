@@ -502,6 +502,9 @@ class Simulation(object):
             start = time.time()
             self._initialSimulationTime = self.nc_context.getState().getTime()
             try:
+                #Attempt anything related to the move before protocol is performed
+                if nc_step == 0:
+                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_context)
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
@@ -533,8 +536,13 @@ class Simulation(object):
                 if ncmc_traj:
                     self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
 
+                #Attempt anything related to the move after protocol is performed
+                if nc_step == nstepsNC-1:
+                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_context)
+
             except Exception as e:
                 self.log.error(e)
+                self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_context)
                 break
 
             self._report(start, nc_step)
@@ -578,6 +586,22 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
+    def _initialize_moves(self):
+        state = self.nc_sim.context.getState(getPositions=True, getVelocities=True)
+        print('box vectors', state.getPeriodicBoxVectors())
+        pos = state.getPositions()
+        vel = state.getVelocities()
+        print(self.nc_sim.context.getSystem().getForces())
+        for move in self.move_engine.moves:
+            system = self.nc_sim.system
+            integrator = self.nc_sim.integrator
+            new_sys, new_integrator = move.initializeSystem(system, integrator)
+            self.nc_sim.system = new_sys
+        self.nc_sim.context.reinitialize()
+        self.nc_sim.context.setPositions(pos)
+        self.nc_sim.context.setVelocities(vel)
+
+
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
@@ -586,6 +610,7 @@ class Simulation(object):
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
+        self._initialize_moves()
         self.setStateConditions()
         for n in range(int(nIter)):
             self.current_iter = int(n)

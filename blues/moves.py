@@ -10,10 +10,10 @@ Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
-from simtk import unit
+from simtk import unit, openmm
 import mdtraj
 import numpy as np
-import sys, traceback
+import sys
 import math
 import copy
 import random
@@ -57,6 +57,42 @@ class Move(object):
 
         """
         return context
+
+    def initializeSystem(self, system, integrator):
+        """If the system or integrator needs to be modified to perform the move
+        ex. adding a force this method is called during the start
+        of the simulation to change the system.
+
+        Parameters
+        ----------
+        system : simtk.openmm.System object
+            System to be modified.
+        integrator : simtk.openmm.Integrator object
+            Integrator to be modified.
+        Returns
+        -------
+        system : simtk.openmm.System object
+            The modified System object.
+        integrator : simtk.openmm.Integrator object
+            The modified Integrator object.
+
+        """
+        new_sys = system
+        new_int = integrator
+        return new_sys, new_int
+
+    def beforeMove(self, context):
+        return context
+        
+    def afterMove(self, context):
+        return context
+    def _error(self, context):
+        return context
+
+    def move(self, context):
+        return context
+
+
 
 class RandomLigandRotationMove(Move):
     """Move that provides methods for calculating properties on the
