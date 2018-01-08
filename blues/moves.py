@@ -10,7 +10,7 @@ Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
-from simtk import unit, openmm
+from simtk import unit
 import mdtraj
 import numpy as np
 import sys, traceback
@@ -18,7 +18,7 @@ import math
 import copy
 import random
 import os
-#from openeye.oechem import *
+from openeye.oechem import *
 
 
 class Move(object):
@@ -41,8 +41,8 @@ class Move(object):
 
     def initializeSystem(self, system, integrator):
         """If the system or integrator needs to be modified to perform the move
-        ex. adding a force this method is called during the start
-        of the simulation to change the system.
+        (ex. adding a force) this method is called during the start
+        of the simulation to change the system or integrator to accomodate that.
 
         Parameters
         ----------
@@ -67,6 +67,7 @@ class Move(object):
         
     def afterMove(self, context):
         return context
+        
     def _error(self, context):
         return context
 

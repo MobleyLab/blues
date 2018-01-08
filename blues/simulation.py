@@ -61,7 +61,7 @@ class SimulationFactory(object):
         #Atom indicies from move_engine
         #TODO: change atom_indices selection for multiple regions
         self.atom_indices = move_engine.moves[0].atom_indices
-
+        self.move_engine = move_engine
         self.system = None
         self.alch_system = None
         self.md = None
@@ -137,7 +137,7 @@ class SimulationFactory(object):
                             hydrogenMass=hydrogenMass)
         return system
 
-    def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
+    def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
                              reporter_interval=1000, nprop=1, prop_lambda=0.3,
                              ncmc=False, platform=None, verbose=True,
@@ -174,10 +174,15 @@ class SimulationFactory(object):
                                    nprop=nprop,
                                    prop_lambda=prop_lambda
                                    )
+
+            for move in move_engine.moves:
+                system, integrator = move.initializeSystem(system, integrator)
+
         else:
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
                                                    dt*unit.picoseconds)
+
         #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
         if platform is None:
@@ -209,9 +214,9 @@ class SimulationFactory(object):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
-        self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
-        self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
+        self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, self.move_engine, self.alch_system,
                                             ncmc=True, **self.opt)
 
 
@@ -549,21 +554,6 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
-   def _initialize_moves(self):
-        state = self.nc_sim.context.getState(getPositions=True, getVelocities=True)
-        print('box vectors', state.getPeriodicBoxVectors())
-        pos = state.getPositions()
-        vel = state.getVelocities()
-        print(self.nc_sim.context.getSystem().getForces())
-        for move in self.move_engine.moves:
-            system = self.nc_sim.system
-            integrator = self.nc_sim.integrator
-            new_sys, new_integrator = move.initializeSystem(system, integrator)
-            self.nc_sim.system = new_sys
-        self.nc_sim.context.reinitialize()
-        self.nc_sim.context.setPositions(pos)
-        self.nc_sim.context.setVelocities(vel)
-
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
@@ -572,7 +562,6 @@ class Simulation(object):
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
-        self._initialize_moves()
         self.setStateConditions()
 
         #
