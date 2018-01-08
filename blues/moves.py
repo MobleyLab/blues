@@ -39,8 +39,8 @@ class Move(object):
         Currently empy.
         """
 
-    def initializeSystem(self, system):
-        """If the system needs to be modified to perform the move
+    def initializeSystem(self, system, integrator):
+        """If the system or integrator needs to be modified to perform the move
         ex. adding a force this method is called during the start
         of the simulation to change the system.
 
@@ -48,21 +48,27 @@ class Move(object):
         ----------
         system : simtk.openmm.System object
             System to be modified.
-
+        integrator : simtk.openmm.Integrator object
+            Integrator to be modified.
         Returns
         -------
         system : simtk.openmm.System object
             The modified System object.
+        integrator : simtk.openmm.Integrator object
+            The modified Integrator object.
+
         """
         new_sys = system
-        return new_sys
+        new_int = integrator
+        return new_sys, new_int
 
     def beforeMove(self, context):
         return context
         
     def afterMove(self, context):
         return context
-
+    def _error(self, context):
+        return context
 
     def move(self, context):
         return context
