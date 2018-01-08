@@ -2,7 +2,7 @@ import numpy as np
 from future.utils import iteritems
 from itertools import combinations
 import pandas as pd
-from rottransedit import dartRotTrans
+from blues.icdart.rottransedit import dartRotTrans
 import copy
 
 def symmetrize(a):

@@ -42,6 +42,42 @@ def adjust_angle(a,b, radians, maintain_magnitude=True):
         c = c / np.linalg.norm(c) * mag_a
     return c
 
+
+def adjust_angle1(a,b, radians, maintain_magnitude=True):
+    '''
+    Adjusts angle a so that the angle between a and b
+    matches the specified radians. The change in a
+    occurs in the plane of a and b.
+
+    Arguments
+    ---------
+    a, 1x3 np.array:
+        The vector to be adjusted to change the angle
+    b, 1x3 np.array:
+        The vector to act as a base and creates the
+        angle with a.
+    radians, float:
+        Radian you want to adjust the angle to.
+    maintain_magnitude, boolean:
+        If True adjusts the returned vector keeps
+        the same magnitude as a. If false returns
+        a normalized vector
+    Returns
+    -------
+    c, 1x3 np.array:
+        Vector adjusted so that the angle made
+        from c and b is the value specifed by radians.
+    '''
+    plane = np.cross(a,b) / np.linalg.norm(np.cross(a,b))
+    change = a*np.cos(radians) + (np.cross(plane, a))*np.sin(radians) + plane*(np.dot(plane, a))*(1-np.cos(radians))
+    c = change
+    if maintain_magnitude == True:
+        mag_a = np.linalg.norm(a)
+        c = c / np.linalg.norm(c) * mag_a
+
+    return c
+
+
 def calc_rotation_matrix(vec_ref, vec_target):
     '''calculate the rotation matrix that will rotate vec_ref to vec_target
         Note: will fail if vectors are in exact opposite directions

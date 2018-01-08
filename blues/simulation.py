@@ -21,6 +21,7 @@ def init_logger(outfname='blues'):
     formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
     # Write to File
     fh = logging.FileHandler(outfname+'.log')
+    #fh.setLevel(logging.DEBUG)
     fh.setLevel(logging.INFO)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
@@ -274,6 +275,16 @@ class Simulation(object):
         else:
             pass
 
+        if 'ncmc_move_output' in self.opt:
+            # Add reporter to NCMC Simulation specific for the move proposal useful for debugging:
+            self.ncmc_begin_reporter = app.dcdreporter.DCDReporter('{ncmc_move_output}_begin.dcd'.format(**self.opt), 1)
+            self.ncmc_end_reporter = app.dcdreporter.DCDReporter('{ncmc_move_output}_end.dcd'.format(**self.opt), 1)
+            self.nc_sim.reporters.append(self.ncmc_begin_reporter)
+            self.nc_sim.reporters.append(self.ncmc_end_reporter)
+
+        else:
+            pass
+
 
         #controls how many mc moves are performed during each iteration
         if 'mc_per_iter' in opt:
@@ -283,7 +294,7 @@ class Simulation(object):
 
         #specify nc integrator variables to report in verbose output
         self.work_keys = [ 'lambda', 'shadow_work',
-                          'protocol_work', 'Eold', 'Enew']
+                          'protocol_work', 'Eold', 'Enew', 'unperturbed_pe', 'perturbed_pe']
 
         self.state_keys = { 'getPositions' : True,
                        'getVelocities' : True,
@@ -365,7 +376,7 @@ class Simulation(object):
         self.log.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(self.opt['nIter'])))
 
         #Get trajectory frame interval timing for BLUES simulation
-        frame_iter = self.opt['nstepsMD'] / self.opt['trajectory_interval']
+        frame_iter = self.opt['nstepsMD'] / float(self.opt['trajectory_interval'])
         timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
         self.log.info('\tTrajectory Interval = %s ps' % timetraj_frame)
         self.log.info('\t\t%s frames/iter' % frame_iter )
@@ -440,6 +451,10 @@ class Simulation(object):
         nc_state1 = self.current_state['nc']['state1']
 
         log_ncmc = self.nc_integrator.getLogAcceptanceProbability(self.nc_context)
+        init_rand = np.random.random()
+        #print('init_rand', init_rand)
+        #print('move accept effect', self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio)
+        #print('after mult', init_rand*self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio)
         randnum =  math.log(np.random.random())
 
         # Compute Alchemical Correction Term
@@ -449,18 +464,27 @@ class Simulation(object):
             self.setSimState('alch', 'state1', alch_state1)
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
             log_ncmc = log_ncmc + correction_factor
-
-        if log_ncmc > randnum:
-            self.accept += 1
-            self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
-            self.md_sim.context.setPositions(nc_state1['positions'])
-            if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
-
-        else:
+        # If the move has it's own acceptance ratio factor, apply that to the overall acceptance
+        # but first check if the move acceptance ratio is 0 since that will always be rejected
+        if self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio == 0:
             self.reject += 1
             self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
             self.nc_context.setPositions(md_state0['positions'])
+        else:
+            # Since we're working with the log of the energy difference we can add the log of the move acceptance ratio
+            # ln(xy) = ln(x) + ln(y)
+            log_ncmc = log_ncmc + math.log(self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio)
+            if log_ncmc > randnum:
+                self.accept += 1
+                self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+                self.md_sim.context.setPositions(nc_state1['positions'])
+                if write_move:
+                	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
+
+            else:
+                self.reject += 1
+                self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+                self.nc_context.setPositions(md_state0['positions'])
 
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
@@ -482,11 +506,21 @@ class Simulation(object):
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
 
+                    if 'ncmc_move_output' in opt:
+                        self.ncmc_begin_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True))
+
                     #Do move
                     self.log.info('Performing %s...' % move_name)
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    if 'ncmc_move_output' in opt:
+                        self.ncmc_end_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True))
+
                     if ncmc_traj:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
+                if verbose:
+                    # Print energies at every step
+                    work = self.getWorkInfo(self.nc_integrator, self.work_keys)
+                    self.log.debug('%s' % work)
 
 
                 self.nc_integrator.step(1)

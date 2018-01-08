@@ -6,7 +6,7 @@ Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley 
+Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
@@ -17,8 +17,7 @@ import sys, traceback
 import math
 import copy
 import random
-import os
-from openeye.oechem import *
+#from openeye.oechem import *
 
 
 class Move(object):
@@ -36,8 +35,28 @@ class Move(object):
 
     def __init__(self):
         """Initialize the Move object
-        Currently empy.
         """
+        self.acceptance_ratio = 1.0
+
+    def reset_iter(self):
+        """Resets relevent attributes between iterations
+        """
+        self.acceptance_ratio = 1.0
+    def move(self, context):
+        """Function that can change the positions of a context.
+        Base class `move()` just returns the same context.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context..
+
+        """
+        return context
 
 class RandomLigandRotationMove(Move):
     """Move that provides methods for calculating properties on the
@@ -70,7 +89,8 @@ class RandomLigandRotationMove(Move):
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
         """
-
+        Move.__init__(self)
+        self.structure = structure
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology

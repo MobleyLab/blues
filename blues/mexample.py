@@ -42,7 +42,7 @@ def runNCMC(platform_name):
     fit_atoms = traj.top.select("protein")
 
     ligand = MolDart(structure=struct, resname='LIG',
-                                      dart_size=0.3*unit.nanometers,
+                                      #dart_size=0.3*unit.nanometers,
                                       pdb_files=['posA.pdb', 'posB.pdb'],
                                       xyz_file='tolA.xyz',
                                       fit_atoms=fit_atoms,

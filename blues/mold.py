@@ -10,12 +10,14 @@ from blues.lin_math import adjust_angle, kabsch
 from blues.lin_math import getRotTrans
 from blues.moves import RandomLigandRotationMove
 import itertools
+import random
 import chemcoord as cc
 import copy
 import tempfile
 import types
 from blues.mold_helper import give_cartesian_edit
 from blues.icdart.dartnew import makeDartDict, checkDart
+from blues.icdart.bor import add_restraints
 
 def checkDifference(a, b, radius):
     def getDihedralDifference(dihedral):
@@ -227,11 +229,12 @@ class MolDart(RandomLigandRotationMove):
             #diff_list will be used to dart
             return selected
         elif len(selected) == 0:
-            return None
+            return []
         elif len(selected) >= 2:
             print('overlapping darts', selected)
             #COM should never be within two different darts
-            raise ValueError('sphere size overlap, check darts')
+            return selected
+            #raise ValueError('sphere size overlap, check darts')
 
     def moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, bond_compare=True, rigid_move=False):
         """
@@ -287,10 +290,11 @@ class MolDart(RandomLigandRotationMove):
                 #multiply by 10 since openmm works in nm and cc works in angstroms
                 xyz_ref._frame.at[i, entry] = nc_pos[:,index][sel_atom]._value*10
 
-
+        print('initial ref', xyz_ref)
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         if 1:
             zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
+            print('zmat from simulation', zmat_diff)
             zmat_traj = copy.deepcopy(xyz_ref.give_zmat(construction_table=self.buildlist))
             #get appropriate comparision zmat
             zmat_compare = self.internal_zmat[binding_mode_index]
@@ -298,7 +302,7 @@ class MolDart(RandomLigandRotationMove):
             #change_list = ['angle', 'dihedral']
 
             change_list = ['dihedral']
-            old_list = ['bond', 'angle']
+            old_list = ['bond', 'angle', 'dihedral']
 
             if rigid_move == False:
                 for i in change_list:
@@ -377,6 +381,10 @@ class MolDart(RandomLigandRotationMove):
             ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
             dart_ref[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
+        print('sim_three', sim_three)
+        print('ref_three', ref_three)
+        print('dart_three', dart_three)
+        print('dart_ref', dart_ref)
         change_three = np.copy(sim_three)
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
         vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
@@ -388,7 +396,7 @@ class MolDart(RandomLigandRotationMove):
         #change angle of one vector
         ref_angle = self.internal_zmat[binding_mode_index]._frame['angle'][self.buildlist.index.get_values()[2]]
         angle_diff = ref_angle - np.degrees(calc_angle(vec1_sim, vec2_sim))
-        ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=False)
+        ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=True)
         ad_vec = ad_vec / np.linalg.norm(ad_vec) * self.internal_zmat[binding_mode_index]._frame['bond'][self.buildlist.index.get_values()[2]]/10.
         #apply changed vector to center coordinate to get new position of first particle
 
@@ -404,30 +412,87 @@ class MolDart(RandomLigandRotationMove):
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
         dart_angle = self.internal_zmat[rand_index]._frame['angle'][self.buildlist.index.get_values()[2]]
         angle_change = dart_angle - angle_diff
+        print('angle change', angle_change)
+        for i, vectors in enumerate([dart_three]):
+            print('dart_three angle', test_angle(vectors, vector_list))
+
         if 1:
-            ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
+            #ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
+            ###THIS IS CHANGED FOR RIGID
+            new_angle = zmat_new['angle'][self.buildlist.index[2]]
+            ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(new_angle), maintain_magnitude=False)
+            ###
+            print('advec', ad_dartvec)
+            print('sim vector', vec1_sim)
+            print('sim vector2', vec2_sim)
+            print('original vec', dart_three[vector_list[0][1]])
             ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
+            print('advec', ad_dartvec)
             nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
             dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
             dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
 
 
-        for i, vectors in enumerate([sim_three, ref_three, dart_three]):
-            test_angle(vectors, vector_list)
-        zmat_new.give_cartesian_edit = types.MethodType(give_cartesian_edit, zmat_new)
+        for i, vectors in enumerate([sim_three, ref_three, dart_three, dart_ref]):
+            print(test_angle(vectors, vector_list))
+            #print('test_angle', test_angle)
         #get xyz from internal coordinates
+        zmat_new.give_cartesian_edit = types.MethodType(give_cartesian_edit, zmat_new)
+        print('zmat_new', zmat_new)
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
+        #xyz_new = (zmat_new.give_cartesian()).sort_index()
+        print('xyz_new', xyz_new)
 
         for i in range(len(self.atom_indices)):
             for index, entry in enumerate(['x', 'y', 'z']):
                 sel_atom = self.atom_indices[i]
                 self.sim_traj.xyz[0][:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.)
-
+        self.sim_traj.save('before_fit.pdb')
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
                 ref_atom_indices=self.fit_atoms
                 )
+        self.sim_traj.save('after_fit.pdb')
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
         return nc_pos
+
+    def initializeSystem(self, system, integrator):
+        structure = self.structure
+        new_sys = system
+        new_int = copy.deepcopy(integrator)
+        new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
+        new_int._system_parameters = {system_parameter for system_parameter in new_int._alchemical_functions.keys()}
+        for index, pose in enumerate(self.binding_mode_traj):
+            pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
+            new_sys = add_restraints(new_sys, structure, pose_pos, self.atom_indices, index)
+
+        return new_sys, integrator
+
+
+    def beforeMove(self, context):
+        """Check if in a pose. If so turn on `restraints_pose` for that pose
+        """
+        selected_list = self.poseDart(context, self.atom_indices)
+        if len(selected_list) >= 1:
+            self.selected_pose = np.random.choice(selected_list, replace=False)
+            context.setParameter('restraints_pose'+str(self.selected_pose), 1)
+        else: 
+            self.selected_restraint = None
+
+    def afterMove(self, context):
+        """Check if in the same pose at the end as the specified restraint.
+         If not, reject the move
+        """
+        selected_list = self.poseDart(context, self.atom_indices)
+        if self.selected_pose not in selected_list:
+            self.acceptance_ratio = 0
+        context.setParameter('restraints_pose'+str(self.selected_pose), 0)
+
+    def _error(self, context):
+        for i in range(len(self.binding_mode_traj)):
+            context.setParameter('restraints_pose'+str(i), 0)
+
+
+
 
     def move(self, context):
         """
@@ -448,13 +513,15 @@ class MolDart(RandomLigandRotationMove):
         """
         self.moves_attempted += 1
         oldDartPos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        selected_pose = self.poseDart(context, self.atom_indices)
-        #now self.binding_mode_pos should be fitted to structure at this point
-        #use the first entry
+        selected_list = self.poseDart(context, self.atom_indices)
+        context.setParameter('restraints_pose'+str(self.selected_pose), 0)
 
-        if selected_pose is None:
+        if len(selected_list) == 0:
             print('no pose found')
         else:
+            print('selected_list', selected_list)
+            #now self.binding_mode_pos should be fitted to structure at this point
+            self.selected_pose = np.random.choice(selected_list, replace=False)
             print('yes pose found')
             self.times_within_dart += 1
 
@@ -464,13 +531,29 @@ class MolDart(RandomLigandRotationMove):
             #translate new pose to center of first molecule
             #find rotation that matches atom1 and atom2s of the build list
             #apply that rotation using atom1 as the origin
-
+            nc_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
             new_pos = self.moldRedart(atom_indices=self.atom_indices,
                                             binding_mode_pos=self.binding_mode_traj,
-                                            binding_mode_index=selected_pose[0],
+                                            binding_mode_index=self.selected_pose,
                                             nc_pos=oldDartPos,
                                             rigid_move=True)
 
                                             #rigid_move=self.rigid_move)
+
             context.setPositions(new_pos)
+            overlap_after = self.poseDart(context, self.atom_indices)
+            context.setParameter('restraints_pose'+str(self.selected_pose), 1)
+
+            print('overlap after', overlap_after)
+            # to maintain detailed balance, check to see the overlap of the start and end darting regions
+            print('float after', float(len(overlap_after)), overlap_after)
+            print('float before', len(selected_list), selected_list)
+            # if there is no overlap after the move, acceptance ratio will be 0
+            if len(overlap_after) == 0:
+                self.acceptance_ratio = 0
+            else:
+                self.acceptance_ratio = float(len(selected_list))/float(len(overlap_after))
+            print('overlap acceptance ratio', self.acceptance_ratio)
+            #check if new positions overlap when moving
+
         return context
