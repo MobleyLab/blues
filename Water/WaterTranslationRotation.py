@@ -60,28 +60,6 @@ class WaterTranslationMove(Move):
         #attributes, random rotational
         self.masses = []
 
-    def getAtomIndices(self, structure, resname):
-        """
-        Get atom indices of a water from ParmEd Structure.
-        Arguments
-        ---------
-        resname : str
-            String specifying the resiue name of the ligand.
-        structure: parmed.Structure
-            ParmEd Structure object of the atoms to be moved.
-        Returns
-        -------
-        atom_indices : list of ints
-            list of atoms in the coordinate file matching lig_resname
-        """
-#       TODO: Add option for resnum to better select residue names
-        water_atom_indices = []
-        topology = structure.topology
-        for atom in topology.atoms():
-            if str(water_name) in atom.residue.name:
-                water_atom_indices.append(atom.index)
-        return water_atom_indices
-
     def _random_sphere_point(self, radius):
         """function to generate a uniform random point
         in a sphere of a specified radius.
@@ -271,7 +249,7 @@ class WaterTranslationMove(Move):
         self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
         reduced_pos = self.positions - self.center_of_mass
 
-        ## Define random rotational move on the ligand
+        #Define random rotational move on the water
         rand_quat = mdtraj.utils.uniform_quaternion()
         rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
