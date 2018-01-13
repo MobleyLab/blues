@@ -88,7 +88,6 @@ class WaterTranslationMove(Move):
         r = radius * ( np.random.random()**(1./3.) )  #r (radius) = specified radius * cubed root of a random number between 0.00 and 0.99999
         phi = np.random.uniform(0,2*np.pi) #restriction of phi (or azimuth angle) is set from 0 to 2pi. random.uniform allows the values to be chosen w/ an equal probability
         costheta = np.random.uniform(-1,1) #restriction set from -1 to 1
-        u = np.random.random() #I don't see this getting used anywhere...
         theta = np.arccos(costheta) #calculate theta, the angle between r and Z axis
         x = np.sin(theta) * np.cos(phi) #x,y,and z are cartesian coordinates
         y = np.sin(theta) * np.sin(phi)
