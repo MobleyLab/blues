@@ -7,6 +7,7 @@ Contributors: Nathan M. Lim, David L. Mobley
 import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
+#from simtk.unit import *
 import parmed, math
 import mdtraj
 import sys, time
@@ -131,10 +132,24 @@ class SimulationFactory(object):
             hydrogenMass = hydrogenMass*unit.dalton
         else:
             hydrogenMass = None
+
         system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
                             constraints=eval("app.%s" % constraints),
                             hydrogenMass=hydrogenMass)
+
+        # restrain backbone
+        force = openmm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
+        force.addGlobalParameter("k", 5.0*unit.kilocalories_per_mole/unit.angstroms**2)
+        force.addPerParticleParameter("x0")
+        force.addPerParticleParameter("y0")
+        force.addPerParticleParameter("z0")
+        for i, atom_crd in enumerate(structure.positions):
+            if structure.atoms[i].name in ('CA', 'C', 'N'):
+                force.addParticle(i, atom_crd.value_in_unit(unit.nanometers))
+        system.addForce(force)
+
+
         return system
 
     def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
@@ -554,6 +569,29 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
+    def evalDihedral(self, positions):
+        topology = mdtraj.Topology.from_openmm(self.md_sim.topology)
+        traj = mdtraj.Trajectory(np.asarray(positions),topology)
+        #traj.xyz = np.asarray(positions)
+        indices = np.array([[0,4,6,8]])
+        dihedralangle = mdtraj.compute_dihedrals(traj, indices)
+        if -1.3 <= dihedralangle <= -0.9:
+            eval = True
+        elif -2.94159 <= dihedralangle <= -3.14159:
+            eval = True
+        elif 0.9 <= dihedralangle <= 1.3:
+            eval = True
+        elif 2.94159 <= dihedralangle <= 3.14159:
+            eval = True
+        else:
+            eval = False
+        if eval == False:
+            print("no ncmc --> dihedral not ok")
+        if eval == True:
+            print("Dihedral ok --> NCMC proceed")
+            print("In the simulation.py script, this is the dihedral angle %f" %(dihedralangle))
+        return(eval)
+
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
@@ -576,7 +614,6 @@ class Simulation(object):
                 self.acceptRejectNCMC(**self.opt)
                 self.move_ct += 1
             self.simulateMD(**self.opt)
-            self.move_ct += 1
 
         # END OF NITER
         self.accept_ratio = self.accept/float(self.move_ct)
