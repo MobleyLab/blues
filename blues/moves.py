@@ -506,48 +506,51 @@ class SideChainMove(Move):
 
         ##*** to test of rotamer biasing of valine improves acceptance
         # Retrieve current rotamer angle
-        dihedralatoms = np.array([[1735, 1737, 1739, 1741]])
+        dihedralatoms = np.array([[0,4,6,8]])
         dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
-        print("This is the current dihedral angle:", dihedralangle)
+        print("In the moves.py script, this is the current dihedral angle:", dihedralangle)
 
         # set while attribute for rotamer as true or false
-        rotamerOK = False
+        ##rotamerOK = False
         moveOK = False
         # check if current rotamer position within designated ranges
         # This should ultimately be written as a function that takes in the residue identity (ie valine)
         # and bond and then refers to a library of rotamers for that particular residue/bond
-        if -2.00 <= dihedralangle <= -0.44:
-            rotamerOK = True
-        elif -2.88 <= dihedralangle <= -3.14159:
-            rotamerOK = True
-        elif 0.52 <= dihedralangle <= 2.007:
-            rotamerOK = True
-        elif 2.356 <= dihedralangle <= 3.14159:
-            rotamerOK = True
 
+        if -1.3 <= dihedralangle <= -0.9:
+            #rotamerOK = True
+            current_rot = 'm60'
+        elif -2.94159 <= dihedralangle <= -3.14159:
+            #rotamerOK = True
+            current_rot = 'mp180'
+        elif 0.9 <= dihedralangle <= 1.3:
+            #rotamerOK = True
+            current_rot = 'p60'
+        elif 2.94159 <= dihedralangle <= 3.14159:
+            #rotamerOK = True
+            current_rot = 'mp180'
         # check if current position plus proposed theta is within distribution
         # this should also be simplified to use the rotamer checking function (to be written)  described above
-        if rotamerOK:
-            my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-            moveOK = False
-            while moveOK == False:
+        my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
+        moveOK = False
+        proposed = math.degrees(dihedralangle + my_theta)
+        while moveOK == False:
+            if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
+                moveOK = True
+            elif -2.94159 <= proposed <= -3.14159 and current_rot != 'mp180':
+                moveOK = True
+            elif 0.9 <= proposed <= 1.3 and current_rot != 'p60':
+                moveOK = True
+            elif 2.94159 <= proposed <= 3.14159 and current_rot != 'mp180':
+                moveOK = True
+            else:
+                if verbose: print("Proposed theta rejected",my_theta)
+                my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
                 proposed = math.degrees(dihedralangle + my_theta)
-            # if not within rotamer distribution, generate new theta
-                if -1.3 <= proposed <= -0.9:
-                    moveOK = True
-                elif -2.93482 <= proposed <= -3.14159:
-                    moveOK = True
-                elif 0.9 <= proposed <= 1.3:
-                    moveOK = True
-                elif 2.96 <= proposed <= 3.14159:
-                    moveOK = True
-                else:
-                    if verbose: print("Proposed theta rejected",my_theta)
-                    my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
+                moveOK = False
+        print('This is the accepted theta', my_theta)
 
-            print('This is the accepted theta', my_theta)
-
-        if rotamerOK and moveOK:
+        if moveOK:
             print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
             # find the rotation axis using the updated positions
             axis1 = target_atoms[0]
@@ -585,10 +588,10 @@ class SideChainMove(Move):
                 if verbose: print('The updated position for this atom is:', model.positions[atom])
 
             # update the actual ncmc context object with the new positions
-            nc_context.setPositions(nc_positions)
+                nc_context.setPositions(nc_positions)
 
             # update the class structure positions
-            self.structure.positions = model.positions
+                self.structure.positions = model.positions
 
             if verbose:
                 filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)

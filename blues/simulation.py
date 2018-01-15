@@ -573,15 +573,15 @@ class Simulation(object):
         topology = mdtraj.Topology.from_openmm(self.md_sim.topology)
         traj = mdtraj.Trajectory(np.asarray(positions),topology)
         #traj.xyz = np.asarray(positions)
-        indices = np.array([[1735, 1737, 1739, 1741]])
+        indices = np.array([[0,4,6,8]])
         dihedralangle = mdtraj.compute_dihedrals(traj, indices)
         if -1.3 <= dihedralangle <= -0.9:
             eval = True
-        elif -2.93482 <= dihedralangle <= -3.14159:
+        elif -2.94159 <= dihedralangle <= -3.14159:
             eval = True
         elif 0.9 <= dihedralangle <= 1.3:
             eval = True
-        elif 2.96 <= dihedralangle <= 3.14159:
+        elif 2.94159 <= dihedralangle <= 3.14159:
             eval = True
         else:
             eval = False
@@ -589,6 +589,7 @@ class Simulation(object):
             print("no ncmc --> dihedral not ok")
         if eval == True:
             print("Dihedral ok --> NCMC proceed")
+            print("In the simulation.py script, this is the dihedral angle %f" %(dihedralangle))
         return(eval)
 
     def run(self, nIter=100):
@@ -613,7 +614,6 @@ class Simulation(object):
                 self.acceptRejectNCMC(**self.opt)
                 self.move_ct += 1
             self.simulateMD(**self.opt)
-            self.move_ct += 1
 
         # END OF NITER
         self.accept_ratio = self.accept/float(self.move_ct)
