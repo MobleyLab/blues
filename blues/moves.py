@@ -269,7 +269,7 @@ class RandomLigandRotationMove(Move):
         self.positions = positions[self.atom_indices]
         return context
 
-class SideChainMove(object):
+class SideChainMove(Move):
     """Move that provides methods for:
         1. calculating the properties needed to rotate a sidechain residue
         of a structure in the NCMC simulation
