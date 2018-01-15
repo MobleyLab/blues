@@ -1,6 +1,6 @@
-class WaterTranslationMove(Move):
+class WaterTranslationRotationMove(Move):
     """ Move that translates a random water within a specified radius of the protein's
-    center of mass to another point within that radius
+    center of mass to another point within that radius, and then rotates it around it's center of mass
     Parameters
     ----------
     structure:
