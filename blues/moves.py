@@ -13,11 +13,9 @@ import parmed
 from simtk import unit
 import mdtraj
 import numpy as np
-import sys, traceback
 import math
 import copy
 import random
-import os
 from openeye.oechem import *
 
 
