@@ -1,6 +1,17 @@
+import parmed
+from simtk import unit
+import mdtraj
+import numpy as np
+import sys, traceback
+import math
+import copy
+import random
+import os
+from openeye.oechem import *
+
 class WaterTranslationRotationMove(Move):
     """ Move that translates a random water within a specified radius of the protein's
-    center of mass to another point within that radius, and then rotates it around it's center of mass
+    center of mass to another point within that radius, then rotates it around it's center of mass
     Parameters
     ----------
     structure:
