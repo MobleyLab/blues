@@ -499,7 +499,7 @@ class Simulation(object):
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
                     self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_context)
-                    #if the acceptance ratio is 0, stop running
+                    #if the acceptance ratio is 0, stop running, since the move would be rejected anyway
                     if self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio == 0:
                         break
                 # Attempt selected MoveEngine Move at the halfway point
@@ -508,6 +508,9 @@ class Simulation(object):
                     #Do move
                     self.log.info('Performing %s...' % move_name)
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    #if the acceptance ratio is 0, stop running, since the move would be rejected anyway
+                    if self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio == 0:
+                        break
 
                 # Do 1 NCMC step with the integrator
                 self.nc_integrator.step(1)

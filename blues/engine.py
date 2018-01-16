@@ -75,3 +75,7 @@ class MoveEngine(object):
             raise SystemExit
 
         return new_context
+
+    def resetAcceptanceRatios(self):
+        for move in self.moves:
+            move.acceptance_ratio = 1.0
