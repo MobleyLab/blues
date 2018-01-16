@@ -257,12 +257,12 @@ class Simulation(object):
 
         self.accept = 0
         self.reject = 0
-        self.accept_ratio = 0
+        self.accept_probability = 0
 
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
         if (self.opt['nstepsNC'] % 2) != 0:
-            raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (nstepsNC))
+            raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
         else:
             self.movestep = int(self.opt['nstepsNC']) / 2
 
@@ -571,8 +571,8 @@ class Simulation(object):
             self.simulateMD(**self.opt)
 
         # END OF NITER
-        self.accept_ratio = self.accept/float(nIter)
-        self.log.info('Acceptance Ratio: %s' % self.accept_ratio)
+        self.accept_probability = self.accept/float(nIter)
+        self.log.info('Acceptance Probability: %s' % self.accept_probability)
         self.log.info('nIter: %s ' % nIter)
 
     def simulateMC(self):
