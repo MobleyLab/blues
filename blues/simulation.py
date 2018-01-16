@@ -8,9 +8,7 @@ import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
 import parmed, math
-import mdtraj
-import sys, time
-from datetime import datetime
+import time
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
