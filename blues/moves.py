@@ -146,6 +146,8 @@ class RandomLigandRotationMove(Move):
     """
 
     def __init__(self, structure, resname='LIG'):
+        super(RandomLigandRotationMove, self).__init__()
+
         """Initialize the model.
         Parameters
         ----------
@@ -283,6 +285,7 @@ class SideChainMove(Move):
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
     def __init__(self, structure, residue_list):
+        super(SideChainMove, self).__init__()
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
