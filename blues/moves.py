@@ -6,18 +6,16 @@ Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley 
+Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
 from simtk import unit
 import mdtraj
 import numpy as np
-import sys, traceback
 import math
 import copy
 import random
-import os
 from openeye.oechem import *
 
 
@@ -36,8 +34,9 @@ class Move(object):
 
     def __init__(self):
         """Initialize the Move object
-        Currently empy.
         """
+        self.acceptance_ratio = 1.0
+
 
     def initializeSystem(self, system, integrator):
         """If the system or integrator needs to be modified to perform the move
@@ -79,7 +78,7 @@ class Move(object):
 
         """
         return context
-        
+
     def afterMove(self, context):
         """This method is called at the end of the NCMC portion if the
         context needs to be checked or modified before performing the move
@@ -98,7 +97,7 @@ class Move(object):
         """
 
         return context
-        
+
     def _error(self, context):
         """This method is called if running during NCMC portion results
         in an error. This allows portions of the context, such as the
@@ -147,6 +146,8 @@ class RandomLigandRotationMove(Move):
     """
 
     def __init__(self, structure, resname='LIG'):
+        super(RandomLigandRotationMove, self).__init__()
+
         """Initialize the model.
         Parameters
         ----------
@@ -284,6 +285,7 @@ class SideChainMove(Move):
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
     def __init__(self, structure, residue_list):
+        super(SideChainMove, self).__init__()
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list

@@ -8,9 +8,7 @@ import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
 import parmed, math
-import mdtraj
-import sys, time
-from datetime import datetime
+import time
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
@@ -257,12 +255,12 @@ class Simulation(object):
 
         self.accept = 0
         self.reject = 0
-        self.accept_ratio = 0
+        self.accept_probability = 0
 
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
         if (self.opt['nstepsNC'] % 2) != 0:
-            raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (nstepsNC))
+            raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
         else:
             self.movestep = int(self.opt['nstepsNC']) / 2
 
@@ -455,19 +453,34 @@ class Simulation(object):
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
-        if log_ncmc > randnum:
-            self.accept += 1
-            self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
-            self.md_sim.context.setPositions(nc_state1['positions'])
-            if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
-
-        else:
+        # If the move has an acceptance ratio factor, apply that to the overall acceptance
+        # but first check if the move acceptance ratio is 0 since that will always be rejected
+        if self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio == 0:
             self.reject += 1
-            self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+            self.log.info('NCMC MOVE REJECTED: move acceptance ratio is 0')
             self.nc_context.setPositions(md_state0['positions'])
+        else:
+            # Since we're working with the log of the energy difference we can add the log of the move acceptance ratio
+            # ln(xy) = ln(x) + ln(y), where y is acceptance_ratio and x is the protocol work
+            log_ncmc = log_ncmc + math.log(self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio)
+
+            if log_ncmc > randnum:
+                self.accept += 1
+                self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+                self.md_sim.context.setPositions(nc_state1['positions'])
+                if write_move:
+                    self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
+
+            else:
+                self.reject += 1
+                self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+                self.nc_context.setPositions(md_state0['positions'])
+
+
+
 
         self.nc_integrator.reset()
+        self.move_engine.resetAcceptanceRatios()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
     def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
@@ -486,12 +499,18 @@ class Simulation(object):
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
                     self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_context)
+                    #if the acceptance ratio is 0, stop running, since the move would be rejected anyway
+                    if self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio == 0:
+                        break
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
                     self.log.info('Performing %s...' % move_name)
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    #if the acceptance ratio is 0, stop running, since the move would be rejected anyway
+                    if self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio == 0:
+                        break
 
                 # Do 1 NCMC step with the integrator
                 self.nc_integrator.step(1)
@@ -571,8 +590,8 @@ class Simulation(object):
             self.simulateMD(**self.opt)
 
         # END OF NITER
-        self.accept_ratio = self.accept/float(nIter)
-        self.log.info('Acceptance Ratio: %s' % self.accept_ratio)
+        self.accept_probability = self.accept/float(nIter)
+        self.log.info('Acceptance Probability: %s' % self.accept_probability)
         self.log.info('nIter: %s ' % nIter)
 
     def simulateMC(self):
