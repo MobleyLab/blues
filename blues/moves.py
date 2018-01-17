@@ -530,6 +530,7 @@ class SideChainMove(Move):
 
         # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
         postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
+
         # set while attribute for rotamer as true or false
         ##rotamerOK = False
         moveOK = False
@@ -553,7 +554,9 @@ class SideChainMove(Move):
         # this should also be simplified to use the rotamer checking function (to be written)  described above
         my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
         moveOK = False
+
         proposed = math.degrees(postrelax_dihedralangle + my_theta)
+
         while moveOK == False:
             if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
                 moveOK = True
@@ -568,6 +571,7 @@ class SideChainMove(Move):
                 my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
                 proposed = math.degrees(postrelax_dihedralangle + my_theta)
                 moveOK = False
+
         print('This is the accepted theta', my_theta)
 
         if moveOK:
