@@ -78,8 +78,10 @@ class Move(object):
             The same input context, but whose context were changed by this function.
 
         """
+        self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+
         return context
-        
+
     def afterMove(self, context):
         """This method is called at the end of the NCMC portion if the
         context needs to be checked or modified before performing the move
@@ -96,9 +98,25 @@ class Move(object):
             The same input context, but whose context were changed by this function.
 
         """
+        self.after_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        indices = np.asarray([[0,4,6,8]])
+        angle = self.getDihedral(self.after_pos,indices)
+
+        if -1.3 <= angle <= -0.9:
+            bin == True
+        elif -2.94159 <= angle <= -3.14159:
+            bin == True
+        elif 0.9 <= angle <= 1.3:
+            bin == True
+        elif 2.94159 <= angle <= 3.14159:
+            bin == True
+        else:
+            bin == False
+
+        self.bin_boolean = bin
 
         return context
-        
+
     def _error(self, context):
         """This method is called if running during NCMC portion results
         in an error. This allows portions of the context, such as the
@@ -505,11 +523,13 @@ class SideChainMove(Move):
         positions = model.positions
 
         ##*** to test of rotamer biasing of valine improves acceptance
-        # Retrieve current rotamer angle
+        # Retrieve rotamer angle prior to NCMC
         dihedralatoms = np.array([[0,4,6,8]])
-        dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
+        dihedralangle = self.getDihedral(self.start_pos, dihedralatoms)
         print("In the moves.py script, this is the current dihedral angle:", dihedralangle)
 
+        # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
+        postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
         # set while attribute for rotamer as true or false
         ##rotamerOK = False
         moveOK = False
@@ -533,7 +553,7 @@ class SideChainMove(Move):
         # this should also be simplified to use the rotamer checking function (to be written)  described above
         my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
         moveOK = False
-        proposed = math.degrees(dihedralangle + my_theta)
+        proposed = math.degrees(postrelax_dihedralangle + my_theta)
         while moveOK == False:
             if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
                 moveOK = True
@@ -546,7 +566,7 @@ class SideChainMove(Move):
             else:
                 if verbose: print("Proposed theta rejected",my_theta)
                 my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-                proposed = math.degrees(dihedralangle + my_theta)
+                proposed = math.degrees(postrelax_dihedralangle + my_theta)
                 moveOK = False
         print('This is the accepted theta', my_theta)
 
