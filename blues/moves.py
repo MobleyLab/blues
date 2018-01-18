@@ -98,9 +98,9 @@ class Move(object):
             The same input context, but whose context were changed by this function.
 
         """
-        self.after_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         indices = np.asarray([[0,4,6,8]])
-        angle = self.getDihedral(self.after_pos,indices)
+        angle = self.getDihedral(post_pos,indices)
 
         if -1.3 <= angle <= -0.9:
             bin == True
@@ -113,6 +113,7 @@ class Move(object):
         else:
             bin == False
 
+        self.after_pos = post_pos
         self.bin_boolean = bin
 
         return context
@@ -572,8 +573,9 @@ class SideChainMove(Move):
                 proposed = math.degrees(postrelax_dihedralangle + my_theta)
                 moveOK = False
 
+        print('This is the new proposed dihedral',proposed)
         print('This is the accepted theta', my_theta)
-
+        print('This is where it is moving from', postrelax_dihedralangle)
         if moveOK:
             print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
             # find the rotation axis using the updated positions
@@ -616,6 +618,11 @@ class SideChainMove(Move):
 
             # update the class structure positions
                 self.structure.positions = model.positions
+
+            print(self.bin_boolean)
+
+            newdihed = self.getDihedral(self.after_pos, dihedralatoms)
+            print(newdihed)
 
             if verbose:
                 filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)

@@ -471,6 +471,9 @@ class Simulation(object):
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
+        if self.move_engine.moves[self.move_engine.selected_move].bin_boolean == False:
+            print("Bin Boolean false")
+
         if log_ncmc > randnum and self.move_engine.moves[self.move_engine.selected_move].bin_boolean:
             self.accept += 1
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
