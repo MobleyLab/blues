@@ -554,7 +554,9 @@ class SideChainMove(Move):
         # this should also be simplified to use the rotamer checking function (to be written)  described above
         my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
         moveOK = False
-        proposed = math.degrees(postrelax_dihedralangle + my_theta)
+
+        proposed = postrelax_dihedralangle + my_theta
+
         while moveOK == False:
             if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
                 moveOK = True
@@ -567,7 +569,7 @@ class SideChainMove(Move):
             else:
                 if verbose: print("Proposed theta rejected",my_theta)
                 my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-                proposed = math.degrees(postrelax_dihedralangle + my_theta)
+                proposed = postrelax_dihedralangle + my_theta
                 moveOK = False
         print('This is the new proposed dihedral',proposed)
         print('This is the accepted theta', my_theta)
@@ -615,10 +617,7 @@ class SideChainMove(Move):
             # update the class structure positions
                 self.structure.positions = model.positions
 
-            print(self.bin_boolean)
 
-            newdihed = self.getDihedral(self.after_pos, dihedralatoms)
-            print(newdihed)
 
             if verbose:
                 filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
