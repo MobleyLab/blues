@@ -1,24 +1,18 @@
-from analysis import bindingmodes
-import mdtraj as md
-import numpy as np
-import os, glob, traceback
-from optparse import OptionParser
+from analysis import msm, utils, cluster, population
+import os, glob, traceback, pickle
+from argparse import ArgumentParser
 import pyemma.coordinates as coor
+import numpy as np
 
-def main(fpath, molid):
+def main(fpath, molid, args):
     prefix = os.path.join(fpath,molid,molid)
-    print(prefix)
     trajfiles = glob.glob(prefix+'*-centered.dcd')
-    topfiles = glob.glob(prefix+'*.pdb')
+    topfiles = glob.glob(prefix+'*-centered.pdb')
+    jsonfile = os.path.join(prefix+'-acc_its.json')
 
     #Pre-process trajectory files, check for unbound ligands
-    #for trj in trajfiles:
-    #    traj = md.load(trj, top=topfiles[0])
-    #    if not bindingmodes.check_bound_ligand(traj):
-    #        print('Detected unbound ligand in:', trj)
-    #        with open('unbound-lig.err', 'a') as errfile:
-    #            errfile.write(trj+'\n')
-    #        trajfiles.remove(trj)
+    trajfiles = utils.check_bound_ligand(trajfiles,
+                                        topfiles[0])
 
     #Select features to analyze in trajectory
     feat = coor.featurizer(topfiles[0])
@@ -31,7 +25,7 @@ def main(fpath, molid):
     lag_list = np.arange(1, 40,5) #Give a range of lag times to try
 
     #Initailize object to assign trajectories to clusters
-    data = bindingmodes.ConstructMSM(inp)
+    data = msm.ConstructMSM(inp)
 
     #Select the apprioriate lagtime from the implied timescale plots
     #data.plotImpliedTimescales(data.Y, dt, lag_list, outfname=prefix)
@@ -44,43 +38,40 @@ def main(fpath, molid):
     data.getMSM(data.Y, dt, lagtime)
 
     #Analyze our assigned clusters by Silhouette method
-    fbm = bindingmodes.FindBindingModes(data)
-    #fbm = bindingmodes.FindBindingModes(data.M, data.centers, data.tica_coordinates)
+    fbm = cluster.FindBindingModes(data)
 
     #Get the optimimal number of clusters by silhouette score
     n_clusters = fbm.getNumBindingModes(range_n_clusters=range(2,10), outfname=prefix)
 
     #Draw samples from the PCCA metastable distributions
-    pcca_outfiles = fbm.savePCCASamples(inp, n_clusters, outfname=prefix)
+    pcca_outfiles = fbm.savePCCASamples(n_clusters, outfname=prefix)
     leaders, leader_labels = fbm.selectLeaders(pcca_outfiles, n_clusters, outfname=prefix)
 
     #Every iteration stores 5 frames, every frame stores 0.0352ns
     time_per_iter = 5 * 0.0352
-    jsonfile = glob.glob('json/%s*.json' %molid)[0]
-    acc_data = bindingmodes.convertIterToTime(jsonfile, time_per_iter)
+    acc_data = utils.convertIterToTime(jsonfile, molid, time_per_iter)
 
     for t in trajfiles:
-        bmo = bindingmodes.BindingModeOccupancy(t, acc_data[molid])
+        bmo = population.BindingModeOccupancy(t, acc_data[molid])
         bmo.calcOccupancy(leaders, leader_labels, outfname=prefix)
 
-if __name__ == '__main__':
-    parser = OptionParser()
-    parser.add_option('-f','--file_path', dest='fpath', type='str',
-                  help='parent directory of BLUES simluations')
-    parser.add_option('-m','--molid', dest='molid', type='str',
-                  help='molecule ID')
-    (options, args) = parser.parse_args()
 
-    fpath = options.fpath
-    mol = options.molid
+parser = ArgumentParser()
+parser.add_argument('-f','--file_path', dest='fpath', type=str,
+              help='parent directory of BLUES simluations')
+parser.add_argument('-o','--output', dest='outfname', type=str, default="blues",
+                  help='Filename for output DCD')
+parser.add_argument('-m','--molid', dest='molid', type=str,
+              help='molecule ID')
+parser.add_argument('--show_progress_bars', action='store_true',default=False, dest='show_progress_bars')
+args = parser.parse_args()
 
-    try:
-        print('\n### Analyzing', mol)
-        main(fpath,mol)
-    except Exception as e:
-        print('\nERROR!!!', mol)
-        with open('%s.err' %mol, 'w') as errfile:
-            errfile.write('### %s \n' % mol)
-            errmsg = traceback.format_exc()
-            errfile.write(errmsg)
-            print('\n'+str(errmsg))
+try:
+    main(args.fpath, args.molid, args)
+except Exception as e:
+    print('\nERROR!!!', args.molid)
+    with open('%s.err' %args.molid, 'w') as errfile:
+        errfile.write('### %s \n' % args.molid)
+        errmsg = traceback.format_exc()
+        errfile.write(errmsg)
+        print('\n'+str(errmsg))
