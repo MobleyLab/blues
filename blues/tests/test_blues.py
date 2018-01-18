@@ -57,10 +57,10 @@ class BLUESTester(unittest.TestCase):
         alch_system = sims.generateAlchSystem(system, move.atom_indices)
         self.assertIsInstance(alch_system, openmm.System)
 
-        md_sim = sims.generateSimFromStruct(self.full_struct, system, **self.opt)
+        md_sim = sims.generateSimFromStruct(self.full_struct, engine, system, **self.opt)
         self.assertIsInstance(md_sim, openmm.app.simulation.Simulation)
 
-        nc_sim = sims.generateSimFromStruct(self.full_struct, alch_system, ncmc=True, **self.opt)
+        nc_sim = sims.generateSimFromStruct(self.full_struct, engine, alch_system, ncmc=True, **self.opt)
         self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
 
     def test_simulationRun(self):
@@ -90,7 +90,7 @@ class BLUESTester(unittest.TestCase):
         system = sims.generateSystem(structure, **self.opt)
         simdict = sims.createSimulationSet()
         alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.generateSimFromStruct(structure, self.mover, alch_system, ncmc=True, **self.opt)
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         asim = Simulation(sims, self.mover, **self.opt)

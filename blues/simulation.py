@@ -61,7 +61,7 @@ class SimulationFactory(object):
         #Atom indicies from move_engine
         #TODO: change atom_indices selection for multiple regions
         self.atom_indices = move_engine.moves[0].atom_indices
-
+        self.move_engine = move_engine
         self.system = None
         self.alch_system = None
         self.md = None
@@ -138,7 +138,7 @@ class SimulationFactory(object):
                             hydrogenMass=hydrogenMass)
         return system
 
-    def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
+    def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
                              reporter_interval=1000, nprop=1, prop_lambda=0.3,
                              ncmc=False, platform=None, verbose=True,
@@ -175,10 +175,15 @@ class SimulationFactory(object):
                                    nprop=nprop,
                                    prop_lambda=prop_lambda
                                    )
+
+            for move in move_engine.moves:
+                system, integrator = move.initializeSystem(system, integrator)
+
         else:
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
                                                    dt*unit.picoseconds)
+
         #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
         if platform is None:
@@ -210,9 +215,9 @@ class SimulationFactory(object):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
-        self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
-        self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
+        self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, self.move_engine, self.alch_system,
                                             ncmc=True, **self.opt)
 
 
@@ -478,6 +483,9 @@ class Simulation(object):
             start = time.time()
             self._initialSimulationTime = self.nc_context.getState().getTime()
             try:
+                #Attempt anything related to the move before protocol is performed
+                if nc_step == 0:
+                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_context)
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
@@ -496,8 +504,13 @@ class Simulation(object):
                 if ncmc_traj:
                     self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
 
+                #Attempt anything related to the move after protocol is performed
+                if nc_step == nstepsNC-1:
+                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_context)
+
             except Exception as e:
                 self.log.error(e)
+                self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_context)
                 break
 
             self._report(start, nc_step)
