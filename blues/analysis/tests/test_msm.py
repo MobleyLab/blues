@@ -2,7 +2,8 @@ import unittest
 import pyemma.coordinates as coor
 from pyemma.msm import estimate_markov_model
 import numpy as np
-from .. import msm
+import pickle
+from blues.analysis import msm, cluster
 np.random.seed(0)
 
 class ConstructMSMTester(unittest.TestCase):
@@ -10,8 +11,8 @@ class ConstructMSMTester(unittest.TestCase):
     Test the ConstructMSM class.
     """
     def setUp(self):
-        trajfiles = ['tests/data/run03-centered.dcd']
-        feat = coor.featurizer('tests/data/run03-centered.pdb')
+        trajfiles = ['/home/nathanlim/SCRATCH/blues/blues/analysis/tests/data/run03-centered.dcd']
+        feat = coor.featurizer('/home/nathanlim/SCRATCH/blues/blues/analysis/tests/data/run03-centered.pdb')
         atom_index = np.array([2634, 2635, 2636, 2637, 2638, 2639, 2640, 1605, 1622, 1638, 1658, 1675, 1692, 1700, 1714, 1728, 1735, 1751, 1761, 1768, 1788])
         paired_index = feat.pairs(atom_index)
         feat.add_distances(paired_index)
@@ -39,6 +40,7 @@ class ConstructMSMTester(unittest.TestCase):
         self.assertEqual(len(dtrajs[0]),n_frames)
         #Check for the appropriate number of centers when None is given.
         k_clusters = np.int(np.sqrt(n_frames))
+
         self.assertEqual(len(centers), k_clusters)
         self.assertEqual(len(index_clusters), len(centers))
 

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import silhouette_samples, silhouette_score
 from matplotlib import gridspec
 from scipy import stats
-from analysis import utils
+from . import utils
 
 class FindBindingModes(object):
     """
@@ -21,7 +21,7 @@ class FindBindingModes(object):
     """
     def __init__(self, data):
         self.data = data
-        self.silhouette_data = {}
+        self.silhouette_pcca = {}
 
     def _get_colors(self, n_clusters, cmap='gist_rainbow'):
         """Returns N colors according to the provided colormap.
@@ -39,13 +39,14 @@ class FindBindingModes(object):
         colors = [colormap(1.*i/n_clusters) for i in range(n_clusters)]
         return colors
 
-    def _pcca(self, n_clusters):
+    def _pcca(self, n_clusters, n_samples=100):
         """Convenience function to run PCCA++ to compute a metastable
         decomposition of MSM states.
 
         Parameters:
         -----------
         n_clusters : int, the number of metastable states/clusters
+        n_samples : number of samples to draw from the PCCA++ distributions.
 
         Returns:
         -----------
@@ -62,8 +63,9 @@ class FindBindingModes(object):
         centers = self.data.centers[self.data.M.active_set]
         pcca_sets = pcca.metastable_sets
         cluster_labels = pcca.metastable_assignment
-
-        return pcca_sets, cluster_labels, centers
+        pcca_dist = self.data.M.metastable_distributions
+        pcca_samples = self.data.M.sample_by_distributions(pcca_dist, n_samples)
+        return pcca_sets, cluster_labels, centers, pcca_dist, pcca_samples
 
     def _load_pcca_trajectories(self, pcca_outfiles):
         """Convenience function that loads the PCCA samples into
@@ -86,38 +88,42 @@ class FindBindingModes(object):
             pcca_traj[n] = md.load(f,top=self.data.inp.topfile)
         return pcca_traj
 
-    def _get_n_clusters(self, s_score_avg, s_score_std):
+    def _get_n_clusters(self, silhouette_pcca):
         """Helper function that selects the appropriate number of
         metastable states from the silhouette scores. Opts to use any number
         of states greater than 2 if it is within error (by ttest).
 
         Parameters:
         -----------
-        s_score_avg : list, average silhouette scores for different numbers of metastable states.
-        s_score_std : list, standard devations of silhouette scores for different number of metastable states.
+        silhouette_pcca : dict, dictionary containing silhouette scores of PCCA assignments
 
         Returns:
         -------
         n_clusters : int, suggested number of clusters.
         """
+
+        s_score_avg = [v['AVG'] for k,v in sorted(silhouette_pcca.items())]
+        s_score_std = [v['STD'] for k,v in sorted(silhouette_pcca.items())]
+        range_n_clusters = [k for k in sorted(silhouette_pcca.keys())]
+
         max0 = np.argmax(s_score_avg)
         #If cluster number is 2,
         # check if next highest is significantly different
         if max0 == 0:
             max1 = np.partition(s_score_avg, -2)[-2]
             max1 = int(np.argwhere(s_score_avg == max1))
-            print('\tInitial suggestion n_clusters = %s' % self.range_n_clusters[max0])
-            print('\tChecking if n_clusters = %s is within error.' % self.range_n_clusters[max1])
+            print('\tInitial suggestion n_clusters = %s' % range_n_clusters[max0])
+            print('\tChecking if n_clusters = %s is within error.' % range_n_clusters[max1])
             t, p = stats.ttest_ind_from_stats(s_score_avg[max0],
                                             s_score_std[max0],
-                                            self.silhouette_data[self.range_n_clusters[max0]]['N_samples'],
+                                            silhouette_pcca[range_n_clusters[max0]]['N_samples'],
                                             s_score_avg[max1],
                                             s_score_std[max1],
-                                            self.silhouette_data[self.range_n_clusters[max1]]['N_samples'])
+                                            silhouette_pcca[range_n_clusters[max1]]['N_samples'])
             if p < 0.05:
                 max0 = max1
 
-        n_clusters = self.range_n_clusters[max0]
+        n_clusters = range_n_clusters[max0]
         print('Suggested number of cluster =', n_clusters)
         return n_clusters
 
@@ -223,26 +229,29 @@ class FindBindingModes(object):
         ax2.set_yticks([])
         ax2.set_xticks([])
 
-    def _plotNClusters(self, ax, s_score_avg, n_clusters, outfname):
+    def _plotNClusters(self, ax, silhouette_pcca, n_clusters, outfname):
         """
         Plots a barplot of the silhouette scores.
 
         Parameters:
         -----------
         ax : matplotlib.axes.Axes
-        s_score_avg : list, average silhouette scores for different numbers of metastable states.
-        s_score_std : list, standard devations of silhouette scores for different number of metastable states.
+        silhouette_pcca : dict, dictionary containing silhouette scores of PCCA assignments
+        n_clusters : int, optimimal number of clusters according to silhouette scores
         outfname : str, specify the molecule name for the barplot title.
         """
+        s_score_avg = [v['AVG'] for k,v in sorted(silhouette_pcca.items())]
+        s_score_std = [v['STD'] for k,v in sorted(silhouette_pcca.items())]
+        range_n_clusters = [k for k in sorted(silhouette_pcca.keys())]
 
-        bar = ax.bar(self.range_n_clusters,s_score_avg, align='center', yerr=np.std(s_score_avg))
+        bar = ax.bar(range_n_clusters,s_score_avg, align='center', yerr=np.std(s_score_avg))
         bar[n_clusters-2].set_color('r')
         ax.set_title("Silhouette analysis for PCCA clustering on %s" % outfname.split('/')[-1],
                      fontsize=14, fontweight='bold')
         ax.set_xlabel("# clusters")
         ax.set_ylabel("<Score>")
 
-    def getNumBindingModes(self, range_n_clusters=range(2,10), outfname=None):
+    def getNumBindingModes(self, range_n_clusters=range(2,10), n_samples=100, outfname=None):
         """
         Determine the likely number of binding modes by scoring the silhouettes
         of a range of different cluster numbers. Plots the silhouettes alongside
@@ -251,6 +260,7 @@ class FindBindingModes(object):
         Parameters:
         ------------
         range_n_clusters : list, range of different cluster numbers to try.
+        n_samples : int, number of samples to draw from PCCA distributions.
         outfname : str, specifying the file prefix for saving the plots.
                    Will append the suffix `<outfname>-tica_pcca.png`
 
@@ -259,13 +269,13 @@ class FindBindingModes(object):
         n_clusters : int, the optimimal number of clusters to use according to
                      the silhouette scores.
         """
-        self.range_n_clusters = range_n_clusters
 
         fig = plt.figure(figsize=(16, len(range_n_clusters)*5), dpi=120)
         gs = gridspec.GridSpec(len(range_n_clusters)+1, 2)
 
+        silhouette_pcca = {}
         for idx,K in enumerate(range_n_clusters):
-            pcca_sets, cluster_labels, centers = self._pcca(K)
+            pcca_sets, cluster_labels, centers, pcca_dist, pcca_samples = self._pcca(K, n_samples)
             silhouette_avg, sample_silhouette_values = self.scoreSilhouette(K, centers, cluster_labels)
 
             ax1 = fig.add_subplot(gs[idx+1,0])
@@ -273,7 +283,10 @@ class FindBindingModes(object):
             self._plotSilhouette(ax1,ax2, K,pcca_sets,cluster_labels,centers,
                                 silhouette_avg, sample_silhouette_values)
 
-            self.silhouette_data[K] = {'PCCA_sets' : pcca_sets,
+            silhouette_pcca[K] = {'PCCA_sets' : pcca_sets,
+                            'Centers' : centers,
+                            'Distribution' : pcca_dist,
+                            'Samples' : pcca_samples,
                             'Labels': cluster_labels,
                             'N_samples' : len(sample_silhouette_values),
                             'Values': sample_silhouette_values,
@@ -281,18 +294,46 @@ class FindBindingModes(object):
                             'STD' : np.std(sample_silhouette_values)
                             }
 
-        s_score_avg = [v['AVG'] for k,v in sorted(self.silhouette_data.items())]
-        s_score_std = [v['STD'] for k,v in sorted(self.silhouette_data.items())]
-        n_clusters = self._get_n_clusters(s_score_avg, s_score_std)
+        n_clusters = self._get_n_clusters(silhouette_pcca)
 
         ax3 = fig.add_subplot(gs[0,:])
-        self._plotNClusters(ax3, s_score_avg, n_clusters, outfname)
+        self._plotNClusters(ax3, silhouette_pcca, n_clusters, outfname)
 
         gs.tight_layout(fig)
         plt.savefig('{}-tica_pcca.png'.format(outfname), bbox_inches='tight')
         plt.close(fig)
 
+        self.range_n_clusters = range_n_clusters
+        self.silhouette_pcca = silhouette_pcca
         return n_clusters
+
+    def savePCCASamples(self, n_clusters, outfname,inp=None, pcca_samples=None):
+        """
+        Draws samples from each of the clusters according to the PCCA++ membership
+        probabilities.
+
+        Parameters:
+        -----------
+        inp: pyemma.coordinates.data.feature_reader.FeatureReader
+        n_clusters : int, the optimimal number of clusters to use according to
+                     the silhouette scores.
+        outfname : str, specifying the file prefix for saving the PCCA++ samples.
+                   Will append the suffix `<outfname>-pcca<cluster_index>_samples.dcd`
+
+        Returns:
+        --------
+        pcca_outfiles : list, strings specifying the trajectory files containing
+                        samples obtained from PCCA++.
+        """
+
+        if not inp: inp = self.data.inp
+        if pcca_samples is None: pcca_samples = self.silhouette_pcca[n_clusters]['Samples']
+
+        outfiles = ['%s-pcca%s_samples.dcd' % (outfname,N) for N in range(n_clusters)]
+        pcca_outfiles = coor.save_trajs(inp, pcca_samples, outfiles=outfiles)
+        print('Storing %s PCCA samples each to: \n\t%s' % (len(pcca_samples), '\n\t'.join(pcca_outfiles)))
+
+        return pcca_outfiles
 
     def _filter_leaders(self, leaders, leader_labels, cutoff=0.3):
         """
@@ -425,35 +466,3 @@ class FindBindingModes(object):
         new_leaders.save('%s-leaders.pdb' %outfname)
 
         return new_leaders, new_leader_labels
-
-    def savePCCASamples(self, n_clusters, outfname, n_samples=100):
-        """
-        Draws samples from each of the clusters according to the PCCA++ membership
-        probabilities.
-
-        Parameters:
-        -----------
-        inp: pyemma.coordinates.data.feature_reader.FeatureReader
-        n_clusters : int, the optimimal number of clusters to use according to
-                     the silhouette scores.
-        outfname : str, specifying the file prefix for saving the PCCA++ samples.
-                   Will append the suffix `<outfname>-pcca<cluster_index>_samples.dcd`
-        n_samples : number of samples to draw from the PCCA++ distributions.
-
-        Returns:
-        --------
-        pcca_outfiles : list, strings specifying the trajectory files containing
-                        samples obtained from PCCA++.
-        """
-
-        self.data.M.pcca(n_clusters)
-        pcca_dist = self.data.M.metastable_distributions
-        pcca_samples = self.data.M.sample_by_distributions(pcca_dist, n_samples)
-        #outfiles = []
-        #for N in range(n_clusters):
-        #    outfiles.append()
-        outfiles = ['%s-pcca%s_samples.dcd' % (outfname,N) for N in range(n_clusters)]
-        pcca_outfiles = coor.save_trajs(self.data.inp, pcca_samples, outfiles=outfiles)
-        print('Storing %s PCCA samples each to: \n\t%s' % (n_samples, '\n\t'.join(pcca_outfiles)))
-
-        return pcca_outfiles
