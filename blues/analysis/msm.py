@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 class ConstructMSM(object):
     """
-    ConstructMSM provides functionality to select the appropriate lagtime
+    ConstructMSM provides convenience functions for using PyEMMA.
+    This class assists in selecting the appropriate lagtime
     through plots, TICA-transforms the input feature coordinates for
     k-means clustering to discretize the trajectories, and constructs the MSM
     for the purpose of identifying the metastable binding modes.
@@ -18,7 +19,14 @@ class ConstructMSM(object):
     >>> feat.add_selection(lig_atoms)
     >>> inp = coor.source(trajfiles, feat)
     >>> data = bindingmodes.ConstructMSM(inp)
-    >>> M = data.getMSM(data.Y, dt=8, lagtime=150)
+
+    >>> dt = 8; lag_list = np.arange(1, 40,5)
+
+    #To view the implied timescales plot using a range of lagtimes
+    >>> data.plotImpliedTimescales(data.Y, dt, lag_list, outfname)
+
+    #Use the plots to select the apprioriate lagtime and generate the MSM.
+    >>> M = data.getMSM(data.Y, dt, lagtime=150)
     """
 
     def __init__(self, inp):
@@ -78,8 +86,6 @@ class ConstructMSM(object):
                         where `i` is the index of the trajectory and `t` is the frame index.
         """
         cl = coor.cluster_kmeans(tica_coordinates, k, max_iter);
-
-
         dtrajs = cl.dtrajs
         cc_x = cl.clustercenters[:, 0]
         cc_y = cl.clustercenters[:, 1]
@@ -124,7 +130,7 @@ class ConstructMSM(object):
             plt.suptitle("Implied timescales", fontsize=14, fontweight='bold')
             plt.show()
 
-    def getMSM(self, Y, dt, lagtime):
+    def getMSM(self, Y, dt, lagtime, k=None):
         """
         Runs TICA on the input feature coordinates, discretize the data
         using k-means clustering and estimates the markov model from
@@ -135,6 +141,8 @@ class ConstructMSM(object):
         Y : Feautrized input data from inp.get_output()
         dt : int, trajectory timestep
         lagtime : float, choosen lag time from the implied timescales
+        k : int, maximum number of cluster centers. When `k=None`, the number of
+            data points used will be k = min(sqrt(N))
 
         Returns:
         --------
@@ -142,7 +150,7 @@ class ConstructMSM(object):
             Markov State Model and estimation information.
         """
         tica_coordinates, lag = self._tica(Y, dt, lagtime)
-        dtrajs, centers, index_clusters = self._kmeans(tica_coordinates)
+        dtrajs, centers, index_clusters = self._kmeans(tica_coordinates,k)
         self.M = estimate_markov_model(dtrajs, lag)
 
         return self.M

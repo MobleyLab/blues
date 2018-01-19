@@ -106,6 +106,8 @@ class FindBindingModes(object):
         if max0 == 0:
             max1 = np.partition(s_score_avg, -2)[-2]
             max1 = int(np.argwhere(s_score_avg == max1))
+            print('\tInitial suggestion n_clusters = %s' % self.range_n_clusters[max0])
+            print('\tChecking if n_clusters = %s is within error.' % self.range_n_clusters[max1])
             t, p = stats.ttest_ind_from_stats(s_score_avg[max0],
                                             s_score_std[max0],
                                             self.silhouette_data[self.range_n_clusters[max0]]['N_samples'],
@@ -113,8 +115,6 @@ class FindBindingModes(object):
                                             s_score_std[max1],
                                             self.silhouette_data[self.range_n_clusters[max1]]['N_samples'])
             if p < 0.05:
-                print('\tInitial suggestion n_clusters = %s' % self.range_n_clusters[max0])
-                print('\tChecking if n_clusters = %s is within error.' % self.range_n_clusters[max1])
                 max0 = max1
 
         n_clusters = self.range_n_clusters[max0]
@@ -213,7 +213,7 @@ class FindBindingModes(object):
 
         # 2nd Plot showing the actual clusters formed
         plots.plot_free_energy(np.vstack(self.data.tica_coordinates)[:, 0], np.vstack(self.data.tica_coordinates)[:, 1],
-                                ax=ax2, cmap=cmap, cbar=False)
+                                ax=ax2, cmap='nipy_spectral', cbar=False)
         for i, color in enumerate(colors[:n_clusters]):
             ax2.scatter(centers[pcca_sets[i],0], centers[pcca_sets[i],1],
                        marker='X', c=color,s=200, edgecolors='black')

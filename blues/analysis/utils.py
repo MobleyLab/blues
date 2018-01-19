@@ -7,6 +7,22 @@ import matplotlib.colors as mcolors
 from matplotlib import animation, rc
 from IPython.display import HTML
 
+def centerTrajectory(traj, outfname, remove_solvent=True):
+    """Take an mdtraj.Trajectory object and centers the system for visualization.
+    By default, this will remove solvent molecules."""
+
+    if remove_solvent:
+        #Remove the solvent to shrink the filesize
+        traj = traj.remove_solvent()
+    #Recenter/impose periodicity to the system
+    anchor = traj.top.guess_anchor_molecules()[0]
+    imgd = traj.image_molecules(anchor_molecules=[anchor])
+    #Let's align by the protein atoms in reference to the first frame
+    prt_idx = imgd.top.select('protein')
+    superposed = imgd.superpose(reference=imgd,frame=0,atom_indices=prt_idx)
+    #Save out the aligned frames
+    superposed.save_dcd(outfname+'-centered.dcd')
+    superposed[0].save_pdb(outfname+'-centered.pdb')
 
 def check_bound_ligand(trajfiles,topfile, cutoff=0.8,
                     sel='resname LIG', ref_sel='protein'):
