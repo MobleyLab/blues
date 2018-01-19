@@ -18,7 +18,7 @@ class FindBindingModesTester(unittest.TestCase):
         with open(msm_pkl, 'rb') as f:
             self.data = pickle.load(f)
         self.fbm = cluster.FindBindingModes(self.data)
-        
+
         pcca_pkl = utils.get_data_filename('blues.analysis', 'tests/data/silhouette_pcca.pkl')
         with open(pcca_pkl, 'rb') as fpcca:
             self.silhouette_pcca= pickle.load(fpcca)
@@ -63,7 +63,7 @@ class FindBindingModesTester(unittest.TestCase):
         silhouette_avg, sample_silhouette_values = self.fbm.scoreSilhouette(self.n_clusters, centers, cluster_labels)
 
         #Check silhouette scoring is same as values in pickled data.
-        self.assertEqual(silhouette_avg, self.silhouette_pcca[self.n_clusters]['AVG'])
+        self.assertAlmostEqual(silhouette_avg, self.silhouette_pcca[self.n_clusters]['AVG'])
         self.assertSequenceEqual(list(sample_silhouette_values), list(self.silhouette_pcca[self.n_clusters]['Values']))
 
     def test_get_n_clusters(self):
@@ -71,16 +71,20 @@ class FindBindingModesTester(unittest.TestCase):
         n_clusters = self.fbm._get_n_clusters(self.silhouette_pcca)
         self.assertEqual(n_clusters, self.n_clusters)
 
-    def test_select_leaders(self):
-        kwargs = { 'n_clusters' : self.n_clusters,
-                   'outfname' : '%s/t4-tol' % self.test_dir,
-                   'inp' : self.fbm.data.inp,
-                   'pcca_samples' : self.silhouette_pcca[self.n_clusters]['Samples'] }
+    #def test_save_pcca(self):
+        #kwargs = { 'n_clusters' : self.n_clusters,
+        #           'outfname' : '%s/t4-tol' % self.test_dir,
+        #           'inp' : self.fbm.data.inp,
+        #           'pcca_samples' : self.silhouette_pcca[self.n_clusters]['Samples'] }
 
         #Check method that saves PCCA samples to trajectory file
-        pcca_outfiles = self.fbm.savePCCASamples(**kwargs)
-        self.assertEqual(len(pcca_outfiles), self.n_clusters)
+        #pcca_outfiles = self.fbm.savePCCASamples(**kwargs)
+        #self.assertEqual(len(pcca_outfiles), self.n_clusters)
 
+    def test_select_leaders(self):
+        pcca0 = utils.get_data_filename('blues.analysis', 'tests/data/t4-tol-pcca0_samples.dcd')
+        pcca1 = utils.get_data_filename('blues.analysis', 'tests/data/t4-tol-pcca1_samples.dcd')
+        pcca_outfiles = [pcca0, pcca1]
         leader_kwargs = { 'pcca_outfiles' : pcca_outfiles,
                           'n_clusters' : self.n_clusters,
                           'n_leaders_per_cluster' : 3,
