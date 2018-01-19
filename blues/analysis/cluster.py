@@ -67,7 +67,7 @@ class FindBindingModes(object):
         pcca_samples = self.data.M.sample_by_distributions(pcca_dist, n_samples)
         return pcca_sets, cluster_labels, centers, pcca_dist, pcca_samples
 
-    def _load_pcca_trajectories(self, pcca_outfiles):
+    def _load_pcca_trajectories(self, pcca_outfiles, topfile):
         """Convenience function that loads the PCCA samples into
         an mdtraj.Trajectory object
 
@@ -85,7 +85,7 @@ class FindBindingModes(object):
 
         pcca_traj = {}
         for n,f in enumerate(pcca_outfiles):
-            pcca_traj[n] = md.load(f,top=self.data.inp.topfile)
+            pcca_traj[n] = md.load(f,top=topfile)
         return pcca_traj
 
     def _get_n_clusters(self, silhouette_pcca):
@@ -409,7 +409,7 @@ class FindBindingModes(object):
 
         return leaders, leader_labels
 
-    def selectLeaders(self, pcca_outfiles, n_clusters=4, n_leaders_per_cluster=5,
+    def selectLeaders(self, pcca_outfiles, topfile, n_clusters=4, n_leaders_per_cluster=5,
                     cutoff=0.3, max_iter=100, outfname=None):
         """
         Selects the frames of representative binding modes from each cluster
@@ -432,7 +432,7 @@ class FindBindingModes(object):
         new_leader_labels : list, cluster index for each cluster leader frame.
         """
 
-        pcca_traj = self. _load_pcca_trajectories(pcca_outfiles)
+        pcca_traj = self. _load_pcca_trajectories(pcca_outfiles, topfile)
         leaders, leader_labels = self._generate_leaders(pcca_traj, n_leaders_per_cluster)
         new_leaders, new_leader_labels = self._filter_leaders(leaders, leader_labels, cutoff)
 

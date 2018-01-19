@@ -84,8 +84,10 @@ class FindBindingModesTester(unittest.TestCase):
     def test_select_leaders(self):
         pcca0 = utils.get_data_filename('blues.analysis', 'tests/data/t4-tol-pcca0_samples.dcd')
         pcca1 = utils.get_data_filename('blues.analysis', 'tests/data/t4-tol-pcca1_samples.dcd')
+        pdbfile = utils.get_data_filename('blues.analysis', 'tests/data/run03-centered.pdb')
         pcca_outfiles = [pcca0, pcca1]
         leader_kwargs = { 'pcca_outfiles' : pcca_outfiles,
+                          'topfile' : pdbfile,
                           'n_clusters' : self.n_clusters,
                           'n_leaders_per_cluster' : 3,
                           'cutoff' : 0.3,
