@@ -63,7 +63,7 @@ class FindBindingModesTester(unittest.TestCase):
         silhouette_avg, sample_silhouette_values = self.fbm.scoreSilhouette(self.n_clusters, centers, cluster_labels)
 
         #Check silhouette scoring is same as values in pickled data.
-        self.assertAlmostEqual(silhouette_avg, self.silhouette_pcca[self.n_clusters]['AVG'])
+        self.assertAlmostEqual(silhouette_avg, self.silhouette_pcca[self.n_clusters]['AVG'], places=5)
         self.assertSequenceEqual(list(sample_silhouette_values), list(self.silhouette_pcca[self.n_clusters]['Values']))
 
     def test_get_n_clusters(self):
