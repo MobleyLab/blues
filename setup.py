@@ -130,9 +130,9 @@ setup(
     platforms = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
     classifiers=CLASSIFIERS.splitlines(),
     package_dir={'blues': 'blues'},
-    packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
-    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
-                  },
+    packages= ['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')] + ['blues.analysis', 'blues.analysis.tests', 'blues.analysis.tests.data'],
+    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*'],
+        'blues' : find_package_data('blues/analysis/tests/data', 'blues') },
     zip_safe=False,
     include_package_data=True
 )

@@ -2,7 +2,7 @@ import mdtraj as md
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from analysis import utils
+from . import tools
 
 class BindingModeOccupancy(object):
     """

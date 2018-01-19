@@ -4,6 +4,7 @@ from pyemma.msm import estimate_markov_model
 import numpy as np
 import pickle
 from blues.analysis import msm, cluster
+from blues import utils
 np.random.seed(0)
 
 class ConstructMSMTester(unittest.TestCase):
@@ -11,8 +12,10 @@ class ConstructMSMTester(unittest.TestCase):
     Test the ConstructMSM class.
     """
     def setUp(self):
-        trajfiles = ['/home/nathanlim/SCRATCH/blues/blues/analysis/tests/data/run03-centered.dcd']
-        feat = coor.featurizer('/home/nathanlim/SCRATCH/blues/blues/analysis/tests/data/run03-centered.pdb')
+
+        trajfiles = utils.get_data_filename('blues.analysis', 'tests/data/run03-centered.dcd')
+        pdbfile = utils.get_data_filename('blues.analysis', 'tests/data/run03-centered.pdb')
+        feat = coor.featurizer(pdbfile)
         atom_index = np.array([2634, 2635, 2636, 2637, 2638, 2639, 2640, 1605, 1622, 1638, 1658, 1675, 1692, 1700, 1714, 1728, 1735, 1751, 1761, 1768, 1788])
         paired_index = feat.pairs(atom_index)
         feat.add_distances(paired_index)

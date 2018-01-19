@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import silhouette_samples, silhouette_score
 from matplotlib import gridspec
 from scipy import stats
-from . import utils
+from blues.analysis import tools
 
 class FindBindingModes(object):
     """
@@ -111,7 +111,7 @@ class FindBindingModes(object):
         # check if next highest is significantly different
         if max0 == 0:
             max1 = np.partition(s_score_avg, -2)[-2]
-            max1 = int(np.argwhere(s_score_avg == max1))
+            max1 = int(np.argwhere(s_score_avg == max1)[0])
             print('\tInitial suggestion n_clusters = %s' % range_n_clusters[max0])
             print('\tChecking if n_clusters = %s is within error.' % range_n_clusters[max1])
             t, p = stats.ttest_ind_from_stats(s_score_avg[max0],
@@ -354,7 +354,7 @@ class FindBindingModes(object):
         new_leader_labels : list, cluster index for each cluster leader frame.
         """
         #Get pairwise similarity between leaders
-        prmsd = utils.calcPairwiseRMSD(leaders)
+        prmsd = tools.calcPairwiseRMSD(leaders)
 
         new_leader_labels = []
         keep_frames = []

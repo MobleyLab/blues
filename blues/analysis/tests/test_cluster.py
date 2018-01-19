@@ -3,6 +3,7 @@ import numpy as np
 import mdtraj as md
 import pickle
 from blues.analysis import cluster
+from blues import utils
 import shutil, tempfile
 np.random.seed(0)
 
@@ -13,11 +14,13 @@ class FindBindingModesTester(unittest.TestCase):
     def setUp(self):
         self.n_clusters = 2
         self.n_samples = 10
-        with open('/home/nathanlim/SCRATCH/blues/blues/analysis/tests/data/t4-tol-msm.pkl', 'rb') as f:
+        msm_pkl = utils.get_data_filename('blues.analysis', 'tests/data/t4-tol-msm.pkl')
+        with open(msm_pkl, 'rb') as f:
             self.data = pickle.load(f)
         self.fbm = cluster.FindBindingModes(self.data)
-
-        with open('/home/nathanlim/SCRATCH/blues/blues/analysis/tests/data/silhouette_pcca.pkl', 'rb') as fpcca:
+        
+        pcca_pkl = utils.get_data_filename('blues.analysis', 'tests/data/silhouette_pcca.pkl')
+        with open(pcca_pkl, 'rb') as fpcca:
             self.silhouette_pcca= pickle.load(fpcca)
 
         self.test_dir = tempfile.mkdtemp()
