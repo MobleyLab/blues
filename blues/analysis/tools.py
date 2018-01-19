@@ -5,7 +5,6 @@ import matplotlib.mlab as mlab
 from matplotlib.pyplot import cm
 import matplotlib.colors as mcolors
 from matplotlib import animation, rc
-from IPython.display import HTML
 
 def centerTrajectory(traj, outfname, remove_solvent=True):
     """Take an mdtraj.Trajectory object and centers the system for visualization.
