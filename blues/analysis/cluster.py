@@ -15,9 +15,9 @@ class FindBindingModes(object):
     spectral clustering from PCCA.
 
     Example:
-    >>> data = bindingmodes.ConstructMSM(inp)
+    >>> data = msm.ConstructMSM(inp)
     >>> data.getMSM(data.Y, dt=8, lagtime=150)
-    >>> fbm = bindingmodes.FindBindingModes(data)
+    >>> fbm = cluster.FindBindingModes(data)
     """
     def __init__(self, data):
         self.data = data
@@ -229,7 +229,7 @@ class FindBindingModes(object):
         ax2.set_yticks([])
         ax2.set_xticks([])
 
-    def _plotNClusters(self, ax, silhouette_pcca, n_clusters, outfname):
+    def _plotNClusters(self, ax, silhouette_pcca, n_clusters):
         """
         Plots a barplot of the silhouette scores.
 
@@ -246,8 +246,8 @@ class FindBindingModes(object):
 
         bar = ax.bar(range_n_clusters,s_score_avg, align='center', yerr=np.std(s_score_avg))
         bar[n_clusters-2].set_color('r')
-        ax.set_title("Silhouette analysis for PCCA clustering on %s" % outfname.split('/')[-1],
-                     fontsize=14, fontweight='bold')
+        #ax.set_title("Silhouette analysis for PCCA clustering on %s" % outfname.split('/')[-1],
+        #             fontsize=14, fontweight='bold')
         ax.set_xlabel("# clusters")
         ax.set_ylabel("<Score>")
 
@@ -297,10 +297,17 @@ class FindBindingModes(object):
         n_clusters = self._get_n_clusters(silhouette_pcca)
 
         ax3 = fig.add_subplot(gs[0,:])
-        self._plotNClusters(ax3, silhouette_pcca, n_clusters, outfname)
+        self._plotNClusters(ax3, silhouette_pcca, n_clusters)
 
         gs.tight_layout(fig)
-        plt.savefig('{}-tica_pcca.png'.format(outfname), bbox_inches='tight')
+        if outfname:
+            ax3.set_title("Silhouette analysis for PCCA clustering on %s" % outfname.split('/')[-1],
+                         fontsize=14, fontweight='bold')
+            plt.savefig('{}-tica_pcca.png'.format(outfname), bbox_inches='tight')
+        else:
+            ax3.set_title("Silhouette analysis for PCCA clustering",
+                         fontsize=14, fontweight='bold')
+            plt.show()
         plt.close(fig)
 
         self.range_n_clusters = range_n_clusters
@@ -328,10 +335,10 @@ class FindBindingModes(object):
 
         if not inp: inp = self.data.inp
         if pcca_samples is None: pcca_samples = self.silhouette_pcca[n_clusters]['Samples']
-
+        n_samples = np.unique(list(map(len, pcca_samples)))
         outfiles = ['%s-pcca%s_samples.dcd' % (outfname,N) for N in range(n_clusters)]
         pcca_outfiles = coor.save_trajs(inp, pcca_samples, outfiles=outfiles)
-        print('Storing %s PCCA samples each to: \n\t%s' % (len(pcca_samples), '\n\t'.join(pcca_outfiles)))
+        print('Storing %s PCCA samples each to: \n\t%s' % (n_samples, '\n\t'.join(pcca_outfiles)))
 
         return pcca_outfiles
 

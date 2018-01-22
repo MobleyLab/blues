@@ -12,13 +12,13 @@ class ConstructMSM(object):
     for the purpose of identifying the metastable binding modes.
 
     Example:
-    >>> from analysis import bindingmodes
+    >>> from blues.analysis import msm
     >>> import pyemma.coordinates as coor
     >>> feat = coor.featurizer(topfiles[0])
     >>> lig_atoms = feat.select("resname LIG and not type H")
     >>> feat.add_selection(lig_atoms)
     >>> inp = coor.source(trajfiles, feat)
-    >>> data = bindingmodes.ConstructMSM(inp)
+    >>> data = msm.ConstructMSM(inp)
 
     >>> dt = 8; lag_list = np.arange(1, 40,5)
 
@@ -105,9 +105,10 @@ class ConstructMSM(object):
         list of lag times to try.
 
         inp : pyemma.coordinates.data.feature_reader.FeatureReader
-        dt  : int() timestep interval from trajectory frames
+            Featurized coordinate data.
+        dt  : int(), timestep interval from trajectory frames
         lag_list : list of lag times to try
-        outfname : str() specifying the output filename. None displays plot.
+        outfname : str(), specifying the output filename. None displays plot.
         """
 
         lag_times = []
