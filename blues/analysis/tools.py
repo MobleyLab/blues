@@ -2,9 +2,26 @@ import sys, json
 import mdtraj as md
 import numpy as np
 import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 import matplotlib.colors as mcolors
 from matplotlib import animation, rc
+
+def get_color_list(num_colors, cmap='gist_rainbow'):
+    """Returns N colors according to the provided colormap.
+
+    Parameters:
+    -----------
+    n_clusters : int, the number of metastable states/clusters
+    cmap : str, specifying the matplotlib colormap to use.
+
+    Returns:
+    --------
+    colors : list, containing the colors for each cluster.
+    """
+    colormap = plt.get_cmap(cmap)
+    colors = [colormap(1.*i/num_colors) for i in range(num_colors)]
+    return colors
 
 def centerTrajectory(traj, outfname, remove_solvent=True):
     """Take an mdtraj.Trajectory object and centers the system for visualization.

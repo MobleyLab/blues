@@ -25,11 +25,6 @@ class FindBindingModesTester(unittest.TestCase):
 
         self.test_dir = tempfile.mkdtemp()
 
-    def test_get_colors(self):
-        colors = self.fbm._get_colors(n_clusters=self.n_clusters)
-        self.assertIsInstance(colors, list)
-        self.assertEqual(len(colors),self.n_clusters)
-
     def test_pcca(self):
         pcca_sets, cluster_labels, centers, pcca_dist, pcca_samples = self.fbm._pcca(self.n_clusters, self.n_samples)
         #Check pcca states are equal to the given number of clusters

@@ -23,21 +23,6 @@ class FindBindingModes(object):
         self.data = data
         self.silhouette_pcca = {}
 
-    def _get_colors(self, n_clusters, cmap='gist_rainbow'):
-        """Returns N colors according to the provided colormap.
-
-        Parameters:
-        -----------
-        n_clusters : int, the number of metastable states/clusters
-        cmap : str, specifying the matplotlib colormap to use.
-
-        Returns:
-        --------
-        colors : list, containing the colors for each cluster.
-        """
-        colormap = plt.get_cmap(cmap)
-        colors = [colormap(1.*i/n_clusters) for i in range(n_clusters)]
-        return colors
 
     def _pcca(self, n_clusters, n_samples=100):
         """Convenience function to run PCCA++ to compute a metastable
@@ -185,7 +170,7 @@ class FindBindingModes(object):
         ax1.set_ylim([0, len(centers) + (n_clusters + 1) * 10])
         y_lower = 10
 
-        colors = self._get_colors(n_clusters, cmap)
+        colors = tools.get_color_list(n_clusters, cmap)
         for i, color in enumerate(colors[:n_clusters]):
             # Aggregate the silhouette scores for samples belonging to
             # cluster i, and sort them

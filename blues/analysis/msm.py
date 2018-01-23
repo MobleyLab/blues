@@ -65,7 +65,7 @@ class ConstructMSM(object):
 
         return self.tica_coordinates, self.lag
 
-    def _kmeans(self, tica_coordinates, k=None, max_iter=100):
+    def _kmeans(self, tica_coordinates, k=None, max_iter=100, fixed_seed=False):
         """Convenience function to discretize the data by performing
         k-means clustering.
 
@@ -85,7 +85,7 @@ class ConstructMSM(object):
                         where this cluster occurs. Each row consists of a pair [i,t],
                         where `i` is the index of the trajectory and `t` is the frame index.
         """
-        cl = coor.cluster_kmeans(tica_coordinates, k, max_iter);
+        cl = coor.cluster_kmeans(tica_coordinates, k, max_iter,fixed_seed=fixed_seed);
         dtrajs = cl.dtrajs
         cc_x = cl.clustercenters[:, 0]
         cc_y = cl.clustercenters[:, 1]
@@ -131,7 +131,7 @@ class ConstructMSM(object):
             plt.suptitle("Implied timescales", fontsize=14, fontweight='bold')
             plt.show()
 
-    def getMSM(self, Y, dt, lagtime, k=None):
+    def getMSM(self, Y, dt, lagtime, k=None, fixed_seed=False):
         """
         Runs TICA on the input feature coordinates, discretize the data
         using k-means clustering and estimates the markov model from
@@ -151,7 +151,7 @@ class ConstructMSM(object):
             Markov State Model and estimation information.
         """
         tica_coordinates, lag = self._tica(Y, dt, lagtime)
-        dtrajs, centers, index_clusters = self._kmeans(tica_coordinates,k)
+        dtrajs, centers, index_clusters = self._kmeans(tica_coordinates,k,fixed_seed=fixed_seed)
         self.M = estimate_markov_model(dtrajs, lag)
 
         return self.M
