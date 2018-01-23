@@ -78,8 +78,6 @@ class Move(object):
             The same input context, but whose context were changed by this function.
 
         """
-        self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-
         return context
 
     def afterMove(self, context):
@@ -98,24 +96,6 @@ class Move(object):
             The same input context, but whose context were changed by this function.
 
         """
-        post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        indices = np.asarray([[0,4,6,8]])
-        angle = self.getDihedral(post_pos,indices)
-
-        if -1.3 <= angle <= -0.9:
-            bin == True
-        elif -2.94159 <= angle <= -3.14159:
-            bin == True
-        elif 0.9 <= angle <= 1.3:
-            bin == True
-        elif 2.94159 <= angle <= 3.14159:
-            bin == True
-        else:
-            bin == False
-
-        self.after_pos = post_pos
-        self.bin_boolean = bin
-
         return context
 
     def _error(self, context):
@@ -491,6 +471,12 @@ class SideChainMove(Move):
         angle = mdtraj.compute_dihedrals(traj, atomlist)
         return angle
 
+    def beforeMove(self, context):
+
+        self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+
+        return context
+
     def move(self, nc_context, verbose=False):
         """This rotates the target atoms around a selected bond by angle theta and updates
         the atom coordinates in the parmed structure as well as the ncmc context object"""
@@ -623,6 +609,42 @@ class SideChainMove(Move):
                 filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
                 mod_prot = model.save(filename, overwrite = True)
         return nc_context
+
+    def afterMove(self, context):
+        """This method is called at the end of the NCMC portion if the
+        context needs to be checked or modified before performing the move
+        at the halfway point.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose context were changed by this function.
+
+        """
+        post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        indices = np.asarray([[0,4,6,8]])
+        angle = self.getDihedral(post_pos,indices)
+
+        if -1.3 <= angle <= -0.9:
+            bin == True
+        elif -2.94159 <= angle <= -3.14159:
+            bin == True
+        elif 0.9 <= angle <= 1.3:
+            bin == True
+        elif 2.94159 <= angle <= 3.14159:
+            bin == True
+        else:
+            bin == False
+
+        self.after_pos = post_pos
+        self.bin_boolean = bin
+
+        return context
 
 class CombinationMove(Move):
     """Move object that allows Move object moves to be performed according to.
