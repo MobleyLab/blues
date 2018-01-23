@@ -517,31 +517,22 @@ class SideChainMove(Move):
 
         # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
         postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
-        # set while attribute for rotamer as true or false
-        ##rotamerOK = False
-        moveOK = False
-        # check if current rotamer position within designated ranges
-        # This should ultimately be written as a function that takes in the residue identity (ie valine)
-        # and bond and then refers to a library of rotamers for that particular residue/bond
-
+        # Classify starting angle
         if -1.3 <= dihedralangle <= -0.9:
-            #rotamerOK = True
             current_rot = 'm60'
         elif -2.94159 <= dihedralangle <= -3.14159:
-            #rotamerOK = True
             current_rot = 'mp180'
         elif 0.9 <= dihedralangle <= 1.3:
-            #rotamerOK = True
             current_rot = 'p60'
         elif 2.94159 <= dihedralangle <= 3.14159:
-            #rotamerOK = True
             current_rot = 'mp180'
+
         # check if current position plus proposed theta is within distribution
         # this should also be simplified to use the rotamer checking function (to be written)  described above
         my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
         moveOK = False
 
-        proposed = postrelax_dihedralangle + my_theta
+        proposed = (postrelax_dihedralangle + my_theta + math.pi)%(2*math.pi)-math.pi
 
         while moveOK == False:
             if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
@@ -555,7 +546,7 @@ class SideChainMove(Move):
             else:
                 if verbose: print("Proposed theta rejected",my_theta)
                 my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-                proposed = postrelax_dihedralangle + my_theta
+                proposed = (postrelax_dihedralangle + my_theta + math.pi)%(2*math.pi)-math.pi
                 moveOK = False
         print('This is the new proposed dihedral',proposed)
         print('This is the accepted theta', my_theta)
@@ -631,15 +622,15 @@ class SideChainMove(Move):
         angle = self.getDihedral(post_pos,indices)
 
         if -1.3 <= angle <= -0.9:
-            bin == True
+            bin = True
         elif -2.94159 <= angle <= -3.14159:
-            bin == True
+            bin = True
         elif 0.9 <= angle <= 1.3:
-            bin == True
+            bin = True
         elif 2.94159 <= angle <= 3.14159:
-            bin == True
+            bin = True
         else:
-            bin == False
+            bin = False
 
         self.after_pos = post_pos
         self.bin_boolean = bin
