@@ -517,7 +517,7 @@ class SideChainMove(Move):
 
         # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
         postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
-        
+
         self.current_bin = True
 
         # Classify starting angle
@@ -603,7 +603,7 @@ class SideChainMove(Move):
 
 
             if verbose:
-                filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
+                filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
                 mod_prot = model.save(filename, overwrite = True)
         return nc_context
 
@@ -626,7 +626,7 @@ class SideChainMove(Move):
         post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         indices = np.asarray([[0,4,6,8]])
         angle = self.getDihedral(post_pos,indices)
-        
+
         if -1.3 <= angle <= -0.9:
             bin = True
         elif -2.94159 <= angle <= -3.14159:
