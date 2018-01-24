@@ -581,7 +581,7 @@ class Simulation(object):
         dihedralangle = mdtraj.compute_dihedrals(traj, indices)
         if -1.3 <= dihedralangle <= -0.9:
             eval = True
-        elif -2.94159 <= dihedralangle <= -3.14159:
+        elif -3.14159 <= dihedralangle <= -2.94159:
             eval = True
         elif 0.9 <= dihedralangle <= 1.3:
             eval = True
