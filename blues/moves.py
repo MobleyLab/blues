@@ -517,6 +517,8 @@ class SideChainMove(Move):
 
         # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
         postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
+        self.current_bin = True
+
         # Classify starting angle
         if -1.3 <= dihedralangle <= -0.9:
             current_rot = 'm60'
@@ -526,7 +528,9 @@ class SideChainMove(Move):
             current_rot = 'p60'
         elif 2.94159 <= dihedralangle <= 3.14159:
             current_rot = 'mp180'
-
+        else:
+            self.current_bin = False
+            print("Starting rotamer state not ok for NCMC")
         # check if current position plus proposed theta is within distribution
         # this should also be simplified to use the rotamer checking function (to be written)  described above
         my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
@@ -620,7 +624,7 @@ class SideChainMove(Move):
         post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         indices = np.asarray([[0,4,6,8]])
         angle = self.getDihedral(post_pos,indices)
-
+        
         if -1.3 <= angle <= -0.9:
             bin = True
         elif -2.94159 <= angle <= -3.14159:
@@ -630,6 +634,9 @@ class SideChainMove(Move):
         elif 2.94159 <= angle <= 3.14159:
             bin = True
         else:
+            bin = False
+
+        if self.current_bin == False:
             bin = False
 
         self.after_pos = post_pos
