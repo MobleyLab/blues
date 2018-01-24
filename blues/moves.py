@@ -483,7 +483,7 @@ class SideChainMove(Move):
 
 
         # determine the axis, theta, residue, and bond + atoms to be rotated
-        theta, target_atoms, res, bond = self.chooseBondandTheta()
+        #theta, target_atoms, res, bond = self.chooseBondandTheta()
         #print('Rotating bond: %s in resnum: %s by %.2f radians' %(bond, res, theta))
 
         #retrieve the current positions
@@ -558,15 +558,15 @@ class SideChainMove(Move):
         if moveOK:
             print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
             # find the rotation axis using the updated positions
-            axis1 = target_atoms[0]
-            axis2 = target_atoms[1]
+            axis1 = my_target_atoms[0]
+            axis2 = my_target_atoms[1]
             rot_axis = (positions[axis1] - positions[axis2])/positions.unit
 
             #calculate the rotation matrix
-            rot_matrix = self.rotation_matrix(rot_axis, theta)
+            rot_matrix = self.rotation_matrix(rot_axis, my_theta)
 
             # apply the rotation matrix to the target atoms
-            for idx, atom in enumerate(target_atoms):
+            for idx, atom in enumerate(my_target_atoms):
 
                 my_position = positions[atom]
 
