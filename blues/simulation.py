@@ -471,10 +471,7 @@ class Simulation(object):
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
-        if self.move_engine.moves[self.move_engine.selected_move].bin_boolean == False:
-            print("Bin Boolean false")
-
-        if log_ncmc > randnum and self.move_engine.moves[self.move_engine.selected_move].bin_boolean:
+        if log_ncmc > randnum:
             self.accept += 1
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
@@ -607,16 +604,13 @@ class Simulation(object):
         self.setStateConditions()
 
         #
-        while self.accept <= nIter:
+        while self.move_ct <= nIter:
             self.current_iter = int(self.move_ct)
             positions = self.nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-            if self.evalDihedral(positions):
-            #for n in range(int(nIter)):
-                #self.current_iter = int(n)
-                self.setStateConditions()
-                self.simulateNCMC(**self.opt)
-                self.acceptRejectNCMC(**self.opt)
-                self.move_ct += 1
+            self.setStateConditions()
+            self.simulateNCMC(**self.opt)
+            self.acceptRejectNCMC(**self.opt)
+            self.move_ct += 1
             self.simulateMD(**self.opt)
 
         # END OF NITER

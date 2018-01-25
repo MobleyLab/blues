@@ -519,92 +519,64 @@ class SideChainMove(Move):
         postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
 
         self.current_bin = True
-
-        # Classify starting angle
-        if -1.3 <= dihedralangle <= -0.9:
-            current_rot = 'm60'
-        elif -3.14159 <= dihedralangle <= -2.94159:
-            current_rot = 'mp180'
-        elif 0.9 <= dihedralangle <= 1.3:
-            current_rot = 'p60'
-        elif 2.94159 <= dihedralangle <= 3.14159:
-            current_rot = 'mp180'
-        else:
-            self.current_bin = False
-            print("Starting rotamer state not ok for NCMC")
-        # check if current position plus proposed theta is within distribution
+    # check if current position plus proposed theta is within distribution
         # this should also be simplified to use the rotamer checking function (to be written)  described above
         my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-        moveOK = False
 
         proposed = (postrelax_dihedralangle - my_theta + math.pi)%(2*math.pi)-math.pi
-
-        while moveOK == False:
-            if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
-                moveOK = True
-            elif -3.14159 <= proposed <= -2.94159 and current_rot != 'mp180':
-                moveOK = True
-            elif 0.9 <= proposed <= 1.3 and current_rot != 'p60':
-                moveOK = True
-            elif 2.94159 <= proposed <= 3.14159 and current_rot != 'mp180':
-                moveOK = True
-            else:
-                if verbose: print("Proposed theta rejected",my_theta)
-                my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-                proposed = (postrelax_dihedralangle - my_theta + math.pi)%(2*math.pi)-math.pi
-                moveOK = False
 
         print('This is the new proposed dihedral',proposed)
         print('This is the accepted theta', my_theta)
         print('This is where it is moving from', postrelax_dihedralangle)
-        if moveOK:
-            print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
-            # find the rotation axis using the updated positions
-            axis1 = my_target_atoms[0]
-            axis2 = my_target_atoms[1]
-            rot_axis = (positions[axis1] - positions[axis2])/positions.unit
+        print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
+        
+        # find the rotation axis using the updated positions
+        axis1 = my_target_atoms[0]
+        axis2 = my_target_atoms[1]
+        rot_axis = (positions[axis1] - positions[axis2])/positions.unit
 
-            #calculate the rotation matrix
-            rot_matrix = self.rotation_matrix(rot_axis, my_theta)
+        #calculate the rotation matrix
+        rot_matrix = self.rotation_matrix(rot_axis, my_theta)
 
-            # apply the rotation matrix to the target atoms
-            for idx, atom in enumerate(my_target_atoms):
+        # apply the rotation matrix to the target atoms
+        for idx, atom in enumerate(my_target_atoms):
 
-                my_position = positions[atom]
+            my_position = positions[atom]
 
-                if verbose: print('The current position for %i is: %s'%(atom, my_position))
+            if verbose: print('The current position for %i is: %s'%(atom, my_position))
 
-                # find the reduced position (substract out axis)
-                red_position = (my_position - model.positions[axis2])._value
-                # find the new positions by multiplying by rot matrix
-                new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
+            # find the reduced position (substract out axis)
+            red_position = (my_position - model.positions[axis2])._value
+            # find the new positions by multiplying by rot matrix
+            new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
 
-                if verbose: print("The new position should be:",new_position)
+            if verbose: print("The new position should be:",new_position)
 
-                positions[atom] = new_position
-                # Update the parmed model with the new positions
-                model.atoms[atom].xx = new_position[0]/positions.unit
-                model.atoms[atom].xy = new_position[1]/positions.unit
-                model.atoms[atom].xz = new_position[2]/positions.unit
+            positions[atom] = new_position
+            # Update the parmed model with the new positions
+            model.atoms[atom].xx = new_position[0]/positions.unit
+            model.atoms[atom].xy = new_position[1]/positions.unit
+            model.atoms[atom].xz = new_position[2]/positions.unit
 
-                #update the copied ncmc context array with the new positions
-                nc_positions[atom][0] = model.atoms[atom].xx*nc_positions.unit/10
-                nc_positions[atom][1] = model.atoms[atom].xy*nc_positions.unit/10
-                nc_positions[atom][2] = model.atoms[atom].xz*nc_positions.unit/10
+            #update the copied ncmc context array with the new positions
+            nc_positions[atom][0] = model.atoms[atom].xx*nc_positions.unit/10
+            nc_positions[atom][1] = model.atoms[atom].xy*nc_positions.unit/10
+            nc_positions[atom][2] = model.atoms[atom].xz*nc_positions.unit/10
 
-                if verbose: print('The updated position for this atom is:', model.positions[atom])
+            if verbose: print('The updated position for this atom is:', model.positions[atom])
 
-            # update the actual ncmc context object with the new positions
-                nc_context.setPositions(nc_positions)
+        # update the actual ncmc context object with the new positions
+            nc_context.setPositions(nc_positions)
 
-            # update the class structure positions
-                self.structure.positions = model.positions
+        # update the class structure positions
+            self.structure.positions = model.positions
 
 
 
-            if verbose:
-                filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
-                mod_prot = model.save(filename, overwrite = True)
+        if verbose:
+            filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
+            mod_prot = model.save(filename, overwrite = True)
+        
         return nc_context
 
     def afterMove(self, context):
@@ -627,26 +599,9 @@ class SideChainMove(Move):
         indices = np.asarray([[0,4,6,8]])
         angle = self.getDihedral(post_pos,indices)
         print("This is the new angle:",angle)
-        if -1.3 <= angle <= -0.9:
-            bin = True
-            print("final bin ok")
-        elif -3.14159 <= angle <= -2.94159:
-            bin = True
-        elif 0.9 <= angle <= 1.3:
-            bin = True
-            print("final bin ok")
-        elif 2.94159 <= angle <= 3.14159:
-            bin = True
-            print("final bin ok")
-        else:
-            bin = False
-            print("final bin not ok")
-
-        if self.current_bin == False:
-            bin = False
-
+        
         self.after_pos = post_pos
-        self.bin_boolean = bin
+        self.bin_boolean = True
 
         return context
 
