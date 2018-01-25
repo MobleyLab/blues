@@ -607,7 +607,7 @@ class Simulation(object):
         self.setStateConditions()
 
         #
-        while self.accept <= nIter:
+        while self.move_ct <= nIter:
             self.current_iter = int(self.move_ct)
             positions = self.nc_context.getState(getPositions=True).getPositions(asNumpy=True)
             if self.evalDihedral(positions):
