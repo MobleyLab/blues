@@ -579,13 +579,13 @@ class Simulation(object):
         #traj.xyz = np.asarray(positions)
         indices = np.array([[0,4,6,8]])
         dihedralangle = mdtraj.compute_dihedrals(traj, indices)
-        if -1.3 <= dihedralangle <= -0.9:
+        if -2.00 <= dihedralangle <= -0.44:
             eval = True
-        elif -3.14159 <= dihedralangle <= -2.94159:
+        elif -3.14159 <= dihedralangle <= -2.36159:
             eval = True
-        elif 0.9 <= dihedralangle <= 1.3:
+        elif 0.44 <= dihedralangle <= 2.00:
             eval = True
-        elif 2.94159 <= dihedralangle <= 3.14159:
+        elif 2.36159 <= dihedralangle <= 3.14159:
             eval = True
         else:
             eval = False

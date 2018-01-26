@@ -521,13 +521,13 @@ class SideChainMove(Move):
         self.current_bin = True
 
         # Classify starting angle
-        if -1.3 <= dihedralangle <= -0.9:
+        if -2.00 <= dihedralangle <= -0.44:
             current_rot = 'm60'
-        elif -3.14159 <= dihedralangle <= -2.94159:
+        elif -3.14159 <= dihedralangle <= -2.36159:
             current_rot = 'mp180'
-        elif 0.9 <= dihedralangle <= 1.3:
+        elif 0.44 <= dihedralangle <= 2.00:
             current_rot = 'p60'
-        elif 2.94159 <= dihedralangle <= 3.14159:
+        elif 2.36159 <= dihedralangle <= 3.14159:
             current_rot = 'mp180'
         else:
             self.current_bin = False
@@ -540,13 +540,13 @@ class SideChainMove(Move):
         proposed = (postrelax_dihedralangle - my_theta + math.pi)%(2*math.pi)-math.pi
 
         while moveOK == False:
-            if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
+            if -2.00 <= proposed <= -0.44 and current_rot != 'm60':
                 moveOK = True
-            elif -3.14159 <= proposed <= -2.94159 and current_rot != 'mp180':
+            elif -3.14159 <= proposed <= -2.36159 and current_rot != 'mp180':
                 moveOK = True
-            elif 0.9 <= proposed <= 1.3 and current_rot != 'p60':
+            elif 0.44 <= proposed <= 2.00 and current_rot != 'p60':
                 moveOK = True
-            elif 2.94159 <= proposed <= 3.14159 and current_rot != 'mp180':
+            elif 2.36159 <= proposed <= 3.14159 and current_rot != 'mp180':
                 moveOK = True
             else:
                 if verbose: print("Proposed theta rejected",my_theta)
@@ -627,15 +627,15 @@ class SideChainMove(Move):
         indices = np.asarray([[0,4,6,8]])
         angle = self.getDihedral(post_pos,indices)
         print("This is the new angle:",angle)
-        if -1.3 <= angle <= -0.9:
+        if -2.00 <= angle <= -0.44:
             bin = True
             print("final bin ok")
-        elif -3.14159 <= angle <= -2.94159:
+        elif -3.14159 <= angle <= -2.36159:
             bin = True
-        elif 0.9 <= angle <= 1.3:
+        elif 0.44 <= angle <= 2.00:
             bin = True
             print("final bin ok")
-        elif 2.94159 <= angle <= 3.14159:
+        elif 2.36159 <= angle <= 3.14159:
             bin = True
             print("final bin ok")
         else:
