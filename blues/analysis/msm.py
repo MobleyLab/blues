@@ -40,6 +40,35 @@ class ConstructMSM(object):
         self.inp = inp
         self.Y = inp.get_output()
 
+    def getMSM(self, Y, dt, lagtime, k=None, fixed_seed=False):
+        """
+        *Primary function to call.*
+
+        Runs TICA on the input feature coordinates, discretize the data
+        using k-means clustering and estimates the markov model from
+        the discrete trajectories.
+
+        Parameters:
+        -----------
+        Y : Feautrized input data from inp.get_output()
+        dt : int, trajectory timestep
+        lagtime : float, choosen lag time from the implied timescales
+        k : int, maximum number of cluster centers. When `k=None`, the number of
+            data points used will be k = min(sqrt(N))
+        fixed_seed : bool or (positive) integer – if set to True, the random seed gets fixed resulting in deterministic behavior;
+            default is false. If an integer >= 0 is given, use this to initialize the random generator.
+
+        Returns:
+        --------
+        M : MaximumLikelihoodMSM, pyemma estimator object containing the
+            Markov State Model and estimation information.
+        """
+        tica_coordinates, lag = self._tica(Y, dt, lagtime)
+        dtrajs, centers, index_clusters = self._kmeans(tica_coordinates,k,fixed_seed=fixed_seed)
+        self.M = estimate_markov_model(dtrajs, lag)
+
+        return self.M
+
     def _tica(self, Y, dt, lagtime):
         """Convenience function to transform the feature coordinates
         by time-lagged independent component analysis (TICA).
@@ -57,9 +86,9 @@ class ConstructMSM(object):
         """
 
         lag = np.int(lagtime/dt)
-        tica_obj = coor.tica(Y, lag=lag, kinetic_map=True, var_cutoff=0.90, reversible=True);
+        tica_obj = coor.tica(Y, lag=lag, kinetic_map=True, reversible=True);
         print('TICA dimension ', tica_obj.dimension())
-
+        print(tica_obj.cumvar)
         self.lag = lag; self.dt = dt
         self.tica_coordinates = tica_obj.get_output()
 
@@ -75,6 +104,8 @@ class ConstructMSM(object):
         k : int, maximum number of cluster centers. When `k=None`, the number of
             data points used will be k = min(sqrt(N))
         max_iter: maximum number of iterations before stopping clustering.
+        fixed_seed : bool or (positive) integer – if set to True, the random seed gets fixed resulting in deterministic behavior;
+            default is false. If an integer >= 0 is given, use this to initialize the random generator.
 
         Returns:
         --------
@@ -87,13 +118,8 @@ class ConstructMSM(object):
         """
         cl = coor.cluster_kmeans(tica_coordinates, k, max_iter,fixed_seed=fixed_seed);
         dtrajs = cl.dtrajs
-        cc_x = cl.clustercenters[:, 0]
-        cc_y = cl.clustercenters[:, 1]
-
-        # For later use we save the discrete trajectories and cluster center coordinates
-        centers = np.stack((cc_x,cc_y),axis=-1)
         self.dtrajs = dtrajs
-        self.centers = centers
+        self.centers = cl.clustercenters
         self.index_clusters = cl.index_clusters
 
         return self.dtrajs, self.centers, self.index_clusters
@@ -130,28 +156,3 @@ class ConstructMSM(object):
         else:
             plt.suptitle("Implied timescales", fontsize=14, fontweight='bold')
             plt.show()
-
-    def getMSM(self, Y, dt, lagtime, k=None, fixed_seed=False):
-        """
-        Runs TICA on the input feature coordinates, discretize the data
-        using k-means clustering and estimates the markov model from
-        the discrete trajectories.
-
-        Parameters:
-        -----------
-        Y : Feautrized input data from inp.get_output()
-        dt : int, trajectory timestep
-        lagtime : float, choosen lag time from the implied timescales
-        k : int, maximum number of cluster centers. When `k=None`, the number of
-            data points used will be k = min(sqrt(N))
-
-        Returns:
-        --------
-        M : MaximumLikelihoodMSM, pyemma estimator object containing the
-            Markov State Model and estimation information.
-        """
-        tica_coordinates, lag = self._tica(Y, dt, lagtime)
-        dtrajs, centers, index_clusters = self._kmeans(tica_coordinates,k,fixed_seed=fixed_seed)
-        self.M = estimate_markov_model(dtrajs, lag)
-
-        return self.M

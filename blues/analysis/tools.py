@@ -23,6 +23,26 @@ def get_color_list(num_colors, cmap='gist_rainbow'):
     colors = [colormap(1.*i/num_colors) for i in range(num_colors)]
     return colors
 
+def autolabel(ax, rects, fonsize=12):
+    """
+    Attach a text label above each bar displaying its height
+    """
+    font = {'weight' : 'heavy', 'size': 12}
+    for rect in rects:
+        height = rect.get_height()
+        ax.text(rect.get_x() + rect.get_width()/2., 1.0,
+                '%.1f' % height,
+                ha='center', va='bottom', fontdict=font)
+
+def get_cmap(N):
+    ''' Returns a function that maps each index in 0, 1, ...
+        N-1 to a distinct RGB color.'''
+    color_norm  = mcolors.Normalize(vmin=0.0, vmax=N-1.0)
+    scalar_map = cm.ScalarMappable(norm=color_norm, cmap='gist_rainbow')
+    def map_index_to_rgb_color(index):
+        return scalar_map.to_rgba(index)
+    return map_index_to_rgb_color
+
 def centerTrajectory(traj, outfname, remove_solvent=True):
     """Take an mdtraj.Trajectory object and centers the system for visualization.
     By default, this will remove solvent molecules."""
@@ -73,7 +93,7 @@ def check_bound_ligand(trajfiles,topfile, cutoff=0.8,
     errfile.close()
     return trajfiles
 
-def convertIterToTime(jsonfile, molid, time_per_iter=0):
+def parse_blues_json(jsonfile, molid, time_per_iter=0):
     """
     Helper function that reads the json file containing the metadata of
     each BLUES simulation and converts the accepted move iteration number to time.
@@ -94,21 +114,9 @@ def convertIterToTime(jsonfile, molid, time_per_iter=0):
     fpath = str(jsonfile)
     with open(fpath, 'r') as jsf:
         data = json.load(jsf)
-        if time_per_iter:
-            data = {k: sorted(list(map(lambda x: float(x)*time_per_iter, v))) for k,v in data.items() if v != []}
-        else:
-            data = {k: sorted(list(map(int,v))) for k,v in data.items() if v != []}
-        acc_data[molid] = data
+        acc_data = {k: sorted(list(map(int,v))) for k,v in data.items() if v != []}
     return acc_data
 
-def get_cmap(N):
-    ''' Returns a function that maps each index in 0, 1, ...
-        N-1 to a distinct RGB color.'''
-    color_norm  = mcolors.Normalize(vmin=0.0, vmax=N-1.0)
-    scalar_map = cm.ScalarMappable(norm=color_norm, cmap='gist_rainbow')
-    def map_index_to_rgb_color(index):
-        return scalar_map.to_rgba(index)
-    return map_index_to_rgb_color
 
 def drawProgressBar(percent, barLen = 20):
     """Prints the progress of a `for` loop."""
