@@ -14,7 +14,19 @@ class BoreschBLUES(Boresch):
                  K_phiB=None, phi_B0=None,
                  K_phiC=None, phi_C0=None,
                  standard_state_correction_method='analytical', *args, **kwargs):
-        super(BoreschBLUES, self).__init__(*args, **kwargs)
+
+ #   def __init__(self, restrained_receptor_atoms=None, restrained_ligand_atoms=None,  K_r=None, standard_state_correction_method='analytical', *args, **kwargs):
+
+        super(BoreschBLUES, self).__init__(restrained_receptor_atoms=restrained_receptor_atoms, restrained_ligand_atoms=restrained_ligand_atoms,
+                 K_r=K_r, r_aA0=r_aA0,
+                 K_thetaA=K_thetaA, theta_A0=theta_A0,
+                 K_thetaB=K_thetaB, theta_B0=theta_B0,
+                 K_phiA=K_phiA, phi_A0=phi_A0,
+                 K_phiB=K_phiB, phi_B0=phi_B0,
+                 K_phiC=K_phiC, phi_C0=phi_C0,
+                 standard_state_correction_method=standard_state_correction_method, *args, **kwargs)
+        #super(Boresch, self).__init__(*args, **kwargs)
+
 
     def restrain_state(self, thermodynamic_state, pose_num=0):
         """Add the restraint force to the state's ``System``.
@@ -72,8 +84,23 @@ def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0):
     print('sampler', sampler.positions)
 
     topography = Topography(topology=topology, ligand_atoms=ligand_atoms)
-    boresch = BoreschBLUES(thermo, sampler, topography)
+    #boresch = BoreschBLUES(K_r=standard_restraint)
+#    standard_restraint = 100*unit.kilocalorie_per_mole/unit.angstrom**2
+    standard_restraint = 55
+    restraint_dist = 60
+
+    boresch = BoreschBLUES(restrained_receptor_atoms=[1605, 1735, 1837], restrained_ligand_atoms=[2634, 2638, 2639],
+        K_r=restraint_dist*unit.kilocalorie_per_mole/unit.angstrom**2, K_thetaA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_thetaB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2,
+        K_phiA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiC=standard_restraint*unit.kilocalories_per_mole / unit.radian**2)
+    #boresch = BoreschBLUES()
+
+
+    print('boresch', boresch.K_r, boresch.K_thetaB, boresch.K_phiA)
+    ###boresch = BoreschBLUES()
+
     boresch.determine_missing_parameters(thermo, sampler, topography)
+    print('boresch_after', boresch.K_r, boresch.K_thetaB, boresch.K_phiA)
+
     new_sys = boresch.restrain_state(thermo, pose_num=pose_num)
 
     return new_sys
@@ -106,4 +133,4 @@ if __name__ == "__main__":
     print('new_sys', new_sys.getNumForces())
     print('new_sys', new_sys.getForces())
     print('other_sys', other_sys.getNumForces())
-    print('other_sys', other_sys.getForces())   
+    print('other_sys', other_sys.getForces())

@@ -159,6 +159,7 @@ class MolDart(RandomLigandRotationMove):
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
+        print('darts', self.darts)
 
 
     def poseDart(self, context, atom_indices):
@@ -231,7 +232,7 @@ class MolDart(RandomLigandRotationMove):
         elif len(selected) == 0:
             return []
         elif len(selected) >= 2:
-            print('overlapping darts', selected)
+            #print('overlapping darts', selected)
             #COM should never be within two different darts
             return selected
             #raise ValueError('sphere size overlap, check darts')
@@ -290,11 +291,11 @@ class MolDart(RandomLigandRotationMove):
                 #multiply by 10 since openmm works in nm and cc works in angstroms
                 xyz_ref._frame.at[i, entry] = nc_pos[:,index][sel_atom]._value*10
 
-        print('initial ref', xyz_ref)
+        #print('initial ref', xyz_ref)
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         if 1:
             zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
-            print('zmat from simulation', zmat_diff)
+            #print('zmat from simulation', zmat_diff)
             zmat_traj = copy.deepcopy(xyz_ref.give_zmat(construction_table=self.buildlist))
             #get appropriate comparision zmat
             zmat_compare = self.internal_zmat[binding_mode_index]
@@ -381,10 +382,10 @@ class MolDart(RandomLigandRotationMove):
             ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
             dart_three[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
             dart_ref[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
-        print('sim_three', sim_three)
-        print('ref_three', ref_three)
-        print('dart_three', dart_three)
-        print('dart_ref', dart_ref)
+        #print('sim_three', sim_three)
+        #print('ref_three', ref_three)
+        #print('dart_three', dart_three)
+        #print('dart_ref', dart_ref)
         change_three = np.copy(sim_three)
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
         vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
@@ -412,9 +413,9 @@ class MolDart(RandomLigandRotationMove):
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
         dart_angle = self.internal_zmat[rand_index]._frame['angle'][self.buildlist.index.get_values()[2]]
         angle_change = dart_angle - angle_diff
-        print('angle change', angle_change)
-        for i, vectors in enumerate([dart_three]):
-            print('dart_three angle', test_angle(vectors, vector_list))
+        #print('angle change', angle_change)
+        #for i, vectors in enumerate([dart_three]):
+            #print('dart_three angle', test_angle(vectors, vector_list))
 
         if 1:
             #ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(angle_change), maintain_magnitude=False)
@@ -422,26 +423,26 @@ class MolDart(RandomLigandRotationMove):
             new_angle = zmat_new['angle'][self.buildlist.index[2]]
             ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(new_angle), maintain_magnitude=False)
             ###
-            print('advec', ad_dartvec)
-            print('sim vector', vec1_sim)
-            print('sim vector2', vec2_sim)
-            print('original vec', dart_three[vector_list[0][1]])
+            #print('advec', ad_dartvec)
+            #print('sim vector', vec1_sim)
+            #print('sim vector2', vec2_sim)
+            #print('original vec', dart_three[vector_list[0][1]])
             ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
-            print('advec', ad_dartvec)
+            #print('advec', ad_dartvec)
             nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
             dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
             dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
 
 
-        for i, vectors in enumerate([sim_three, ref_three, dart_three, dart_ref]):
-            print(test_angle(vectors, vector_list))
+        #for i, vectors in enumerate([sim_three, ref_three, dart_three, dart_ref]):
+            #print(test_angle(vectors, vector_list))
             #print('test_angle', test_angle)
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = types.MethodType(give_cartesian_edit, zmat_new)
-        print('zmat_new', zmat_new)
+        #print('zmat_new', zmat_new)
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
         #xyz_new = (zmat_new.give_cartesian()).sort_index()
-        print('xyz_new', xyz_new)
+        #print('xyz_new', xyz_new)
 
         for i in range(len(self.atom_indices)):
             for index, entry in enumerate(['x', 'y', 'z']):
@@ -453,36 +454,69 @@ class MolDart(RandomLigandRotationMove):
                 )
         self.sim_traj.save('after_fit.pdb')
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
-        return nc_pos
+        return nc_pos, rand_index
 
     def initializeSystem(self, system, integrator):
         structure = self.structure
         new_sys = system
         new_int = integrator
-        #new_int = copy.deepcopy(integrator)
-        new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
+        #new_int._alchemical_functions['lambda_restraints'] = 'max(0, 1-(1/0.3)*abs(lambda-0.5))'
+        #new_int._alchemical_functions['lambda_restraints'] = '1'
+
+        #new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
+
         new_int._system_parameters = {system_parameter for system_parameter in new_int._alchemical_functions.keys()}
+        print('new_int system parms', new_int._system_parameters)
+        initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
+        self.atom_indices
         for index, pose in enumerate(self.binding_mode_traj):
-            pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
-            new_sys = add_restraints(new_sys, structure, pose_pos, self.atom_indices, index)
-        print(new_int._alchemical_functions)
+#            pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
+#            new_sys = add_restraints(new_sys, structure, pose_pos, self.atom_indices, index)
+            pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))[self.atom_indices]
+            new_pos = np.copy(initial_traj)
+            ###Debugging pase
+            new_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))
+            ###
+            new_pos[self.atom_indices] = pose_pos
+            new_pos= new_pos * unit.nanometers
+            #print('new_pos', new_pos)
+            new_sys = add_restraints(new_sys, structure, new_pos, self.atom_indices, index)
+    #REMOVE THE ZERO LIG MASS PORTION HERE (FOR DEBUGGING ONLY)
+        if 1:
+            def zero_lig_mass(system, indexlist):
+                num_atoms = system.getNumParticles()
+                for index in range(num_atoms):
+                    if index in indexlist:
+                        system.setParticleMass(index, 0*unit.daltons)
+                    else:
+                        pass
+                return system
+            new_sys = zero_lig_mass(new_sys, self.atom_indices)
+
+
+        #print(new_int._alchemical_functions)
         return new_sys, integrator
 
 
     def beforeMove(self, context):
-        """Check if in a pose. If so turn on `restraints_pose` for that pose
+        """Check if in a pose. If so turn on `restraint_pose` for that pose
         """
-        print(context.getParameters().keys())
+        #print(context.getParameters().keys())
         selected_list = self.poseDart(context, self.atom_indices)
+        print('selected_list', selected_list)
         if len(selected_list) >= 1:
             self.selected_pose = np.random.choice(selected_list, replace=False)
-            print('keys during move', context.getParameters().keys())
+            #print('keys during move', context.getParameters().keys())
             context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
-            print('values before', context.getParameters().values())
+
+            #print('values before', context.getParameters().values())
 
 
-        else: 
-            self.selected_restraint = None
+        else:
+            #TODO handle the selected_pose when not in a pose
+            #probably can set to an arbitrary pose when the acceptance_ratio is treated properly
+            self.selected_pose = 0
+            self.acceptance_ratio = 0
         return context
 
     def afterMove(self, context):
@@ -492,9 +526,17 @@ class MolDart(RandomLigandRotationMove):
         selected_list = self.poseDart(context, self.atom_indices)
         if self.selected_pose not in selected_list:
             self.acceptance_ratio = 0
-        context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
-        print('keys after move', context.getParameters().keys())
-        print('values after', context.getParameters().values())
+        else:
+            context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
+            #print('keys after move', context.getParameters().keys())
+            #print('values after', context.getParameters().values())
+            work = context.getIntegrator().getGlobalVariableByName('protocol_work')
+            print('correction process', work)
+            corrected_work = work + self.restraint_correction._value
+            context.getIntegrator().setGlobalVariableByName('protocol_work', corrected_work)
+            work = context.getIntegrator().getGlobalVariableByName('protocol_work')
+            print('correction process after', work)
+
 
 
         return context
@@ -524,17 +566,26 @@ class MolDart(RandomLigandRotationMove):
 
         """
         self.moves_attempted += 1
-        oldDartPos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        state = context.getState(getPositions=True, getEnergy=True)
+        oldDartPos = state.getPositions(asNumpy=True)
+        total_pe_restraint1_on = state.getPotentialEnergy()
+
         selected_list = self.poseDart(context, self.atom_indices)
+        orginal_params = zip(context.getParameters().keys(), context.getParameters().values())
         context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
+        state_restraint1_off = context.getState(getPositions=True, getEnergy=True)
+        total_pe_restraint1_off = state_restraint1_off.getPotentialEnergy()
+        restraint1_energy = total_pe_restraint1_on - total_pe_restraint1_off
+
 
         if len(selected_list) == 0:
-            print('no pose found')
+            #print('no pose found')
+            pass
         else:
-            print('selected_list', selected_list)
+            #print('selected_list', selected_list)
             #now self.binding_mode_pos should be fitted to structure at this point
             self.selected_pose = np.random.choice(selected_list, replace=False)
-            print('yes pose found')
+            #print('yes pose found')
             self.times_within_dart += 1
 
             #use moldRedart instead
@@ -544,28 +595,46 @@ class MolDart(RandomLigandRotationMove):
             #find rotation that matches atom1 and atom2s of the build list
             #apply that rotation using atom1 as the origin
             nc_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-            new_pos = self.moldRedart(atom_indices=self.atom_indices,
+            new_pos, darted_pose = self.moldRedart(atom_indices=self.atom_indices,
                                             binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=self.selected_pose,
                                             nc_pos=oldDartPos,
                                             rigid_move=True)
 
                                             #rigid_move=self.rigid_move)
-
+            self.selected_pose = darted_pose
             context.setPositions(new_pos)
             overlap_after = self.poseDart(context, self.atom_indices)
-            context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
+            #print('original params', orginal_params)
+            #print('before dart', zip(context.getParameters().keys(), context.getParameters().values()))
+            state_restraint2_off = context.getState(getEnergy=True)
+            total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
 
-            print('overlap after', overlap_after)
+            context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
+            state_restraint2_on = context.getState(getEnergy=True)
+            total_pe_restraint2_on = state_restraint2_on.getPotentialEnergy()
+            restraint2_energy = total_pe_restraint2_on - total_pe_restraint2_off
+            restraint_correction = -(restraint2_energy - restraint1_energy)
+            print('restraint1', restraint1_energy, 'restraint2', restraint2_energy)
+            print('restraint_correction', restraint_correction)
+            work = context.getIntegrator().getGlobalVariableByName('protocol_work')
+            self.restraint_correction = restraint_correction
+            print('work', work)
+
+
+
+            #print('after dart', zip(context.getParameters().keys(), context.getParameters().values()))
+
+            #print('overlap after', overlap_after)
             # to maintain detailed balance, check to see the overlap of the start and end darting regions
-            print('float after', float(len(overlap_after)), overlap_after)
-            print('float before', len(selected_list), selected_list)
+            #print('float after', float(len(overlap_after)), overlap_after)
+            #print('float before', len(selected_list), selected_list)
             # if there is no overlap after the move, acceptance ratio will be 0
             if len(overlap_after) == 0:
                 self.acceptance_ratio = 0
             else:
                 self.acceptance_ratio = float(len(selected_list))/float(len(overlap_after))
-            print('overlap acceptance ratio', self.acceptance_ratio)
+            #print('overlap acceptance ratio', self.acceptance_ratio)
             #check if new positions overlap when moving
 
         return context

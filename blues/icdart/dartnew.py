@@ -536,9 +536,9 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     #if dart_boolean is false, we need to continue looking thru rot/trans for better separation
     if dart_boolean == False:
         rot_mat, trans_mat = getRotTransMatrices(internal_mat, pos_list, construction_table)
-        dart_storage, posedart_dict, dart_boolean = createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
+        dart_storage, posedart_dict, dart_boolean = createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
         if dart_boolean == False:
-            dart_storage, posedart_dict, dart_boolean = createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
+            dart_storage, posedart_dict, dart_boolean = createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
         #check translation
         pass
     for key in ['rotation', 'translation']:
@@ -583,6 +583,8 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
             num_poses = np.shape(rot_mat)[0]
             rot_list = [rot_mat[0,j] for j in range(1, num_poses)]
             rot_list = [j for j,i in enumerate(rot_list) if i < rot_cutoff]
+            print('rot_mat', rot_mat)
+            print('rot_list', rot_list)
 
             return rot_list
         else:

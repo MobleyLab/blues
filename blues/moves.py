@@ -83,7 +83,7 @@ class Move(object):
 
     def beforeMove(self, context):
         return context
-        
+
     def afterMove(self, context):
         return context
     def _error(self, context):

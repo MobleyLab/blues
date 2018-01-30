@@ -131,6 +131,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self._registered_step_types['H'] = (self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
 
+
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
@@ -147,6 +148,16 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             prop_lambda_max = -1.0
 
         return prop_lambda_min, prop_lambda_max
+
+    def updateRestraints(self):
+        ##self.addComputeGlobal("Eold", "energy")
+        #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.5)*abs(lambda-0.5))')
+        #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.30)*abs(lambda-0.5))')
+        self.addComputeGlobal('lambda_restraints', '0')
+        #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.15)*abs(lambda-0.5))')
+        #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.10)*abs(lambda-0.5))')
+        ##self.addComputeGlobal("Enew", "energy")
+        ##self.addComputeGlobal("protocol_work", "protocol_work + (Enew-Eold)")
 
     def _add_integrator_steps(self):
         """
@@ -172,33 +183,34 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.endBlock()
         else:
             #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
-            self.beginIfBlock("step < nsteps")
+            self.beginIfBlock("step < nsteps")#
             self.addComputeGlobal("perturbed_pe", "energy")
-            self.beginIfBlock("first_step < 1")
+            self.beginIfBlock("first_step < 1")##
             #TODO write better test that checks that the initial work isn't gigantic
             self.addComputeGlobal("first_step", "1")
             self.addComputeGlobal("unperturbed_pe", "energy")
-            self.endBlock()
+            self.endBlock()##
             #initial iteration
             self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
             #if more propogation steps are requested
-            self.beginIfBlock("lambda > prop_lambda_min")
-            self.beginIfBlock("lambda <= prop_lambda_max")
+            self.beginIfBlock("lambda > prop_lambda_min")###
+            self.beginIfBlock("lambda <= prop_lambda_max")####
 
-            self.beginWhileBlock("prop < nprop")
+            self.beginWhileBlock("prop < nprop")#####
             self.addComputeGlobal("prop", "prop + 1")
 
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            self.endBlock()
-            self.endBlock()
-            self.endBlock()
+            self.endBlock()#####
+            self.endBlock()####
+            self.endBlock()###
             #ending variables to reset
+            self.updateRestraints()
             self.addComputeGlobal("unperturbed_pe", "energy")
             self.addComputeGlobal("step", "step + 1")
             self.addComputeGlobal("prop", "1")
 
-            self.endBlock()
+            self.endBlock()#
 
     def _add_alchemical_perturbation_step(self):
         """

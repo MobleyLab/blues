@@ -167,7 +167,14 @@ class SimulationFactory(object):
             # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
             functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)',
+            #functions = { 'lambda_sterics' : '0',
+            #              'lambda_electrostatics' : '0',
+
+                        #'lambda_restraints' : 'max(0, 1-(1/0.3)*abs(lambda-0.5))'
+                        #'lambda_restraints' : '0'
+
+                          }
             integrator = AlchemicalExternalLangevinIntegrator(alchemical_functions=functions,
                                    splitting= "H V R O R V H",
                                    temperature=temperature*unit.kelvin,
@@ -519,6 +526,14 @@ class Simulation(object):
 
                     #Do move
                     self.log.info('Performing %s...' % move_name)
+                    #print('state_cond', zip(self.nc_sim.context.getParameters().keys(), self.nc_sim.context.getParameters().values()))
+                    for context_parameter in self.nc_sim.integrator._alchemical_functions:
+                        #print('context_parm', context_parameter)
+                        if context_parameter in self.nc_sim.integrator._system_parameters:
+                            #print('context_present')
+                            #print(self.nc_sim.integrator._alchemical_functions[context_parameter])
+                            pass
+
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
                     if 'ncmc_move_output' in opt:
                         self.ncmc_end_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True))
@@ -530,6 +545,10 @@ class Simulation(object):
                     work = self.getWorkInfo(self.nc_integrator, self.work_keys)
                     self.log.debug('%s' % work)
 
+
+                if self.movestep +1 == nc_step:
+                    work = self.nc_context.getIntegrator().getGlobalVariableByName('protocol_work')
+                    print('work after move', work)
 
                 self.nc_integrator.step(1)
 
@@ -593,10 +612,10 @@ class Simulation(object):
 
     def _initialize_moves(self):
         state = self.nc_sim.context.getState(getPositions=True, getVelocities=True)
-        print('box vectors', state.getPeriodicBoxVectors())
+        #print('box vectors', state.getPeriodicBoxVectors())
         pos = state.getPositions()
         vel = state.getVelocities()
-        print(self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
+        #print(self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
         for move in self.move_engine.moves:
             system = self.nc_sim.context.getSystem()
             integrator = self.nc_sim.integrator
@@ -604,20 +623,20 @@ class Simulation(object):
             self.nc_sim.system = new_sys
             inter = copy.deepcopy(new_integrator)
             #print('new', self.nc_sim.system.getForces(), len(self.nc_sim.system.getForces()))
-            print('new', self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
+            #print('new', self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
         top = self.nc_sim.topology
         #platform = self.nc_sim.platform
         #self.nc_sim = app.Simulation(top, new_sys, new_integrator, platform)
 
         self.nc_sim = app.Simulation(top, new_sys, inter)
 
-        print('keys', self.nc_sim.context.getParameters().keys())
+        #print('keys', self.nc_sim.context.getParameters().keys())
         #self.nc_sim.context.reinitialize()
         self.nc_sim.context.setPositions(pos)
         self.nc_sim.context.setVelocities(vel)
         self.nc_context = self.nc_sim.context
-        print('norm call', self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
-        print('context var', self.nc_context.getSystem().getForces(), len(self.nc_context.getSystem().getForces()))
+        #print('norm call', self.nc_sim.context.getSystem().getForces(), len(self.nc_sim.context.getSystem().getForces()))
+        #print('context var', self.nc_context.getSystem().getForces(), len(self.nc_context.getSystem().getForces()))
 
 
 
@@ -631,13 +650,12 @@ class Simulation(object):
         self._getSimulationInfo()
         #set inital conditions
         ###self._initialize_moves()
-        print('beginning', self.nc_sim.context.getParameters().keys())
+        #print('beginning', self.nc_sim.context.getParameters().keys())
         self.setStateConditions()
         for n in range(int(nIter)):
-            print('iter', self.nc_sim.context.getParameters().keys())
+            #print('iter', self.nc_sim.context.getParameters().keys())
             self.current_iter = int(n)
             self.setStateConditions()
-            print('state_cond', self.nc_sim.context.getParameters().keys())
             self.simulateNCMC(**self.opt)
             self.acceptRejectNCMC(**self.opt)
             self.simulateMD(**self.opt)
