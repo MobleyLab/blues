@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import pyemma.coordinates as coor
+from pyemma import plots
 from blues.analysis import tools
 from copy import deepcopy
 
@@ -49,11 +50,11 @@ class BindingModePopulation(object):
         """
         *Primary function to call.*
 
-        Assigns the trajectory frames to a given cluster by minimizing the
-        euclidean distance to the centers from PCCA. Plots the RMSD of the
-        ligand, relative to the starting position, coloring each datapoint to
-        it's assigned cluster and calculates the occupancy of
-        each ligand binding mode.
+        Calculates the population of each defined binding mode and tries to
+        detect changes in ligand binding mode using the assigned trajectory data.
+        This function will discard counting frames before the first detected change
+        in binding mode and will not count frames if there are multiple trajectories
+        that are stuck in the same ligand binding mode.
 
         Parameters:
         -----------
@@ -241,6 +242,11 @@ class BindingModePopulation(object):
         outfname: str, specfiying the outfile filepath to save the plot
         """
         traj, jobid = self._loadTrajectory(trajfile)
+        if self.acc_data :
+            acc_data = self.acc_data[jobid]
+        else:
+            acc_data = None
+
         lig_atoms = traj.top.select('resname LIG and not type H')
         dist = tools.rmsdNP(traj, traj[0], idx=np.asarray(lig_atoms))
         np.savetxt('%s-%s-labels.txt'%(outfname,jobid),labels, fmt='%d')
@@ -248,9 +254,9 @@ class BindingModePopulation(object):
                                cluster_labels=labels,
                                time_per_frame=self.time_per_frame,
                                frames_per_iter=self.frames_per_iter,
-                               acc_data=self.acc_data[jobid],
+                               acc_data=acc_data,
                                title='BM Population %s-%s' %(self.molid, jobid),
-                               outfname='%s-%s' %(outfname, jobid))
+                               outfname=outfname)
 
     def _loadTrajectory(self,trajfile, topfile=None):
         """
@@ -369,3 +375,54 @@ class BindingModePopulation(object):
             plt.close(f)
         else:
             plt.show()
+
+    def animateTICA(self, n_clusters,
+                    X_traj_tica_coords, Y_traj_tica_coords,
+                    x_tica_coord, y_tica_coord,
+                    cluster_labels, cmap='gist_rainbow',interval=200):
+        """
+        Generates an animated TICA scatter plot of the trajectory over time.
+
+        Parameters:
+        -----------
+        n_clusters : int, number of clusters
+        X_traj_tica_coords : numpy array, TICA coordinates for the entire trajectory pool to
+            be plotted on the X-axis for the contour background.
+        Y_traj_tica_coords : numpy array, TICA coordiantes for the entitre trajectory pool to
+            be plotted on the Y-axis for the contour background.
+        x_tica_coord : numpy array, TICA coordinates belonging to the *single* trajectory to
+            be animated on the X-axis.
+        y_tica_coord : numpy array, TICA coordinates belonging to the *single* trajectory to
+            be animated on the Y-axis.
+        cluster_labels : list, cluster assignment for the *single* trajectory to
+            be animated on the TICA plot.
+        cmap : str, specifing the colormap to be used for the animated data points
+        interval : int, delay time (milliseconds) inbetween animated data points.
+        """
+        from matplotlib import animation, rc
+        tica_coords = np.stack((x_tica_coord,y_tica_coord),axis=-1)
+        xs, ys = zip(*tica_coords)
+        x, y = np.array([]), np.array([])
+
+        colors = tools.get_color_list(n_clusters, cmap)
+        colr_list = [ colors[x] for x in cluster_labels]
+
+        fig = plt.figure(tight_layout=True)
+        #ax = fig.add_subplot(111)
+        plots.plot_free_energy(X_traj_tica_coords,
+                               Y_traj_tica_coords,
+                               cmap='nipy_spectral', cbar=False)
+        pathcol = plt.scatter([],[], s=50, c=colr_list,
+                               marker='X', edgecolors='black')
+        def init():
+            pathcol.set_offsets([[],[]])
+            return [pathcol]
+
+        def update(i, pathcol, data):
+            pathcol.set_offsets(data[:i])
+            return [pathcol]
+
+        anim = animation.FuncAnimation(fig, update, init_func=init,
+                                       fargs=(pathcol, tica_coords), interval=interval,
+                                       frames=len(tica_coords), blit=True, repeat=True)
+        return anim
