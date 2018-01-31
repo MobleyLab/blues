@@ -23,6 +23,73 @@ proc range {num args} {
     return $result
 }
 
+proc save_viewpoint {} {
+   global viewpoints
+   if [info exists viewpoints] {unset viewpoints}
+   # get the current matricies
+   foreach mol [molinfo list] {
+      set viewpoints($mol) [molinfo $mol get {
+	center_matrix rotate_matrix scale_matrix global_matrix}]
+   }
+}
+
+proc restore_viewpoint {} {
+   global viewpoints
+   foreach mol [molinfo list] {
+      puts "Trying $mol"
+      if [info exists viewpoints($mol)] {
+         molinfo $mol set {center_matrix rotate_matrix scale_matrix
+	   global_matrix} $viewpoints($mol)
+      }
+   }
+}
+
+proc take_picture {args} {
+  global take_picture
+
+  # when called with no parameter, render the image
+  if {$args == {}} {
+    set f [format $take_picture(format) $take_picture(frame)]
+    # take 1 out of every modulo images
+    if { [expr $take_picture(frame) % $take_picture(modulo)] == 0 } {
+      render $take_picture(method) $f
+      # call any unix command, if specified
+      if { $take_picture(exec) != {} } {
+        set f [format $take_picture(exec) $f $f $f $f $f $f $f $f $f $f]
+        eval "exec $f"
+       }
+    }
+    # increase the count by one
+    incr take_picture(frame)
+    return
+  }
+  lassign $args arg1 arg2
+  # reset the options to their initial stat
+  # (remember to delete the files yourself
+  if {$arg1 == "reset"} {
+    set take_picture(frame)  0
+    set take_picture(format) "./animate.%04d.rgb"
+    set take_picture(method) snapshot
+    set take_picture(modulo) 1
+    set take_picture(exec)    {}
+    return
+  }
+  # set one of the parameters
+  if [info exists take_picture($arg1)] {
+    if { [llength $args] == 1} {
+      return "$arg1 is $take_picture($arg1)"
+    }
+    set take_picture($arg1) $arg2
+    return
+  }
+  # otherwise, there was an error
+  error {take_picture: [ | reset | frame | format  | \
+  method  | modulo ]}
+}
+# to complete the initialization, this must be the first function
+# called.  Do so automatically.
+take_picture reset
+
 proc get_colormap {n_clusters data} {
     #Desired color mapping:
         #0 red 1 orange 2 yellow 3 green 4 lime 5 cyan 6 blue 7 purple
@@ -132,6 +199,7 @@ proc play_animation {} {
       animate goto ${i}
       color Name C $cm;
       display update
+      take_picture 
     }
 }
 
@@ -141,7 +209,6 @@ set dcd "${relpath}/run03-centered.dcd"
 set labels "${relpath}/run03-labels.txt"
 
 loadtraj ${pdb} ${dcd} run03 0 2001
-
 set_viewpoint
 
 #play_animation
