@@ -513,7 +513,6 @@ class SideChainMove(Move):
         # Retrieve rotamer angle prior to NCMC
         dihedralatoms = np.array([[0,4,6,8]])
         dihedralangle = self.getDihedral(self.start_pos, dihedralatoms)
-        print("In the moves.py script, this is the current dihedral angle:", dihedralangle)
 
         # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
         postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
@@ -529,7 +528,7 @@ class SideChainMove(Move):
         print('This is the accepted theta', my_theta)
         print('This is where it is moving from', postrelax_dihedralangle)
         print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
-        
+
         # find the rotation axis using the updated positions
         axis1 = my_target_atoms[0]
         axis2 = my_target_atoms[1]
@@ -576,7 +575,7 @@ class SideChainMove(Move):
         if verbose:
             filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
             mod_prot = model.save(filename, overwrite = True)
-        
+
         return nc_context
 
     def afterMove(self, context):
@@ -599,9 +598,8 @@ class SideChainMove(Move):
         indices = np.asarray([[0,4,6,8]])
         angle = self.getDihedral(post_pos,indices)
         print("This is the new angle:",angle)
-        
+
         self.after_pos = post_pos
-        self.bin_boolean = True
 
         return context
 
