@@ -214,13 +214,17 @@ class MolDart(RandomLigandRotationMove):
                 sel_atom = self.atom_indices[i]
                 #set the pandas series with the appropriate data
                 #multiply by 10 since openmm works in nm and cc works in angstroms
-#                xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
-                xyz_ref._frame.at[i, entry] = nc_pos[sel_atom][index]._value*10
+#                xyz_ref._frame.at[i, entry] = nc_pos[sel_atom][index]._value*10
+                xyz_ref._frame.at[i, entry] = self.sim_traj.openmm_positions(0)[sel_atom][index]._value*10
                 #xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
 
         current_zmat = xyz_ref.give_zmat(construction_table=self.buildlist)
+        print('traj pos', np.array(self.sim_traj.openmm_positions(0)._value)*10)
+        print('traj xyz', np.array(self.sim_traj.xyz[0]*10))
+        print('nc_pos', nc_pos[self.atom_indices]._value*10)
+#        selected = checkDart(self.internal_zmat, current_pos=nc_pos[self.atom_indices]._value*10,
+        selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
 
-        selected = checkDart(self.internal_zmat, current_pos=nc_pos[self.atom_indices]._value*10,
                     current_zmat=current_zmat, pos_list=self.binding_mode_pos,
                     construction_table=self.buildlist,
                     dart_storage=self.darts

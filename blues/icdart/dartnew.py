@@ -282,7 +282,7 @@ def getRotTransMatrices(internal_mat, pos_list, construction_table):
         #only be nan if due to rounding error due to no rotation
             rot_storage[zindex[0], zindex[1]] = 0
         else:
-            rot_storage[zindex[0], zindex[1]] = temp_rot
+            rot_storage[zindex[0], zindex[1]] = temp_rot*9./10.
 
         trans_storage[zindex[0], zindex[1]] = temp_trans
         trans_storage = symmetrize(trans_storage)/ 2.0
