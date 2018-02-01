@@ -293,8 +293,12 @@ class MolDart(RandomLigandRotationMove):
                 sel_atom = self.atom_indices[i]
                 #set the pandas series with the appropriate data
                 #multiply by 10 since openmm works in nm and cc works in angstroms
-                xyz_ref._frame.at[i, entry] = nc_pos[:,index][sel_atom]._value*10
-
+                #TEMP TO SEE IF WORKS
+                #xyz_ref._frame.at[i, entry] = nc_pos[:,index][sel_atom]._value*10
+                xyz_ref._frame.at[i, entry] = self.sim_traj.openmm_positions(0)[sel_atom][index]._value*10
+                #xyz_ref._frame.at[i, entry] = np.array(self.sim_traj.openmm_positions(0))[:,index][sel_atom]._value*10
+        print('xyz_ref', xyz_ref)
+                ###
         #print('initial ref', xyz_ref)
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         if 1:
