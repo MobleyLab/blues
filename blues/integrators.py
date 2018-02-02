@@ -150,14 +150,14 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         return prop_lambda_min, prop_lambda_max
 
     def updateRestraints(self):
-        ##self.addComputeGlobal("Eold", "energy")
+        #self.addComputeGlobal("Eold", "energy")
         #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.5)*abs(lambda-0.5))')
-        #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.30)*abs(lambda-0.5))')
-        self.addComputeGlobal('lambda_restraints', '0')
+        self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.30)*abs(lambda-0.5))')
+        #self.addComputeGlobal('lambda_restraints', '0')
         #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.15)*abs(lambda-0.5))')
         #self.addComputeGlobal('lambda_restraints', 'max(0, 1-(1/0.10)*abs(lambda-0.5))')
-        ##self.addComputeGlobal("Enew", "energy")
-        ##self.addComputeGlobal("protocol_work", "protocol_work + (Enew-Eold)")
+        #self.addComputeGlobal("Enew", "energy")
+        #self.addComputeGlobal("protocol_work", "protocol_work + (Enew-Eold)")
 
     def _add_integrator_steps(self):
         """

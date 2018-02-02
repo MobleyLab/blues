@@ -490,7 +490,7 @@ class MolDart(RandomLigandRotationMove):
             #print('new_pos', new_pos)
             new_sys = add_restraints(new_sys, structure, new_pos, self.atom_indices, index)
     #REMOVE THE ZERO LIG MASS PORTION HERE (FOR DEBUGGING ONLY)
-        if 1:
+        if 0:
             def zero_lig_mass(system, indexlist):
                 num_atoms = system.getNumParticles()
                 for index in range(num_atoms):
