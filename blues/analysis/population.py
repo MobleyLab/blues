@@ -249,7 +249,7 @@ class BindingModePopulation(object):
 
         lig_atoms = traj.top.select('resname LIG and not type H')
         dist = tools.rmsdNP(traj, traj[0], idx=np.asarray(lig_atoms))
-        np.savetxt('%s-%s-labels.txt'%(outfname,jobid),labels, fmt='%d')
+        if outfname: np.savetxt('%s-%s-labels.txt'%(outfname,jobid),labels, fmt='%d')
         self._rmsd_population_plot(self.n_clusters, distances=dist,
                                cluster_labels=labels,
                                time_per_frame=self.time_per_frame,
