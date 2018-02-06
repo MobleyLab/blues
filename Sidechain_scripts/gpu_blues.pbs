@@ -1,0 +1,127 @@
+#PBS -N divaline-nobias_50k_10k
+#PBS -q home
+#PBS -l nodes=1:ppn=3:gpu
+#PBS -l walltime=200:00:00
+#PBS -m ae
+#PBS -M burleyk@uci.edu
+
+
+#Export Anaconda3 into PATH
+export PATH=$HOME/anaconda3/bin:$PATH
+export PRJ=$HOME/projects/sidechain
+export OE_LICENSE=$HOME/anaconda3/lib/python3.6/site-packages/openeye/oe_license.txt
+export ID=${PBS_JOBNAME}
+source activate nobias
+copy_local="yes"
+
+#Inputs
+
+prmtop="$PRJ/inputs/watDivaline.prmtop"
+inpcrd="$PRJ/inputs/watDivaline.inpcrd"
+myscript="$PRJ/Divaline_nobias/sc_test.py"
+
+#########################################
+
+
+pbs_startjob(){
+#----------------- Actual calculation command goes here: ---------------------------#
+echo "Start Time: $res1"
+echo "Submitting ${ID}"
+echo "Job directory: ${PBS_O_WORKDIR}"
+cd $work_dir
+pwd
+module load cuda/8.0.44
+ls -lht
+
+python -u $PRJ/Divaline_nobias/sc_test.py -n 10000 -o dival > ${ID}-nc10000.log
+
+echo Job Done
+#-----------------------------------------------------------------------------------
+}
+# Function to echo informational output
+pbs_info_out(){
+# Informational output
+echo ------------------------------------------------------
+echo -n 'Job is running on node '; cat $PBS_NODEFILE
+echo ------------------------------------------------------
+date
+echo PBS: qsub is running on $PBS_O_HOST
+echo PBS: originating queue is $PBS_O_QUEUE
+echo PBS: executing queue is $PBS_QUEUE
+echo PBS: working directory is $PBS_O_WORKDIR
+echo PBS: execution mode is $PBS_ENVIRONMENT
+echo PBS: job identifier is $PBS_JOBID
+echo PBS: job name is $PBS_JOBNAME
+echo PBS: node file is $PBS_NODEFILE
+echo PBS: current home directory is $PBS_O_HOME
+echo PBS: PATH = $PBS_O_PATH
+echo ------------------------------------------------------
+}
+
+
+# Copy data to a local work directory:
+if [ "$copy_local" = "yes" ]; then
+  echo $HOSTNAME > $PBS_O_WORKDIR/PBS_WORK_NODE-$PBS_JOBID
+  if [ "$?" -ne "0" ]; then
+    echo "Unable to write $PBS_O_WORKDIR/PBS_WORK_NODE-$PBS_JOBID"
+    echo "$PBS_JOBID on node $HOSTNAME failed to write $PBS_O_WORKDIR/PBS_WORK_NODE-$PBS_JOBID " >> $HOME/PBS_WARNINGS
+    echo "$PBS_O_WORKDIR/PBS_WORK_NODE-$PBS_JOBID should contain:" >> $HOME/PBS_WARNINGS
+    echo "$HOSTNAME" >> $HOME/PBS_WARNINGS
+  fi
+  #if (( $PBS_JOB_NUM_NODES > 1 )); then
+  work_dir="/state/partition1/$USER/$PBS_JOBID"
+  #else
+  #work_dir="/oasis/tscc/scratch/$USER/$PBS_JOBID"
+  #fi
+
+  mkdir -p $work_dir
+
+  #Production RSYNC command:
+  rsync -avhP --include="$complex" --include="*.py" --exclude="*" $PBS_O_WORKDIR/ $work_dir/
+  if (( $? != 0)); then
+    echo "FAIL: rsync to local execution directory had problems. Aborting job."
+    exit 1
+  else
+    echo "$work_dir" > $PBS_O_WORKDIR/PBS_WORK_DIR-$PBS_JOBID
+    if [ "$?" -ne "0" ]; then
+      echo "Unable to write $PBS_O_WORKDIR/PBS_WORK_DIR-$PBS_JOBID"
+      echo "$PBS_JOBID on node $HOSTNAME failed to write $PBS_O_WORKDIR/PBS_WORK_DIR-$PBS_JOBID" >> $HOME/PBS_WARNINGS
+      echo "$PBS_O_WORKDIR/PBS_WORK_DIR-$PBS_JOBID should contain:" >> $HOME/PBS_WARNINGS
+      echo "$work_dir" >> $HOME/PBS_WARNINGS
+    fi
+  fi
+  cd $work_dir
+fi
+
+pbs_info_out
+
+pbs_startjob
+
+# Copy data back to the submission directory:
+if [ "$copy_local" = "yes" ]; then
+  rsync -avhP --update $work_dir $PBS_O_WORKDIR/
+  if (( $? == 0)); then
+    cd $PBS_O_WORKDIR
+    #rm -rf $work_dir
+    # Since the copyback worked, delete the file that triggers the post-execution script
+    rm $PBS_O_WORKDIR/PBS_WORK_DIR-$PBS_JOBID
+    rm $PBS_O_WORKDIR/PBS_WORK_NODE-$PBS_JOBID
+  else
+    echo "FAIL: rsync back to submission directory had problems. Execution directory not removed."
+    echo "$PBS_JOBID on node $HOSTNAME had problems on final rsync" >> $HOME/PBS_WARNINGS
+    cd $PBS_O_WORKDIR
+    exit 1
+  fi
+fi
+
+res2=$(date +%s.%N)
+dt=$(echo "$res2 - $res1" | bc)
+dd=$(echo "$dt/86400" | bc)
+dt2=$(echo "$dt-86400*$dd" | bc)
+dh=$(echo "$dt2/3600" | bc)
+dt3=$(echo "$dt2-3600*$dh" | bc)
+dm=$(echo "$dt3/60" | bc)
+ds=$(echo "$dt3-60*$dm" | bc)
+echo "End time: $res2"
+echo "Total Duration: $dt"
+printf "Total runtime: %d:%02d:%02d:%02.4f\n" $dd $dh $dm $ds
