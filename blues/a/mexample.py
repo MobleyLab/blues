@@ -25,16 +25,16 @@ from simtk import unit
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 10, 'nstepsNC' : 2500, 'nstepsMD' : 1000,
+            'nIter' : 1, 'nstepsNC' : 2000, 'nstepsMD' : 500,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
             'trajectory_interval' : 1000, 'reporter_interval' : 1000,
             'platform' : platform_name,
             #'verbose' : True,
             'outfname' : 't4-tol',
-            'nprop':5,
+            'nprop':10,
             'freeze_distance' : 10.0,
             #'write_ncmc' : 1,
-            #'ncmc_traj': True 
+            #'ncmc_traj': True
             }
 
     #Generate the ParmEd Structure

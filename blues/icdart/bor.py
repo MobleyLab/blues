@@ -73,7 +73,7 @@ class BoreschBLUES(Boresch):
         new_sys = thermodynamic_state.get_system(remove_thermostat=True)
         return new_sys
 
-def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0):
+def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
     #added thermostat force will be removed anyway, so temperature is arbitrary
     #pos = np.array([list(i) for i in struct.positions._value])*unit.angstroms
     topology = struct.topology
@@ -89,7 +89,7 @@ def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0):
     standard_restraint = 55
     restraint_dist = 60
 
-    boresch = BoreschBLUES(restrained_receptor_atoms=[1605, 1735, 1837], restrained_ligand_atoms=[2634, 2638, 2639],
+    boresch = BoreschBLUES(restrained_receptor_atoms=restrained_receptor_atoms, restrained_ligand_atoms=restrained_ligand_atoms,
         K_r=restraint_dist*unit.kilocalorie_per_mole/unit.angstrom**2, K_thetaA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_thetaB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2,
         K_phiA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiC=standard_restraint*unit.kilocalories_per_mole / unit.radian**2)
     #boresch = BoreschBLUES()

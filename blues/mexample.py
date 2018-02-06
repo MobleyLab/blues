@@ -46,6 +46,8 @@ def runNCMC(platform_name):
                                       pdb_files=['posA.pdb', 'posB.pdb'],
                                       xyz_file='tolA.xyz',
                                       fit_atoms=fit_atoms,
+                                      restrained_receptor_atoms=[1605, 1735, 1837],
+                                      restrained_ligand_atoms=[2634, 2638, 2639],
                                       )
 
     # Initialize object that proposes moves.

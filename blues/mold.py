@@ -106,7 +106,7 @@ class MolDart(RandomLigandRotationMove):
         instead.
 
     """
-    def __init__(self, structure, pdb_files, fit_atoms, resname='LIG', rigid_move=False):
+    def __init__(self, structure, pdb_files, fit_atoms, resname='LIG', rigid_move=False, restraints=True, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
         super(MolDart, self).__init__(structure, resname)
 
         self.binding_mode_traj = []
@@ -121,6 +121,13 @@ class MolDart(RandomLigandRotationMove):
         self.sim_ref = None
         self.moves_attempted = 0
         self.times_within_dart = 0
+        self.restraints = restraints
+        self.restrained_receptor_atoms=restrained_receptor_atoms
+        self.restrained_ligand_atoms = restrained_ligand_atoms
+
+        if restraints != True and restraints != False:
+            raise ValueError('restraints argument should be a boolean')
+
         #chemcoords reads in xyz files only, so we need to use mdtraj
         #to get the ligand coordinates in an xyz file
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
@@ -472,34 +479,37 @@ class MolDart(RandomLigandRotationMove):
         #new_int._alchemical_functions['lambda_restraints'] = '1'
 
         #new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
+        if self.restraints == True:
+            new_int._system_parameters = {system_parameter for system_parameter in new_int._alchemical_functions.keys()}
+            print('new_int system parms', new_int._system_parameters)
+            initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
+            self.atom_indices
+            for index, pose in enumerate(self.binding_mode_traj):
+                #pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
+                #new_sys = add_restraints(new_sys, structure, pose_pos, self.atom_indices, index)
+                pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))[self.atom_indices]
+                new_pos = np.copy(initial_traj)
+                ###Debugging pase
+                new_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))
+                ###
+                new_pos[self.atom_indices] = pose_pos
+                new_pos= new_pos * unit.nanometers
+                #print('new_pos', new_pos)
+                new_sys = add_restraints(new_sys, structure, new_pos, self.atom_indices, index, self.restrained_receptor_atoms, self.restrained_ligand_atoms)
+            #REMOVE THE ZERO LIG MASS PORTION HERE (FOR DEBUGGING ONLY)
+            if 0:
+                def zero_lig_mass(system, indexlist):
+                    num_atoms = system.getNumParticles()
+                    for index in range(num_atoms):
+                        if index in indexlist:
+                            system.setParticleMass(index, 0*unit.daltons)
+                        else:
+                            pass
+                    return system
+                new_sys = zero_lig_mass(new_sys, self.atom_indices)
 
-        new_int._system_parameters = {system_parameter for system_parameter in new_int._alchemical_functions.keys()}
-        print('new_int system parms', new_int._system_parameters)
-        initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
-        self.atom_indices
-        for index, pose in enumerate(self.binding_mode_traj):
-#            pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
-#            new_sys = add_restraints(new_sys, structure, pose_pos, self.atom_indices, index)
-            pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))[self.atom_indices]
-            new_pos = np.copy(initial_traj)
-            ###Debugging pase
-            new_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))
-            ###
-            new_pos[self.atom_indices] = pose_pos
-            new_pos= new_pos * unit.nanometers
-            #print('new_pos', new_pos)
-            new_sys = add_restraints(new_sys, structure, new_pos, self.atom_indices, index)
-    #REMOVE THE ZERO LIG MASS PORTION HERE (FOR DEBUGGING ONLY)
-        if 0:
-            def zero_lig_mass(system, indexlist):
-                num_atoms = system.getNumParticles()
-                for index in range(num_atoms):
-                    if index in indexlist:
-                        system.setParticleMass(index, 0*unit.daltons)
-                    else:
-                        pass
-                return system
-            new_sys = zero_lig_mass(new_sys, self.atom_indices)
+        else:
+            pass
 
 
         #print(new_int._alchemical_functions)
@@ -510,48 +520,54 @@ class MolDart(RandomLigandRotationMove):
         """Check if in a pose. If so turn on `restraint_pose` for that pose
         """
         #print(context.getParameters().keys())
-        selected_list = self.poseDart(context, self.atom_indices)
-        print('selected_list', selected_list)
-        if len(selected_list) >= 1:
-            self.selected_pose = np.random.choice(selected_list, replace=False)
-            #print('keys during move', context.getParameters().keys())
-            context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
+        if self.restraints == True:
+            selected_list = self.poseDart(context, self.atom_indices)
+            print('selected_list', selected_list)
+            if len(selected_list) >= 1:
+                self.selected_pose = np.random.choice(selected_list, replace=False)
+                #print('keys during move', context.getParameters().keys())
+                context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
 
-            #print('values before', context.getParameters().values())
+                #print('values before', context.getParameters().values())
 
 
+            else:
+                #TODO handle the selected_pose when not in a pose
+                #probably can set to an arbitrary pose when the acceptance_ratio is treated properly
+                self.selected_pose = 0
+                self.acceptance_ratio = 0
         else:
-            #TODO handle the selected_pose when not in a pose
-            #probably can set to an arbitrary pose when the acceptance_ratio is treated properly
-            self.selected_pose = 0
-            self.acceptance_ratio = 0
+            pass
         return context
 
     def afterMove(self, context):
         """Check if in the same pose at the end as the specified restraint.
          If not, reject the move
         """
-        selected_list = self.poseDart(context, self.atom_indices)
-        if self.selected_pose not in selected_list:
-            self.acceptance_ratio = 0
-        else:
-            context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
-            #print('keys after move', context.getParameters().keys())
-            #print('values after', context.getParameters().values())
-            work = context.getIntegrator().getGlobalVariableByName('protocol_work')
-            print('correction process', work)
-            corrected_work = work + self.restraint_correction._value
-            context.getIntegrator().setGlobalVariableByName('protocol_work', corrected_work)
-            work = context.getIntegrator().getGlobalVariableByName('protocol_work')
-            print('correction process after', work)
-
-
+        if self.restraints == True:
+            selected_list = self.poseDart(context, self.atom_indices)
+            if self.selected_pose not in selected_list:
+                self.acceptance_ratio = 0
+            else:
+                #context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
+                #print('keys after move', context.getParameters().keys())
+                #print('values after', context.getParameters().values())
+                work = context.getIntegrator().getGlobalVariableByName('protocol_work')
+                print('correction process', work)
+                corrected_work = work + self.restraint_correction._value
+                context.getIntegrator().setGlobalVariableByName('protocol_work', corrected_work)
+                work = context.getIntegrator().getGlobalVariableByName('protocol_work')
+                print('correction process after', work)
+            for i in range(len(self.binding_mode_traj)):
+                context.setParameter('restraint_pose_'+str(i), 0)
 
         return context
 
     def _error(self, context):
-        for i in range(len(self.binding_mode_traj)):
-            context.setParameter('restraint_pose_'+str(i), 0)
+        if self.restraints == True:
+            for i in range(len(self.binding_mode_traj)):
+                context.setParameter('restraint_pose_'+str(i), 0)
+
 
 
 
@@ -576,14 +592,17 @@ class MolDart(RandomLigandRotationMove):
         self.moves_attempted += 1
         state = context.getState(getPositions=True, getEnergy=True)
         oldDartPos = state.getPositions(asNumpy=True)
-        total_pe_restraint1_on = state.getPotentialEnergy()
-
         selected_list = self.poseDart(context, self.atom_indices)
-        orginal_params = zip(context.getParameters().keys(), context.getParameters().values())
-        context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
-        state_restraint1_off = context.getState(getPositions=True, getEnergy=True)
-        total_pe_restraint1_off = state_restraint1_off.getPotentialEnergy()
-        restraint1_energy = total_pe_restraint1_on - total_pe_restraint1_off
+
+        if self.restraints == True:
+
+            total_pe_restraint1_on = state.getPotentialEnergy()
+
+            orginal_params = zip(context.getParameters().keys(), context.getParameters().values())
+            context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
+            state_restraint1_off = context.getState(getPositions=True, getEnergy=True)
+            total_pe_restraint1_off = state_restraint1_off.getPotentialEnergy()
+            restraint1_energy = total_pe_restraint1_on - total_pe_restraint1_off
 
 
         if len(selected_list) == 0:
@@ -615,22 +634,6 @@ class MolDart(RandomLigandRotationMove):
             overlap_after = self.poseDart(context, self.atom_indices)
             #print('original params', orginal_params)
             #print('before dart', zip(context.getParameters().keys(), context.getParameters().values()))
-            state_restraint2_off = context.getState(getEnergy=True)
-            total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
-
-            context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
-            state_restraint2_on = context.getState(getEnergy=True)
-            total_pe_restraint2_on = state_restraint2_on.getPotentialEnergy()
-            restraint2_energy = total_pe_restraint2_on - total_pe_restraint2_off
-            restraint_correction = -(restraint2_energy - restraint1_energy)
-            print('restraint1', restraint1_energy, 'restraint2', restraint2_energy)
-            print('restraint_correction', restraint_correction)
-            work = context.getIntegrator().getGlobalVariableByName('protocol_work')
-            self.restraint_correction = restraint_correction
-            print('work', work)
-
-
-
             #print('after dart', zip(context.getParameters().keys(), context.getParameters().values()))
 
             #print('overlap after', overlap_after)
@@ -644,5 +647,24 @@ class MolDart(RandomLigandRotationMove):
                 self.acceptance_ratio = float(len(selected_list))/float(len(overlap_after))
             #print('overlap acceptance ratio', self.acceptance_ratio)
             #check if new positions overlap when moving
+
+            if self.restraints == True:
+
+                state_restraint2_off = context.getState(getEnergy=True)
+                total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
+
+                context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
+                state_restraint2_on = context.getState(getEnergy=True)
+                total_pe_restraint2_on = state_restraint2_on.getPotentialEnergy()
+                restraint2_energy = total_pe_restraint2_on - total_pe_restraint2_off
+                restraint_correction = -(restraint2_energy - restraint1_energy)
+                print('restraint1', restraint1_energy, 'restraint2', restraint2_energy)
+                print('restraint_correction', restraint_correction)
+                work = context.getIntegrator().getGlobalVariableByName('protocol_work')
+                self.restraint_correction = restraint_correction
+                print('work', work)
+
+
+
 
         return context
