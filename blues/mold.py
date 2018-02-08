@@ -140,16 +140,26 @@ class MolDart(RandomLigandRotationMove):
             xyz = cc.Cartesian.read_xyz(fname)
         #get the construction table so internal coordinates are consistent
         self.buildlist = xyz.get_construction_table()
-        ref_traj = md.load(pdb_files[0])[0]
-        self.ref_traj = ref_traj
+#        ref_traj = md.load(pdb_files[0])[0]
+#        self.ref_traj = ref_traj
         #self.ref_traj.save('posr.pdb')
+        with tempfile.NamedTemporaryFile(suffix='.pdb') as t:
+            fname = t.name
+            self.structure.save(fname, overwrite=True)
+            struct_traj = md.load(fname)
+        ref_traj = md.load(pdb_files[0])[0]
+        num_atoms = ref_traj.n_atoms
+        self.ref_traj = copy.deepcopy(struct_traj)
+
         for j, pdb_file in enumerate(pdb_files):
-            traj = md.load(pdb_file)[0]
+            traj = copy.deepcopy(self.ref_traj)
+            pdb_traj = md.load(pdb_file)[0]
+            traj.xyz[0][:num_atoms] = pdb_traj.xyz[0]
             traj.superpose(reference=ref_traj, atom_indices=fit_atoms,
                 ref_atom_indices=fit_atoms
                 )
-            save_name='pos'+str(j)+'.pdb'
-            traj.save(save_name)
+            #save_name='pos'+str(j)+'.pdb'
+            #traj.save(save_name)
             self.binding_mode_traj.append(copy.deepcopy(traj))
             #get internal representation
             self.internal_xyz.append(copy.deepcopy(xyz))
@@ -161,7 +171,6 @@ class MolDart(RandomLigandRotationMove):
                     self.internal_xyz[j]._frame.at[i, entry] = self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10
                     #self.internal_xyz[j]._frame.set_value(i, entry, self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10)
             self.internal_zmat.append(self.internal_xyz[j].give_zmat(construction_table=self.buildlist))
-
         self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
@@ -226,9 +235,9 @@ class MolDart(RandomLigandRotationMove):
                 #xyz_ref._frame.set_value(i, entry, (nc_pos[sel_atom][index]._value*10))
 
         current_zmat = xyz_ref.give_zmat(construction_table=self.buildlist)
-        print('traj pos', np.array(self.sim_traj.openmm_positions(0)._value)*10)
-        print('traj xyz', np.array(self.sim_traj.xyz[0]*10))
-        print('nc_pos', nc_pos[self.atom_indices]._value*10)
+       # print('traj pos', np.array(self.sim_traj.openmm_positions(0)._value)*10)
+        #print('traj xyz', np.array(self.sim_traj.xyz[0]*10))
+        #print('nc_pos', nc_pos[self.atom_indices]._value*10)
 #        selected = checkDart(self.internal_zmat, current_pos=nc_pos[self.atom_indices]._value*10,
         selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
 
@@ -420,6 +429,7 @@ class MolDart(RandomLigandRotationMove):
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
         rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
+        print('centroid displacement', centroid)
         #perform the same angle change on new coordinate
         centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
@@ -487,7 +497,12 @@ class MolDart(RandomLigandRotationMove):
             for index, pose in enumerate(self.binding_mode_traj):
                 #pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
                 #new_sys = add_restraints(new_sys, structure, pose_pos, self.atom_indices, index)
+                #pose_pos is the positions of the given pose
+                #the ligand positions in this will be used to replace the ligand positions of self.binding_mode_traj[0]
+                #in new_pos to add new restraints
+
                 pose_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))[self.atom_indices]
+                pose_allpos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
                 new_pos = np.copy(initial_traj)
                 ###Debugging pase
                 new_pos = np.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))
@@ -495,7 +510,11 @@ class MolDart(RandomLigandRotationMove):
                 new_pos[self.atom_indices] = pose_pos
                 new_pos= new_pos * unit.nanometers
                 #print('new_pos', new_pos)
-                new_sys = add_restraints(new_sys, structure, new_pos, self.atom_indices, index, self.restrained_receptor_atoms, self.restrained_ligand_atoms)
+                restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.get_values()[:3]]
+
+                #new_sys = add_restraints(new_sys, structure, new_pos, self.atom_indices, index, self.restrained_receptor_atoms, restraint_lig)
+                new_sys = add_restraints(new_sys, structure, pose_allpos, self.atom_indices, index, self.restrained_receptor_atoms, restraint_lig)
+
             #REMOVE THE ZERO LIG MASS PORTION HERE (FOR DEBUGGING ONLY)
             if 0:
                 def zero_lig_mass(system, indexlist):
@@ -509,11 +528,11 @@ class MolDart(RandomLigandRotationMove):
                 new_sys = zero_lig_mass(new_sys, self.atom_indices)
 
         else:
-            pass
+            new_int.addGlobalVariable("lambda_restraints", 0)
 
 
         #print(new_int._alchemical_functions)
-        return new_sys, integrator
+        return new_sys, new_int
 
 
     def beforeMove(self, context):

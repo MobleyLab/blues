@@ -46,7 +46,6 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
     ligand = RandomLigandRotationMove(struct, 'LIG')
-    ligand.calculateProperties()
 
     # Initialize object that proposes moves.
     ligand_mover = MoveEngine(ligand)

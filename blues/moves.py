@@ -135,6 +135,8 @@ class RandomLigandRotationMove(Move):
 
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
+        self.calculateProperties()
+
 
     def getAtomIndices(self, structure, resname):
         """
@@ -197,7 +199,9 @@ class RandomLigandRotationMove(Move):
             1x3 np.array of the center of mass of the given positions
 
         """
-        coordinates = np.asarray(positions._value, np.float32)
+        #coordinates = np.asarray(positions._value, np.float32)
+        coordinates = np.array(positions._value, np.float32)
+
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
 

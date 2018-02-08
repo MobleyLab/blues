@@ -130,10 +130,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
         self._registered_step_types['H'] = (self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
-        try:
-            self.getGlobalVariableByName("lambda_restraints")
-        except:
-            self.addGlobalVariable("lambda_restraints", 0)
+#        try:
+#            self.getGlobalVariableByName("lambda_restraints")
+#        except:
+#            self.addGlobalVariable("lambda_restraints", 0)
 
 
         try:
@@ -179,6 +179,11 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.endBlock()
 
         # Main body
+        #try:
+        #    self.getGlobalVariableByName("lambda_restraints")
+        #except:
+        #    self.addGlobalVariable("lambda_restraints", 0)
+
         if self._n_steps_neq == 0:
             # If nsteps = 0, we need to force execution on the first step only.
             self.beginIfBlock('step = 0')

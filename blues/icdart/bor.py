@@ -77,10 +77,15 @@ def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, restrained_recept
     #added thermostat force will be removed anyway, so temperature is arbitrary
     #pos = np.array([list(i) for i in struct.positions._value])*unit.angstroms
     topology = struct.topology
+    new_struct_pos = np.array(struct.positions.value_in_unit(unit.nanometers))*unit.nanometers
+    num_atoms = np.shape(pos)[0]
+    #print(new_struct_pos)
+    new_struct_pos[:num_atoms] = pos
+    #print(new_struct_pos)
     #pos = np.array([list(i) for i in struct.positions.value_in_unit(unit.nanometers)])*unit.nanometers
-    print('pos', pos)
+    #print('pos', pos)
     thermo = ThermodynamicState(sys, temperature=300*unit.kelvin)
-    sampler = SamplerState(pos, box_vectors=struct.box_vectors)
+    sampler = SamplerState(new_struct_pos, box_vectors=struct.box_vectors)
     print('sampler', sampler.positions)
 
     topography = Topography(topology=topology, ligand_atoms=ligand_atoms)

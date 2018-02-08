@@ -15,6 +15,7 @@ from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 import copy
+import traceback
 def init_logger(outfname='blues'):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -557,7 +558,7 @@ class Simulation(object):
                     # Print energies at every step
                     work = self.getWorkInfo(self.nc_integrator, self.work_keys)
                     self.log.debug('%s' % work)
-                if ncmc_traj:
+                if ncmc_traj and (nc_step % 5 == 0):
                     self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
 
                 #Attempt anything related to the move after protocol is performed
@@ -565,7 +566,10 @@ class Simulation(object):
                     self.nc_context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_context)
 
             except Exception as e:
-                self.log.error(e)
+                if verbose:
+                    self.log.error(traceback.format_exc())
+                else:
+                    self.log.error(e)
                 self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_context)
                 break
 

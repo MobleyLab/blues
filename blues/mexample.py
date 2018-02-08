@@ -28,7 +28,13 @@ def runNCMC(platform_name):
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
             'trajectory_interval' : 1000, 'reporter_interval' : 1000,
             'platform' : platform_name,
-            'verbose' : True }
+            'outfname' : 't4-tol',
+            'nprop':5,
+            'freeze_distance' : 10.0,
+            #'write_ncmc' : 1,
+            #'ncmc_traj': True,
+            'ncmc_move_output' : True,
+ }
 
     #Generate the ParmEd Structure
     prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
@@ -44,7 +50,6 @@ def runNCMC(platform_name):
     ligand = MolDart(structure=struct, resname='LIG',
                                       #dart_size=0.3*unit.nanometers,
                                       pdb_files=['posA.pdb', 'posB.pdb'],
-                                      xyz_file='tolA.xyz',
                                       fit_atoms=fit_atoms,
                                       restrained_receptor_atoms=[1605, 1735, 1837],
                                       restrained_ligand_atoms=[2634, 2638, 2639],
