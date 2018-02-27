@@ -111,7 +111,9 @@ class SimulationFactory(object):
             #Atom selection for zeroing protein atom masses
             mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance,freeze_solvent))
             site_idx = [i for i in mask.Selected()]
-            self.log.info('Zeroing mass of %s atoms %.1f Angstroms from LIG' % (len(site_idx), freeze_distance))
+            print("Atoms not freezed")
+            print(len(site_idx));
+            self.log.info('Not zeroing mass of %s atoms %.1f Angstroms from LIG' % (len(site_idx), freeze_distance))
             alch_system = self._zero_allother_masses(alch_system, site_idx)
         else:
             pass
@@ -119,7 +121,7 @@ class SimulationFactory(object):
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
-                       constraints='HBonds', hydrogenMass=None, **opt):
+                       constraints='HBonds', hydrogenMass=None, temperature=300, **opt):
         """Returns the OpenMM System for the reference system.
 
         Parameters
@@ -137,6 +139,10 @@ class SimulationFactory(object):
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
                             constraints=eval("app.%s" % constraints),
                             hydrogenMass=hydrogenMass)
+        if opt['NPT']:
+            from simtk.openmm import MonteCarloBarostat
+            pressureAtm = 1
+            system.addForce(MonteCarloBarostat(pressureAtm*unit.atmospheres, tempK*unit.kelvin, 25))
         return system
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
@@ -204,6 +210,8 @@ class SimulationFactory(object):
         # Will get overwritten from saved State.
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(temperature*unit.kelvin)
+        if self.opt['NPT']:
+            simulation.context.setPeriodicBoxVector(structure.box_vectors)
 
         return simulation
 
@@ -271,7 +279,7 @@ class Simulation(object):
         if 'ncmc_traj' in self.opt:
             # Add reporter to NCMC Simulation useful for debugging:
 #            self.ncmc_reporter = app.dcdreporter.DCDReporter('{ncmc_traj}.dcd'.format(**self.opt), 1)
-            self.ncmc_reporter = NetCDFReporter('{ncmc_traj}.nv'.format(**self.opt), self.opt['reporter_interval'], crds=True)
+            self.ncmc_reporter = NetCDFReporter('{ncmc_traj}.nc'.format(**self.opt), self.opt['reporter_interval'], crds=True)
             self.nc_sim.reporters.append(self.ncmc_reporter)
         else:
             pass
@@ -321,6 +329,8 @@ class Simulation(object):
         nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
+        if self.opt['NPT']:
+            self.nc_context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
 
@@ -392,6 +402,8 @@ class Simulation(object):
         stateinfo['velocities'] = state.getVelocities(asNumpy=True)
         stateinfo['potential_energy'] = state.getPotentialEnergy()
         stateinfo['kinetic_energy'] = state.getKineticEnergy()
+        if self.opt['NPT']:
+           stateinfo['periodic_boxvectors'] = state.getPeriodicBoxVectors()
         return stateinfo
 
     def getWorkInfo(self, nc_integrator, parameters):
@@ -447,6 +459,8 @@ class Simulation(object):
         # Compute Alchemical Correction Term
         if np.isnan(log_ncmc) == False:
             self.alch_sim.context.setPositions(nc_state1['positions'])
+            if self.opt['NPT']:
+               self.alch_sim.context.setPeriodicBoxVector(nc_state1['periodic_boxvectors'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
@@ -456,6 +470,8 @@ class Simulation(object):
             self.accept += 1
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
+            if self.opt['NPT']:
+                self.md_sim.context.setPeriodicBoxVector(nc_state1['periodic_boxvectors'])
             if write_move:
             	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
 
@@ -463,6 +479,8 @@ class Simulation(object):
             self.reject += 1
             self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
             self.nc_context.setPositions(md_state0['positions'])
+            if self.opt['NPT']:
+                self.nc_context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
 
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
@@ -528,6 +546,8 @@ class Simulation(object):
         # Set NC poistions to last positions from MD
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
+        if self.opt['NPT']:
+            self.nc_context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
 
     def _report(self,start,nc_step):
         end = time.time()
@@ -586,10 +606,14 @@ class Simulation(object):
             self.accept += 1
             self.log.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state1['positions'])
+            if self.opt['NPT']:
+                self.md_sim.context.setPeriodicBoxVector(md_state1['periodic_boxvectors'])
         else:
             self.reject += 1
             self.log.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state0['positions'])
+            if self.opt['NPT']:
+                self.md_sim.context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
         self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
