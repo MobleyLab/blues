@@ -233,6 +233,7 @@ def compareTranslation(trans_mat, trans_spread, posedart_dict, dart_type='transl
     num_poses = np.shape(trans_mat)[0]
     compare_indices = np.triu_indices(num_poses)
     #reset counts for dictionary
+    print('compare_trans', trans_mat)
     for apose in range(num_poses):
             posedart_copy['pose_'+str(apose)][dart_type] = []
 
@@ -345,11 +346,14 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
     #this removes distances less than 1.0 from being used in finding a dart
     #change if really small translational darts are desired
     #without this then dart sizes of 0 can be accepted, which don't make sense
-    trans_list = [i for i in trans_list if i > 1.0]
+    print('trans_list debug', trans_list)
+
+    trans_list = [i for i in trans_list if i > 7.5]
     if len(trans_list) > 0:
         for trans_diff in trans_list:
             #updates posedart_dict with overlaps of poses for each dart
             posedart_copy = compareTranslation(trans_mat=trans_mat, trans_spread=trans_diff, posedart_dict=posedart_dict)
+            print(posedart_copy)
             dart_check = 0
 
             #check for duplicates
@@ -371,7 +375,7 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
                 if len(unison) > 0 and last_repeat[key] is not None:
                     dart_check += 1
                     last_repeat[key] = len(unison)
-                elif last_repeat[key] is None and len(unison) < len(internal_mat)-1 and len(unison) > 0:
+                elif last_repeat[key] is None and len(unison) <= len(internal_mat)-1 and len(unison) > 0:
                     dart_check += 1
                     posedart_dict = copy.deepcopy(posedart_copy)
                     #TODO decide if it should be in angles or radians
@@ -380,6 +384,10 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
 
                 elif len(unison) == 0:
                     print('selected internal coordinates separate all poses')
+                else:
+                    print('unison', len(unison), 'internal mat', len(internal_mat))
+                    pass
+                    #print('???')
             dboolean = 0
             for key, value in iteritems(unison_dict):
                 if value < last_repeat[key]:
@@ -434,10 +442,11 @@ def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
     #need to know how many regions are separated to see if adding translational darts improve things
     rot_indices = np.triu_indices(len(internal_mat))
     rot_list = sorted([rot_mat[i,j] for i,j in zip(rot_indices[0], rot_indices[1])], reverse=True)
+    print('rot_list debug', rot_list)
     #this removes distances less than 0.1 from being used in finding a dart
     #change if really small translational darts are desired
     #without this then dart sizes of 0 can be accepted, which don't make sense
-    rot_list = [i for i in rot_list if i > 0.1]
+    rot_list = [i for i in rot_list if i > 20.0]
 
     for rot_diff in rot_list:
 
@@ -536,9 +545,11 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     #if dart_boolean is false, we need to continue looking thru rot/trans for better separation
     if dart_boolean == False:
         rot_mat, trans_mat = getRotTransMatrices(internal_mat, pos_list, construction_table)
-        dart_storage, posedart_dict, dart_boolean = createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
+        dart_storage, posedart_dict, dart_boolean = createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
+
         if dart_boolean == False:
-            dart_storage, posedart_dict, dart_boolean = createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
+            dart_storage, posedart_dict, dart_boolean = createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
+
         #check translation
         pass
     for key in ['rotation', 'translation']:
@@ -626,7 +637,14 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     rot_list = compareRotation(rot_mat, combo_zmat, dart_storage)
     dihedral_output = compareDihedral(current_zmat, internal_mat, dart_storage)
 
-    set_output = (addSet([dihedral_output, rot_list, trans_list]))
+    #set_output = (addSet([dihedral_output, rot_list, trans_list]))
+    #set_output = list(set.intersection(addSet([dihedral_output, rot_list, trans_list])))
+    #set_output = set.intersection(set(dihedral_output), set(rot_list), set(trans_list))
+    combined_comparison = [set(i) for i in [dihedral_output, rot_list, trans_list] if i is not None]
+    print('combined_comparison', combined_comparison)
+    set_output = list(set.intersection(*combined_comparison))
+    print('set output', set_output)
+
     #if set_output is not None and len(set_output) ==
     return set_output
 
