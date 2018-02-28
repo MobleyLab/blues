@@ -18,6 +18,7 @@ import types
 from blues.mold_helper import give_cartesian_edit
 from blues.icdart.dartnew import makeDartDict, checkDart
 from blues.icdart.bor import add_restraints
+import parmed
 
 def checkDifference(a, b, radius):
     def getDihedralDifference(dihedral):
@@ -483,12 +484,38 @@ class MolDart(RandomLigandRotationMove):
 
     def initializeSystem(self, system, integrator):
         structure = self.structure
+        top = structure.topology
         new_sys = system
         new_int = integrator
         #new_int._alchemical_functions['lambda_restraints'] = 'max(0, 1-(1/0.3)*abs(lambda-0.5))'
         #new_int._alchemical_functions['lambda_restraints'] = '1'
 
         #new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
+        ###new zero masses
+        if 0:
+            res_list = []
+            for traj in self.binding_mode_traj:
+                #lig_pos = traj.openmm_positions(0)[:self.atom_indices[-1]]
+                #structure.positions[:self.atom_indices[-1]] = lig_pos
+                lig_pos = traj.openmm_positions(0)
+                structure.positions = lig_pos
+
+                mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % ('LIG', 5.0, 'HOH,NA,CL'))
+                site_idx = [i for i in mask.Selected()]
+                res_list = res_list + site_idx
+                print('len', len(site_idx))
+            res_list = list(set(res_list))
+            num_atoms = system.getNumParticles()
+            #mass_list = [atom.element.mass for atom in top.atoms()]
+            print('reslist', res_list, len(res_list))
+            for atom in range(num_atoms):
+                if atom in res_list:
+                    pass
+                else:
+                    system.setParticleMass(atom, 0*unit.daltons)
+
+        ###
+
         if self.restraints == True:
             new_int._system_parameters = {system_parameter for system_parameter in new_int._alchemical_functions.keys()}
             print('new_int system parms', new_int._system_parameters)
@@ -545,9 +572,16 @@ class MolDart(RandomLigandRotationMove):
             if len(selected_list) >= 1:
                 self.selected_pose = np.random.choice(selected_list, replace=False)
                 #print('keys during move', context.getParameters().keys())
+                print('selected_pose', self.selected_pose)
+                #EDITTTTT
+                for i in range(len(self.binding_mode_traj)):
+                    context.setParameter('restraint_pose_'+str(i), 0)
+                #EDITTTT
                 context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
 
                 #print('values before', context.getParameters().values())
+                print('values before', list(zip(context.getParameters().keys(), context.getParameters().values())))
+
 
 
             else:
@@ -648,6 +682,7 @@ class MolDart(RandomLigandRotationMove):
                                             rigid_move=True)
 
                                             #rigid_move=self.rigid_move)
+            print('original pose', selected_list, 'darted pose', darted_pose)
             self.selected_pose = darted_pose
             context.setPositions(new_pos)
             overlap_after = self.poseDart(context, self.atom_indices)
@@ -671,6 +706,10 @@ class MolDart(RandomLigandRotationMove):
 
                 state_restraint2_off = context.getState(getEnergy=True)
                 total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
+                #EDITTTTT
+                for i in range(len(self.binding_mode_traj)):
+                    context.setParameter('restraint_pose_'+str(i), 0)
+                #EDITTTT
 
                 context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
                 state_restraint2_on = context.getState(getEnergy=True)
