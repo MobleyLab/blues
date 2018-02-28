@@ -142,7 +142,8 @@ class SimulationFactory(object):
         if opt['NPT']:
             from simtk.openmm import MonteCarloBarostat
             pressureAtm = 1
-            system.addForce(MonteCarloBarostat(pressureAtm*unit.atmospheres, tempK*unit.kelvin, 25))
+            print("Setting pressure force for the system.")
+            system.addForce(MonteCarloBarostat(pressureAtm*unit.atmospheres, temperature*unit.kelvin, 25))
         return system
 
     def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
@@ -211,7 +212,8 @@ class SimulationFactory(object):
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(temperature*unit.kelvin)
         if self.opt['NPT']:
-            simulation.context.setPeriodicBoxVector(structure.box_vectors)
+            print( structure.box_vectors )
+            simulation.context.setPeriodicBoxVectors( structure.box_vectors[0], structure.box_vectors[1], structure.box_vectors[2] )
 
         return simulation
 
@@ -220,9 +222,13 @@ class SimulationFactory(object):
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
         self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
+        print( "Done MD\n")
         self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
+        print( "Done Alch\n")
+
         self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
                                             ncmc=True, **self.opt)
+        print( "Done NC\n")
 
 
 class Simulation(object):
@@ -330,7 +336,7 @@ class Simulation(object):
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
         if self.opt['NPT']:
-            self.nc_context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
+            self.nc_context.setPeriodicBoxVectors(md_state0['periodic_boxvectors'][0], md_state0['periodic_boxvectors'][1], md_state0['periodic_boxvectors'][2] )
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
 
@@ -460,7 +466,7 @@ class Simulation(object):
         if np.isnan(log_ncmc) == False:
             self.alch_sim.context.setPositions(nc_state1['positions'])
             if self.opt['NPT']:
-               self.alch_sim.context.setPeriodicBoxVector(nc_state1['periodic_boxvectors'])
+               self.alch_sim.context.setPeriodicBoxVectors(nc_state1['periodic_boxvectors'][0], nc_state1['periodic_boxvectors'][1], nc_state1['periodic_boxvectors'][2])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
@@ -471,7 +477,7 @@ class Simulation(object):
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
             if self.opt['NPT']:
-                self.md_sim.context.setPeriodicBoxVector(nc_state1['periodic_boxvectors'])
+               self.md_sim.context.setPeriodicBoxVectors(nc_state1['periodic_boxvectors'][0], nc_state1['periodic_boxvectors'][1], nc_state1['periodic_boxvectors'][2])
             if write_move:
             	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
 
@@ -480,7 +486,7 @@ class Simulation(object):
             self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
             self.nc_context.setPositions(md_state0['positions'])
             if self.opt['NPT']:
-                self.nc_context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
+                self.nc_context.setPeriodicBoxVectors(md_state0['periodic_boxvectors'][0], md_state0['periodic_boxvectors'][1], md_state0['periodic_boxvectors'][2] )
 
         self.nc_integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
@@ -547,7 +553,7 @@ class Simulation(object):
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
         if self.opt['NPT']:
-            self.nc_context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
+            self.nc_context.setPeriodicBoxVectors( md_state0['periodic_boxvectors'][0], md_state0['periodic_boxvectors'][1], md_state0['periodic_boxvectors'][2] )
 
     def _report(self,start,nc_step):
         end = time.time()
@@ -607,13 +613,13 @@ class Simulation(object):
             self.log.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state1['positions'])
             if self.opt['NPT']:
-                self.md_sim.context.setPeriodicBoxVector(md_state1['periodic_boxvectors'])
+                self.md_sim.context.setPeriodicBoxVectors( md_state1['periodic_boxvectors'][0], md_state1['periodic_boxvectors'][1], md_state1['periodic_boxvectors'][2] )
         else:
             self.reject += 1
             self.log.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state0['positions'])
             if self.opt['NPT']:
-                self.md_sim.context.setPeriodicBoxVector(md_state0['periodic_boxvectors'])
+                self.md_sim.context.setPeriodicBoxVectors( md_state0['periodic_boxvectors'][0], md_state0['periodic_boxvectors'][1], md_state0['periodic_boxvectors'][2] )
         self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
