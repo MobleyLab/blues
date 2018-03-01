@@ -547,7 +547,7 @@ class MolDart(RandomLigandRotationMove):
                 lig_pos = traj.openmm_positions(0)
                 structure.positions = lig_pos
 
-                mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % ('LIG', 5.0, 'NA,CL'))
+                mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % ('LIG', 7.0, 'NA,CL'))
                 site_idx = [i for i in mask.Selected()]
                 res_list = res_list + site_idx
                 print('len', len(site_idx))
@@ -626,8 +626,7 @@ class MolDart(RandomLigandRotationMove):
             waters_within_distance_new = sorted([self.water_residues[i] for i in water_sort])
             culled_new = [i for i in waters_within_distance_new if i not in self.waters_within_distance]
             culled_old = [i for i in self.waters_within_distance if i not in waters_within_distance_new]
-            for new_water, old_water in list(zip(waters_within_distance_new, self.waters_within_distance)):
-                if new_water not in self.waters_within_distance and old_water :
+            for new_water, old_water in list(zip(culled_new, culled_old)):
                     for j in range(3):
                         switch_pos[old_water[j]] = copy.deepcopy(start_pos[new_water[j]])
                         switch_pos[new_water[j]] = copy.deepcopy(start_pos[old_water[j]])
@@ -805,8 +804,9 @@ class MolDart(RandomLigandRotationMove):
             water_dist = np.linalg.norm(np.subtract(water_pos, lig_com), axis=1)
             water_sort = np.argsort(water_dist)[:500]
             waters_within_distance_new = sorted([self.water_residues[i] for i in water_sort])
-            for new_water, old_water in list(zip(waters_within_distance_new, self.waters_within_distance)):
-                if new_water not in self.waters_within_distance:
+            culled_new = [i for i in waters_within_distance_new if i not in self.waters_within_distance]
+            culled_old = [i for i in self.waters_within_distance if i not in waters_within_distance_new]
+            for new_water, old_water in list(zip(culled_new, culled_old)):
                     for j in range(3):
                         switch_pos[old_water[j]] = copy.deepcopy(start_pos[new_water[j]])
                         switch_pos[new_water[j]] = copy.deepcopy(start_pos[old_water[j]])
