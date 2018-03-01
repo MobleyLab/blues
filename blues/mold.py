@@ -484,7 +484,7 @@ class MolDart(RandomLigandRotationMove):
 
     def initializeSystem(self, system, integrator):
         structure = self.structure
-        top = structure.topology
+
         new_sys = system
         new_int = integrator
         #new_int._alchemical_functions['lambda_restraints'] = 'max(0, 1-(1/0.3)*abs(lambda-0.5))'
@@ -492,7 +492,54 @@ class MolDart(RandomLigandRotationMove):
 
         #new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
         ###new zero masses
-        if 0:
+        ### added water portion
+        residues = structure.topology.residues()
+        water_name = ['WAT', 'HOH']
+        self.water_residues = []
+        for res in residues:
+            if res.name in water_name:
+                water_mol = []
+                for atom in res.atoms():
+                    water_mol.append(atom.index)
+                self.water_residues.append(water_mol)
+        water_oxygens = [i[0] for i in self.water_residues]
+        #portion to calculate ligand com
+        self.calculateProperties()
+        #lig_com = self.center_of_mass
+        self.water_oxygens = [i[0] for i in self.water_residues]
+        positions = np.array(structure.positions.value_in_unit(unit.nanometers))*unit.nanometers
+        lig_pos = positions[self.atom_indices]
+        center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
+        print('center', center_of_mass)
+#        water_pos = positions._value.take(water_oxygens)
+        water_pos = positions.take(water_oxygens, axis=0)*unit.nanometers
+        #print('water_oxygens', water_oxygens)
+        print('water_pos', water_pos)
+
+        #check to see if linalg norm is performing by row
+        print('subtract', water_pos-center_of_mass)
+        water_dist = np.linalg.norm(np.subtract(water_pos, center_of_mass), axis=1)
+        print('water_dist', water_dist)
+        water_sort = np.argsort(water_dist)[:500]
+        print('water sort', water_sort)
+        print(water_oxygens[water_sort[0]])
+        self.waters_within_distance = sorted([self.water_residues[i] for i in water_sort])
+        flat_waters_all = [item for sublist in self.water_residues for item in sublist]
+        flat_waters_within_distance = [item for sublist in self.waters_within_distance for item in sublist]
+        num_atoms = system.getNumParticles()
+        #mass_list = [atom.element.mass for atom in top.atoms()]
+        for atom in range(num_atoms):
+            if atom in flat_waters_all and atom not in flat_waters_within_distance:
+                system.setParticleMass(atom, 0*unit.daltons)
+            else:
+                pass
+
+        #exit()
+
+
+        ###
+
+        if 1:
             res_list = []
             for traj in self.binding_mode_traj:
                 #lig_pos = traj.openmm_positions(0)[:self.atom_indices[-1]]
@@ -500,7 +547,7 @@ class MolDart(RandomLigandRotationMove):
                 lig_pos = traj.openmm_positions(0)
                 structure.positions = lig_pos
 
-                mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % ('LIG', 5.0, 'HOH,NA,CL'))
+                mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % ('LIG', 5.0, 'NA,CL'))
                 site_idx = [i for i in mask.Selected()]
                 res_list = res_list + site_idx
                 print('len', len(site_idx))
@@ -509,7 +556,7 @@ class MolDart(RandomLigandRotationMove):
             #mass_list = [atom.element.mass for atom in top.atoms()]
             print('reslist', res_list, len(res_list))
             for atom in range(num_atoms):
-                if atom in res_list:
+                if atom in res_list or atom in flat_waters_within_distance:
                     pass
                 else:
                     system.setParticleMass(atom, 0*unit.daltons)
@@ -566,6 +613,31 @@ class MolDart(RandomLigandRotationMove):
         """Check if in a pose. If so turn on `restraint_pose` for that pose
         """
         #print(context.getParameters().keys())
+        if 1:
+            start_state = context.getState(getPositions=True, getVelocities=True)
+            start_pos = start_state.getPositions(asNumpy=True)
+            start_vel = start_state.getVelocities(asNumpy=True)
+            switch_pos = np.copy(start_pos)*start_pos.unit
+            switch_vel = np.copy(start_vel)*start_vel.unit
+            lig_com = self.getCenterOfMass(switch_pos[self.atom_indices], masses=self.masses)
+            water_pos = switch_pos.take(self.water_oxygens, axis=0)*unit.nanometers
+            water_dist = np.linalg.norm(np.subtract(water_pos, lig_com), axis=1)
+            water_sort = np.argsort(water_dist)[:500]
+            waters_within_distance_new = sorted([self.water_residues[i] for i in water_sort])
+            culled_new = [i for i in waters_within_distance_new if i not in self.waters_within_distance]
+            culled_old = [i for i in self.waters_within_distance if i not in waters_within_distance_new]
+            for new_water, old_water in list(zip(waters_within_distance_new, self.waters_within_distance)):
+                if new_water not in self.waters_within_distance and old_water :
+                    for j in range(3):
+                        switch_pos[old_water[j]] = copy.deepcopy(start_pos[new_water[j]])
+                        switch_pos[new_water[j]] = copy.deepcopy(start_pos[old_water[j]])
+                        switch_vel[old_water[j]] = start_vel[new_water[j]]
+                        switch_vel[new_water[j]] = start_vel[old_water[j]]
+
+            context.setPositions(switch_pos)
+            context.setVelocities(switch_vel)
+
+
         if self.restraints == True:
             selected_list = self.poseDart(context, self.atom_indices)
             print('selected_list', selected_list)
@@ -722,6 +794,26 @@ class MolDart(RandomLigandRotationMove):
                 self.restraint_correction = restraint_correction
                 print('work', work)
 
+        if 1:
+            start_state = context.getState(getPositions=True, getVelocities=True)
+            start_pos = start_state.getPositions(asNumpy=True)
+            start_vel = start_state.getVelocities(asNumpy=True)
+            switch_pos = np.copy(start_pos)*start_pos.unit
+            switch_vel = np.copy(start_vel)*start_vel.unit
+            lig_com = self.getCenterOfMass(switch_pos[self.atom_indices], masses=self.masses)
+            water_pos = switch_pos.take(self.water_oxygens, axis=0)*unit.nanometers
+            water_dist = np.linalg.norm(np.subtract(water_pos, lig_com), axis=1)
+            water_sort = np.argsort(water_dist)[:500]
+            waters_within_distance_new = sorted([self.water_residues[i] for i in water_sort])
+            for new_water, old_water in list(zip(waters_within_distance_new, self.waters_within_distance)):
+                if new_water not in self.waters_within_distance:
+                    for j in range(3):
+                        switch_pos[old_water[j]] = copy.deepcopy(start_pos[new_water[j]])
+                        switch_pos[new_water[j]] = copy.deepcopy(start_pos[old_water[j]])
+                        switch_vel[old_water[j]] = start_vel[new_water[j]]
+                        switch_vel[new_water[j]] = start_vel[old_water[j]]
+            context.setPositions(switch_pos)
+            context.setVelocities(switch_vel)
 
 
 
