@@ -107,7 +107,9 @@ class MolDart(RandomLigandRotationMove):
         instead.
 
     """
-    def __init__(self, structure, pdb_files, fit_atoms, resname='LIG', rigid_move=False, restraints=True, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
+    def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
+        rigid_move=False, freeze_waters=None, freeze_protein=True,
+        restraints=True, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
         super(MolDart, self).__init__(structure, resname)
 
         self.binding_mode_traj = []
@@ -122,18 +124,31 @@ class MolDart(RandomLigandRotationMove):
         self.sim_ref = None
         self.moves_attempted = 0
         self.times_within_dart = 0
+        self.freeze_waters = freeze_waters
         self.restraints = restraints
         self.restrained_receptor_atoms=restrained_receptor_atoms
         self.restrained_ligand_atoms = restrained_ligand_atoms
+        self.freeze_protein = freeze_protein
 
         if restraints != True and restraints != False:
             raise ValueError('restraints argument should be a boolean')
-
+        pdb_files = [[i] if isinstance(i, str) else i for i in pdb_files]
+        print('pdb_files', pdb_files)
+        flat_pdb = list(set([item for sublist in pdb_files for item in sublist]))
+        print('flat_pdb', flat_pdb)
+        self.pdb_dict = {}
+        for index, key in enumerate(flat_pdb):
+            self.pdb_dict[key] = index
+        self.dart_groups = []
+        for group in pdb_files:
+            glist = [self.pdb_dict[key] for key in group]
+            self.dart_groups.append(glist)
+        print('dart_groups', self.dart_groups)
         #chemcoords reads in xyz files only, so we need to use mdtraj
         #to get the ligand coordinates in an xyz file
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
             fname = t.name
-            traj = md.load(pdb_files[0]).atom_slice(self.atom_indices)
+            traj = md.load(flat_pdb[0]).atom_slice(self.atom_indices)
             xtraj = XYZTrajectoryFile(filename=fname, mode='w')
             xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
                         types=[i.element.symbol for i in traj.top.atoms] )
@@ -148,11 +163,11 @@ class MolDart(RandomLigandRotationMove):
             fname = t.name
             self.structure.save(fname, overwrite=True)
             struct_traj = md.load(fname)
-        ref_traj = md.load(pdb_files[0])[0]
+        ref_traj = md.load(flat_pdb[0])[0]
         num_atoms = ref_traj.n_atoms
         self.ref_traj = copy.deepcopy(struct_traj)
 
-        for j, pdb_file in enumerate(pdb_files):
+        for j, pdb_file in enumerate(flat_pdb):
             traj = copy.deepcopy(self.ref_traj)
             pdb_traj = md.load(pdb_file)[0]
             traj.xyz[0][:num_atoms] = pdb_traj.xyz[0]
@@ -296,11 +311,20 @@ class MolDart(RandomLigandRotationMove):
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
                             )
-
-        rand_index = np.random.randint(len(self.binding_mode_traj))
+        self.dart_groups
+        possible_groups = []
+        for group_index, group_list in enumerate(self.dart_groups):
+            if binding_mode_index in group_list:
+                possible_groups.append(group_index)
+        group_choice = np.random.choice(possible_groups)
+        print('group_choice', group_choice)
+        dart_groups_removed = [j for i, j in enumerate(self.dart_groups) if i != group_choice]
+        print('dart_groups_removed', dart_groups_removed)
+        rand_index = np.random.choice(dart_groups_removed[np.random.choice(len(dart_groups_removed))])
+        #rand_index = np.random.randint(len(self.binding_mode_traj))
         ###temp to encourage going to other binding modes
-        while rand_index == binding_mode_index:
-            rand_index = np.random.randint(len(self.binding_mode_traj))
+        #while rand_index == binding_mode_index:
+        #    rand_index = np.random.randint(len(self.binding_mode_traj))
         ###
         #get matching binding mode pose and get rotation/translation to that pose
         #TODO decide on making a copy or always point to same object
@@ -487,59 +511,49 @@ class MolDart(RandomLigandRotationMove):
 
         new_sys = system
         new_int = integrator
-        #new_int._alchemical_functions['lambda_restraints'] = 'max(0, 1-(1/0.3)*abs(lambda-0.5))'
-        #new_int._alchemical_functions['lambda_restraints'] = '1'
+        # added water portion to freeze waters further than the freeze_waters closest waters
+        if self.freeze_waters is not None:
+            residues = structure.topology.residues()
+            water_name = ['WAT', 'HOH']
+            self.water_residues = []
+            for res in residues:
+                if res.name in water_name:
+                    water_mol = []
+                    for atom in res.atoms():
+                        water_mol.append(atom.index)
+                    self.water_residues.append(water_mol)
+            water_oxygens = [i[0] for i in self.water_residues]
+            #portion to calculate ligand com
+            self.calculateProperties()
+            #lig_com = self.center_of_mass
+            self.water_oxygens = [i[0] for i in self.water_residues]
+            positions = np.array(structure.positions.value_in_unit(unit.nanometers))*unit.nanometers
+            lig_pos = positions[self.atom_indices]
+            center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
+            print('center', center_of_mass)
+            water_pos = positions.take(water_oxygens, axis=0)*unit.nanometers
+            #print('water_oxygens', water_oxygens)
+            print('water_pos', water_pos)
 
-        #new_int._alchemical_functions['lambda_restraints'] = 'min(1, (1/0.3)*abs(lambda-0.5))'
-        ###new zero masses
-        ### added water portion
-        residues = structure.topology.residues()
-        water_name = ['WAT', 'HOH']
-        self.water_residues = []
-        for res in residues:
-            if res.name in water_name:
-                water_mol = []
-                for atom in res.atoms():
-                    water_mol.append(atom.index)
-                self.water_residues.append(water_mol)
-        water_oxygens = [i[0] for i in self.water_residues]
-        #portion to calculate ligand com
-        self.calculateProperties()
-        #lig_com = self.center_of_mass
-        self.water_oxygens = [i[0] for i in self.water_residues]
-        positions = np.array(structure.positions.value_in_unit(unit.nanometers))*unit.nanometers
-        lig_pos = positions[self.atom_indices]
-        center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
-        print('center', center_of_mass)
-#        water_pos = positions._value.take(water_oxygens)
-        water_pos = positions.take(water_oxygens, axis=0)*unit.nanometers
-        #print('water_oxygens', water_oxygens)
-        print('water_pos', water_pos)
+            #check to see if linalg norm is performing by row
+            print('subtract', water_pos-center_of_mass)
+            water_dist = np.linalg.norm(np.subtract(water_pos, center_of_mass), axis=1)
+            print('water_dist', water_dist)
+            water_sort = np.argsort(water_dist)[:self.freeze_waters]
+            print('water sort', water_sort)
+            print(water_oxygens[water_sort[0]])
+            self.waters_within_distance = sorted([self.water_residues[i] for i in water_sort])
+            flat_waters_all = [item for sublist in self.water_residues for item in sublist]
+            flat_waters_within_distance = [item for sublist in self.waters_within_distance for item in sublist]
+            num_atoms = system.getNumParticles()
+            #mass_list = [atom.element.mass for atom in top.atoms()]
+            for atom in range(num_atoms):
+                if atom in flat_waters_all and atom not in flat_waters_within_distance:
+                    system.setParticleMass(atom, 0*unit.daltons)
+                else:
+                    pass
 
-        #check to see if linalg norm is performing by row
-        print('subtract', water_pos-center_of_mass)
-        water_dist = np.linalg.norm(np.subtract(water_pos, center_of_mass), axis=1)
-        print('water_dist', water_dist)
-        water_sort = np.argsort(water_dist)[:500]
-        print('water sort', water_sort)
-        print(water_oxygens[water_sort[0]])
-        self.waters_within_distance = sorted([self.water_residues[i] for i in water_sort])
-        flat_waters_all = [item for sublist in self.water_residues for item in sublist]
-        flat_waters_within_distance = [item for sublist in self.waters_within_distance for item in sublist]
-        num_atoms = system.getNumParticles()
-        #mass_list = [atom.element.mass for atom in top.atoms()]
-        for atom in range(num_atoms):
-            if atom in flat_waters_all and atom not in flat_waters_within_distance:
-                system.setParticleMass(atom, 0*unit.daltons)
-            else:
-                pass
-
-        #exit()
-
-
-        ###
-
-        if 1:
+        if self.freeze_protein:
             res_list = []
             for traj in self.binding_mode_traj:
                 #lig_pos = traj.openmm_positions(0)[:self.atom_indices[-1]]
@@ -547,19 +561,24 @@ class MolDart(RandomLigandRotationMove):
                 lig_pos = traj.openmm_positions(0)
                 structure.positions = lig_pos
 
-                mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % ('LIG', 7.0, 'NA,CL'))
+                #mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % ('LIG', 7.0, 'NA,CL'))
+                mask = parmed.amber.AmberMask(self.structure,"((:HOH)|(:%s<:%f))&!(:%s)" % ('LIG', 7.0, 'NA,CL'))
                 site_idx = [i for i in mask.Selected()]
                 res_list = res_list + site_idx
-                print('len', len(site_idx))
             res_list = list(set(res_list))
             num_atoms = system.getNumParticles()
             #mass_list = [atom.element.mass for atom in top.atoms()]
-            print('reslist', res_list, len(res_list))
             for atom in range(num_atoms):
-                if atom in res_list or atom in flat_waters_within_distance:
-                    pass
+                if self.freeze_waters is not None:
+                    if atom in res_list or atom in flat_waters_within_distance:
+                        pass
+                    else:
+                        system.setParticleMass(atom, 0*unit.daltons)
                 else:
-                    system.setParticleMass(atom, 0*unit.daltons)
+                    if atom in res_list:
+                        pass
+                    else:
+                        system.setParticleMass(atom, 0*unit.daltons)
 
         ###
 
@@ -613,7 +632,7 @@ class MolDart(RandomLigandRotationMove):
         """Check if in a pose. If so turn on `restraint_pose` for that pose
         """
         #print(context.getParameters().keys())
-        if 1:
+        if self.freeze_waters is not None:
             start_state = context.getState(getPositions=True, getVelocities=True)
             start_pos = start_state.getPositions(asNumpy=True)
             start_vel = start_state.getVelocities(asNumpy=True)
@@ -622,7 +641,7 @@ class MolDart(RandomLigandRotationMove):
             lig_com = self.getCenterOfMass(switch_pos[self.atom_indices], masses=self.masses)
             water_pos = switch_pos.take(self.water_oxygens, axis=0)*unit.nanometers
             water_dist = np.linalg.norm(np.subtract(water_pos, lig_com), axis=1)
-            water_sort = np.argsort(water_dist)[:500]
+            water_sort = np.argsort(water_dist)[:self.freeze_waters]
             waters_within_distance_new = sorted([self.water_residues[i] for i in water_sort])
             culled_new = [i for i in waters_within_distance_new if i not in self.waters_within_distance]
             culled_old = [i for i in self.waters_within_distance if i not in waters_within_distance_new]
@@ -793,7 +812,7 @@ class MolDart(RandomLigandRotationMove):
                 self.restraint_correction = restraint_correction
                 print('work', work)
 
-        if 1:
+        if self.freeze_waters is not None:
             start_state = context.getState(getPositions=True, getVelocities=True)
             start_pos = start_state.getPositions(asNumpy=True)
             start_vel = start_state.getVelocities(asNumpy=True)
@@ -802,7 +821,7 @@ class MolDart(RandomLigandRotationMove):
             lig_com = self.getCenterOfMass(switch_pos[self.atom_indices], masses=self.masses)
             water_pos = switch_pos.take(self.water_oxygens, axis=0)*unit.nanometers
             water_dist = np.linalg.norm(np.subtract(water_pos, lig_com), axis=1)
-            water_sort = np.argsort(water_dist)[:500]
+            water_sort = np.argsort(water_dist)[:self.freeze_waters]
             waters_within_distance_new = sorted([self.water_residues[i] for i in water_sort])
             culled_new = [i for i in waters_within_distance_new if i not in self.waters_within_distance]
             culled_old = [i for i in self.waters_within_distance if i not in waters_within_distance_new]
