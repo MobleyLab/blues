@@ -6,14 +6,14 @@ Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley 
+Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
 from simtk import unit
 import mdtraj
 import numpy as np
-import sys, traceback
+import sys
 import math
 import copy
 import random
@@ -36,8 +36,28 @@ class Move(object):
 
     def __init__(self):
         """Initialize the Move object
-        Currently empy.
         """
+        self.acceptance_ratio = 1.0
+
+    def reset_iter(self):
+        """Resets relevent attributes between iterations
+        """
+        self.acceptance_ratio = 1.0
+    def move(self, context):
+        """Function that can change the positions of a context.
+        Base class `move()` just returns the same context.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context..
+
+        """
+        return context
 
     def initializeSystem(self, system, integrator):
         """If the system or integrator needs to be modified to perform the move
@@ -79,7 +99,7 @@ class Move(object):
 
         """
         return context
-        
+
     def afterMove(self, context):
         """This method is called at the end of the NCMC portion if the
         context needs to be checked or modified before performing the move
@@ -155,7 +175,8 @@ class RandomLigandRotationMove(Move):
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
         """
-
+        Move.__init__(self)
+        self.structure = structure
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
@@ -164,6 +185,8 @@ class RandomLigandRotationMove(Move):
 
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
+        self.calculateProperties()
+
 
     def getAtomIndices(self, structure, resname):
         """
@@ -226,7 +249,9 @@ class RandomLigandRotationMove(Move):
             1x3 np.array of the center of mass of the given positions
 
         """
-        coordinates = np.asarray(positions._value, np.float32)
+        #coordinates = np.asarray(positions._value, np.float32)
+        coordinates = np.array(positions._value, np.float32)
+
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
 
