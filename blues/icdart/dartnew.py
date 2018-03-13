@@ -76,17 +76,23 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
         #use the old sorting index
         diff_dict[first_index] = diff_dict[first_index].loc[sort_index]
         diff_dict[second_index] = diff_dict[second_index].loc[sort_index]
+
     dihedral_dict = {}
     for i in internal_mat[0].index:
         dihedral_dict[i] = []
     #loop over entries in poses and find the distances for each
     for i in internal_mat[0].index[3:]:
         for key, df in iteritems(diff_dict):
+            #print('debug df', df)
+
             for pose in df.columns[1:]:
                 if df['atom'].iat[i] != 'H':
-                    dihedral_dict[i].append(df[pose].loc[i])
+                    #dihedral_dict[i].append(df[pose].loc[i])
+                    dihedral_dict[i].append(df[pose].iat[i])
+
 
     #remove redundant entries in dict
+
     for key, di_list in iteritems(dihedral_dict):
         di_list = list(set(di_list))
         #only keep track of the sensible dihedrals (above a small cutoff distance)
@@ -346,7 +352,7 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
     #this removes distances less than 1.0 from being used in finding a dart
     #change if really small translational darts are desired
     #without this then dart sizes of 0 can be accepted, which don't make sense
-    print('trans_list debug', trans_list)
+    #print('trans_list debug', trans_list)
 
     trans_list = [i for i in trans_list if i > 7.5]
     if len(trans_list) > 0:
@@ -525,6 +531,7 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     """
     #make diff dict
     dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
+    print('dihedral_df', dihedral_df)
     posedart_dict = {'pose_'+str(posnum):{}  for posnum, value in enumerate(internal_mat)}
 
     for key, value in iteritems(posedart_dict):
@@ -542,6 +549,7 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
 
     dart_storage = {'bond':{}, 'angle':{}, 'dihedral':{}, 'translation':[], 'rotation':[]}
     dart_storage, posedart_dict, dart_boolean = createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
+    print(createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage))
     #if dart_boolean is false, we need to continue looking thru rot/trans for better separation
     if dart_boolean == False:
         rot_mat, trans_mat = getRotTransMatrices(internal_mat, pos_list, construction_table)
