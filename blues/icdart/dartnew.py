@@ -84,7 +84,7 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
         for key, df in iteritems(diff_dict):
             for pose in df.columns[1:]:
                 if df['atom'].iat[i] != 'H':
-                    dihedral_dict[i].append(df[pose].loc[i])
+                    dihedral_dict[i].append(df[pose].iat[i])
 
     #remove redundant entries in dict
     for key, di_list in iteritems(dihedral_dict):
@@ -284,8 +284,11 @@ def getRotTransMatrices(internal_mat, pos_list, construction_table):
             rot_storage[zindex[0], zindex[1]] = 0
         else:
             rot_storage[zindex[0], zindex[1]] = temp_rot*9./10.
+            #rot_storage[zindex[0], zindex[1]] = temp_rot
+
 
         trans_storage[zindex[0], zindex[1]] = temp_trans
+        #define the darts as slightly less than halfway between translations
         trans_storage = symmetrize(trans_storage)/ 2.0
         rot_storage = symmetrize(rot_storage) / 2.0
     return rot_storage, trans_storage
@@ -348,7 +351,9 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage)
     #without this then dart sizes of 0 can be accepted, which don't make sense
     print('trans_list debug', trans_list)
 
-    trans_list = [i for i in trans_list if i > 7.5]
+    trans_list = [i*0.9 for i in trans_list if i > 6.0]
+    print('trans_list debug after', trans_list)
+
     if len(trans_list) > 0:
         for trans_diff in trans_list:
             #updates posedart_dict with overlaps of poses for each dart
@@ -594,8 +599,6 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
             num_poses = np.shape(rot_mat)[0]
             rot_list = [rot_mat[0,j] for j in range(1, num_poses)]
             rot_list = [j for j,i in enumerate(rot_list) if i < rot_cutoff]
-            print('rot_mat', rot_mat)
-            print('rot_list', rot_list)
 
             return rot_list
         else:
