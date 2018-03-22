@@ -6,7 +6,7 @@ Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley 
+Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
@@ -79,7 +79,7 @@ class Move(object):
 
         """
         return context
-        
+
     def afterMove(self, context):
         """This method is called at the end of the NCMC portion if the
         context needs to be checked or modified before performing the move
@@ -98,7 +98,7 @@ class Move(object):
         """
 
         return context
-        
+
     def _error(self, context):
         """This method is called if running during NCMC portion results
         in an error. This allows portions of the context, such as the
@@ -146,7 +146,7 @@ class RandomLigandRotationMove(Move):
     ligand.positions : np.array of ligands positions
     """
 
-    def __init__(self, structure, resname='LIG'):
+    def __init__(self, structure, resname='LIG', theta_cutoff=90.0):
         """Initialize the model.
         Parameters
         ----------
@@ -154,9 +154,13 @@ class RandomLigandRotationMove(Move):
             String specifying the resiue name of the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
+        theta_cutoff : float
+            Cutoff in degrees for random rotational matrix. Values smaller
+            than cutoff will result in generating a new rotation matrix.
         """
 
         self.resname = resname
+        self.theta_cutoff = theta_cutoff
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
@@ -235,6 +239,14 @@ class RandomLigandRotationMove(Move):
         self.masses, self.totalmass = self.getMasses(self.topology)
         self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
 
+    def _get_rot_matrix_(self):
+        rand_quat = mdtraj.utils.uniform_quaternion()
+        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
+        Tr = np.trace(rand_rotation_matrix)
+        theta_rad = np.arccos((Tr - 1)/2)
+        theta_deg = np.rad2deg(theta_rad)
+        return rand_rotation_matrix, theta_deg
+
     def move(self, context):
         """Function that performs a random rotation about the
         center of mass of the ligand.
@@ -256,8 +268,12 @@ class RandomLigandRotationMove(Move):
         reduced_pos = self.positions - self.center_of_mass
 
         # Define random rotational move on the ligand
-        rand_quat = mdtraj.utils.uniform_quaternion()
-        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
+        while True:
+            rand_rotation_matrix, theta_deg = self._get_rot_matrix_()
+            #Pick rotational moves that are larger than cutoff
+            if theta_deg > self.theta_cutoff:
+                break
+
         #multiply lig coordinates by rot matrix and add back COM translation from origin
         rot_move = np.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
 
