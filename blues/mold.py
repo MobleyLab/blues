@@ -273,6 +273,25 @@ class MolDart(RandomLigandRotationMove):
             return selected
             #raise ValueError('sphere size overlap, check darts')
 
+    def _dart_selection(self, binding_mode_index):
+        possible_groups = []
+        for group_index, group_list in enumerate(self.dart_groups):
+            if binding_mode_index in group_list:
+                possible_groups.append(group_index)
+        group_choice = np.random.choice(possible_groups)
+        #print('group_choice', group_choice)
+        dart_groups_removed = [j for i, j in enumerate(self.dart_groups) if i != group_choice]
+        #print('dart_groups_removed', dart_groups_removed)
+        #edits to correct detailed balance
+        if 1:
+            num_groups = float(len(possible_groups))
+            num_group_choice = float(len(dart_groups_removed))
+            #num_group_choice = float(len(group_choice))
+            probability_selection_before = (1./num_groups)*(1./num_group_choice)
+
+        rand_index = np.random.choice(dart_groups_removed[np.random.choice(len(dart_groups_removed))])
+        return rand_index, probability_selection_before
+
     def moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, bond_compare=True, rigid_move=False):
         """
         Helper function to choose a random pose and determine the vector
@@ -311,16 +330,7 @@ class MolDart(RandomLigandRotationMove):
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
                             )
-        self.dart_groups
-        possible_groups = []
-        for group_index, group_list in enumerate(self.dart_groups):
-            if binding_mode_index in group_list:
-                possible_groups.append(group_index)
-        group_choice = np.random.choice(possible_groups)
-        print('group_choice', group_choice)
-        dart_groups_removed = [j for i, j in enumerate(self.dart_groups) if i != group_choice]
-        print('dart_groups_removed', dart_groups_removed)
-        rand_index = np.random.choice(dart_groups_removed[np.random.choice(len(dart_groups_removed))])
+        rand_index, probability_selection_before = self._dart_selection(binding_mode_index)
         #rand_index = np.random.randint(len(self.binding_mode_traj))
         ###temp to encourage going to other binding modes
         #while rand_index == binding_mode_index:
@@ -338,10 +348,11 @@ class MolDart(RandomLigandRotationMove):
                 #xyz_ref._frame.at[i, entry] = nc_pos[:,index][sel_atom]._value*10
                 xyz_ref._frame.at[i, entry] = self.sim_traj.openmm_positions(0)[sel_atom][index]._value*10
                 #xyz_ref._frame.at[i, entry] = np.array(self.sim_traj.openmm_positions(0))[:,index][sel_atom]._value*10
-        print('xyz_ref', xyz_ref)
+       #print('xyz_ref', xyz_ref)
                 ###
         #print('initial ref', xyz_ref)
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
+
         if 1:
             zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
             #print('zmat from simulation', zmat_diff)
@@ -352,11 +363,14 @@ class MolDart(RandomLigandRotationMove):
             #change_list = ['angle', 'dihedral']
 
             change_list = ['dihedral']
-            old_list = ['bond', 'angle', 'dihedral']
+            #old_list = ['bond', 'angle', 'dihedral']
+            old_list = ['bond', 'angle']
+
 
             if rigid_move == False:
                 for i in change_list:
                     zmat_diff._frame[i] = zmat_diff._frame[i] - zmat_compare._frame[i]
+
                 for i in change_list:
                 #change form zmat_compare to random index
                     zmat_new._frame[i] = zmat_diff._frame[i] + zmat_new._frame[i]
@@ -365,7 +379,6 @@ class MolDart(RandomLigandRotationMove):
 
             for param in old_list:
                 zmat_new._frame[param] = zmat_traj._frame[param]
-
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
@@ -454,7 +467,7 @@ class MolDart(RandomLigandRotationMove):
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
         rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
-        print('centroid displacement', centroid)
+        #print('centroid displacement', centroid)
         #perform the same angle change on new coordinate
         centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
@@ -498,13 +511,13 @@ class MolDart(RandomLigandRotationMove):
             for index, entry in enumerate(['x', 'y', 'z']):
                 sel_atom = self.atom_indices[i]
                 self.sim_traj.xyz[0][:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.)
-        self.sim_traj.save('before_fit.pdb')
+        #self.sim_traj.save('before_fit.pdb')
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
                 ref_atom_indices=self.fit_atoms
                 )
-        self.sim_traj.save('after_fit.pdb')
+        #self.sim_traj.save('after_fit.pdb')
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
-        return nc_pos, rand_index
+        return nc_pos, rand_index, probability_selection_before
 
     def initializeSystem(self, system, integrator):
         structure = self.structure
@@ -632,6 +645,8 @@ class MolDart(RandomLigandRotationMove):
         """Check if in a pose. If so turn on `restraint_pose` for that pose
         """
         #print(context.getParameters().keys())
+        self.acceptance_ratio = 1
+
         if self.freeze_waters is not None:
             start_state = context.getState(getPositions=True, getVelocities=True)
             start_pos = start_state.getPositions(asNumpy=True)
@@ -765,17 +780,18 @@ class MolDart(RandomLigandRotationMove):
             #find rotation that matches atom1 and atom2s of the build list
             #apply that rotation using atom1 as the origin
             nc_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-            new_pos, darted_pose = self.moldRedart(atom_indices=self.atom_indices,
+            new_pos, darted_pose, prob_before = self.moldRedart(atom_indices=self.atom_indices,
                                             binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=self.selected_pose,
                                             nc_pos=oldDartPos,
-                                            rigid_move=True)
+                                            rigid_move=False)
 
                                             #rigid_move=self.rigid_move)
-            print('original pose', selected_list, 'darted pose', darted_pose)
+            #print('original pose', selected_list, 'darted pose', darted_pose)
             self.selected_pose = darted_pose
             context.setPositions(new_pos)
             overlap_after = self.poseDart(context, self.atom_indices)
+            dummy_index, prob_after = self._dart_selection(self.selected_pose)
             #print('original params', orginal_params)
             #print('before dart', zip(context.getParameters().keys(), context.getParameters().values()))
             #print('after dart', zip(context.getParameters().keys(), context.getParameters().values()))
@@ -785,10 +801,13 @@ class MolDart(RandomLigandRotationMove):
             #print('float after', float(len(overlap_after)), overlap_after)
             #print('float before', len(selected_list), selected_list)
             # if there is no overlap after the move, acceptance ratio will be 0
+            #print('prob before', prob_before, 'prob_after', prob_after)
+            #TODO: Check if probability order is right
+            group_ratio = prob_after/prob_before
             if len(overlap_after) == 0:
                 self.acceptance_ratio = 0
             else:
-                self.acceptance_ratio = float(len(selected_list))/float(len(overlap_after))
+                self.acceptance_ratio = self.acceptance_ratio*float(len(selected_list))/float(len(overlap_after)*(group_ratio))
             #print('overlap acceptance ratio', self.acceptance_ratio)
             #check if new positions overlap when moving
 

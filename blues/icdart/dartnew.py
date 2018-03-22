@@ -632,7 +632,8 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
 
             dihedral_list = []
             for entry in dihedral_output.values():
-                dihedral_list.append(*entry)
+                if entry:
+                    dihedral_list.append(*entry)
             return dihedral_list
         else:
             return None
@@ -649,9 +650,9 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     #set_output = list(set.intersection(addSet([dihedral_output, rot_list, trans_list])))
     #set_output = set.intersection(set(dihedral_output), set(rot_list), set(trans_list))
     combined_comparison = [set(i) for i in [dihedral_output, rot_list, trans_list] if i is not None]
-    print('combined_comparison', combined_comparison)
+    #print('combined_comparison', combined_comparison)
     set_output = list(set.intersection(*combined_comparison))
-    print('set output', set_output)
+    #print('set output', set_output)
 
     #if set_output is not None and len(set_output) ==
     return set_output
