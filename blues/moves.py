@@ -511,7 +511,7 @@ class SideChainMove(Move):
 
         ##*** to test of rotamer biasing of valine improves acceptance
         # Retrieve rotamer angle prior to NCMC
-        dihedralatoms = np.array([[0,4,6,8]])
+        dihedralatoms = np.array([[1735,1737,1739,1741]])
         dihedralangle = self.getDihedral(self.start_pos, dihedralatoms)
         print("In the moves.py script, this is the current dihedral angle:", dihedralangle)
 
@@ -624,7 +624,7 @@ class SideChainMove(Move):
 
         """
         post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        indices = np.asarray([[0,4,6,8]])
+        indices = np.asarray([[1735,1737,1739,1741]])
         angle = self.getDihedral(post_pos,indices)
         print("This is the new angle:",angle)
         if -1.3 <= angle <= -0.9:
