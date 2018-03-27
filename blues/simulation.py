@@ -138,18 +138,6 @@ class SimulationFactory(object):
                             constraints=eval("app.%s" % constraints),
                             hydrogenMass=hydrogenMass)
 
-        # restrain backbone
-        force = openmm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
-        force.addGlobalParameter("k", 5.0*unit.kilocalories_per_mole/unit.angstroms**2)
-        force.addPerParticleParameter("x0")
-        force.addPerParticleParameter("y0")
-        force.addPerParticleParameter("z0")
-        for i, atom_crd in enumerate(structure.positions):
-            if structure.atoms[i].name in ('CA', 'C', 'N'):
-                force.addParticle(i, atom_crd.value_in_unit(unit.nanometers))
-        system.addForce(force)
-
-
         return system
 
     def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
@@ -576,7 +564,7 @@ class Simulation(object):
         topology = mdtraj.Topology.from_openmm(self.md_sim.topology)
         traj = mdtraj.Trajectory(np.asarray(positions),topology)
         #traj.xyz = np.asarray(positions)
-        indices = np.array([[0,4,6,8]])
+        indices = np.array([[1735,1737,1739,1741]])
         dihedralangle = mdtraj.compute_dihedrals(traj, indices)
         if -1.3 <= dihedralangle <= -0.9:
             eval = True
