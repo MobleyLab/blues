@@ -6,7 +6,7 @@ Contributors: Nathan M. Lim, David L. Mobley
 """
 
 from __future__ import print_function
-import os, copy
+import os
 import mdtraj
 
 def rand_rotation_matrix():
