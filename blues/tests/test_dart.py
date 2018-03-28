@@ -3,17 +3,10 @@ from blues.mold import MolDart
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
-from blues.moves import RandomLigandRotationMove
 from simtk.openmm.app import DCDReporter
 import parmed
-from simtk import openmm
-from optparse import OptionParser
 import mdtraj as md
 from simtk import unit
-import parmed as pmd
-import pickle
-import glob
-from simtk.openmm.app import DCDReporter
 import simtk.openmm as mm
 import numpy as np
 #from simtk.openmm.app import OBC2
@@ -23,7 +16,6 @@ class MolEdit(MolDart):
         super(MolEdit, self).__init__(*args, **kwargs)
     def initializeSystem(self, system, integrator):
         new_sys, new_int = super(MolEdit, self).initializeSystem(system, integrator)
-        print(new_sys, new_int)
         force = mm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
         force.addGlobalParameter("k", 5.0*unit.kilocalories_per_mole/unit.angstroms**2)
         force.addPerParticleParameter("x0")
@@ -54,11 +46,11 @@ def test_dartreverse(platform_name):
             'verbose' : False,
             }
 
-    prmtop = 'vacVA.prmtop'
-    inpcrd = 'VAn68.pdb'
+    prmtop = utils.get_data_filename('blues', 'tests/data/vacVA.prmtop')
+    inpcrd = utils.get_data_filename('blues', 'tests/data/VAn68.pdb')
 
     struct = parmed.load_file(prmtop, xyz=inpcrd)
-    pdb_files = [ ['VA68.pdb'], ['VAn68.pdb']]
+    pdb_files = [ [utils.get_data_filename('blues', 'tests/data/VA68.pdb')], [utils.get_data_filename('blues', 'tests/data/VAn68.pdb')]]
 
     fit_atoms = [0, 4, 16, 18, 20, 26]
 
@@ -78,11 +70,10 @@ def test_dartreverse(platform_name):
     simulations.createSimulationSet()
 
     blues = Simulation(simulations, ligand_mover, **opt)
-    blues.md_sim.reporters.append(DCDReporter('output.dcd', opt['nstepsMD']))
 
     #get context and set positions to end, see if get same positions as beginning
-    begin_traj = md.load('startdart.pdb' )
-    end_traj = md.load('enddart.pdb')
+    begin_traj = md.load(utils.get_data_filename('blues', 'tests/data/dart_start.pdb' ))
+    end_traj = md.load(utils.get_data_filename('blues', 'tests/data/dart_end.pdb'))
 
     end_pos = end_traj.openmm_positions(0)
 
