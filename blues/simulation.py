@@ -250,9 +250,7 @@ class Simulation(object):
         self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
-        self.nc_context = simulations.nc.context
         self.nc_sim = simulations.nc
-        self.nc_integrator = simulations.nc.context._integrator
         self.move_engine = move_engine
 
         self.accept = 0
@@ -271,14 +269,6 @@ class Simulation(object):
                                'nc'   : { 'state0' : {}, 'state1' : {} },
                                'alch' : { 'state0' : {}, 'state1' : {} }
                             }
-        #attach ncmc reporter if specified
-        if 'ncmc_traj' in self.opt:
-            # Add reporter to NCMC Simulation useful for debugging:
-            self.ncmc_reporter = app.dcdreporter.DCDReporter('{ncmc_traj}.dcd'.format(**self.opt), 1)
-            self.nc_sim.reporters.append(self.ncmc_reporter)
-        else:
-            pass
-
 
         #controls how many mc moves are performed during each iteration
         if 'mc_per_iter' in opt:
@@ -321,9 +311,9 @@ class Simulation(object):
         the current state of the MD simulation.
         """
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
-        nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
-        self.nc_context.setPositions(md_state0['positions'])
-        self.nc_context.setVelocities(md_state0['velocities'])
+        nc_state0 = self.getStateInfo(self.nc_sim.context, self.state_keys)
+        self.nc_sim.context.setPositions(md_state0['positions'])
+        self.nc_sim.context.setVelocities(md_state0['velocities'])
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
 
@@ -333,7 +323,7 @@ class Simulation(object):
         self.log.info('Timestep = %s ps' % self.opt['dt'])
         self.log.info('NCMC Steps = %s' % self.opt['nstepsNC'])
 
-        prop_lambda = self.nc_integrator._prop_lambda
+        prop_lambda = self.nc_sim.context._integrator._prop_lambda
         prop_range = round(prop_lambda[1] - prop_lambda[0],4)
         if prop_range >= 0.0:
             self.log.info('\tAdding {} extra propgation steps in lambda [{}, {}]'.format(self.opt['nprop'], prop_lambda[0],prop_lambda[1]))
@@ -444,7 +434,7 @@ class Simulation(object):
         nc_state0 = self.current_state['nc']['state0']
         nc_state1 = self.current_state['nc']['state1']
 
-        log_ncmc = self.nc_integrator.getLogAcceptanceProbability(self.nc_context)
+        log_ncmc = self.nc_sim.context._integrator.getLogAcceptanceProbability(self.nc_sim.context)
         randnum =  math.log(np.random.random())
 
         # Compute Alchemical Correction Term
@@ -452,7 +442,7 @@ class Simulation(object):
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
-            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
+            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_sim.context._integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
         if log_ncmc > randnum:
@@ -465,9 +455,10 @@ class Simulation(object):
         else:
             self.reject += 1
             self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
-            self.nc_context.setPositions(md_state0['positions'])
+            self.nc_sim.context.setPositions(md_state0['positions'])
 
-        self.nc_integrator.reset()
+        self.nc_sim.context._integrator.reset()
+        self.nc_sim.currentStep = 0
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
     def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
@@ -479,43 +470,48 @@ class Simulation(object):
         self.move_engine.selectMove()
         move_idx = self.move_engine.selected_move
         move_name = self.move_engine.moves[move_idx].__class__.__name__
+
         for nc_step in range(int(nstepsNC)):
             start = time.time()
-            self._initialSimulationTime = self.nc_context.getState().getTime()
+            self._initialSimulationTime = self.nc_sim.context.getState().getTime()
+
             try:
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
-                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_context)
+                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_sim.context)
+
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
                     self.log.info('Performing %s...' % move_name)
-                    self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    self.nc_sim.context = self.move_engine.runEngine(self.nc_sim.context)
 
                 # Do 1 NCMC step with the integrator
-                self.nc_integrator.step(1)
+                #self.nc_sim.context._integrator.step(1)
+                self.nc_sim.step(1)
 
                 ###DEBUG options at every NCMC step
                 if verbose:
                     # Print energies at every step
-                    work = self.getWorkInfo(self.nc_integrator, self.work_keys)
+                    work = self.getWorkInfo(self.nc_sim.context._integrator, self.work_keys)
                     self.log.debug('%s' % work)
-                if ncmc_traj:
-                    self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
+                #if ncmc_traj:
+                #self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
 
                 #Attempt anything related to the move after protocol is performed
                 if nc_step == nstepsNC-1:
-                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_context)
+                    self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_sim.context)
 
             except Exception as e:
                 self.log.error(e)
-                self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_context)
+                self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_sim.context)
                 break
 
-            self._report(start, nc_step)
+            #self.nc_sim.reporters[0].report(self.nc_sim, self.nc_sim.context.getState(getPositions=True))
+            #self._report(start, nc_step)
 
-        nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
+        nc_state1 = self.getStateInfo(self.nc_sim.context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
 
     def simulateMD(self, nstepsMD=5000, **opt):
@@ -537,8 +533,8 @@ class Simulation(object):
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         self.setSimState('md', 'state0', md_state0)
         # Set NC poistions to last positions from MD
-        self.nc_context.setPositions(md_state0['positions'])
-        self.nc_context.setVelocities(md_state0['velocities'])
+        self.nc_sim.context.setPositions(md_state0['positions'])
+        self.nc_sim.context.setVelocities(md_state0['velocities'])
 
     def _report(self,start,nc_step):
         end = time.time()
