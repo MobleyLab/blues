@@ -102,7 +102,6 @@ class SimulationFactory(object):
         logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
         factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
-        #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, annihilate_electrostatics=True, annihilate_sterics=True)
         alch_system = factory.create_alchemical_system(system, alch_region)
 
 
@@ -478,7 +477,7 @@ class Simulation(object):
             try:
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
-                    self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_sim.context)
+                    self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_sim.context)
 
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
@@ -488,7 +487,6 @@ class Simulation(object):
                     self.nc_sim.context = self.move_engine.runEngine(self.nc_sim.context)
 
                 # Do 1 NCMC step with the integrator
-                #self.nc_sim.context._integrator.step(1)
                 self.nc_sim.step(1)
 
                 ###DEBUG options at every NCMC step
@@ -496,9 +494,6 @@ class Simulation(object):
                     # Print energies at every step
                     work = self.getWorkInfo(self.nc_sim.context._integrator, self.work_keys)
                     self.log.debug('%s' % work)
-                #if ncmc_traj:
-                #self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
-
                 #Attempt anything related to the move after protocol is performed
                 if nc_step == nstepsNC-1:
                     self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_sim.context)
@@ -507,9 +502,6 @@ class Simulation(object):
                 self.log.error(e)
                 self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_sim.context)
                 break
-
-            #self.nc_sim.reporters[0].report(self.nc_sim, self.nc_sim.context.getState(getPositions=True))
-            #self._report(start, nc_step)
 
         nc_state1 = self.getStateInfo(self.nc_sim.context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)

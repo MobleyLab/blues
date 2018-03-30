@@ -14,18 +14,19 @@ requirements:
     - python
     - pytest
     - setuptools
-    - openmmtools
-    - mdtraj >=1.8.0
-    - openmm >=7.1.0rc1
+    - openmmtools=0.13.0
+    - mdtraj=1.9.1
+    - openmm >=7.1.1
+    - parmed >=2.7.3
 
   run:
     - python
     - pytest
     - setuptools
-    - openmmtools
-    - mdtraj >=1.8.0
-    - openmm >=7.1.0rc1
-    - parmed
+    - openmmtools=0.13.0
+    - mdtraj=1.9.1
+    - openmm >=7.1.1
+    - parmed >=2.7.3
 
 test:
   requires:
