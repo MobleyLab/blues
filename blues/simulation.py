@@ -244,6 +244,7 @@ class Simulation(object):
         if 'Logger' in opt:
             self.log = opt['Logger']
         else:
+            #self.log = init_logger(opt['outfname'])
             self.log = logging.getLogger(__name__)
 
         self.opt = opt
@@ -456,8 +457,8 @@ class Simulation(object):
             self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
             self.nc_sim.context.setPositions(md_state0['positions'])
 
-        self.nc_sim.context._integrator.reset()
         self.nc_sim.currentStep = 0
+        self.nc_sim.context._integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
     def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
@@ -536,7 +537,7 @@ class Simulation(object):
         if nc_step % self.opt['reporter_interval'] == 0 or nc_step+1 == self.opt['nstepsNC']:
             elapsed = end-start
             elapsedDays = (elapsed/86400.0)
-            elapsedNs = (self.nc_context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
+            elapsedNs = (self.nc_sim.context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
             speed = (elapsedNs/elapsedDays)
             speed = "%.3g" % speed
             values = [nc_step, speed, self.accept, self.current_iter]

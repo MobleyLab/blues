@@ -152,7 +152,6 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
                 set_temperature=(temperature is not None),
                 set_alchemicalLambda=(alchemicalLambda is not None),
                 set_protocolWork=(protocolWork is not None))
-
             self._needs_initialization = False
 
             # we need to check that that the entries that the user is trying
@@ -192,94 +191,95 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         self._frame_index += n_frames
         self.flush()
 
+    def _encodeStringForPyTables(self, string, name, where='/', complevel=1, complib='zlib', shuffle=True):
+        bytestring = np.fromstring(string.encode('utf-8'),np.uint8)
+        atom = self.tables.UInt8Atom()
+        filters = self.tables.Filters(complevel,complib, shuffle)
+        if self.tables.__version__ >= '3.0.0':
+            self._handle.create_carray(where=where, name=name, obj=bytestring,
+                                       atom=atom, filters=filters)
+        else:
+            self._handle.createCArray(where=where, name=name, obj=bytestring,
+                                       atom=atom, filters=filters)
+
     def _initialize_headers(self, n_atoms, title, parameters, set_environment,
                             set_coordinates, set_time, set_cell,
                             set_velocities, set_kineticEnergy, set_potentialEnergy,
                             set_temperature, set_alchemicalLambda, set_protocolWork):
         self._n_atoms = n_atoms
         self._parameters = parameters
-        self._handle.root._v_attrs.title = np.string_(title)
-        self._handle.root._v_attrs.conventions = np.string_('Pande')
-        self._handle.root._v_attrs.conventionVersion = np.string_('1.1')
-        self._handle.root._v_attrs.program = np.string_('MDTraj')
-        self._handle.root._v_attrs.programVersion = np.string_(mdtraj.version.full_version)
-        self._handle.root._v_attrs.method = np.string_('BLUES')
-        self._handle.root._v_attrs.methodVersion = np.string_(blues.version.full_version)
-        self._handle.root._v_attrs.reference = np.string_('DOI: 10.1021/acs.jpcb.7b11820')
+        self._handle.root._v_attrs.title = str(title)
+        self._handle.root._v_attrs.conventions = str('Pande')
+        self._handle.root._v_attrs.conventionVersion = str('1.1')
+        self._handle.root._v_attrs.program = str('MDTraj')
+        self._handle.root._v_attrs.programVersion = str(mdtraj.version.full_version)
+        self._handle.root._v_attrs.method = str('BLUES')
+        self._handle.root._v_attrs.methodVersion = str(blues.version.full_version)
+        self._handle.root._v_attrs.reference = str('DOI: 10.1021/acs.jpcb.7b11820')
 
         if not hasattr(self._handle.root._v_attrs, 'application'):
-            self._handle.root._v_attrs.application = np.string_('OpenMM')
-            self._handle.root._v_attrs.applicationVersion = np.string_(simtk.openmm.version.full_version)
+            self._handle.root._v_attrs.application = str('OpenMM')
+            self._handle.root._v_attrs.applicationVersion = str(simtk.openmm.version.full_version)
 
         # create arrays that store frame level informat
         if set_coordinates:
             self._create_earray(where='/', name='coordinates',
                 atom=self.tables.Float32Atom(), shape=(0, self._n_atoms, 3))
-            self._handle.root.coordinates.attrs['units'] = np.string_('nanometers')
+            self._handle.root.coordinates.attrs['units'] = str('nanometers')
 
         if set_time:
             self._create_earray(where='/', name='time',
                 atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.time.attrs['units'] = np.string_('picoseconds')
+            self._handle.root.time.attrs['units'] = str('picoseconds')
 
         if set_cell:
             self._create_earray(where='/', name='cell_lengths',
                 atom=self.tables.Float32Atom(), shape=(0, 3))
             self._create_earray(where='/', name='cell_angles',
                 atom=self.tables.Float32Atom(), shape=(0, 3))
-            self._handle.root.cell_lengths.attrs['units'] = np.string_('nanometers')
-            self._handle.root.cell_angles.attrs['units'] = np.string_('degrees')
+            self._handle.root.cell_lengths.attrs['units'] = str('nanometers')
+            self._handle.root.cell_angles.attrs['units'] = str('degrees')
 
         if set_velocities:
             self._create_earray(where='/', name='velocities',
                 atom=self.tables.Float32Atom(), shape=(0, self._n_atoms, 3))
-            self._handle.root.velocities.attrs['units'] = np.string_('nanometers/picosecond')
+            self._handle.root.velocities.attrs['units'] = str('nanometers/picosecond')
 
         if set_kineticEnergy:
             self._create_earray(where='/', name='kineticEnergy',
                 atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.kineticEnergy.attrs['units'] = np.string_('kilojoules_per_mole')
+            self._handle.root.kineticEnergy.attrs['units'] = str('kilojoules_per_mole')
 
         if set_potentialEnergy:
             self._create_earray(where='/', name='potentialEnergy',
                 atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.potentialEnergy.attrs['units'] = np.string_('kilojoules_per_mole')
+            self._handle.root.potentialEnergy.attrs['units'] = str('kilojoules_per_mole')
 
         if set_temperature:
             self._create_earray(where='/', name='temperature',
                 atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.temperature.attrs['units'] = np.string_('kelvin')
+            self._handle.root.temperature.attrs['units'] = str('kelvin')
 
         #Add another portion akin to this if you want to store more data in the h5 file
         if set_alchemicalLambda:
             self._create_earray(where='/', name='alchemicalLambda',
                 atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.alchemicalLambda.attrs['units'] = np.string_('dimensionless')
+            self._handle.root.alchemicalLambda.attrs['units'] = str('dimensionless')
 
         if set_protocolWork:
             self._create_earray(where='/', name='protocolWork',
                 atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.protocolWork.attrs['units'] = np.string_('kT')
+            self._handle.root.protocolWork.attrs['units'] = str('kT')
 
         if parameters:
-            data = json.dumps(self._parameters)
-            if not isinstance(data, bytes):
-                data = data.encode('ascii')
-            if self.tables.__version__ >= '3.0.0':
-                self._handle.create_array(where='/', name='parameters', obj=[data])
-            else:
-                self._handle.createArray(where='/', name='parameters', object=[data])
+            paramjson = json.dumps(self._parameters)
+            self._encodeStringForPyTables(string=paramjson, name='parameters')
 
         if set_environment:
             try:
                 envout = subprocess.check_output('conda env export --no-builds', shell=True, stderr=subprocess.STDOUT)
                 envjson = json.dumps(yaml.load(envout), sort_keys=True, indent=2)
-                if not isinstance(envjson, bytes):
-                    envjson = envjson.encode('ascii')
-                if self.tables.__version__ >= '3.0.0':
-                    self._handle.create_array(where='/', name='environment', obj=[envjson])
-                else:
-                    self._handle.createArray(where='/', name='environment', object=[envjson])
+                self._encodeStringForPyTables(envjson, name='environment')
             except Exception as e:
                 print(e)
                 pass
@@ -293,7 +293,7 @@ class BLUESReporter(HDF5Reporter):
 
     def __init__(self, file, reportInterval,
                  title='NCMC Trajectory',
-                 coordinates=True, all_coordinates=False,
+                 coordinates=True, frame_indices=None,
                  time=False, cell=True, temperature=False,
                  potentialEnergy=False, kineticEnergy=False,
                  velocities=False, atomSubset=None,
@@ -306,7 +306,7 @@ class BLUESReporter(HDF5Reporter):
 
         self._protocolWork = bool(protocolWork)
         self._alchemicalLambda = bool(alchemicalLambda)
-        self._all_coordinates = bool(all_coordinates)
+        self._frame_indices = frame_indices
         self._environment = bool(environment)
         self._title = title
         self._parameters = parameters
@@ -328,12 +328,11 @@ class BLUESReporter(HDF5Reporter):
 
         args = ()
         kwargs = {}
-        nsteps = simulation.integrator.getGlobalVariableByName('nsteps')
         if self._coordinates:
             coordinates = state.getPositions(asNumpy=True)[self._atomSlice]
             coordinates = coordinates.value_in_unit(getattr(units, self._traj_file.distance_unit))
-            if not self._all_coordinates:
-                if simulation.currentStep not in [1, nsteps]:
+            if self._frame_indices:
+                if simulation.currentStep not in self._frame_indices:
                     coordinates = np.zeros(coordinates.shape)
             args = (coordinates,)
         if self._time:
