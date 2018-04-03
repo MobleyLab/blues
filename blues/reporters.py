@@ -1,5 +1,6 @@
 from mdtraj.formats.hdf5 import HDF5TrajectoryFile
 from mdtraj.reporters import HDF5Reporter
+from simtk.openmm.app import StateDataReporter
 import simtk.unit as units
 import json, yaml
 import subprocess
@@ -10,6 +11,85 @@ from mdtraj.utils import in_units_of, ensure_type
 import mdtraj.version
 import simtk.openmm.version
 import blues.version
+import logging
+import sys, time
+
+def _check_mode(m, modes):
+    if m not in modes:
+        raise ValueError('This operation is only available when a file '
+                         'is open in mode="%s".' % m)
+
+def addLoggingLevel(levelName, levelNum, methodName=None):
+    """
+    Comprehensively adds a new logging level to the `logging` module and the
+    currently configured logging class.
+
+    `levelName` becomes an attribute of the `logging` module with the value
+    `levelNum`. `methodName` becomes a convenience method for both `logging`
+    itself and the class returned by `logging.getLoggerClass()` (usually just
+    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+    used.
+
+    To avoid accidental clobberings of existing attributes, this method will
+    raise an `AttributeError` if the level name is already an attribute of the
+    `logging` module or if the method name is already present
+
+    Example
+    -------
+    >>> addLoggingLevel('TRACE', logging.DEBUG - 5)
+    >>> logging.getLogger(__name__).setLevel("TRACE")
+    >>> logging.getLogger(__name__).trace('that worked')
+    >>> logging.trace('so did this')
+    >>> logging.TRACE
+    5
+
+    """
+    if not methodName:
+        methodName = levelName.lower()
+
+    if hasattr(logging, levelName):
+       raise AttributeError('{} already defined in logging module'.format(levelName))
+    if hasattr(logging, methodName):
+       raise AttributeError('{} already defined in logging module'.format(methodName))
+    if hasattr(logging.getLoggerClass(), methodName):
+       raise AttributeError('{} already defined in logger class'.format(methodName))
+
+    # This method was inspired by the answers to Stack Overflow post
+    # http://stackoverflow.com/q/2183233/2988730, especially
+    # http://stackoverflow.com/a/13638084/2988730
+    def logForLevel(self, message, *args, **kwargs):
+        if self.isEnabledFor(levelNum):
+            self._log(levelNum, message, args, **kwargs)
+    def logToRoot(message, *args, **kwargs):
+        logging.log(levelNum, message, *args, **kwargs)
+
+    logging.addLevelName(levelNum, levelName)
+    setattr(logging, levelName, levelNum)
+    setattr(logging.getLoggerClass(), methodName, logForLevel)
+    setattr(logging, methodName, logToRoot)
+
+def init_logger(level=logging.INFO, modname=None, outfname=None):
+    if not modname: modname = '__name__'
+    logger = logging.getLogger(modname)
+
+    addLoggingLevel('REPORT', logging.INFO - 5)
+    fmt = MyFormatter()
+
+    # Stream to terminal
+    stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    stdout_handler.setFormatter(fmt)
+    logger.addHandler(stdout_handler)
+
+    # Write to File
+    if outfname:
+        fh = logging.FileHandler(outfname+'.log')
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
+
+    logger.addHandler(logging.NullHandler())
+    logger.setLevel(level)
+
+    return logger
 
 class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
     #This is a subclass of the HDF5TrajectoryFile class from mdtraj that handles the writing of
@@ -272,6 +352,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             self._handle.root.protocolWork.attrs['units'] = str('kT')
 
         if parameters:
+            if 'Logger' in self._parameters: self._parameters.pop('Logger')
             paramjson = json.dumps(self._parameters)
             self._encodeStringForPyTables(string=paramjson, name='parameters')
 
@@ -284,7 +365,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
                 print(e)
                 pass
 
-class BLUESReporter(HDF5Reporter):
+class BLUESHDF5Reporter(HDF5Reporter):
     #This is a subclass of the HDF5 class from mdtraj that handles the reporting of
     #the trajectory.
     @property
@@ -300,7 +381,7 @@ class BLUESReporter(HDF5Reporter):
                  protocolWork=True, alchemicalLambda=True,
                  parameters=None, environment=True):
 
-        super(BLUESReporter, self).__init__(file, reportInterval,
+        super(BLUESHDF5Reporter, self).__init__(file, reportInterval,
             coordinates, time, cell, potentialEnergy, kineticEnergy,
             temperature, velocities, atomSubset)
 
@@ -374,7 +455,88 @@ class BLUESReporter(HDF5Reporter):
         if hasattr(self._traj_file, 'flush'):
             self._traj_file.flush()
 
-def _check_mode(m, modes):
-    if m not in modes:
-        raise ValueError('This operation is only available when a file '
-                         'is open in mode="%s".' % m)
+# Custom formatter
+class MyFormatter(logging.Formatter):
+
+    err_fmt  = "(%(asctime)s) %(levelname)s: [%(module)s.%(funcName)s] %(message)s"
+    dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
+    info_fmt = "%(levelname)s: %(message)s"
+    rep_fmt = "%(message)s"
+
+    def __init__(self):
+        super().__init__(fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
+
+    def format(self, record):
+
+        # Save the original format configured by the user
+        # when the logger formatter was instantiated
+        format_orig = self._style._fmt
+
+        # Replace the original format with one customized by logging level
+        if record.levelno == logging.DEBUG:
+            self._style._fmt = MyFormatter.dbg_fmt
+
+        elif record.levelno == logging.INFO:
+            self._style._fmt = MyFormatter.info_fmt
+
+        elif record.levelno == logging.WARNING:
+            self._style._fmt = MyFormatter.info_fmt
+
+        elif record.levelno == logging.ERROR:
+            self._style._fmt = MyFormatter.err_fmt
+
+        elif record.levelno == logging.REPORT:
+            self._style._fmt = MyFormatter.rep_fmt
+
+        # Call the original formatter class to do the grunt work
+        result = logging.Formatter.format(self, record)
+
+        # Restore the original format configured by the user
+        self._style._fmt = format_orig
+
+        return result
+
+class BLUESStateDataReporter(StateDataReporter):
+    def __init__(self, file,  reportInterval, title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
+    progress=False, remainingTime=False, speed=False, elapsedTime=False, separator=',', systemMass=None, totalSteps=None):
+        super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
+            potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
+            progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
+        self.log = self._out
+        self.log.setLevel(logging.REPORT)
+        self.title = title
+
+    def report(self, simulation, state):
+        """Generate a report.
+        Parameters
+        ----------
+        simulation : Simulation
+            The Simulation to generate a report for
+        state : State
+            The current state of the simulation
+        """
+        if not self._hasInitialized:
+            self._initializeConstants(simulation)
+            headers = self._constructHeaders()
+            self.log.report('#"%s"' % ('"'+self._separator+'"').join(headers))
+            try:
+                self._out.flush()
+            except AttributeError:
+                pass
+            self._initialClockTime = time.time()
+            self._initialSimulationTime = state.getTime()
+            self._initialSteps = simulation.currentStep
+            self._hasInitialized = True
+
+        # Check for errors.
+        self._checkForErrors(simulation, state)
+
+        # Query for the values
+        values = self._constructReportValues(simulation, state)
+
+        # Write the values.
+        self.log.report('%s: %s' % (self.title, self._separator.join(str(v) for v in values)))
+        try:
+            self._out.flush()
+        except AttributeError:
+            pass
