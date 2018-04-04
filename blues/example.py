@@ -34,12 +34,13 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
             'nIter' : 100, 'nstepsNC' : 10000, 'nstepsMD' : 10000, 'nprop' : 1,
             'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10,
             'constraints': 'HBonds', 'freeze_distance' : 5.0,
-            'trajectory_interval' : 2000, 'reporter_interval' : 2000,
-            'ncmc_traj' : None, 'write_move' : False,
+            'trajectory_interval' : 2000, 'reporter_interval' : 1000,
+            'write_move' : False,
             'platform' : platform_name,
             'outfname' : 't4-toluene'}
 
-    logger = init_logger(level=logging.INFO, outfname=opt['outfname'])
+
+    logger = init_logger(logging.getLogger(), level=logging.INFO, outfname=opt['outfname'])
     opt['Logger'] = logger
 
     #Define the 'model' object we are perturbing here.
@@ -55,7 +56,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     simulations.createSimulationSet()
 
     # Add reporters to MD simulation.
-    traj_reporter = openmm.app.DCDReporter(outfname+'-nc{}.dcd'.format(nstepsNC), opt['trajectory_interval'])
+    traj_reporter = openmm.app.DCDReporter(opt['outfname']+'-nc{}.dcd'.format(nstepsNC), opt['trajectory_interval'])
     md_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='md',
                                 reportInterval=opt['reporter_interval'],
                                 step=True, totalSteps=opt['nIter']*opt['nstepsMD'],
@@ -64,7 +65,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     simulations.md.reporters.append(md_progress_reporter)
 
     # Add reporters to NCMC simulation.
-    ncmc_reporter = BLUESHDF5Reporter(file='t4tol-pmoves.h5',
+    ncmc_reporter = BLUESHDF5Reporter(file=opt['outfname']+'-pmoves.h5',
                                     reportInterval=1,
                                     coordinates=True, frame_indices=[1,opt['nstepsNC']],
                                     time=False, cell=True, temperature=False,

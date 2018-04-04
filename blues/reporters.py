@@ -48,11 +48,11 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
         methodName = levelName.lower()
 
     if hasattr(logging, levelName):
-       raise AttributeError('{} already defined in logging module'.format(levelName))
+       logging.warn('{} already defined in logging module'.format(levelName))
     if hasattr(logging, methodName):
-       raise AttributeError('{} already defined in logging module'.format(methodName))
+       logging.warn('{} already defined in logging module'.format(methodName))
     if hasattr(logging.getLoggerClass(), methodName):
-       raise AttributeError('{} already defined in logger class'.format(methodName))
+       logging.warn('{} already defined in logger class'.format(methodName))
 
     # This method was inspired by the answers to Stack Overflow post
     # http://stackoverflow.com/q/2183233/2988730, especially
@@ -68,12 +68,8 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
-def init_logger(level=logging.INFO, modname=None, outfname=None):
-    if not modname: modname = '__name__'
-    logger = logging.getLogger(modname)
-
-    addLoggingLevel('REPORT', logging.INFO - 5)
-    fmt = MyFormatter()
+def init_logger(logger, level=logging.INFO, outfname=None):
+    fmt = LoggerFormatter()
 
     # Stream to terminal
     stdout_handler = logging.StreamHandler(stream=sys.stdout)
@@ -384,7 +380,6 @@ class BLUESHDF5Reporter(HDF5Reporter):
         super(BLUESHDF5Reporter, self).__init__(file, reportInterval,
             coordinates, time, cell, potentialEnergy, kineticEnergy,
             temperature, velocities, atomSubset)
-
         self._protocolWork = bool(protocolWork)
         self._alchemicalLambda = bool(alchemicalLambda)
         self._frame_indices = frame_indices
@@ -456,7 +451,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
             self._traj_file.flush()
 
 # Custom formatter
-class MyFormatter(logging.Formatter):
+class LoggerFormatter(logging.Formatter):
 
     err_fmt  = "(%(asctime)s) %(levelname)s: [%(module)s.%(funcName)s] %(message)s"
     dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
@@ -465,6 +460,7 @@ class MyFormatter(logging.Formatter):
 
     def __init__(self):
         super().__init__(fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
+        addLoggingLevel('REPORT', logging.WARNING - 5)
 
     def format(self, record):
 
@@ -474,19 +470,19 @@ class MyFormatter(logging.Formatter):
 
         # Replace the original format with one customized by logging level
         if record.levelno == logging.DEBUG:
-            self._style._fmt = MyFormatter.dbg_fmt
+            self._style._fmt = LoggerFormatter.dbg_fmt
 
         elif record.levelno == logging.INFO:
-            self._style._fmt = MyFormatter.info_fmt
+            self._style._fmt = LoggerFormatter.info_fmt
 
         elif record.levelno == logging.WARNING:
-            self._style._fmt = MyFormatter.info_fmt
+            self._style._fmt = LoggerFormatter.info_fmt
 
         elif record.levelno == logging.ERROR:
-            self._style._fmt = MyFormatter.err_fmt
+            self._style._fmt = LoggerFormatter.err_fmt
 
         elif record.levelno == logging.REPORT:
-            self._style._fmt = MyFormatter.rep_fmt
+            self._style._fmt = LoggerFormatter.rep_fmt
 
         # Call the original formatter class to do the grunt work
         result = logging.Formatter.format(self, record)
@@ -502,8 +498,8 @@ class BLUESStateDataReporter(StateDataReporter):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
             potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
             progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
+
         self.log = self._out
-        self.log.setLevel(logging.REPORT)
         self.title = title
 
     def report(self, simulation, state):

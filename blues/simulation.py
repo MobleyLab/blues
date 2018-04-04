@@ -14,7 +14,7 @@ from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
-from reporters import *
+from reporters import init_logger
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -33,12 +33,12 @@ class SimulationFactory(object):
         nIter=5, nstepsNC=50, nstepsMD=10000,
         temperature=300, friction=1, dt=0.002,
         nonbondedMethod='PME', nonbondedCutoff=10, constraints='HBonds',
-        trajectory_interval=1000, reporter_interval=1000, platform=None,
-        verbose=False"""
+        trajectory_interval=1000, reporter_interval=1000, platform=None"""
         if 'Logger' in opt:
             self.log = opt['Logger']
         else:
-            self.log = init_logger()
+            self.log = logging.getLogger(__name__)
+            #self.log = init_logger(logger)
 
         #Structure of entire system
         self.structure = structure
@@ -231,9 +231,11 @@ class Simulation(object):
         """
         if 'Logger' in opt:
             self.log = opt['Logger']
+        elif simulations.log:
+            self.log = simulations.log
         else:
-            self.log = init_logger()
-
+            self.log = logging.getLogger(__name__)
+            
         self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
@@ -446,8 +448,7 @@ class Simulation(object):
         self.nc_sim.context._integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
-                    reporter_interval=1000, verbose=False, **opt):
+    def simulateNCMC(self, nstepsNC=5000, **opt):
         """Function that performs the NCMC simulation."""
         self.log.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
         #choose a move to be performed according to move probabilities
@@ -457,9 +458,6 @@ class Simulation(object):
         move_name = self.move_engine.moves[move_idx].__class__.__name__
 
         for nc_step in range(int(nstepsNC)):
-            start = time.time()
-            self._initialSimulationTime = self.nc_sim.context.getState().getTime()
-
             try:
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:

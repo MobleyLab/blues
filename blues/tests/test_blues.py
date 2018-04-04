@@ -3,6 +3,7 @@ import unittest, parmed
 from blues import utils
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
+from blues.reporters import init_logger
 from blues.simulation import Simulation, SimulationFactory
 from simtk import openmm
 from openmmtools import testsystems
@@ -21,8 +22,7 @@ class BLUESTester(unittest.TestCase):
                 'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
-                'platform' : None,
-                'verbose' : True }
+                'platform' : None}
 
 
     def test_moveproperties(self):
@@ -69,8 +69,7 @@ class BLUESTester(unittest.TestCase):
                 'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
-                'platform' : None, 'write_ncmc' : False, 'write_move' : False,
-                'verbose' : True }
+                'platform' : None, 'write_move' : False}
 
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
         structure = parmed.openmm.topsystem.load_topology(topology=testsystem.topology,
