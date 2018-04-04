@@ -480,7 +480,7 @@ class Simulation(object):
                     self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_sim.context)
 
             except Exception as e:
-                self.log.info(e)
+                self.log.error(e)
                 self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_sim.context)
                 break
 
