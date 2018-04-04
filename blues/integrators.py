@@ -105,6 +105,22 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             Controls the number of propagation steps to add in the lambda
             region defined by `prop_lambda`.
         """
+        #store parameters into a dictionary so they can easily be accessed
+        #in the case that a new integrator created by the Moves class
+        #needs to access them
+        self.args = args
+        self.kwargs = kwargs
+        self.kwargs['alchemical_functions'] = alchemical_functions
+        self.kwargs['splitting'] = splitting
+        self.kwargs['temperature'] = temperature
+        self.kwargs['collision_rate'] = collision_rate
+        self.kwargs['timestep'] = timestep
+        self.kwargs['constraint_tolerance'] = constraint_tolerance
+        self.kwargs['measure_shadow_work'] = measure_shadow_work
+        self.kwargs['measure_heat'] = measure_heat
+        self.kwargs['nsteps_neq'] = nsteps_neq
+        self.kwargs['nprop'] = nprop
+        self.kwargs['prop_lambda'] = prop_lambda
 
         # call the base class constructor
         super(AlchemicalExternalLangevinIntegrator, self).__init__(alchemical_functions=alchemical_functions,
@@ -214,7 +230,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.endBlock()####
             self.endBlock()###
             #ending variables to reset
-            self.updateRestraints()
             self.addComputeGlobal("unperturbed_pe", "energy")
             self.addComputeGlobal("step", "step + 1")
             self.addComputeGlobal("prop", "1")

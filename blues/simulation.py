@@ -120,7 +120,7 @@ class SimulationFactory(object):
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
-                       constraints='HBonds', hydrogenMass=None, **opt):
+                       constraints='HBonds', hydrogenMass=None, implicitSolvent=None, **opt):
         """Returns the OpenMM System for the reference system.
 
         Parameters
@@ -134,10 +134,38 @@ class SimulationFactory(object):
             hydrogenMass = hydrogenMass*unit.dalton
         else:
             hydrogenMass = None
-        system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
-                            nonbondedCutoff=nonbondedCutoff*unit.angstroms,
-                            constraints=eval("app.%s" % constraints),
-                            hydrogenMass=hydrogenMass)
+
+
+        if implicitSolvent is None:
+
+            system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
+                                nonbondedCutoff=nonbondedCutoff*unit.angstroms,
+                                constraints=eval("app.%s" % constraints),
+                                hydrogenMass=hydrogenMass,
+                                implicitSolvent=None)
+        else:
+            system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
+                                nonbondedCutoff=nonbondedCutoff*unit.angstroms,
+                                constraints=eval("app.%s" % constraints),
+                                hydrogenMass=hydrogenMass,
+                                implicitSolvent=eval("app.%s" % implicitSolvent))
+        #TODO: REmove this portion after done testing
+        if 1:
+            force = openmm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
+            force.addGlobalParameter("k", 5.0*unit.kilocalories_per_mole/unit.angstroms**2)
+            force.addPerParticleParameter("x0")
+            force.addPerParticleParameter("y0")
+            force.addPerParticleParameter("z0")
+            aatoms = []
+            for i, atom_crd in enumerate(structure.positions):
+                if self.structure.atoms[i].name in ('CA', 'C', 'N'):
+                    force.addParticle(i, atom_crd.value_in_unit(unit.nanometers))
+                    aatoms.append(i)
+            print(aatoms)
+            #exit()
+            system.addForce(force)
+
+
         return system
 
     def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
@@ -250,6 +278,61 @@ class Simulation(object):
         move_engine : blues.ncmc.MoveEngine object
             MoveProposal object which contains the dict of moves performed
             in the NCMC simulation.
+
+        Additional parameters for more fine-tuned control of the simulation
+        can be specified by passing it through a dicitonary. Below lists the
+        number of additional options
+
+            Simulation options
+            ------------------
+            dt: int, optional, default=0.002
+                The timestep of the integrator to use (in ps).
+            nstepsNC: int, optional, default=100
+                The number of NCMC relaxation steps to use.
+            ##nIter: int, optional, default=100
+            ##    The number of MD + NCMC/MC iterations to perform.
+            nprop: int, optional, default=5
+                The number of additional propogation steps to be inserted
+                during the middle of the NCMC protocol (defined by
+                `prop_lambda`)
+            prop_lambda: float, optional, default=0.3
+                The range which additional propogation steps are added,
+                defined by [0.5-prop_lambda, 0.5+prop_lambda].
+            mc_per_iter: int, optional, default=1
+                The number of MC moves to perform during each
+                iteration of a MD + MC simulations.
+            Reporter options
+            ----------------
+
+            trajectory_interval: int
+                Used to calculate the number of trajectory frames
+                per iteration.
+            reporter_interval: int
+                Outputs information (steps, speed, accepted moves, iterations)
+                about the NCMC simulation every reporter_interval interval.
+            outfname: str
+                Prefix of log file to output to.
+            Logger: logging.Logger
+                Adds a logger that will output relevant non-trajectory
+                simulation information to a log.
+            ncmc_traj: str
+                If specified will create a reporter that will output
+                EVERY frame of the NCMC portion of the trajectory to a
+                DCD file called `ncmc_traj`.dcd. WARNING: since this
+                outputs every frame this will drastically slow down
+                the simulation and generate huge files. You should
+                probably only use this for debugging purposes.
+            ncmc_move_output: str
+                If specified will create a reporter that will output
+                frames of the NCMC trajectory immediately before
+                the halfway point, before any blues.moves.Move.move()
+                occur to a file called `ncmc_move_output`_begin.dcd
+                as awell as the trajectory immediately after the
+                move() takes place to a DCD file called
+                `ncmc_move_opoutut`_end.dcd. This allows you
+                to visualize the output of your MC moves, which
+                can be useful for debugging.
+
         """
         if 'Logger' in opt:
             self.log = opt['Logger']
@@ -539,7 +622,7 @@ class Simulation(object):
                     if 'ncmc_move_output' in opt:
                         self.ncmc_end_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True))
 
-                    if ncmc_traj:
+                    if ncmc_traj and (nc_step % 5) == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
                 if verbose:
                     # Print energies at every step
@@ -675,9 +758,22 @@ class Simulation(object):
         #choose a move to be performed according to move probabilities
         self.move_engine.selectMove()
         #change coordinates according to Moves in MoveEngine
-        new_context = self.move_engine.runEngine(self.md_sim.context)
+        #self.ncmc_begin_reporter.report(self.md_sim, self.md_sim.context.getState(getPositions=True))
+
+        new_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.md_sim.context)
+        if 'ncmc_move_output' in self.opt:
+            self.ncmc_begin_reporter.report(self.md_sim, new_context.getState(getPositions=True))
+
+        new_context = self.move_engine.runEngine(new_context)
+        if 'ncmc_move_output' in self.opt:
+            self.ncmc_end_reporter.report(self.md_sim, new_context.getState(getPositions=True))
+
+        new_context = self.move_engine.moves[self.move_engine.selected_move].afterMove(new_context)
+
         md_state1 = self.getStateInfo(new_context, self.state_keys)
         self.setSimState('md', 'state1', md_state1)
+        #self.ncmc_end_reporter.report(self.md_sim, new_context.getState(getPositions=True))
+
 
     def acceptRejectMC(self, temperature=300, **opt):
         """Function that chooses to accept or reject the proposed move.

@@ -76,6 +76,17 @@ def _jit_calc_positions_edit(c_table, zmat_values, start_coord):
 
 
 def give_cartesian_edit(self, start_coord):
+    """sets the  cartexian coordinates of the first 3 atoms and then moves the internal
+    coordinates into carteasian space with those first 3 to specifiy the absolute orientation
+
+    Parameters
+    ----------
+    start_coord: 3x3 numpy.array
+
+    Returns
+    -------
+    cartesian: Chemcoord.Cartesian object
+    """
     zmat = self.change_numbering()
     c_table = zmat.loc[:, ['b', 'a', 'd']].values
     zmat_values = zmat.loc[:, ['bond', 'angle', 'dihedral']].values

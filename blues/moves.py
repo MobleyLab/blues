@@ -17,7 +17,7 @@ import sys
 import math
 import copy
 import random
-#from openeye.oechem import *
+from openeye.oechem import *
 
 
 class Move(object):
@@ -89,8 +89,6 @@ class Move(object):
     def _error(self, context):
         return context
 
-    def move(self, context):
-        return context
 
 
 
@@ -121,14 +119,17 @@ class RandomLigandRotationMove(Move):
         Parameters
         ----------
         resname : str
-            String specifying the resiue name of the ligand.
+            String specifying the resiue name of the ligand, or list of indices denoting the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
         """
         Move.__init__(self)
         self.structure = structure
-        self.resname = resname
-        self.atom_indices = self.getAtomIndices(structure, self.resname)
+        if isinstance(resname, str):
+            self.resname = resname
+            self.atom_indices = self.getAtomIndices(structure, self.resname)
+        else:
+            self.atom_indices = resname
         self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
         self.masses = []
@@ -244,17 +245,15 @@ class RandomLigandRotationMove(Move):
         self.positions = positions[self.atom_indices]
         return context
 
-class SideChainMove(object):
+class SideChainMove(Move):
     """Move that provides methods for:
         1. calculating the properties needed to rotate a sidechain residue
         of a structure in the NCMC simulation
         2. Executing a rotation of a random 'rotatable' bond in the designated sidechain
         by a random angle of rotation: 'theta'
-
         Calculated properties include: backbone atom indicies, atom pointers and indicies
         of the residue sidechain, bond pointers and indices for rotatable heavy bonds in
         the sidechain, and atom indices upstream of selected bond
-
         The class contains functions to randomly select a bond and angle to be rotated
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
@@ -423,7 +422,7 @@ class SideChainMove(object):
         res_choice = random.choice(list(self.rot_atoms.keys()))
         bond_choice = random.choice(list(self.rot_atoms[res_choice].keys()))
         targetatoms = self.rot_atoms[res_choice][bond_choice]
-        theta_ran = random.random()*2*math.pi
+        theta_ran = random.random()*2*math.pi-math.pi
 
         return theta_ran, targetatoms, res_choice, bond_choice
 
@@ -440,6 +439,18 @@ class SideChainMove(object):
                          [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
+    def getDihedral(self, positions, atomlist):
+        """This function computes the dihedral angle for the given atoms at the given positions"""
+        top = self.structure.topology
+        traj = mdtraj.Trajectory(np.asarray(positions),top)
+        angle = mdtraj.compute_dihedrals(traj, atomlist)
+        return angle
+
+    def beforeMove(self, context):
+
+        self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+
+        return context
 
     def move(self, nc_context, verbose=False):
         """This rotates the target atoms around a selected bond by angle theta and updates
@@ -447,8 +458,8 @@ class SideChainMove(object):
 
 
         # determine the axis, theta, residue, and bond + atoms to be rotated
-        theta, target_atoms, res, bond = self.chooseBondandTheta()
-        print('Rotating bond: %s in resnum: %s by %.2f radians' %(bond, res, theta))
+        #theta, target_atoms, res, bond = self.chooseBondandTheta()
+        #print('Rotating bond: %s in resnum: %s by %.2f radians' %(bond, res, theta))
 
         #retrieve the current positions
         initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
@@ -473,16 +484,36 @@ class SideChainMove(object):
 
         positions = model.positions
 
+        ##*** to test of rotamer biasing of valine improves acceptance
+        # Retrieve rotamer angle prior to NCMC
+        dihedralatoms = np.array([[0,4,6,8]])
+        dihedralangle = self.getDihedral(self.start_pos, dihedralatoms)
+
+        # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
+        postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
+
+        self.current_bin = True
+    # check if current position plus proposed theta is within distribution
+        # this should also be simplified to use the rotamer checking function (to be written)  described above
+        my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
+
+        proposed = (postrelax_dihedralangle - my_theta + math.pi)%(2*math.pi)-math.pi
+
+        print('This is the new proposed dihedral',proposed)
+        print('This is the accepted theta', my_theta)
+        print('This is where it is moving from', postrelax_dihedralangle)
+        print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
+
         # find the rotation axis using the updated positions
-        axis1 = target_atoms[0]
-        axis2 = target_atoms[1]
+        axis1 = my_target_atoms[0]
+        axis2 = my_target_atoms[1]
         rot_axis = (positions[axis1] - positions[axis2])/positions.unit
 
         #calculate the rotation matrix
-        rot_matrix = self.rotation_matrix(rot_axis, theta)
+        rot_matrix = self.rotation_matrix(rot_axis, my_theta)
 
         # apply the rotation matrix to the target atoms
-        for idx, atom in enumerate(target_atoms):
+        for idx, atom in enumerate(my_target_atoms):
 
             my_position = positions[atom]
 
@@ -509,15 +540,41 @@ class SideChainMove(object):
             if verbose: print('The updated position for this atom is:', model.positions[atom])
 
         # update the actual ncmc context object with the new positions
-        nc_context.setPositions(nc_positions)
+            nc_context.setPositions(nc_positions)
 
         # update the class structure positions
-        self.structure.positions = model.positions
+            self.structure.positions = model.positions
+
+
 
         if verbose:
-            filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
+            filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
             mod_prot = model.save(filename, overwrite = True)
+
         return nc_context
+
+    def afterMove(self, context):
+        """This method is called at the end of the NCMC portion if the
+        context needs to be checked or modified before performing the move
+        at the halfway point.
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose context were changed by this function.
+        """
+        post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        indices = np.asarray([[0,4,6,8]])
+        angle = self.getDihedral(post_pos,indices)
+        print("This is the new angle:",angle)
+
+        self.after_pos = post_pos
+
+        return context
+
 
 class CombinationMove(Move):
     """Move object that allows Move object moves to be performed according to

@@ -6,6 +6,9 @@ from openmmtools.states import ThermodynamicState
 from openmmtools.states import SamplerState
 from yank.yank import Topography
 class BoreschBLUES(Boresch):
+    """Inherits over the Yank Boresch restraint class
+    to add boresch-style restaints to the system used in BLUES
+    """
     def __init__(self, restrained_receptor_atoms=None, restrained_ligand_atoms=None,
                  K_r=None, r_aA0=None,
                  K_thetaA=None, theta_A0=None,
@@ -14,8 +17,6 @@ class BoreschBLUES(Boresch):
                  K_phiB=None, phi_B0=None,
                  K_phiC=None, phi_C0=None,
                  standard_state_correction_method='analytical', *args, **kwargs):
-
- #   def __init__(self, restrained_receptor_atoms=None, restrained_ligand_atoms=None,  K_r=None, standard_state_correction_method='analytical', *args, **kwargs):
 
         super(BoreschBLUES, self).__init__(restrained_receptor_atoms=restrained_receptor_atoms, restrained_ligand_atoms=restrained_ligand_atoms,
                  K_r=K_r, r_aA0=r_aA0,
@@ -30,10 +31,19 @@ class BoreschBLUES(Boresch):
 
     def restrain_state(self, thermodynamic_state, pose_num=0):
         """Add the restraint force to the state's ``System``.
+        Overwrites original restrain_state so that it's also controlled by a
+        `restraint_pose_X` value, where X is an integer.
+        This appears in the energy expression essentially as a boolean,
+        so if it = 1 then that restraint is on, or if it = 0 then thaat
+        restraint is turned off, allowing for dynamic restraints
+        depending on the pose.
+
         Parameters
         ----------
         thermodynamic_state : openmmtools.states.ThermodynamicState
             The thermodynamic state holding the system to modify.
+        pose_num: the integer added to the `restraint_pose_` global parameter
+            which controls wheter the restraint is on or off.
         """
         # TODO replace dihedral restraints with negative log von Mises distribution?
         #       https://en.wikipedia.org/wiki/Von_Mises_distribution, the von Mises parameter
@@ -74,60 +84,70 @@ class BoreschBLUES(Boresch):
         return new_sys
 
 def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
+    """Add Boresch-style restraints to a system by giving positions of the reference orientation.
+    These restraints can be controlled with the `restraint_pose_"pose_num"` parameter.
+
+    Parameters
+    ----------
+    system: openmm.System
+        OpenMM system to add restraints to
+    struct: parmed.Structure
+        Contains all the relevant information about the system (topology, positions, etc.)
+    pos: simtk.unit compatible with unit.nanometers.
+        Positions of the ligand/receptor to be used to define the orientation for restraints.
+    ligand_atoms: list
+        List of the ligand atom indices.
+    pose_num: integer, optional, default=0
+        Defines what parameter will control if the restraint is on or off,
+        specified by `restraint_pose_"pose_num"`
+    restrained_receptor_atoms: list or None, optional, default=None
+        List of three atom indices corresponding to the receptor atoms for
+        use with the boresch restraints. If none is specified, then
+        Yank wil automatically set them randomly.
+    restrained_ligand_atoms: list or None, optional, default=None
+        List of three atom indices corresponding to the 3 atoms of the ligand
+        to be used for the boresch restraints. If None, chooses those atoms
+        from the ligand randomly.
+
+    Returns
+    -------
+    system: openmm.System
+        OpenMM system provided as input, with the added boresch restraints.
+    """
+
     #added thermostat force will be removed anyway, so temperature is arbitrary
-    #pos = np.array([list(i) for i in struct.positions._value])*unit.angstroms
     topology = struct.topology
     new_struct_pos = np.array(struct.positions.value_in_unit(unit.nanometers))*unit.nanometers
     num_atoms = np.shape(pos)[0]
-    #print(new_struct_pos)
     new_struct_pos[:num_atoms] = pos
-    #print(new_struct_pos)
-    #pos = np.array([list(i) for i in struct.positions.value_in_unit(unit.nanometers)])*unit.nanometers
-    #print('pos', pos)
     thermo = ThermodynamicState(sys, temperature=300*unit.kelvin)
     sampler = SamplerState(new_struct_pos, box_vectors=struct.box_vectors)
-    print('sampler', sampler.positions)
 
     topography = Topography(topology=topology, ligand_atoms=ligand_atoms)
-    #boresch = BoreschBLUES(K_r=standard_restraint)
-#    standard_restraint = 100*unit.kilocalorie_per_mole/unit.angstrom**2
     standard_restraint = 55
     restraint_dist = 60
 
     boresch = BoreschBLUES(restrained_receptor_atoms=restrained_receptor_atoms, restrained_ligand_atoms=restrained_ligand_atoms,
         K_r=restraint_dist*unit.kilocalorie_per_mole/unit.angstrom**2, K_thetaA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_thetaB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2,
         K_phiA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiC=standard_restraint*unit.kilocalories_per_mole / unit.radian**2)
-    #boresch = BoreschBLUES()
-
-
-    print('boresch', boresch.K_r, boresch.K_thetaB, boresch.K_phiA)
-    ###boresch = BoreschBLUES()
 
     boresch.determine_missing_parameters(thermo, sampler, topography)
-    print('boresch_after', boresch.K_r, boresch.K_thetaB, boresch.K_phiA)
-
     new_sys = boresch.restrain_state(thermo, pose_num=pose_num)
 
     return new_sys
 
 if __name__ == "__main__":
-    #top = openmm.app.PDBFile('eqToluene.pdb').topology
     struct = parmed.load_file('eqToluene.prmtop', xyz='posA.pdb')
     top = struct.topology
-    #pos = np.array([list(i) for i in struct.positions._value])*unit.angstroms
     pos = np.array([list(i) for i in struct.positions.value_in_unit(unit.nanometers)])*unit.nanometers
 
     lig_atoms = list(range(2635,2649))
     struct.positions = pos
-    print(pos)
     sys = struct.createSystem(nonbondedMethod=openmm.app.PME)
-    print('old_sys', sys.getNumForces())
-    print('old_sys', sys.getForces())
 
     thermo = ThermodynamicState(sys, temperature=300*unit.kelvin)
 
     sampler = SamplerState(pos, box_vectors=struct.box_vectors)
-    print('sampler', sampler.positions)
     topography = Topography(topology=top, ligand_atoms=list(range(2635,2649)))
     a = BoreschBLUES(thermo, sampler, topography)
     a.determine_missing_parameters(thermo, sampler, topography)
