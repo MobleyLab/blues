@@ -14,7 +14,7 @@ from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
-from reporters import init_logger
+from blues.reporters import init_logger
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -235,7 +235,7 @@ class Simulation(object):
             self.log = simulations.log
         else:
             self.log = logging.getLogger(__name__)
-            
+
         self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
