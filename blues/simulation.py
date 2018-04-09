@@ -307,23 +307,6 @@ class Simulation(object):
         Logger: logging.Logger
             Adds a logger that will output relevant non-trajectory
             simulation information to a log.
-        ncmc_traj: str
-            If specified will create a reporter that will output
-            EVERY frame of the NCMC portion of the trajectory to a
-            DCD file called `ncmc_traj`.dcd. WARNING: since this
-            outputs every frame this will drastically slow down
-            the simulation and generate huge files. You should
-            probably only use this for debugging purposes.
-        ncmc_move_output: str
-            If specified will create a reporter that will output
-            frames of the NCMC trajectory immediately before
-            the halfway point, before any blues.moves.Move.move()
-            occur to a file called `ncmc_move_output`_begin.dcd
-            as awell as the trajectory immediately after the
-            move() takes place to a DCD file called
-            `ncmc_move_opoutut`_end.dcd. This allows you
-            to visualize the output of your MC moves, which
-            can be useful for debugging.
 
         """
         if 'Logger' in opt:
