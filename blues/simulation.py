@@ -610,6 +610,14 @@ class Simulation(object):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state.
+
+        Parameters
+        ----------
+        nIter: None or int, optional, default=None
+            The number of iterations to perform. If None, then
+            uses the nIter specified in the opt dictionary when
+            the Simulation class was created.
+
         """
         #if not specified, use nIter options provided by opt dictionary
         if nIter is None:
@@ -664,13 +672,26 @@ class Simulation(object):
         self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def runMC(self, nIter=100):
+    def runMC(self, nIter=None):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
+
+        Parameters
+        ----------
+        nIter: None or int, optional, default=None
+            The number of iterations to perform. If None, then
+            uses the nIter specified in the opt dictionary when
+            the Simulation class was created.
         """
 
         #set inital conditions
+        if nIter is None:
+            if 'nIter' in self.opt.keys():
+                nIter = self.opt['nIter']
+            else:
+                raise ValueError("either specify 'nIter' in the opt dictionary during class initialization or in the run() method")
+
         self.setStateConditions()
         for n in range(nIter):
             self.current_iter = int(n)
