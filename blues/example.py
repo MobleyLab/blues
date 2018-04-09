@@ -32,7 +32,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
             'nIter' : 100, 'nstepsNC' : 10000, 'nstepsMD' : 10000, 'nprop' : 1,
-            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10,
+            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 1,
             'constraints': 'HBonds', 'freeze_distance' : 5.0,
             'trajectory_interval' : 2000, 'reporter_interval' : 1000,
             'write_move' : False,

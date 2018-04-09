@@ -106,8 +106,7 @@ class SimulationFactory(object):
 
         return alch_system
 
-    def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
-                       constraints='HBonds', hydrogenMass=None, **opt):
+    def generateSystem(self, structure, **opt):
         """Returns the OpenMM System for the reference system.
 
         Parameters
@@ -116,15 +115,43 @@ class SimulationFactory(object):
             ParmEd Structure object of the entire system to be simulated.
         opt : optional parameters (i.e. cutoffs/constraints)
         """
-        if hydrogenMass:
-            self.log.info('HMR Settings: \n\ttimestep: {} \n\tconstraints: {} \n\tHydrogenMass: {}*unit.dalton'.format(opt['dt'], constraints, hydrogenMass))
-            hydrogenMass = hydrogenMass*unit.dalton
-        else:
-            hydrogenMass = None
-        system = structure.createSystem(nonbondedMethod=eval("app.%s" % nonbondedMethod),
-                            nonbondedCutoff=nonbondedCutoff*unit.angstroms,
-                            constraints=eval("app.%s" % constraints),
-                            hydrogenMass=hydrogenMass)
+        #distrubute list of options according to catagory
+        system_options = {}
+        unit_options = {'nonbondedCutoff':unit.nanometers,
+                        'switchDistance':unit.nanometers, 'implicitSolventKappa':unit.nanometers,
+                        'implicitSolventSaltConc':unit.mole/unit.liters, 'temperature':unit.kelvins,
+                        'hydrogenMass':unit.daltons
+                        }
+        app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']
+        scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
+        bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
+                        'splitDihedrals']
+        combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
+        print(opt.keys())
+        for sel in opt.keys():
+            if sel in combined_options:
+                print('sel', sel)
+                if sel in unit_options:
+                    print('debug', sel)
+                    #if the value requires units check that it has units
+                    #if it doesn't assume default units are used
+                    try:
+                        opt[sel]._value
+                        system_options[sel] = opt[sel]
+                    except:
+                        self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, opt[sel], unit_options[sel]))
+                        system_options[sel] = opt[sel]*unit_options[sel]
+                #if selection requires an OpenMM evaluation do it here
+                elif sel in app_options:
+                    try:
+                        system_options[sel] = eval("app.%s" % opt[sel])
+                    except:
+                        system_options[sel] = opt[sel]
+                #otherwise just take the value as is, should just be a bool or float
+                else:
+                    system_options[sel] = opt[sel]
+        print('test', system_options)
+        system = structure.createSystem(**system_options)
         return system
 
     def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
@@ -228,6 +255,80 @@ class Simulation(object):
         move_engine : blues.ncmc.MoveEngine object
             MoveProposal object which contains the dict of moves performed
             in the NCMC simulation.
+
+        Integrator options
+        ------------------
+        dt: int, optional, default=0.002
+            The timestep of the integrator to use (in ps).
+        nprop: int, optional, default=5
+            The number of additional propogation steps to be inserted
+            during the middle of the NCMC protocol (defined by
+            `prop_lambda`)
+        prop_lambda: float, optional, default=0.3
+            The range which additional propogation steps are added,
+            defined by [0.5-prop_lambda, 0.5+prop_lambda].
+        nstepsNC: int, optional, default=100
+            The number of NCMC relaxation steps to use.
+
+        System options
+        --------------
+        Any arguments that are used to create a system from
+        parmed Structure.createSystem() can be passed, where
+        the string key in the dictionarycorresponds to the particular
+        argument (such as nonbondedMethod, hydrogenMass, etc.).
+        For arugments that require units, units can be specified,
+        or if floats/ints are used, then the default OpenMM units
+        are used. These are:
+            length: nanometers
+            time: picoseconds
+            mass: atomic mass units (daltons)
+            charge: proton charge
+            temperature: Kelvin
+        For arguments that require classes from openmm.app,
+        such as nonbondedMethod either the class can be used directly,
+        or the string corresponding to that class can be used.
+        So for the `nonbondedMethod` arugment, for example, either
+        openmm.app.PME or 'PME' can be used.
+
+        Simulation options
+        ------------------
+        nIter: int, optional, default=100
+            The number of MD + NCMC/MC iterations to perform.
+        mc_per_iter: int, optional, default=1
+            The number of MC moves to perform during each
+            iteration of a MD + MC simulations.
+
+        Reporter options
+        ----------------
+        trajectory_interval: int
+            Used to calculate the number of trajectory frames
+            per iteration.
+        reporter_interval: int
+            Outputs information (steps, speed, accepted moves, iterations)
+            about the NCMC simulation every reporter_interval interval.
+        outfname: str
+            Prefix of log file to output to.
+        Logger: logging.Logger
+            Adds a logger that will output relevant non-trajectory
+            simulation information to a log.
+        ncmc_traj: str
+            If specified will create a reporter that will output
+            EVERY frame of the NCMC portion of the trajectory to a
+            DCD file called `ncmc_traj`.dcd. WARNING: since this
+            outputs every frame this will drastically slow down
+            the simulation and generate huge files. You should
+            probably only use this for debugging purposes.
+        ncmc_move_output: str
+            If specified will create a reporter that will output
+            frames of the NCMC trajectory immediately before
+            the halfway point, before any blues.moves.Move.move()
+            occur to a file called `ncmc_move_output`_begin.dcd
+            as awell as the trajectory immediately after the
+            move() takes place to a DCD file called
+            `ncmc_move_opoutut`_end.dcd. This allows you
+            to visualize the output of your MC moves, which
+            can be useful for debugging.
+
         """
         if 'Logger' in opt:
             self.log = opt['Logger']
@@ -509,11 +610,19 @@ class Simulation(object):
         self.nc_sim.context.setPositions(md_state0['positions'])
         self.nc_sim.context.setVelocities(md_state0['velocities'])
 
-    def run(self, nIter=100):
+    def run(self, nIter=None):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state.
         """
+        #if not specified, use nIter options provided by opt dictionary
+        if nIter is None:
+            if 'nIter' in self.opt.keys():
+                nIter = self.opt['nIter']
+            else:
+                raise ValueError("either specify 'nIter' in the opt dictionary during class initialization or in the run() method")
+
+
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
