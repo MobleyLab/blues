@@ -127,12 +127,9 @@ class SimulationFactory(object):
         bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
                         'splitDihedrals']
         combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
-        print(opt.keys())
         for sel in opt.keys():
             if sel in combined_options:
-                print('sel', sel)
                 if sel in unit_options:
-                    print('debug', sel)
                     #if the value requires units check that it has units
                     #if it doesn't assume default units are used
                     try:
@@ -150,7 +147,6 @@ class SimulationFactory(object):
                 #otherwise just take the value as is, should just be a bool or float
                 else:
                     system_options[sel] = opt[sel]
-        print('test', system_options)
         system = structure.createSystem(**system_options)
         return system
 
