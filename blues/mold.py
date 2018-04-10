@@ -293,10 +293,10 @@ class MolDart(RandomLigandRotationMove):
                     zmat_diff._frame[i] = zmat_diff._frame[i] - zmat_compare._frame[i]
 
                 for i in change_list:
-                #change form zmat_compare to random index
+                #add changes from zmat_diff to the darted pose
                     zmat_new._frame[i] = zmat_diff._frame[i] + zmat_new._frame[i]
             else:
-                change_list = change_list + old_list
+                old_list = change_list + old_list
 
             for param in old_list:
                 #We want to keep the bonds and angles the same between jumps
@@ -501,8 +501,13 @@ class MolDart(RandomLigandRotationMove):
         ###
 
         if self.restraints == True:
+            force_list = new_sys.getForces()
+            group_list = list(set([force.getForceGroup() for force in force_list]))
+            group_avail = [j for j in list(range(32)) if j not in group_list]
+            self.restraint_group = group_avail[0]
+
             old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
-            new_int = AlchemicalExternalRestrainedLangevinIntegrator(**old_int.kwargs)
+            new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group, **old_int.kwargs)
             new_int.reset()
             initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
             self.atom_indices
@@ -518,8 +523,9 @@ class MolDart(RandomLigandRotationMove):
                 new_pos[self.atom_indices] = pose_pos
                 new_pos= new_pos * unit.nanometers
                 restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.get_values()[:3]]
+                #check which force groups aren't being used and set restraint forces to that
+                new_sys = add_restraints(new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group, self.restrained_receptor_atoms, restraint_lig)
 
-                new_sys = add_restraints(new_sys, structure, pose_allpos, self.atom_indices, index, self.restrained_receptor_atoms, restraint_lig)
 
 
         else:
@@ -620,7 +626,7 @@ class MolDart(RandomLigandRotationMove):
                 work = context.getIntegrator().getGlobalVariableByName('protocol_work')
                 #print('correction process', work)
                 corrected_work = work + self.restraint_correction._value
-                context.getIntegrator().setGlobalVariableByName('protocol_work', corrected_work)
+                #context.getIntegrator().setGlobalVariableByName('protocol_work', corrected_work)
                 work = context.getIntegrator().getGlobalVariableByName('protocol_work')
                 #print('correction process after', work)
             for i in range(len(self.binding_mode_traj)):
@@ -766,6 +772,7 @@ class MolDart(RandomLigandRotationMove):
 class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator):
     def __init__(self,
                  alchemical_functions,
+                 restraint_group,
                  splitting="R V O H O V R",
                  temperature=298.0 * unit.kelvin,
                  collision_rate=1.0 / unit.picoseconds,
@@ -777,8 +784,11 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
                  nprop=1,
                  prop_lambda=0.3,
                  lambda_restraints='max(0, 1-(1/0.30)*abs(lambda-0.5))',
+                 #lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
                  *args, **kwargs):
         self.lambda_restraints = lambda_restraints
+        self.restraint_energy = "energy"+str(restraint_group)
+
         super(AlchemicalExternalRestrainedLangevinIntegrator, self).__init__(
                      alchemical_functions,
                      splitting,
@@ -792,10 +802,15 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
                      nprop,
                      prop_lambda,
                      *args, **kwargs)
+        #self.addGlobalVariable("restraint_energy", 0)
+
         try:
-            new_int.addGlobalVariable("lambda_restraints", 0)
+            pass
+            #self.addGlobalVariable("lambda_restraints", 0)
         except:
             pass
+
+
 
 
     def updateRestraints(self):
@@ -809,8 +824,9 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
 
         # First step: Constrain positions and velocities and reset work accumulators and alchemical integrators
         self.beginIfBlock('step = 0')
-        self.addComputeGlobal("perturbed_pe", "energy")
-        self.addComputeGlobal("unperturbed_pe", "energy")
+        self.addComputeGlobal("restraint_energy", self.restraint_energy)
+        self.addComputeGlobal("perturbed_pe", "energy-restraint_energy")
+        self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
         self.addConstrainPositions()
         self.addConstrainVelocities()
         self._add_reset_protocol_work_step()
@@ -832,11 +848,13 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
         else:
             #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
             self.beginIfBlock("step < nsteps")#
-            self.addComputeGlobal("perturbed_pe", "energy")
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("perturbed_pe", "energy-restraint_energy")
             self.beginIfBlock("first_step < 1")##
             #TODO write better test that checks that the initial work isn't gigantic
             self.addComputeGlobal("first_step", "1")
-            self.addComputeGlobal("unperturbed_pe", "energy")
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
             self.endBlock()##
             #initial iteration
             self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
@@ -854,7 +872,8 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
             self.endBlock()###
             #ending variables to reset
             self.updateRestraints()
-            self.addComputeGlobal("unperturbed_pe", "energy")
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
             self.addComputeGlobal("step", "step + 1")
             self.addComputeGlobal("prop", "1")
 

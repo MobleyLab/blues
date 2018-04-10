@@ -29,7 +29,7 @@ class BoreschBLUES(Boresch):
         #super(Boresch, self).__init__(*args, **kwargs)
 
 
-    def restrain_state(self, thermodynamic_state, pose_num=0):
+    def restrain_state(self, thermodynamic_state, pose_num=0, force_group=0):
         """Add the restraint force to the state's ``System``.
         Overwrites original restrain_state so that it's also controlled by a
         `restraint_pose_X` value, where X is an integer.
@@ -75,7 +75,7 @@ class BoreschBLUES(Boresch):
         restraint_force.addGlobalParameter('restraint_pose_'+str(pose_num), 0)
         restraint_force.addBond(self.restrained_receptor_atoms + self.restrained_ligand_atoms, [])
         restraint_force.setUsesPeriodicBoundaryConditions(thermodynamic_state.is_periodic)
-
+        restraint_force.setForceGroup(force_group)
         # Get a copy of the system of the ThermodynamicState, modify it and set it back.
         system = thermodynamic_state.system
         system.addForce(restraint_force)
@@ -83,7 +83,7 @@ class BoreschBLUES(Boresch):
         new_sys = thermodynamic_state.get_system(remove_thermostat=True)
         return new_sys
 
-def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
+def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, force_group=0, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
     """Add Boresch-style restraints to a system by giving positions of the reference orientation.
     These restraints can be controlled with the `restraint_pose_"pose_num"` parameter.
 
@@ -126,13 +126,16 @@ def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, restrained_recept
     topography = Topography(topology=topology, ligand_atoms=ligand_atoms)
     standard_restraint = 55
     restraint_dist = 60
+    #standard_restraint = 10
+    #restraint_dist = 10
+
 
     boresch = BoreschBLUES(restrained_receptor_atoms=restrained_receptor_atoms, restrained_ligand_atoms=restrained_ligand_atoms,
         K_r=restraint_dist*unit.kilocalorie_per_mole/unit.angstrom**2, K_thetaA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_thetaB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2,
         K_phiA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiC=standard_restraint*unit.kilocalories_per_mole / unit.radian**2)
 
     boresch.determine_missing_parameters(thermo, sampler, topography)
-    new_sys = boresch.restrain_state(thermo, pose_num=pose_num)
+    new_sys = boresch.restrain_state(thermo, pose_num=pose_num, force_group=force_group)
 
     return new_sys
 

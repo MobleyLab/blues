@@ -39,6 +39,25 @@ def dihedralDifference(a, b, construction_table=None):
     return dist
 
 def makeStorageFrame(dataframe, num_poses):
+    """
+    Takes the dihedral dihedral and atom columns from a dataframe
+    and stores them in a num_poses number of dataframes.
+
+    Parameters
+    ----------
+    dataframe: pandas.dataframe
+        The dataframe to be used as reference.
+    num_poses: int
+        The number of posed needed to be added.
+        Will be joined to the dataframe as `pose_i` where i
+        is an index.
+
+    Returns
+    -------
+    out_frame: pandas.dataframe
+        a dataframe labeled with the poses labeled.
+    """
+
     dframe = dataframe['dihedral']
     counter=0
     temp_frame = dframe.copy()
@@ -161,6 +180,11 @@ def checkDihedralRegion(a, b, atomnum, cutoff=80.0):
         The atom number of the construction table of a and b to compare to
     cutoff: Checks whether the dihedral distance of a and b is greater than the cutoff ( in degrees)
 
+    Returns
+    -------
+    number: 1 or 0
+        Returns 1 if the dihedral falls within the specified cutoff,
+        otherwise returns 0.
     """
     a_di, b_di = a['dihedral'].iat[atomnum], b['dihedral'].iat[atomnum]
 
@@ -283,6 +307,27 @@ def createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage):
     return dart_storage, posedart_dict, False
 
 def compareTranslation(trans_mat, trans_spread, posedart_dict, dart_type='translation'):
+    """Compares the translational distance of a given translational distance matrix
+    and checks which distances are within the trans_spread distance.
+
+    Parameters
+    ----------
+    trans_mat: np.array
+        Array of pairwise comparisions of translational distances between poses.
+    trans_spread: float
+        Cutoff distance to check if there is translational overlap between
+        translational darts.
+
+    posedart_dict: dict
+        Same as the input posedart_dict except updated with translational darts.
+    dart_type: str
+        Uses the given string to be the posedart_dict key to add to
+
+    Returns
+    -------
+    posedart_copy: dict
+        Copy of posedart_dict, but with added translational overlaps.
+    """
     posedart_copy = copy.deepcopy(posedart_dict)
     num_poses = np.shape(trans_mat)[0]
     compare_indices = np.triu_indices(num_poses)
@@ -304,6 +349,28 @@ def compareTranslation(trans_mat, trans_spread, posedart_dict, dart_type='transl
     return posedart_copy
 
 def compareRotation(rot_mat, rot_spread, posedart_dict, dart_type='rotation'):
+    """
+    Compares the rotational distance of a given rotational distance matrix
+    and checks which distances are within the trans_spread distance.
+
+    Parameters
+    ----------
+    trans_mat: np.array
+        Array of pairwise comparisions of rotational distances between poses.
+    trans_spread: float
+        Cutoff distance to check if there is rotational overlap between
+        translational darts.
+
+    posedart_dict: dict
+        Same as the input posedart_dict except updated with translational darts.
+    dart_type: str
+        Uses the given string to be the posedart_dict key to add to
+
+    Returns
+    -------
+    posedart_copy: dict
+        Copy of posedart_dict, but with added rotational overlaps.
+    """
     posedart_copy = copy.deepcopy(posedart_dict)
     num_poses = np.shape(rot_mat)[0]
     compare_indices = np.triu_indices(num_poses)
@@ -323,7 +390,29 @@ def compareRotation(rot_mat, rot_spread, posedart_dict, dart_type='rotation'):
 
     #iterate over zmat and get original value of pose
     return posedart_copy
+
 def getRotTransMatrices(internal_mat, pos_list, construction_table):
+    """
+    Creates two arrays comparing the pairwise rotational and translational
+    distances between poses.
+
+    Parameters
+    ----------
+    internal_mat: List of Chemcoord.Zmat objects.
+        List of Chemcoord.Zmat objects.
+    pos_list:  list of np.arrays
+        List of positions of the various ligand poses.
+    construction_table: Chemcoord.Zmat.construction_table
+        Construction table indicating the build list of atoms to
+        create the Z-matrix.
+
+    Returns
+    -------
+    rot_storage: np.array
+        An array that stores the pairwise rotational differences.
+    trans_storage: np.array
+        An array that stores the pairwise translational differences.
+    """
     trans_storage = np.zeros( (len(internal_mat), len(internal_mat)) )
     rot_storage = np.zeros( (len(internal_mat), len(internal_mat)) )
     for zindex in combinations(list(range(len(internal_mat))), 2):
@@ -453,7 +542,6 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
     #this removes distances less than 1.0 from being used in finding a dart
     #change if really small translational darts are desired
     #without this then dart sizes of 0 can be accepted, which don't make sense
-    #print('trans_list debug', trans_list)
 
     trans_list = [i for i in trans_list if i > distance_cutoff]
     if len(trans_list) > 0:
@@ -676,9 +764,9 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     pos_list: list
         list of ligand positions
     construction_table: Chemcoord construction_table object
-        The construction table used to make the internal_zmat
+        The construction table used to make the internal_zmat.
     dihedral_cutoff: float
-        minimum cutoff to use for the dihedrals
+        Minimum cutoff to use for the dihedrals.
 
     Returns
     -------
@@ -729,6 +817,26 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     """Checks whether a given position/zmatrix (given by current_pos and current_zmat)
     fall within the dart regions defined by dart_storage.
     If any do, then this returns the labels corresponding to those darts.
+
+    Parameters
+    ----------
+    internal_mat: list of Chemcoord.Zmatrixs
+        list of zmats that are to be separated using this function
+    current_pos: np.array
+        The current position (in cartesian space) of the ligand.
+    current_zmat: Chemcord.Zmatrix
+        The current Zmatrix representation of the ligand.
+    pos_list: list
+        list of ligand positions
+    construction_table: Chemcoord construction_table object
+        The construction table used to make the internal_zmat.
+    dart_storage: dict
+        Dict containing the darts associated with `rotation`, `translation` and `dihedral`
+        keys that refer to the size of the given dart, if not empty.
+    Returns:
+    set_output: list
+        List of overlapping dart regions. REturns an empty list of there's no overlap.
+
     """
     def createTranslationDarts(internal_mat, trans_mat, dart_storage):
         num_poses = np.shape(trans_mat)[0]
