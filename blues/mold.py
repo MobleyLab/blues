@@ -134,7 +134,7 @@ class MolDart(RandomLigandRotationMove):
                 for i in range(len(self.atom_indices)):
                     sel_atom = self.atom_indices[i]
                     self.internal_xyz[j]._frame.at[i, entry] = self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10
-            self.internal_zmat.append(self.internal_xyz[j].give_zmat(construction_table=self.buildlist))
+            self.internal_zmat.append(self.internal_xyz[j].get_zmat(construction_table=self.buildlist))
         #set the binding_mode_pos by taking the self.atom_indices indices
         self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
@@ -196,7 +196,7 @@ class MolDart(RandomLigandRotationMove):
                 #multiply by 10 since openmm works in nm and cc works in angstroms
                 xyz_ref._frame.at[i, entry] = self.sim_traj.openmm_positions(0)[sel_atom][index]._value*10
 
-        current_zmat = xyz_ref.give_zmat(construction_table=self.buildlist)
+        current_zmat = xyz_ref.get_zmat(construction_table=self.buildlist)
         selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
 
                     current_zmat=current_zmat, pos_list=self.binding_mode_pos,
@@ -277,8 +277,8 @@ class MolDart(RandomLigandRotationMove):
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
 
         if 1:
-            zmat_diff = xyz_ref.give_zmat(construction_table=self.buildlist)
-            zmat_traj = copy.deepcopy(xyz_ref.give_zmat(construction_table=self.buildlist))
+            zmat_diff = xyz_ref.get_zmat(construction_table=self.buildlist)
+            zmat_traj = copy.deepcopy(xyz_ref.get_zmat(construction_table=self.buildlist))
             #get appropriate comparision zmat
             zmat_compare = self.internal_zmat[binding_mode_index]
             #we don't need to change the bonds/dihedrals since they are fast to sample

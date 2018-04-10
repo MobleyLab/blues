@@ -85,10 +85,11 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
     output = makeStorageFrame(internal_mat[0], len(internal_mat))
     for index, zmat in enumerate(internal_mat):
         diff_dict[index] = copy.deepcopy(output)
-    for zmat in combinations(internal_mat, 2):
-        dist_series = dihedralDifference(zmat[0], zmat[1])
-        first_index = internal_mat.index(zmat[0])
-        second_index = internal_mat.index(zmat[1])
+    for zmat in combinations(zip(range(len(internal_mat)), internal_mat), 2):
+    #for zmat in combinations(internal_mat, 2):
+        dist_series = dihedralDifference(zmat[0][1], zmat[1][1])
+        first_index = zmat[0][0]
+        second_index = zmat[1][0]
         sort_index = diff_dict[first_index].index
         #joining behaves unintuitively, to make it work properly sort by ascending index first
         diff_dict[first_index] = diff_dict[first_index].sort_index()
@@ -101,16 +102,21 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
         diff_dict[second_index] = diff_dict[second_index].loc[sort_index]
 
     dihedral_dict = {}
+    print('diff_dict', diff_dict)
     for i in internal_mat[0].index:
         dihedral_dict[i] = []
     #loop over entries in poses and find the distances for each
     for i in internal_mat[0].index[3:]:
         for key, df in iteritems(diff_dict):
             for pose in df.columns[1:]:
-                if df['atom'].iat[i] != 'H':
+                #print('pose', pose)
+                if df['atom'].loc[i] != 'H':
+                    print('debug', df['atom'].loc[i], i)
+                    #print('appending', df[pose].loc[i])
                     dihedral_dict[i].append(df[pose].loc[i])
 
     #remove redundant entries in dict
+    print('dihedral_dict', dihedral_dict)
     for key, di_list in iteritems(dihedral_dict):
         di_list = list(set(di_list))
         #only keep track of the sensible dihedrals (above a small cutoff distance)
@@ -124,6 +130,7 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
 
     ndf = None
     entry_counter = 0
+    print('dihedral dict', dihedral_dict)
     for key, di_list in iteritems(dihedral_dict):
         for idx, di in enumerate(di_list):
             temp_frame = pd.DataFrame(data={'atomnum':key, 'diff':di}, index=[entry_counter])
@@ -138,6 +145,7 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
     if entry_counter == 0:
         return None
     ndf = ndf.sort_values(by='diff', ascending=False)
+    print('ndf', ndf)
     #change internal_mat to the internal zmat storage variable
     return ndf
 
@@ -151,11 +159,11 @@ def compareDihedral(internal_mat, atom_index, diff_spread, posedart_dict, inRadi
     if inRadians==True:
         diff_spread = np.rad2deg(diff_spread)
     for posenum, zmat in enumerate(internal_mat):
-        comparison = zmat['dihedral'].iat[atom_index]
+        comparison = zmat['dihedral'].loc[atom_index]
 
         for other_posenum, other_zmat in enumerate(internal_mat):
             if posenum != other_posenum:
-                other_comparison = other_zmat['dihedral'].iat[atom_index]
+                other_comparison = other_zmat['dihedral'].loc[atom_index]
                 result = compare_dihedral_edit(comparison, other_comparison, cutoff=diff_spread)
                 if result == 1:
                     posedart_copy['pose_'+str(posenum)]['dihedral'][atom_index].append(other_posenum)
@@ -186,7 +194,7 @@ def checkDihedralRegion(a, b, atomnum, cutoff=80.0):
         Returns 1 if the dihedral falls within the specified cutoff,
         otherwise returns 0.
     """
-    a_di, b_di = a['dihedral'].iat[atomnum], b['dihedral'].iat[atomnum]
+    a_di, b_di = a['dihedral'].loc[atomnum], b['dihedral'].loc[atomnum]
 
     #originally in radians, convert to degrees
     a_dir, b_dir = np.deg2rad(a_di), np.deg2rad(b_di)
@@ -265,7 +273,7 @@ def createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage):
 
     for idx, i in list(zip(dihedral_df.index.tolist(), dihedral_df['atomnum'])):
         #updates posedart_dict with overlaps of poses for each dart
-        posedart_copy = compareDihedral(internal_mat, atom_index=i, diff_spread=dihedral_df['diff'].iat[idx]/2.0, posedart_dict=posedart_dict)
+        posedart_copy = compareDihedral(internal_mat, atom_index=i, diff_spread=dihedral_df['diff'].loc[idx]/2.0, posedart_dict=posedart_dict)
         #checks if darts separate all poses from each other if still 0
         dart_check = 0
 
@@ -295,7 +303,7 @@ def createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage):
                 pass
         if dboolean > 0:
             posedart_dict = copy.deepcopy(posedart_copy)
-            dart_storage['dihedral'][i] = dihedral_df['diff'].iat[idx]/2.0
+            dart_storage['dihedral'][i] = dihedral_df['diff'].loc[idx]/2.0
             for key, value in iteritems(unison_dict):
                 last_repeat[key] = unison_dict[key]
 
@@ -871,10 +879,10 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         if len(dihedral_atoms) > 0:
             for atom_index in dihedral_atoms:
                 dihedral_output[atom_index] = []
-                current_dihedral = current_internal['dihedral'].iat[atom_index]
+                current_dihedral = current_internal['dihedral'].loc[atom_index]
 
                 for posenum, zmat in enumerate(internal_mat):
-                    comparison = zmat['dihedral'].iat[atom_index]
+                    comparison = zmat['dihedral'].loc[atom_index]
                     dihedral_diff = abs(current_dihedral - comparison)
 
 
