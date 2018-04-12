@@ -24,16 +24,13 @@ from simtk import unit
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 5000,
-            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-            'trajectory_interval' : 1000, 'reporter_interval' : 1000,
+            'nIter' : 10, 'nstepsNC' : 2000, 'nstepsMD' : 5000,
+            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 1, 'constraints': 'HBonds',
+            'trajectory_interval' : 5000, 'reporter_interval' : 5000,
             'platform' : platform_name,
             'outfname' : 't4-tol',
             'nprop':5,
-            'freeze_distance' : 10.0,
-            #'write_ncmc' : 1,
-            #'ncmc_traj': True,
-            'ncmc_move_output' : True,
+            'freeze_distance' : 5.0,
  }
 
     #Generate the ParmEd Structure
@@ -43,16 +40,16 @@ def runNCMC(platform_name):
 
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
+    posA = utils.get_data_filename('blues', 'tests/data/posA.pdb')
+    posB = utils.get_data_filename('blues', 'tests/data/posB.pdb')
     traj = md.load(inpcrd, top=prmtop)
     fit_atoms = traj.top.select("resid 50 to 155 and name CA")
     fit_atoms = traj.top.select("protein")
 
     ligand = MolDart(structure=struct, resname='LIG',
-                                      #dart_size=0.3*unit.nanometers,
-                                      pdb_files=['posA.pdb', 'posB.pdb'],
+                                      pdb_files=[posA, posB],
                                       fit_atoms=fit_atoms,
                                       restrained_receptor_atoms=[1605, 1735, 1837],
-                                      restrained_ligand_atoms=[2634, 2638, 2639],
                                       )
 
     # Initialize object that proposes moves.

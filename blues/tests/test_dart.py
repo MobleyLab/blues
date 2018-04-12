@@ -1,5 +1,5 @@
 from __future__ import print_function
-from blues.mold import MolDart
+from blues.mold import MolDartMove
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
@@ -12,7 +12,7 @@ import numpy as np
 import unittest
 #from simtk.openmm.app import OBC2
 
-class MolEdit(MolDart):
+class MolEdit(MolDartMove):
     def __init__(self, *args, **kwargs):
         super(MolEdit, self).__init__(*args, **kwargs)
     def initializeSystem(self, system, integrator):

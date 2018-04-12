@@ -195,10 +195,10 @@ class SimulationFactory(object):
             #During NCMC simulation, lambda parameters are controlled by function dict below
             # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
-            functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)',
-            #functions = { 'lambda_sterics' : 'min(1, (1/0.2)*abs(lambda-0.5))',
-            #              'lambda_electrostatics' : 'step(0.1-lambda) - 1/0.1*lambda*step(0.1-lambda) + 1/0.1*(lambda-0.9)*step(lambda-0.9)',
+            #functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+            #              'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)',
+            functions = { 'lambda_sterics' : 'min(1, (1/0.2)*abs(lambda-0.5))',
+                          'lambda_electrostatics' : 'step(0.1-lambda) - 1/0.1*lambda*step(0.1-lambda) + 1/0.1*(lambda-0.9)*step(lambda-0.9)',
 
             #functions = { 'lambda_sterics' : '0',
             #              'lambda_electrostatics' : '0',

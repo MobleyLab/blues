@@ -19,7 +19,7 @@ from blues.icdart.bor import add_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
 
-class MolDart(RandomLigandRotationMove):
+class MolDartMove(RandomLigandRotationMove):
     """
     Class for performing smart darting moves during an NCMC simulation.
 
@@ -75,7 +75,7 @@ class MolDart(RandomLigandRotationMove):
         rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=True, restrained_receptor_atoms=None,
         K_r=10, K_angle=10):
-        super(MolDart, self).__init__(structure, resname)
+        super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
         self.binding_mode_traj = []
         #positions of only the ligand atoms
@@ -419,15 +419,15 @@ class MolDart(RandomLigandRotationMove):
         dart_angle = self.internal_zmat[rand_index]._frame['angle'][self.buildlist.index.get_values()[2]]
         angle_change = dart_angle - angle_diff
 
-        if 1:
-            ###THIS IS CHANGED FOR RIGID
-            new_angle = zmat_new['angle'][self.buildlist.index[2]]
-            ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(new_angle), maintain_magnitude=False)
-            ###
-            ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
-            nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
-            dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
-            dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
+        #adjust the angle manually because the first three atom positions are directly
+        #translated from the reference without angle adjustments
+        new_angle = zmat_new['angle'][self.buildlist.index[2]]
+        ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(new_angle), maintain_magnitude=False)
+        ###
+        ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
+        nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
+        dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
+        dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
 
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = types.MethodType(give_cartesian_edit, zmat_new)
@@ -856,10 +856,6 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
         self.endBlock()
 
         # Main body
-        #try:
-        #    self.getGlobalVariableByName("lambda_restraints")
-        #except:
-        #    self.addGlobalVariable("lambda_restraints", 0)
 
         if self._n_steps_neq == 0:
             # If nsteps = 0, we need to force execution on the first step only.
