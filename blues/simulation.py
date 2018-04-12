@@ -106,7 +106,24 @@ class SimulationFactory(object):
 
         return alch_system
 
-    def generateSystem(self, structure, **opt):
+    def generateSystem(self, structure, nonbondedMethod=None,
+                     nonbondedCutoff=8.0*unit.angstroms,
+                     switchDistance=0.0*unit.angstroms,
+                     constraints=None,
+                     rigidWater=True,
+                     implicitSolvent=None,
+                     implicitSolventKappa=None,
+                     implicitSolventSaltConc=0.0*unit.moles/unit.liters,
+                     temperature=298.15*unit.kelvin,
+                     soluteDielectric=1.0,
+                     solventDielectric=78.5,
+                     useSASA=False,
+                     removeCMMotion=True,
+                     hydrogenMass=None,
+                     ewaldErrorTolerance=0.0005,
+                     flexibleConstraints=True,
+                     verbose=False,
+                     splitDihedrals=False, **opt):
         """Returns the OpenMM System for the reference system.
 
         Parameters
@@ -116,7 +133,14 @@ class SimulationFactory(object):
         opt : optional parameters (i.e. cutoffs/constraints)
         """
         #distrubute list of options according to catagory
+        method_arguments = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
+                            'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
+                            'implicitSolventSaltConc':implicitSolventSaltConc, 'temperature':temperature, 'soluteDielectric':soluteDielectric, 'useSASA':useSASA,
+                            'removeCMMotion':removeCMMotion, 'hydrogenMass':hydrogenMass, 'ewaldErrorTolerance':ewaldErrorTolerance,
+                            'flexibleConstraints':flexibleConstraints, 'verbose':verbose, 'splitDihedrals':splitDihedrals}
+
         system_options = {}
+        #set unit defaults to OpenMM defaults
         unit_options = {'nonbondedCutoff':unit.nanometers,
                         'switchDistance':unit.nanometers, 'implicitSolventKappa':unit.nanometers,
                         'implicitSolventSaltConc':unit.mole/unit.liters, 'temperature':unit.kelvins,
@@ -127,26 +151,29 @@ class SimulationFactory(object):
         bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
                         'splitDihedrals']
         combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
-        for sel in opt.keys():
+        for sel in method_arguments.keys():
             if sel in combined_options:
                 if sel in unit_options:
                     #if the value requires units check that it has units
                     #if it doesn't assume default units are used
-                    try:
-                        opt[sel]._value
-                        system_options[sel] = opt[sel]
-                    except:
-                        self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, opt[sel], unit_options[sel]))
-                        system_options[sel] = opt[sel]*unit_options[sel]
+                    if method_arguments[sel] is None:
+                        system_options[sel] = None
+                    else:
+                        try:
+                            method_arguments[sel]._value
+                            system_options[sel] = method_arguments[sel]
+                        except:
+                            self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, method_arguments[sel], unit_options[sel]))
+                            system_options[sel] = method_arguments[sel]*unit_options[sel]
                 #if selection requires an OpenMM evaluation do it here
                 elif sel in app_options:
                     try:
-                        system_options[sel] = eval("app.%s" % opt[sel])
+                        system_options[sel] = eval("app.%s" % method_arguments[sel])
                     except:
-                        system_options[sel] = opt[sel]
+                        system_options[sel] = method_arguments[sel]
                 #otherwise just take the value as is, should just be a bool or float
                 else:
-                    system_options[sel] = opt[sel]
+                    system_options[sel] = method_arguments[sel]
         system = structure.createSystem(**system_options)
         return system
 
@@ -589,27 +616,15 @@ class Simulation(object):
         self.nc_sim.context.setPositions(md_state0['positions'])
         self.nc_sim.context.setVelocities(md_state0['velocities'])
 
-    def run(self, nIter=None):
+    def run(self):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
-        then performs the MD simulation from the NCMC state.
-
-        Parameters
-        ----------
-        nIter: None or int, optional, default=None
-            The number of iterations to perform. If None, then
-            uses the nIter specified in the opt dictionary when
-            the Simulation class was created.
+        then performs the MD simulation from the NCMC state. This is performed
+        `nIter` number of times (specified when this class was created).
 
         """
         #if not specified, use nIter options provided by opt dictionary
-        if nIter is None:
-            if 'nIter' in self.opt.keys():
-                nIter = self.opt['nIter']
-            else:
-                raise ValueError("either specify 'nIter' in the opt dictionary during class initialization or in the run() method")
-
-
+        nIter = self.opt['nIter']
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
@@ -655,7 +670,7 @@ class Simulation(object):
         self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def runMC(self, nIter=None):
+    def runMC(self):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
@@ -669,12 +684,7 @@ class Simulation(object):
         """
 
         #set inital conditions
-        if nIter is None:
-            if 'nIter' in self.opt.keys():
-                nIter = self.opt['nIter']
-            else:
-                raise ValueError("either specify 'nIter' in the opt dictionary during class initialization or in the run() method")
-
+        nIter = self.nIter
         self.setStateConditions()
         for n in range(nIter):
             self.current_iter = int(n)
