@@ -684,7 +684,7 @@ class Simulation(object):
         """
 
         #set inital conditions
-        nIter = self.nIter
+        nIter = self.opt['nIter']
         self.setStateConditions()
         for n in range(nIter):
             self.current_iter = int(n)
