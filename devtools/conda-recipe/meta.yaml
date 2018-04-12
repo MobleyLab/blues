@@ -17,6 +17,7 @@ requirements:
     - openmmtools
     - mdtraj >=1.8.0
     - openmm >=7.1.0rc1
+    - chemcoord
 
   run:
     - python
@@ -26,6 +27,7 @@ requirements:
     - mdtraj >=1.8.0
     - openmm >=7.1.0rc1
     - parmed
+    - chemcoord
 
 test:
   requires:
