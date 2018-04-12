@@ -1,6 +1,6 @@
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
+#from simtk.openmm.app import *
+#from simtk.openmm import *
+#from simtk.unit import *
 import simtk.unit as unit
 import numpy as np
 import mdtraj as md
@@ -34,21 +34,47 @@ class MolDart(RandomLigandRotationMove):
     fit_atoms:
         The atoms of the protein to be fitted, to remove rotations/
         translations changes from interfering the darting procedure.
-    dart_size: simtk.unit.nanometers, or list of simtk.unit.nanometers:
-        The size of the nth dart around each nth atom in the atom_indices,
-        given by the resname parameter.
-         If no list is given the darts are assumed to be of uniform size.
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
     rigid_move: boolean, default=False:
         If True, will ignore internal coordinate changes while darting
         and will effectively perform a rigid body rotation between darts
         instead.
+    freeze_waters: int, optional, default=0
+        The number of waters to set the mass to 0. If this value is non-zero,
+        this sets all waters besides the nearest freeze_waters waters from the ligand
+        masses to 0, preventing them from moving. These waters are updated
+        at the start of the iteration and after the move takes place.
+    freeze_protein: False or float, default=False
+        If not False, sets the masses of all protein atoms beyond the freeze_protein
+        cutoff distance (in angstroms) based on ALL poses in pdb_files. This
+        is different from the the option in Simulation as it takes into account the
+        distance from the provided poses and the use of these two should be
+        mutually exculsive.
+    restraints: bool, optional, default=True
+        Applies restrains so that the ligand remains close to the specified poses
+        during the course of the simulation. If this is not used, the probability
+        of darting can be greatly diminished, since the ligand can be much more
+        mobile in the binding site with it's interactions turned off.
+    restrained_receptor_atom: list, optional, default=None
+        The three atoms of the receptor to use for boresch style restraints.
+        If unspecified uses a random selection through a heuristic process
+        via Yank. This is only necessary when `restraints==True`
+    K_r: float
+        The value of the bond restraint portion of the boresch restraints
+        (given in units of kcal/(mol*angstrom**2)).
+        Only used if restraints=True.
+    K_angle: flaot
+        The value of the angle and dihedral restraint portion of the boresh restraints
+        (given in units of kcal/(mol*rad**2)).
+        Only used if restraints=True.
+
 
     """
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
-        rigid_move=False, freeze_waters=None, freeze_protein=False,
-        restraints=True, restrained_receptor_atoms=None):
+        rigid_move=False, freeze_waters=0, freeze_protein=False,
+        restraints=True, restrained_receptor_atoms=None,
+        K_r=10, K_angle=10):
         super(MolDart, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
         self.binding_mode_traj = []
@@ -76,8 +102,9 @@ class MolDart(RandomLigandRotationMove):
         #if restraints are used to keep ligand within darting regions specified here
         self.restraints = bool(restraints)
         self.restrained_receptor_atoms=restrained_receptor_atoms
-        ##self.restrained_ligand_atoms = restrained_ligand_atoms
         self.freeze_protein = freeze_protein
+        self.K_r = K_r
+        self.K_angle = K_angle
 
         if restraints != True and restraints != False:
             raise ValueError('restraints argument should be a boolean')
@@ -276,31 +303,30 @@ class MolDart(RandomLigandRotationMove):
                 xyz_ref._frame.at[i, entry] = self.sim_traj.openmm_positions(0)[sel_atom][index]._value*10
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
 
-        if 1:
-            zmat_diff = xyz_ref.get_zmat(construction_table=self.buildlist)
-            zmat_traj = copy.deepcopy(xyz_ref.get_zmat(construction_table=self.buildlist))
-            #get appropriate comparision zmat
-            zmat_compare = self.internal_zmat[binding_mode_index]
-            #we don't need to change the bonds/dihedrals since they are fast to sample
-            #if the molecule is treated as rigid, we won't change the internal coordinates
-            #otherwise we find the differences in the dihedral angles between the simulation
-            #and reference poses and take that into account when darting to the new pose
-            change_list = ['dihedral']
-            old_list = ['bond', 'angle']
+        zmat_diff = xyz_ref.get_zmat(construction_table=self.buildlist)
+        zmat_traj = copy.deepcopy(xyz_ref.get_zmat(construction_table=self.buildlist))
+        #get appropriate comparision zmat
+        zmat_compare = self.internal_zmat[binding_mode_index]
+        #we don't need to change the bonds/dihedrals since they are fast to sample
+        #if the molecule is treated as rigid, we won't change the internal coordinates
+        #otherwise we find the differences in the dihedral angles between the simulation
+        #and reference poses and take that into account when darting to the new pose
+        change_list = ['dihedral']
+        old_list = ['bond', 'angle']
 
-            if rigid_move == False:
-                for i in change_list:
-                    zmat_diff._frame[i] = zmat_diff._frame[i] - zmat_compare._frame[i]
+        if rigid_move == False:
+            for i in change_list:
+                zmat_diff._frame[i] = zmat_diff._frame[i] - zmat_compare._frame[i]
 
-                for i in change_list:
-                #add changes from zmat_diff to the darted pose
-                    zmat_new._frame[i] = zmat_diff._frame[i] + zmat_new._frame[i]
-            else:
-                old_list = change_list + old_list
+            for i in change_list:
+            #add changes from zmat_diff to the darted pose
+                zmat_new._frame[i] = zmat_diff._frame[i] + zmat_new._frame[i]
+        else:
+            old_list = change_list + old_list
 
-            for param in old_list:
-                #We want to keep the bonds and angles the same between jumps
-                zmat_new._frame[param] = zmat_traj._frame[param]
+        for param in old_list:
+            #We want to keep the bonds and angles the same between jumps
+            zmat_new._frame[param] = zmat_traj._frame[param]
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
@@ -442,7 +468,7 @@ class MolDart(RandomLigandRotationMove):
         new_sys = system
         old_int = integrator
         # added water portion to freeze waters further than the freeze_waters closest waters
-        if self.freeze_waters is not None:
+        if self.freeze_waters > 0:
             residues = structure.topology.residues()
             water_name = ['WAT', 'HOH']
             self.water_residues = []
@@ -487,7 +513,7 @@ class MolDart(RandomLigandRotationMove):
             res_list = list(set(res_list))
             num_atoms = system.getNumParticles()
             for atom in range(num_atoms):
-                if self.freeze_waters is not None:
+                if self.freeze_waters > 0:
                     if atom in res_list or atom in flat_waters_within_distance:
                         pass
                     else:
@@ -524,7 +550,8 @@ class MolDart(RandomLigandRotationMove):
                 new_pos= new_pos * unit.nanometers
                 restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.get_values()[:3]]
                 #check which force groups aren't being used and set restraint forces to that
-                new_sys = add_restraints(new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group, self.restrained_receptor_atoms, restraint_lig)
+                new_sys = add_restraints(new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
+                                        self.restrained_receptor_atoms, restraint_lig, self.K_r, self.K_angle)
 
 
 
@@ -553,7 +580,7 @@ class MolDart(RandomLigandRotationMove):
         """
         self.acceptance_ratio = 1
 
-        if self.freeze_waters is not None:
+        if self.freeze_waters > 0:
             #if freezing a subset of waters switch positions of unfrozen waters with frozen waters
             #within a cutoff of the ligand
             start_state = context.getState(getPositions=True, getVelocities=True)
@@ -584,7 +611,6 @@ class MolDart(RandomLigandRotationMove):
             selected_list = self._poseDart(context, self.atom_indices)
             if len(selected_list) >= 1:
                 self.selected_pose = np.random.choice(selected_list, replace=False)
-                print('selected_pose', self.selected_pose)
                 for i in range(len(self.binding_mode_traj)):
                     context.setParameter('restraint_pose_'+str(i), 0)
                 context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
@@ -623,12 +649,7 @@ class MolDart(RandomLigandRotationMove):
             if self.selected_pose not in selected_list:
                 self.acceptance_ratio = 0
             else:
-                work = context.getIntegrator().getGlobalVariableByName('protocol_work')
-                #print('correction process', work)
-                corrected_work = work + self.restraint_correction._value
-                #context.getIntegrator().setGlobalVariableByName('protocol_work', corrected_work)
-                work = context.getIntegrator().getGlobalVariableByName('protocol_work')
-                #print('correction process after', work)
+                pass
             for i in range(len(self.binding_mode_traj)):
                 context.setParameter('restraint_pose_'+str(i), 0)
 
@@ -745,7 +766,7 @@ class MolDart(RandomLigandRotationMove):
                 #work = context.getIntegrator().getGlobalVariableByName('protocol_work')
                 self.restraint_correction = restraint_correction
 
-        if self.freeze_waters is not None:
+        if self.freeze_waters > 0:
             start_state = context.getState(getPositions=True, getVelocities=True)
             start_pos = start_state.getPositions(asNumpy=True)
             start_vel = start_state.getVelocities(asNumpy=True)
@@ -783,9 +804,10 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
                  nsteps_neq=100,
                  nprop=1,
                  prop_lambda=0.3,
-                 lambda_restraints='max(0, 1-(1/0.30)*abs(lambda-0.5))',
-                 #lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
+                 #lambda_restraints='max(0, 1-(1/0.30)*abs(lambda-0.5))',
+                 lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
                  *args, **kwargs):
+        print('lambda_restraints', lambda_restraints)
         self.lambda_restraints = lambda_restraints
         self.restraint_energy = "energy"+str(restraint_group)
 

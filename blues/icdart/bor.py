@@ -83,7 +83,9 @@ class BoreschBLUES(Boresch):
         new_sys = thermodynamic_state.get_system(remove_thermostat=True)
         return new_sys
 
-def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, force_group=0, restrained_receptor_atoms=None, restrained_ligand_atoms=None):
+def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, force_group=0,
+                 restrained_receptor_atoms=None, restrained_ligand_atoms=None,
+                 K_r=10, K_angle=10):
     """Add Boresch-style restraints to a system by giving positions of the reference orientation.
     These restraints can be controlled with the `restraint_pose_"pose_num"` parameter.
 
@@ -108,6 +110,12 @@ def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, force_group=0, re
         List of three atom indices corresponding to the 3 atoms of the ligand
         to be used for the boresch restraints. If None, chooses those atoms
         from the ligand randomly.
+    K_r: float
+        The value of the bond restraint portion of the boresch restraints
+        (given in units of kcal/(mol*angstrom**2)).
+    K_angle: flaot
+        The value of the angle and dihedral restraint portion of the boresh restraints
+        (given in units of kcal/(mol*rad**2)).
 
     Returns
     -------
@@ -124,15 +132,10 @@ def add_restraints(sys, struct, pos, ligand_atoms, pose_num=0, force_group=0, re
     sampler = SamplerState(new_struct_pos, box_vectors=struct.box_vectors)
 
     topography = Topography(topology=topology, ligand_atoms=ligand_atoms)
-    standard_restraint = 55
-    restraint_dist = 60
-    #standard_restraint = 10
-    #restraint_dist = 10
-
 
     boresch = BoreschBLUES(restrained_receptor_atoms=restrained_receptor_atoms, restrained_ligand_atoms=restrained_ligand_atoms,
-        K_r=restraint_dist*unit.kilocalorie_per_mole/unit.angstrom**2, K_thetaA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_thetaB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2,
-        K_phiA=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiB=standard_restraint*unit.kilocalories_per_mole / unit.radian**2, K_phiC=standard_restraint*unit.kilocalories_per_mole / unit.radian**2)
+        K_r=K_r*unit.kilocalorie_per_mole/unit.angstrom**2, K_thetaA=K_angle*unit.kilocalories_per_mole / unit.radian**2, K_thetaB=K_angle*unit.kilocalories_per_mole / unit.radian**2,
+        K_phiA=K_angle*unit.kilocalories_per_mole / unit.radian**2, K_phiB=K_angle*unit.kilocalories_per_mole / unit.radian**2, K_phiC=K_angle*unit.kilocalories_per_mole / unit.radian**2)
 
     boresch.determine_missing_parameters(thermo, sampler, topography)
     new_sys = boresch.restrain_state(thermo, pose_num=pose_num, force_group=force_group)
