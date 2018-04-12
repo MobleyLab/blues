@@ -31,7 +31,7 @@ class MolEdit(MolDart):
         return new_sys, new_int
 
 
-class ReverseDartTester(unittest.TestCase):
+class DartTester(unittest.TestCase):
     """
     Tests that the ic dart move is reversible
 
@@ -49,7 +49,7 @@ class ReverseDartTester(unittest.TestCase):
                 'implicitSolvent': None,
                 'verbose' : False,
                 }
-
+        self.opt = opt
         prmtop = utils.get_data_filename('blues', 'tests/data/vacVA.prmtop')
         inpcrd = utils.get_data_filename('blues', 'tests/data/VAn68.pdb')
 
@@ -70,10 +70,10 @@ class ReverseDartTester(unittest.TestCase):
         self.ligand_mover = MoveEngine(self.ligand)
 
         # Generate the MD, NCMC, ALCHEMICAL Simulation objects
-        self.simulations = SimulationFactory(self.struct, self.ligand_mover, **opt)
+        self.simulations = SimulationFactory(self.struct, self.ligand_mover, **self.opt)
         self.simulations.createSimulationSet()
 
-        self.blues = Simulation(self.simulations, self.ligand_mover, **opt)
+        self.blues = Simulation(self.simulations, self.ligand_mover, **self.opt)
 
     def test_dartreverse(self):
 
@@ -87,6 +87,56 @@ class ReverseDartTester(unittest.TestCase):
         begin_compare = self.ligand.move(self.blues.md_sim.context).getState(getPositions=True).getPositions(asNumpy=True)
         #check that the reverse of the move gives the same positions
         assert np.allclose(begin_compare._value, begin_traj.openmm_positions(0)._value, rtol=1e-4, atol=1e-4)
+
+class BoreschRestraintTester(unittest.TestCase):
+    """
+    Tests that the ic dart move is reversible
+
+    """
+    def setUp(self):
+        #Define some options
+        opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.0005,
+                'nIter' : 4, 'nstepsNC' : 10, 'nstepsMD' : 10,
+                'nonbondedMethod' : 'CutoffNonPeriodic', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
+                'trajectory_interval' : 1000, 'reporter_interval' : 1000,
+                'platform' : 'CPU',
+                'outfname' : 't4-tol',
+                'nprop':1,
+                'prop_lambda':0.10,
+                'implicitSolvent': None,
+                'verbose' : False,
+                }
+        self.opt = opt
+        prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')
+        inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
+
+        self.struct = parmed.load_file(prmtop, xyz=inpcrd)
+        pdb_files = [ [utils.get_data_filename('blues', 'tests/data/posA.pdb')], [utils.get_data_filename('blues', 'tests/data/posB.pdb')]]
+
+        traj = md.load(inpcrd, top=prmtop)
+        fit_atoms = traj.top.select("resid 50 to 155 and name CA")
+        fit_atoms = traj.top.select("protein")
+
+        self.ligand = MolEdit(structure=self.struct, resname='LIG',
+                                          pdb_files=pdb_files,
+                                          fit_atoms=fit_atoms,
+                                          restraints=True,
+                                          restrained_receptor_atoms=[1605, 1735, 1837],
+                                          )
+
+        # Initialize object that proposes moves.
+        self.ligand_mover = MoveEngine(self.ligand)
+
+        # Generate the MD, NCMC, ALCHEMICAL Simulation objects
+        self.simulations = SimulationFactory(self.struct, self.ligand_mover, **self.opt)
+        self.simulations.createSimulationSet()
+
+        self.blues = Simulation(self.simulations, self.ligand_mover, **self.opt)
+
+    def test_dartreverse(self):
+        forces = self.blues.nc_sim.system.getForces()
+        n_boresch = np.sum([1 if isinstance(i, mm.CustomExternalForce) else 0 for i in forces])
+        assert n_boresch == 2
 
 
 if __name__ == "__main__":
