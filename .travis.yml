@@ -20,6 +20,7 @@ script:
     - conda install --yes -c omnia parmed
     - conda install --yes -c omnia mdtraj
     - conda install --yes -c openeye/label/Orion oeommtools
+    - conda install --yes -c sgill2 chemcoord
     # Use beta version for partial bond orders
     - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     - conda build --python $python devtools/conda-recipe
