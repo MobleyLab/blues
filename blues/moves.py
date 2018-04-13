@@ -291,10 +291,7 @@ class RandomLigandRotationMove(Move):
         self.positions = positions[self.atom_indices]
         return context
 
-<<<<<<< HEAD
-=======
 
->>>>>>> bc39af476decd4b770febe97120ff2651fc9e49b
 class SideChainMove(Move):
     """Move that provides methods for:
         1. calculating the properties needed to rotate a sidechain residue
