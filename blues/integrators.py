@@ -105,6 +105,22 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             Controls the number of propagation steps to add in the lambda
             region defined by `prop_lambda`.
         """
+        #store parameters into a dictionary so they can easily be accessed
+        #in the case that a new integrator created by the Moves class
+        #needs to access them
+        self.args = args
+        self.kwargs = kwargs
+        self.kwargs['alchemical_functions'] = alchemical_functions
+        self.kwargs['splitting'] = splitting
+        self.kwargs['temperature'] = temperature
+        self.kwargs['collision_rate'] = collision_rate
+        self.kwargs['timestep'] = timestep
+        self.kwargs['constraint_tolerance'] = constraint_tolerance
+        self.kwargs['measure_shadow_work'] = measure_shadow_work
+        self.kwargs['measure_heat'] = measure_heat
+        self.kwargs['nsteps_neq'] = nsteps_neq
+        self.kwargs['nprop'] = nprop
+        self.kwargs['prop_lambda'] = prop_lambda
 
         # call the base class constructor
         super(AlchemicalExternalLangevinIntegrator, self).__init__(alchemical_functions=alchemical_functions,
@@ -130,6 +146,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
         self._registered_step_types['H'] = (self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
+        self.addGlobalVariable("restraint_energy", 0)
 
         try:
             self.getGlobalVariableByName("shadow_work")
@@ -164,6 +181,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.endBlock()
 
         # Main body
+
         if self._n_steps_neq == 0:
             # If nsteps = 0, we need to force execution on the first step only.
             self.beginIfBlock('step = 0')
@@ -172,33 +190,33 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.endBlock()
         else:
             #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
-            self.beginIfBlock("step < nsteps")
+            self.beginIfBlock("step < nsteps")#
             self.addComputeGlobal("perturbed_pe", "energy")
-            self.beginIfBlock("first_step < 1")
+            self.beginIfBlock("first_step < 1")##
             #TODO write better test that checks that the initial work isn't gigantic
             self.addComputeGlobal("first_step", "1")
             self.addComputeGlobal("unperturbed_pe", "energy")
-            self.endBlock()
+            self.endBlock()##
             #initial iteration
             self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
             #if more propogation steps are requested
-            self.beginIfBlock("lambda > prop_lambda_min")
-            self.beginIfBlock("lambda <= prop_lambda_max")
+            self.beginIfBlock("lambda > prop_lambda_min")###
+            self.beginIfBlock("lambda <= prop_lambda_max")####
 
-            self.beginWhileBlock("prop < nprop")
+            self.beginWhileBlock("prop < nprop")#####
             self.addComputeGlobal("prop", "prop + 1")
 
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            self.endBlock()
-            self.endBlock()
-            self.endBlock()
+            self.endBlock()#####
+            self.endBlock()####
+            self.endBlock()###
             #ending variables to reset
             self.addComputeGlobal("unperturbed_pe", "energy")
             self.addComputeGlobal("step", "step + 1")
             self.addComputeGlobal("prop", "1")
 
-            self.endBlock()
+            self.endBlock()#
 
     def _add_alchemical_perturbation_step(self):
         """

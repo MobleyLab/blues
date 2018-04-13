@@ -18,6 +18,7 @@ script:
     - source activate testenv
     - conda install --yes -c openeye/label/Orion oeommtools
     - conda install -c omnia mdtraj=1.9.1 parmed=2.7.1 openmmtools=0.13.0
+    - conda install --yes -c sgill2 chemcoord
     # Use beta version for partial bond orders
     - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     - conda build --python $python devtools/conda-recipe
