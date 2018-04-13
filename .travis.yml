@@ -17,7 +17,7 @@ script:
     - conda create -q -n testenv python=$python
     - source activate testenv
     - conda install --yes -c openeye/label/Orion oeommtools
-    - conda install -c omnia mdtraj=1.9.1 parmed=2.7.1 openmmtools=0.13.0
+    - conda install -c omnia mdtraj=1.9.1 parmed=2.7.1 openmmtools=0.13.0 yank
     - conda install --yes -c sgill2 chemcoord
     - conda install --yes -c conda-forge future
     # Use beta version for partial bond orders
