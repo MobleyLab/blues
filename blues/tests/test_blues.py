@@ -18,9 +18,9 @@ class BLUESTester(unittest.TestCase):
         self.inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
         self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2,
+                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-                'trajectory_interval' : 1, 'reporter_interval' : 1,
+                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
                 'platform' : None,
                 'verbose' : True }
 
@@ -66,10 +66,10 @@ class BLUESTester(unittest.TestCase):
     def test_simulationRun(self):
         """Tests the Simulation.runNCMC() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2,
+                'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
-                'trajectory_interval' : 1, 'reporter_interval' : 1,
-                'platform' : None,
+                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
+                'platform' : None, 'write_ncmc' : False, 'write_move' : False,
                 'verbose' : True }
 
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
@@ -94,7 +94,7 @@ class BLUESTester(unittest.TestCase):
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         asim = Simulation(sims, self.mover, **self.opt)
-        asim.runNCMC()
+        asim.run(self.opt['nIter'])
 
 if __name__ == "__main__":
         unittest.main()

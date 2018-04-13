@@ -11,7 +11,7 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 """
 
 from __future__ import print_function
-from blues.mold import MolDart
+from blues.mold import MolDartMove
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
@@ -19,16 +19,18 @@ import parmed
 from simtk import openmm
 from optparse import OptionParser
 import mdtraj as md
-from simtk import unit
 
 def runNCMC(platform_name):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-            'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 5000,
-            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-            'trajectory_interval' : 1000, 'reporter_interval' : 1000,
+            'nIter' : 10, 'nstepsNC' : 2000, 'nstepsMD' : 5000,
+            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 1, 'constraints': 'HBonds',
+            'trajectory_interval' : 5000, 'reporter_interval' : 5000,
             'platform' : platform_name,
-            'verbose' : True }
+            'outfname' : 't4-tol',
+            'nprop':5,
+            'freeze_distance' : 5.0,
+ }
 
     #Generate the ParmEd Structure
     prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')#
@@ -37,15 +39,16 @@ def runNCMC(platform_name):
 
     #Define the 'model' object we are perturbing here.
     # Calculate particle masses of object to be moved
+    posA = utils.get_data_filename('blues', 'tests/data/posA.pdb')
+    posB = utils.get_data_filename('blues', 'tests/data/posB.pdb')
     traj = md.load(inpcrd, top=prmtop)
     fit_atoms = traj.top.select("resid 50 to 155 and name CA")
     fit_atoms = traj.top.select("protein")
 
-    ligand = MolDart(structure=struct, resname='LIG',
-                                      dart_size=0.3*unit.nanometers,
-                                      pdb_files=['posA.pdb', 'posB.pdb'],
-                                      xyz_file='tolA.xyz',
+    ligand = MolDartMove(structure=struct, resname='LIG',
+                                      pdb_files=[posA, posB],
                                       fit_atoms=fit_atoms,
+                                      restrained_receptor_atoms=[1605, 1735, 1837],
                                       )
 
     # Initialize object that proposes moves.

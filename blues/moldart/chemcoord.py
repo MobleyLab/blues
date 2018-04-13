@@ -8,9 +8,9 @@ from __future__ import unicode_literals
 from chemcoord.exceptions import ERR_CODE_OK, \
     InvalidReference, ERR_CODE_InvalidReference
 import chemcoord.constants as constants
-from chemcoord.utilities.algebra_utilities import \
+from chemcoord.cartesian_coordinates.xyz_functions import \
     _jit_normalize, \
-    _jit_rotation_matrix, \
+    _jit_get_rotation_matrix, \
     _jit_isclose, \
     _jit_cross
 from numba import jit
@@ -42,8 +42,8 @@ def _jit_calc_single_position_edit(references, zmat_values, row):
         else:
             n1 = _jit_normalize(N1)
             d = bond * ba
-            d = np.dot(_jit_rotation_matrix(n1, angle), d)
-            d = np.dot(_jit_rotation_matrix(ba, dihedral), d)
+            d = np.dot(_jit_get_rotation_matrix(n1, angle), d)
+            d = np.dot(_jit_get_rotation_matrix(ba, dihedral), d)
     return (ERR_CODE_OK, vb + d)
 
 #@jit(nopython=True)
@@ -76,6 +76,17 @@ def _jit_calc_positions_edit(c_table, zmat_values, start_coord):
 
 
 def give_cartesian_edit(self, start_coord):
+    """sets the  cartexian coordinates of the first 3 atoms and then moves the internal
+    coordinates into carteasian space with those first 3 to specifiy the absolute orientation
+
+    Parameters
+    ----------
+    start_coord: 3x3 numpy.array
+
+    Returns
+    -------
+    cartesian: Chemcoord.Cartesian object
+    """
     zmat = self.change_numbering()
     c_table = zmat.loc[:, ['b', 'a', 'd']].values
     zmat_values = zmat.loc[:, ['bond', 'angle', 'dihedral']].values

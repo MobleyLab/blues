@@ -27,7 +27,7 @@ class SmartDartTester(unittest.TestCase):
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
                 'nonbondedMethod' : 'NoCutoff', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-                'trajectory_interval' : 10, 'reporter_interval' : 10,
+                'trajectory_interval' : 10, 'reporter_interval' : 10, 'outfname' : 'smartdart-test',
                 'platform' : None,
                 'verbose' : False }
 
@@ -134,7 +134,7 @@ class DartLoaderTester(unittest.TestCase):
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
-                'platform' : None,
+                'platform' : None, 'outfname' : 'smartdart-test',
                 'verbose' : False }
 
 
@@ -163,4 +163,3 @@ class DartLoaderTester(unittest.TestCase):
 
 if __name__ == "__main__":
         unittest.main()
-

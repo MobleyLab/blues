@@ -5,35 +5,35 @@ language: python
 branches:
     only:
         - master
-
 install:
-    - if [[ $python == 2.7 ]]; then
-        wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-      else
-        wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-      fi
-    - bash miniconda.sh -b -p $HOME/miniconda
-    - export PATH=$HOME/miniconda/bin:$PATH
-    - hash -r
+    - source devtools/travis-ci/install.sh
+    - export PYTHONUNBUFFERED=true
+    # Unpack encrypted OpenEye license file
+    - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
+    - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
+script:
     - conda config --set always_yes true --set changeps1 no
     - conda config --add channels ${ORGNAME}
     - conda create -q -n testenv python=$python
-    - conda install conda-build
-
     - source activate testenv
-    - conda info -a
+    - conda install --yes -c omnia openmmtools
+    - conda install --yes -c omnia parmed
+    - conda install --yes -c omnia mdtraj
+    - conda install --yes -c openeye/label/Orion oeommtools
+    - conda install --yes -c sgill2 chemcoord
+    # Use beta version for partial bond orders
+    - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     - conda build --python $python devtools/conda-recipe
-    - conda install --use-local ${PACKAGENAME}
+    - conda install --yes -c local blues
     - conda list
-
-script:
- - py.test -v blues
+    - py.test -v blues
 
 env:
   matrix:
-    - python=2.7  CONDA_PY=2.7
     - python=3.5  CONDA_PY=3.5
 
   global:
     - ORGNAME="omnia"
     - PACKAGENAME="blues"
+    - OE_LICENSE="$HOME/oe_license.txt"
+    - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
