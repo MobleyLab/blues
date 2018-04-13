@@ -16,10 +16,7 @@ import numpy as np
 import math
 import copy
 import random
-#from openeye.oechem import *
-
-def aaa(input):
-    return None
+from openeye.oechem import *
 
 class Move(object):
 
@@ -89,8 +86,6 @@ class Move(object):
         return context
     def _error(self, context):
         return context
-
-
 
 
 class RandomLigandRotationMove(Move):
@@ -245,6 +240,7 @@ class RandomLigandRotationMove(Move):
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         self.positions = positions[self.atom_indices]
         return context
+
 
 class SideChainMove(Move):
     """Move that provides methods for:
