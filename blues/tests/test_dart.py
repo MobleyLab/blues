@@ -1,9 +1,8 @@
 from __future__ import print_function
-from blues.mold import MolDartMove
+from blues.moves import MolDartMove
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
-from simtk.openmm.app import DCDReporter
 import parmed
 import mdtraj as md
 from simtk import unit
