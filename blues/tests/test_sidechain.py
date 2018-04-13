@@ -43,6 +43,7 @@ class SideChainTester(unittest.TestCase):
 
 
         nc_context = simulations.nc.context
+        self.sidechain.beforeMove(simulations.nc.context)
         self.sidechain.move(nc_context, verbose=False)
 
 if __name__ == "__main__":

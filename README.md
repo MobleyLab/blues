@@ -32,6 +32,13 @@ pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye
 
 ## Installation
 Recommended: Install from conda
+First, install dependencies not on main conda channel (since channels)
+```bash
+conda install -c omnia mdtraj parmed yank openmmtools=0.13.0
+conda install --yes -c sgill2 chemcoord
+conda install --yes -c conda-forge future
+```
+Next install the actual BLUES package
 ```bash
 conda install -c mobleylab blues
 ```
