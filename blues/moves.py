@@ -10,15 +10,16 @@ Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
-from simtk import unit, openmm
+from simtk import unit
 import mdtraj
 import numpy as np
-import sys
 import math
 import copy
 import random
-from openeye.oechem import *
+#from openeye.oechem import *
 
+def aaa(input):
+    return None
 
 class Move(object):
 
@@ -1023,3 +1024,6 @@ class SmartDartMove(RandomLigandRotationMove):
         old_coord = self._undoBasis(basis_set, center)
         adjusted_center = old_coord + particle1
         return adjusted_center
+
+from blues.moldart.move import MolDartMove
+

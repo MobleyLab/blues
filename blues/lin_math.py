@@ -1,7 +1,7 @@
 import numpy as np
 
 def adjust_angle(a,b, radians, maintain_magnitude=True):
-    '''
+    """
     Adjusts angle a so that the angle between a and b
     matches the specified radians. The change in a
     occurs in the plane of a and b.
@@ -24,7 +24,7 @@ def adjust_angle(a,b, radians, maintain_magnitude=True):
     c, 1x3 np.array:
         Vector adjusted so that the angle made
         from c and b is the value specifed by radians.
-    '''
+    """
     #use the projection of a onto b to get
     #parallel and perpendicular components of a in terms of b
     para = b*(a.dot(b)/b.dot(b))

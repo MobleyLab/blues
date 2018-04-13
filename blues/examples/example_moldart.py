@@ -11,7 +11,7 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 """
 
 from __future__ import print_function
-from blues.mold import MolDart
+from blues.mold import MolDartMove
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
@@ -19,7 +19,6 @@ import parmed
 from simtk import openmm
 from optparse import OptionParser
 import mdtraj as md
-from simtk import unit
 
 def runNCMC(platform_name):
     #Define some options
@@ -46,7 +45,7 @@ def runNCMC(platform_name):
     fit_atoms = traj.top.select("resid 50 to 155 and name CA")
     fit_atoms = traj.top.select("protein")
 
-    ligand = MolDart(structure=struct, resname='LIG',
+    ligand = MolDartMove(structure=struct, resname='LIG',
                                       pdb_files=[posA, posB],
                                       fit_atoms=fit_atoms,
                                       restrained_receptor_atoms=[1605, 1735, 1837],

@@ -6,16 +6,16 @@ import numpy as np
 import mdtraj as md
 from mdtraj.formats.xyzfile import XYZTrajectoryFile
 from mdtraj.utils import in_units_of
-from blues.lin_math import adjust_angle
-from blues.lin_math import getRotTrans
+from blues.moldart.lin_math import adjust_angle
+from blues.moldart.lin_math import getRotTrans
 from blues.moves import RandomLigandRotationMove
 import chemcoord as cc
 import copy
 import tempfile
 import types
-from blues.mold_helper import give_cartesian_edit
-from blues.icdart.dartnew import makeDartDict, checkDart
-from blues.icdart.bor import add_restraints
+from blues.moldart.chemcoord import give_cartesian_edit
+from blues.moldart.darts import makeDartDict, checkDart
+from blues.moldart.boresch import add_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
 
@@ -101,13 +101,11 @@ class MolDartMove(RandomLigandRotationMove):
         self.freeze_waters = freeze_waters
         #if restraints are used to keep ligand within darting regions specified here
         self.restraints = bool(restraints)
-        self.restrained_receptor_atoms=restrained_receptor_atoms
+        self.restrained_receptor_atoms = restrained_receptor_atoms
         self.freeze_protein = freeze_protein
         self.K_r = K_r
         self.K_angle = K_angle
 
-        if restraints != True and restraints != False:
-            raise ValueError('restraints argument should be a boolean')
         #flattens pdb files in the case input is list of lists
         #currently set up so that poses in a list don't jump to the same poses in that list
         pdb_files = [[i] if isinstance(i, str) else i for i in pdb_files]
@@ -117,7 +115,7 @@ class MolDartMove(RandomLigandRotationMove):
         for index, key in enumerate(flat_pdb):
             self.pdb_dict[key] = index
         if len(self.pdb_dict) <= 1:
-            raise ValueError('Should specify at least two pdbs for darting to be beneficial')
+            raise ValueError('Should specify at least two pdbs in pdb_files for darting to be beneficial')
         self.dart_groups = []
         for group in pdb_files:
             glist = [self.pdb_dict[key] for key in group]
