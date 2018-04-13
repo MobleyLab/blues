@@ -148,12 +148,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("debug", 0)
         self.addGlobalVariable("restraint_energy", 0)
 
-#        try:
-#            self.getGlobalVariableByName("lambda_restraints")
-#        except:
-#            self.addGlobalVariable("lambda_restraints", 0)
-
-
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
