@@ -1,6 +1,3 @@
-#from simtk.openmm.app import *
-#from simtk.openmm import *
-#from simtk.unit import *
 import simtk.unit as unit
 import numpy as np
 import mdtraj as md
@@ -74,7 +71,8 @@ class MolDartMove(RandomLigandRotationMove):
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
         rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=True, restrained_receptor_atoms=None,
-        K_r=10, K_angle=10):
+        K_r=10, K_angle=10, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
         self.binding_mode_traj = []
@@ -105,6 +103,7 @@ class MolDartMove(RandomLigandRotationMove):
         self.freeze_protein = freeze_protein
         self.K_r = K_r
         self.K_angle = K_angle
+        self.lambda_restraints = lambda_restraints
 
         #flattens pdb files in the case input is list of lists
         #currently set up so that poses in a list don't jump to the same poses in that list
@@ -531,7 +530,8 @@ class MolDartMove(RandomLigandRotationMove):
             self.restraint_group = group_avail[0]
 
             old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
-            new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group, **old_int.kwargs)
+            new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
+                                               lambda_restraints=self.lambda_restraints, **old_int.kwargs)
             new_int.reset()
             initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
             self.atom_indices
@@ -676,10 +676,6 @@ class MolDartMove(RandomLigandRotationMove):
             for i in range(len(self.binding_mode_traj)):
                 context.setParameter('restraint_pose_'+str(i), 0)
         return context
-
-
-
-
 
     def move(self, context):
         """
@@ -831,11 +827,8 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
             pass
 
 
-
-
     def updateRestraints(self):
         self.addComputeGlobal('lambda_restraints', self.lambda_restraints)
-
 
     def _add_integrator_steps(self):
         """
@@ -894,7 +887,5 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
             self.addComputeGlobal("prop", "1")
 
             self.endBlock()#
-
-
 
 
