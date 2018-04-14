@@ -150,21 +150,6 @@ class SimulationFactory(object):
                                 hydrogenMass=hydrogenMass,
                                 implicitSolvent=eval("app.%s" % implicitSolvent))
         #TODO: REmove this portion after done testing
-        if 1:
-            force = openmm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
-            force.addGlobalParameter("k", 5.0*unit.kilocalories_per_mole/unit.angstroms**2)
-            force.addPerParticleParameter("x0")
-            force.addPerParticleParameter("y0")
-            force.addPerParticleParameter("z0")
-            aatoms = []
-            for i, atom_crd in enumerate(structure.positions):
-                if self.structure.atoms[i].name in ('CA', 'C', 'N'):
-                    force.addParticle(i, atom_crd.value_in_unit(unit.nanometers))
-                    aatoms.append(i)
-            print(aatoms)
-            #exit()
-            system.addForce(force)
-
 
         return system
 
