@@ -134,7 +134,7 @@ class BoreschRestraintTester(unittest.TestCase):
 
     def test_dartreverse(self):
         forces = self.blues.nc_sim.system.getForces()
-        n_boresch = np.sum([1 if isinstance(i, mm.CustomExternalForce) else 0 for i in forces])
+        n_boresch = np.sum([1 if isinstance(i, mm.CustomCompoundBondForce) else 0 for i in forces])
         assert n_boresch == 2
 
 
