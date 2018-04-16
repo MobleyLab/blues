@@ -25,7 +25,7 @@ class SimulationFactory(object):
         sims.createSimulationSet()
     #TODO: add functionality for handling multiple alchemical regions
     """
-    def __init__(self, structure, move_engine, **opt):
+    def __init__(self, structure, move_engine, prop_lambda=0.3, **opt):
         """Requires a parmed.Structure of the entire system and the ncmc.Model
         object being perturbed.
 
@@ -54,6 +54,28 @@ class SimulationFactory(object):
 
         self.opt = opt
         #Add check here to fail earlier
+        if self.opt.get('totalNCSteps', True) and self.opt.get('nstepsNC', True) not in opt:
+            if (self.opt['totalNCSteps'] % 2) != 0:
+                raise Exception('totalNCSteps needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['totalNCSteps']))
+
+            #insert stuff here
+            ax = prop_lambda
+            az = self.opt['nprop']
+            ncmc_steps = float(self.opt['totalNCSteps'] / float(2*(ax*az+0.5-ax)))
+            if ncmc_steps.is_integer() == False:
+                print('ncmc_steps', ncmc_steps)
+                if int(ncmc_steps) % 2 == 0:
+                    self.opt['nstepsNC'] = int(ncmc_steps)
+                else:
+                    self.opt['nstepsNC'] = int(ncmc_steps) + 1
+                    n_actual_steps = 2*self.opt['nstepsNC']*(ax*az+0.5-ax)
+                    self.log.info('totalNCSteps requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(self.opt['totalNCSteps'])+
+                                   'Instead using {} NCMC perturbation steps,'.format(self.opt['nstepsNC'])+
+                                   'for a total of {} NCMC steps'.format(n_actual_steps))
+            else:
+                self.opt['nstepsNC'] = int(ncmc_steps)
+
+
         if (self.opt['nstepsNC'] % 2) != 0:
             raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
             #rounded_val = self.opt['nstepsNC'] & ~1
@@ -177,7 +199,7 @@ class SimulationFactory(object):
         system = structure.createSystem(**system_options)
         return system
 
-    def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
+    def generateSimFromStruct(self, structure, move_engine, system, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
                              reporter_interval=1000, nprop=1, prop_lambda=0.3,
                              ncmc=False, platform=None, **opt):
@@ -252,8 +274,10 @@ class SimulationFactory(object):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
-        self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system, **self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,  **self.opt)
+        self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
+                                            ncmc=False, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
+                                            ncmc=False, **self.opt)
         self.nc = self.generateSimFromStruct(self.structure, self.move_engine, self.alch_system,
                                             ncmc=True, **self.opt)
 
@@ -272,7 +296,7 @@ class Simulation(object):
 
         Parameters
         ----------
-        sims : blues.ncmc.SimulationFactory object
+        simulations : blues.ncmc.SimulationFactory object
             SimulationFactory Object which carries the 3 required
             OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
         move_engine : blues.ncmc.MoveEngine object
@@ -355,6 +379,7 @@ class Simulation(object):
 
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
+
         if (self.opt['nstepsNC'] % 2) != 0:
             raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
         else:
@@ -616,15 +641,17 @@ class Simulation(object):
         self.nc_sim.context.setPositions(md_state0['positions'])
         self.nc_sim.context.setVelocities(md_state0['velocities'])
 
-    def run(self):
+    def run(self, nIter):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
-        then performs the MD simulation from the NCMC state. This is performed
-        `nIter` number of times (specified when this class was created).
+        then performs the MD simulation from the NCMC state niter number of times.
+
+        Parameters
+        ----------
+        nIter: int
+            Number of iterations of NCMC+MD to perform.
 
         """
-        #if not specified, use nIter options provided by opt dictionary
-        nIter = self.opt['nIter']
         self.log.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo()
         #set inital conditions
