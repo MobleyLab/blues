@@ -25,7 +25,33 @@ class SimulationFactory(object):
         sims.createSimulationSet()
     #TODO: add functionality for handling multiple alchemical regions
     """
-    def __init__(self, structure, move_engine, prop_lambda=0.3, **opt):
+    def __init__(self, structure, move_engine,
+                #integrator parameters
+                dt=0.002, friction=1, temperature=298*unit.kelvin, friction=
+                nprop=5, prop_lambda=0.3, nstepsNC=1000,
+
+                trajectory_interval=None, reporter_interval=None,
+                #system parameters
+                nonbondedMethod=None,
+                nonbondedCutoff=8.0*unit.angstroms,
+                switchDistance=0.0*unit.angstroms,
+                constraints=None,
+                rigidWater=True,
+                mplicitSolvent=None,
+                implicitSolventKappa=None,
+                implicitSolventSaltConc=0.0*unit.moles/unit.liters,
+                temperature=298.15*unit.kelvin,
+                soluteDielectric=1.0,
+                solventDielectric=78.5,
+                useSASA=False,
+                removeCMMotion=True,
+                hydrogenMass=None,
+                ewaldErrorTolerance=0.0005,
+                flexibleConstraints=True,
+                verbose=False,
+                splitDihedrals=False,
+
+        **opt):
         """Requires a parmed.Structure of the entire system and the ncmc.Model
         object being perturbed.
 
@@ -202,6 +228,8 @@ class SimulationFactory(object):
     def generateSimFromStruct(self, structure, move_engine, system, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
                              reporter_interval=1000, nprop=1, prop_lambda=0.3,
+                             alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' },
                              ncmc=False, platform=None, **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
 
@@ -221,17 +249,25 @@ class SimulationFactory(object):
             Controls the number of propagation steps to add in the lambda
             region defined by `prop_lambda`
         """
+        integrator_arguments = {'temperature':temperature, 'friction':friction, 'dt':dt}
+        integrator_units = {'temperature', unit.kelvin, 'friction':1/unit.picoseconds, 'dt':unit.picoseconds}
+        for key in integrator_arguments:
+            try:
+                integrator_arguments[key]._value
+            except:
+                integrator_arguments[key] = integrator_arguments[key]*integrator_units[key]
         if ncmc:
             #During NCMC simulation, lambda parameters are controlled by function dict below
             # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
             functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
-            integrator = AlchemicalExternalLangevinIntegrator(alchemical_functions=functions,
+            integrator = AlchemicalExternalLangevinIntegrator(
+                                    alchemical_functions=alchemical_functions,
                                    splitting= "H V R O R V H",
-                                   temperature=temperature*unit.kelvin,
+                                   temperature=integrator_arguments['temperature'],
                                    nsteps_neq=nstepsNC,
-                                   timestep=dt*unit.picoseconds,
+                                   timestep=integrator_arguments['dt'],
                                    nprop=nprop,
                                    prop_lambda=prop_lambda
                                    )
@@ -240,9 +276,9 @@ class SimulationFactory(object):
                 system, integrator = move.initializeSystem(system, integrator)
 
         else:
-            integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
-                                                   friction/unit.picosecond,
-                                                   dt*unit.picoseconds)
+            integrator = openmm.LangevinIntegrator(integrator_arguments['temperature'],
+                                                   integrator_arguments['friction'],
+                                                   integrator_arguments['dt'])
 
         #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
@@ -291,7 +327,8 @@ class Simulation(object):
         blues.run()
 
     """
-    def __init__(self, simulations, move_engine, **opt):
+    def __init__(self, simulations, move_engine, nIter, **opt
+        ):
         """Initialize the BLUES Simulation object.
 
         Parameters
@@ -314,7 +351,7 @@ class Simulation(object):
         prop_lambda: float, optional, default=0.3
             The range which additional propogation steps are added,
             defined by [0.5-prop_lambda, 0.5+prop_lambda].
-        nstepsNC: int, optional, default=100
+        nstepsNC: int, optional, default=1000
             The number of NCMC relaxation steps to use.
 
         System options
@@ -347,12 +384,13 @@ class Simulation(object):
 
         Reporter options
         ----------------
-        trajectory_interval: int
+        trajectory_interval: int or None, optional, default=None
             Used to calculate the number of trajectory frames
-            per iteration.
-        reporter_interval: int
+            per iteration. If None, defaults to the value of nstepsNC.
+        reporter_interval: int or None, optional, default=None
             Outputs information (steps, speed, accepted moves, iterations)
             about the NCMC simulation every reporter_interval interval.
+            If None, defaults to the value of nstepsNC.
         outfname: str
             Prefix of log file to output to.
         Logger: logging.Logger
@@ -360,14 +398,11 @@ class Simulation(object):
             simulation information to a log.
 
         """
-        if 'Logger' in opt:
-            self.log = opt['Logger']
-        elif simulations.log:
-            self.log = simulations.log
-        else:
+        try:
+            self.log = self.simulations.logger
+        except:
             self.log = logging.getLogger(__name__)
 
-        self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
         self.nc_sim = simulations.nc
@@ -380,22 +415,16 @@ class Simulation(object):
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
 
-        if (self.opt['nstepsNC'] % 2) != 0:
-            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
+        if (self.simulations.nstepsNC % 2) != 0:
+            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.simulations.nstepsNC))
         else:
-            self.movestep = int(self.opt['nstepsNC']) / 2
+            self.movestep = int(self.simluations.nstepsNC) / 2
 
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
                                'nc'   : { 'state0' : {}, 'state1' : {} },
                                'alch' : { 'state0' : {}, 'state1' : {} }
                             }
-
-        #controls how many mc moves are performed during each iteration
-        if 'mc_per_iter' in opt:
-            self.mc_per_iter = opt['mc_per_iter']
-        else:
-            self.mc_per_iter = 1
 
         #specify nc integrator variables to report in verbose output
         self.work_keys = [ 'lambda', 'shadow_work',
@@ -438,19 +467,19 @@ class Simulation(object):
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
 
-    def _getSimulationInfo(self):
+    def _getSimulationInfo(self, nIter):
         """self.log.infos out simulation timing and related information."""
 
         prop_lambda = self.nc_sim.context._integrator._prop_lambda
         prop_range = round(prop_lambda[1] - prop_lambda[0],4)
         if prop_range >= 0.0:
-            if self.opt['nprop'] > 1:
-                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.opt['nprop'], prop_lambda[0],prop_lambda[1]))
+            if self.simulations.nprop > 1:
+                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.simulations.nprop, prop_lambda[0],prop_lambda[1]))
             #Get number of NCMC steps before extra propagation
-            normal_ncmc_steps = round(prop_lambda[0] * self.opt['nstepsNC'],4)
+            normal_ncmc_steps = round(prop_lambda[0] * self.simluations.nstepsNC,4)
 
             #Get number of NCMC steps for extra propagation
-            extra_ncmc_steps = (prop_range * self.opt['nstepsNC']) * self.opt['nprop']
+            extra_ncmc_steps = (prop_range * self.simulations.nstepsNC) * self.simulations.nprop
 
             self.log.info('\tLambda: 0.0 -> %s = %s NCMC Steps' % (prop_lambda[0],normal_ncmc_steps))
             self.log.info('\tLambda: %s -> %s = %s NCMC Steps' % (prop_lambda[0],prop_lambda[1],extra_ncmc_steps))
@@ -461,25 +490,25 @@ class Simulation(object):
             self.log.info('\t%s NCMC Steps/iter' % total_ncmc_steps)
 
         else:
-            total_ncmc_steps = self.opt['nstepsNC']
+            total_ncmc_steps = self.simulations.nstepsNC
 
         #Total NCMC simulation time
-        time_ncmc_steps = total_ncmc_steps * self.opt['dt']
+        time_ncmc_steps = total_ncmc_steps * self.simulations.dt
         self.log.info('\t%s NCMC ps/iter' % time_ncmc_steps)
 
         #Total MD simulation time
-        time_md_steps = self.opt['nstepsMD'] * self.opt['dt']
-        self.log.info('MD Steps = %s' % self.opt['nstepsMD'])
+        time_md_steps = self.simulations.nstepsMD * self.simulations.dt
+        self.log.info('MD Steps = %s' % self.simulations.nstepsMD)
         self.log.info('\t%s MD ps/iter' % time_md_steps)
 
         #Total BLUES simulation time
-        totaltime = (time_ncmc_steps + time_md_steps) * self.opt['nIter']
+        totaltime = (time_ncmc_steps + time_md_steps) * nIter
         self.log.info('Total Simulation Time = %s ps' % totaltime)
-        self.log.info('\tTotal NCMC time = %s ps' % (int(time_ncmc_steps) * int(self.opt['nIter'])))
-        self.log.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(self.opt['nIter'])))
+        self.log.info('\tTotal NCMC time = %s ps' % (int(time_ncmc_steps) * int(nIter)))
+        self.log.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(nIter)))
 
         #Get trajectory frame interval timing for BLUES simulation
-        frame_iter = self.opt['nstepsMD'] / self.opt['trajectory_interval']
+        frame_iter = self.simulations.nstepsMD / self.simulations.trajectory_interval
         timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
         self.log.info('\tTrajectory Interval = %s ps' % timetraj_frame)
         self.log.info('\t\t%s frames/iter' % frame_iter )
@@ -569,7 +598,7 @@ class Simulation(object):
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
+            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.outfname,self.current_iter))
 
         else:
             self.reject += 1
@@ -653,7 +682,7 @@ class Simulation(object):
 
         """
         self.log.info('Running %i BLUES iterations...' % (nIter))
-        self._getSimulationInfo()
+        self._getSimulationInfo(nIter)
         #set inital conditions
         self.setStateConditions()
         for n in range(int(nIter)):
@@ -711,7 +740,13 @@ class Simulation(object):
         """
 
         #set inital conditions
-        nIter = self.opt['nIter']
+        nIter = self.simulations.nIter
+        #controls how many mc moves are performed during each iteration
+        try:
+            self.mc_per_iter = self.simulations.mc_per_iter
+        except:
+            self.mc_per_iter = 1
+
         self.setStateConditions()
         for n in range(nIter):
             self.current_iter = int(n)
