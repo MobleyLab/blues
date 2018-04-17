@@ -69,7 +69,7 @@ class MolDartMove(RandomLigandRotationMove):
 
     """
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
-        rigid_move=False, freeze_waters=0, freeze_protein=False,
+        rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=True, restrained_receptor_atoms=None,
         K_r=10, K_angle=10, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
         ):
@@ -86,6 +86,7 @@ class MolDartMove(RandomLigandRotationMove):
         self.internal_zmat = []
         self.buildlist = None
         self.rigid_move = bool(rigid_move)
+        self.rigid_ring = bool(rigid_ring)
         #ref traj is the reference md trajectory used for superposition
         self.ref_traj = None
         #sim ref corresponds to the simulation positions
@@ -130,8 +131,21 @@ class MolDartMove(RandomLigandRotationMove):
                         types=[i.element.symbol for i in traj.top.atoms] )
             xtraj.close()
             xyz = cc.Cartesian.read_xyz(fname)
-        #get the construction table so internal coordinates are consistent between poses
-        self.buildlist = xyz.get_construction_table()
+            self.buildlist = xyz.get_construction_table()
+            if self.rigid_ring:
+                ring_atoms = []
+                from openeye import oechem
+                ifs = oechem.oemolistream()
+                ifs.open(fname)
+                for mol in ifs.GetOEGraphMols():
+                    for atom in mol.GetAtoms():
+                        if atom.IsInRing():
+                            ring_atoms.append(atom.GetIdx())
+                dihedral_ring_atoms = [i for i in ring_atoms if self.buildlist.at[i, 'd'] in ring_atoms]
+                self.dihedral_ring_atoms = dihedral_ring_atoms
+            #get the construction table so internal coordinates are consistent between poses
+
+
         #use the positions from the structure to be used as a reference for
         #superposition of the rest of poses
         with tempfile.NamedTemporaryFile(suffix='.pdb') as t:
@@ -252,7 +266,7 @@ class MolDartMove(RandomLigandRotationMove):
         rand_index = np.random.choice(dart_groups_removed[np.random.choice(len(dart_groups_removed))])
         return rand_index, probability_selection_before
 
-    def _moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, rigid_move=False):
+    def _moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, rigid_ring=False, rigid_move=False):
         """
         Helper function to choose a random pose and determine the vector
         that would translate the current particles to that dart center
@@ -311,19 +325,22 @@ class MolDartMove(RandomLigandRotationMove):
         change_list = ['dihedral']
         old_list = ['bond', 'angle']
 
-        if rigid_move == False:
+        if rigid_move == True:
+            old_list = change_list + old_list
+        else:
             for i in change_list:
                 zmat_diff._frame[i] = zmat_diff._frame[i] - zmat_compare._frame[i]
 
             for i in change_list:
             #add changes from zmat_diff to the darted pose
                 zmat_new._frame[i] = zmat_diff._frame[i] + zmat_new._frame[i]
-        else:
-            old_list = change_list + old_list
 
         for param in old_list:
             #We want to keep the bonds and angles the same between jumps
             zmat_new._frame[param] = zmat_traj._frame[param]
+        if rigid_ring:
+            for i in self.dihedral_ring_atoms:
+                zmat_new._frame.loc[i,'dihedral'] = zmat_traj._frame.loc[i,'dihedral']
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
@@ -728,7 +745,7 @@ class MolDartMove(RandomLigandRotationMove):
                                             binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=self.selected_pose,
                                             nc_pos=oldDartPos,
-                                            rigid_move=self.rigid_move)
+                                            rigid_ring=self.rigid_ring, rigid_move=self.rigid_move)
 
             self.selected_pose = darted_pose
             context.setPositions(new_pos)
