@@ -16,6 +16,25 @@ from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 from blues.reporters import init_logger
 
+def calcNCMCSteps(total_steps, nprop, prop_lambda, log):
+    nstepsNC = total/(2*(nprop*prop_lambda+0.5-prop_lambda))
+    if int(nstepsNC) % 2 == 0:
+        nstepsNC = int(nstepsNC)
+    else:
+        nstepsNC = int(nstepsNC) + 1
+
+    number = 1./nstepsNC
+
+    in_prop = int(nprop*(2*floor(float(prop_lambda)/number)))
+    out_prop = int((2*ceil(float(0.5-prop_lambda)/number)))
+    calc_total = int(in_prop + out_prop)
+    if calc_total != total_steps:
+        log.info('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
+                       'Instead using {} total propogation steps, '.format(calc_total)+
+                       '({} steps inside `prop_lambda` and {} steps outside `prop_lambda`.'.format(in_prop, out_prop))
+    return nstepsNC
+
+
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
     objects (MD, NCMC, ALCH) required for the BLUES run.
@@ -27,8 +46,12 @@ class SimulationFactory(object):
     """
     def __init__(self, structure, move_engine,
                 #integrator parameters
-                dt=0.002, friction=1, temperature=298*unit.kelvin, friction=
+                dt=0.002, friction=1, temperature=298*unit.kelvin,
                 nprop=5, prop_lambda=0.3, nstepsNC=1000,
+                nstepsMD=5000,
+                alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' },
+
 
                 trajectory_interval=None, reporter_interval=None,
                 #system parameters
@@ -37,10 +60,9 @@ class SimulationFactory(object):
                 switchDistance=0.0*unit.angstroms,
                 constraints=None,
                 rigidWater=True,
-                mplicitSolvent=None,
+                implicitSolvent=None,
                 implicitSolventKappa=None,
                 implicitSolventSaltConc=0.0*unit.moles/unit.liters,
-                temperature=298.15*unit.kelvin,
                 soluteDielectric=1.0,
                 solventDielectric=78.5,
                 useSASA=False,
@@ -51,6 +73,11 @@ class SimulationFactory(object):
                 verbose=False,
                 splitDihedrals=False,
 
+                #alchemical system parameters
+                freeze_distance=0,
+                freeze_center='LIG',
+                freeze_solvent='HOH,NA,CL',
+
         **opt):
         """Requires a parmed.Structure of the entire system and the ncmc.Model
         object being perturbed.
@@ -60,6 +87,9 @@ class SimulationFactory(object):
         temperature=300, friction=1, dt=0.002,
         nonbondedMethod='PME', nonbondedCutoff=10, constraints='HBonds',
         trajectory_interval=1000, reporter_interval=1000, platform=None"""
+        if (nstepsNC % 2) != 0:
+            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (nstepsNC))
+
         if 'Logger' in opt:
             self.log = opt['Logger']
         else:
@@ -77,38 +107,25 @@ class SimulationFactory(object):
         self.md = None
         self.alch  = None
         self.nc  = None
-
+        self.nstepsNC = calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
+        self.nstepsMD = nstepsMD
         self.opt = opt
+        self.system_opt = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
+                            'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
+                            'implicitSolventSaltConc':implicitSolventSaltConc, 'temperature':temperature, 'soluteDielectric':soluteDielectric, 'useSASA':useSASA,
+                            'removeCMMotion':removeCMMotion, 'hydrogenMass':hydrogenMass, 'ewaldErrorTolerance':ewaldErrorTolerance,
+                            'flexibleConstraints':flexibleConstraints, 'verbose':verbose, 'splitDihedrals':splitDihedrals}
+        self.alch_system_opt = {'freeze_distance':freeze_distance, 'freeze_center':freeze_center, 'freeze_solvent':freeze_solvent}
+
         #Add check here to fail earlier
-        if self.opt.get('totalNCSteps', True) and self.opt.get('nstepsNC', True) not in opt:
-            if (self.opt['totalNCSteps'] % 2) != 0:
-                raise Exception('totalNCSteps needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['totalNCSteps']))
+        self.integrator_opt = {'dt':dt, 'friction':friction, 'temperature':temperature,
+                'nprop':nprop, 'prop_lambda':prop_lambda, 'nstepsNC':self.nstepsNC}
 
-            #insert stuff here
-            ax = prop_lambda
-            az = self.opt['nprop']
-            ncmc_steps = float(self.opt['totalNCSteps'] / float(2*(ax*az+0.5-ax)))
-            if ncmc_steps.is_integer() == False:
-                print('ncmc_steps', ncmc_steps)
-                if int(ncmc_steps) % 2 == 0:
-                    self.opt['nstepsNC'] = int(ncmc_steps)
-                else:
-                    self.opt['nstepsNC'] = int(ncmc_steps) + 1
-                    n_actual_steps = 2*self.opt['nstepsNC']*(ax*az+0.5-ax)
-                    self.log.info('totalNCSteps requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(self.opt['totalNCSteps'])+
-                                   'Instead using {} NCMC perturbation steps,'.format(self.opt['nstepsNC'])+
-                                   'for a total of {} NCMC steps'.format(n_actual_steps))
-            else:
-                self.opt['nstepsNC'] = int(ncmc_steps)
-
-
-        if (self.opt['nstepsNC'] % 2) != 0:
-            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
-            #rounded_val = self.opt['nstepsNC'] & ~1
-            #self.log.warn("NCMC steps must be even for symmetric protocol. Setting 'nstepsNC = %i'" % (rounded_val))
-            #self.opt['nstepsNC'] = rounded_val
         for k,v in opt.items():
             self.log.info('{} = {}'.format(k,v))
+        self.createSimulationSet()
+
+
 
     def _zero_allother_masses(self, system, indexlist):
         num_atoms = system.getNumParticles()
@@ -225,9 +242,9 @@ class SimulationFactory(object):
         system = structure.createSystem(**system_options)
         return system
 
-    def generateSimFromStruct(self, structure, move_engine, system, nstepsNC, nstepsMD,
+    def generateSimFromStruct(self, structure, move_engine, system, nstepsNC,
                              temperature=300, dt=0.002, friction=1,
-                             reporter_interval=1000, nprop=1, prop_lambda=0.3,
+                             nprop=1, prop_lambda=0.3,
                              alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' },
                              ncmc=False, platform=None, **opt):
@@ -255,6 +272,8 @@ class SimulationFactory(object):
             try:
                 integrator_arguments[key]._value
             except:
+                self.log.info('Units for {}:{} not specified. Using default units of {}'.format(key, integrator_arguments[key], integrator_units[key]))
+
                 integrator_arguments[key] = integrator_arguments[key]*integrator_units[key]
         if ncmc:
             #During NCMC simulation, lambda parameters are controlled by function dict below
@@ -308,8 +327,8 @@ class SimulationFactory(object):
 
     def createSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
-        self.system = self.generateSystem(self.structure, **self.opt)
-        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
+        self.system = self.generateSystem(self.structure, **self.system_opt)
+        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.alch_system_opt)
         self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
                                             ncmc=False, **self.opt)
         self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
@@ -398,11 +417,13 @@ class Simulation(object):
             simulation information to a log.
 
         """
-        try:
-            self.log = self.simulations.logger
-        except:
+        if 'Logger' in opt:
+            self.log = opt['Logger']
+        elif simulations.log:
+            self.log = simulations.log
+        else:
             self.log = logging.getLogger(__name__)
-
+        self.simulations = simulations
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
         self.nc_sim = simulations.nc
@@ -690,7 +711,7 @@ class Simulation(object):
             self.setStateConditions()
             self.simulateNCMC(**self.opt)
             self.acceptRejectNCMC(**self.opt)
-            self.simulateMD(**self.opt)
+            self.simulateMD(self.simulations.nstepsMD, **self.opt)
 
         # END OF NITER
         self.accept_ratio = self.accept/float(nIter)
