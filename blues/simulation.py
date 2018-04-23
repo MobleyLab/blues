@@ -16,6 +16,7 @@ from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 from blues.reporters import init_logger
 from math import floor, ceil
+from decimal import Decimal
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -158,15 +159,19 @@ class SimulationFactory(object):
         else:
             nstepsNC = int(nstepsNC) + 1
 
-        number = 1./nstepsNC
-
-        in_prop = int(nprop*(2*floor(float(prop_lambda)/number)))
-        out_prop = int((2*ceil(float(0.5-prop_lambda)/number)))
+        in_portion =  (prop_lambda)*nstepsNC
+        out_portion = (0.5-prop_lambda)*nstepsNC
+        if in_portion.is_integer():
+            in_portion= int(in_portion)
+        if out_portion.is_integer():
+            int(out_portion)
+        in_prop = int(nprop*(2*floor(in_portion)))
+        out_prop = int((2*ceil(out_portion)))
         calc_total = int(in_prop + out_prop)
         if calc_total != total_steps:
             log.info('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
                            'Instead using {} total propogation steps, '.format(calc_total)+
-                           '({} steps inside `prop_lambda` and {} steps outside `prop_lambda`.'.format(in_prop, out_prop))
+                           '({} steps inside `prop_lambda` and {} steps outside `prop_lambda)`.'.format(in_prop, out_prop))
         log.info('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
         return nstepsNC
 
