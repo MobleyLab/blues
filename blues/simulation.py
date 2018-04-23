@@ -112,7 +112,7 @@ class SimulationFactory(object):
         self.nc  = None
         self.nstepsNC = calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
         self.opt = opt
-        self.system_opt = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
+        system_opt = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
                             'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
                             'implicitSolventSaltConc':implicitSolventSaltConc, 'temperature':temperature, 'soluteDielectric':soluteDielectric, 'useSASA':useSASA,
                             'removeCMMotion':removeCMMotion, 'hydrogenMass':hydrogenMass, 'ewaldErrorTolerance':ewaldErrorTolerance,
@@ -122,10 +122,52 @@ class SimulationFactory(object):
                             'nprop':nprop, 'prop_lambda':prop_lambda, 'nstepsNC':self.nstepsNC,
                             'alchemical_functions':alchemical_functions,
                             'mc_per_iter':mc_per_iter}
+        self.system_opt = self.add_units(system_opt)
         for k,v in opt.items():
             self.log.info('{} = {}'.format(k,v))
         self.createSimulationSet()
 
+    def add_units(self, system_opt):
+        #for system setup portion
+
+        #set unit defaults to OpenMM defaults
+        unit_options = {'nonbondedCutoff':unit.nanometers,
+                        'switchDistance':unit.nanometers, 'implicitSolventKappa':unit.nanometers,
+                        'implicitSolventSaltConc':unit.mole/unit.liters, 'temperature':unit.kelvins,
+                        'hydrogenMass':unit.daltons,
+                        'dt':unit.picoseconds, 'friction':1/unit.picoseconds
+                        }
+        app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']
+        scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
+        bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
+                        'splitDihedrals']
+
+        combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
+        method_arguments = list(combined_options.keys())
+        for sel in method_arguments:
+            if sel in combined_options:
+                if sel in unit_options:
+                    #if the value requires units check that it has units
+                    #if it doesn't assume default units are used
+                    if system_opt[sel] is None:
+                        system_opt[sel] = None
+                    else:
+                        try:
+                            system_opt[sel]._value
+                        except:
+                            self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, method_arguments[sel], unit_options[sel]))
+                            system_opt[sel] = system_opt[sel]*unit_options[sel]
+                #if selection requires an OpenMM evaluation do it here
+                elif sel in app_options:
+                    try:
+                        system_opt[sel] = eval("app.%s" % system_opt[sel])
+                    except:
+                        #if already an app object we can just pass
+                        pass
+                #otherwise just take the value as is, should just be a bool or float
+                else:
+                    pass
+        return system_opt
 
 
     def _zero_allother_masses(self, system, indexlist):
@@ -172,75 +214,17 @@ class SimulationFactory(object):
 
         return alch_system
 
-    def generateSystem(self, structure, nonbondedMethod=None,
-                     nonbondedCutoff=8.0*unit.angstroms,
-                     switchDistance=0.0*unit.angstroms,
-                     constraints=None,
-                     rigidWater=True,
-                     implicitSolvent=None,
-                     implicitSolventKappa=None,
-                     implicitSolventSaltConc=0.0*unit.moles/unit.liters,
-                     temperature=298.15*unit.kelvin,
-                     soluteDielectric=1.0,
-                     solventDielectric=78.5,
-                     useSASA=False,
-                     removeCMMotion=True,
-                     hydrogenMass=None,
-                     ewaldErrorTolerance=0.0005,
-                     flexibleConstraints=True,
-                     verbose=False,
-                     splitDihedrals=False, **opt):
+    def generateSystem(self, structure, system_opt):
         """Returns the OpenMM System for the reference system.
 
         Parameters
         ----------
         structure: parmed.Structure
             ParmEd Structure object of the entire system to be simulated.
-        opt : optional parameters (i.e. cutoffs/constraints)
+        system_opt : arguments for createSystem (i.e. cutoffs/constraints)
         """
         #distrubute list of options according to catagory
-        method_arguments = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
-                            'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
-                            'implicitSolventSaltConc':implicitSolventSaltConc, 'temperature':temperature, 'soluteDielectric':soluteDielectric, 'useSASA':useSASA,
-                            'removeCMMotion':removeCMMotion, 'hydrogenMass':hydrogenMass, 'ewaldErrorTolerance':ewaldErrorTolerance,
-                            'flexibleConstraints':flexibleConstraints, 'verbose':verbose, 'splitDihedrals':splitDihedrals}
-
-        system_options = {}
-        #set unit defaults to OpenMM defaults
-        unit_options = {'nonbondedCutoff':unit.nanometers,
-                        'switchDistance':unit.nanometers, 'implicitSolventKappa':unit.nanometers,
-                        'implicitSolventSaltConc':unit.mole/unit.liters, 'temperature':unit.kelvins,
-                        'hydrogenMass':unit.daltons
-                        }
-        app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']
-        scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
-        bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
-                        'splitDihedrals']
-        combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
-        for sel in method_arguments.keys():
-            if sel in combined_options:
-                if sel in unit_options:
-                    #if the value requires units check that it has units
-                    #if it doesn't assume default units are used
-                    if method_arguments[sel] is None:
-                        system_options[sel] = None
-                    else:
-                        try:
-                            method_arguments[sel]._value
-                            system_options[sel] = method_arguments[sel]
-                        except:
-                            self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, method_arguments[sel], unit_options[sel]))
-                            system_options[sel] = method_arguments[sel]*unit_options[sel]
-                #if selection requires an OpenMM evaluation do it here
-                elif sel in app_options:
-                    try:
-                        system_options[sel] = eval("app.%s" % method_arguments[sel])
-                    except:
-                        system_options[sel] = method_arguments[sel]
-                #otherwise just take the value as is, should just be a bool or float
-                else:
-                    system_options[sel] = method_arguments[sel]
-        system = structure.createSystem(**system_options)
+        system = structure.createSystem(**system_opt)
         return system
 
     def generateSimFromStruct(self, structure, move_engine, system, nstepsNC,
@@ -267,15 +251,6 @@ class SimulationFactory(object):
             Controls the number of propagation steps to add in the lambda
             region defined by `prop_lambda`
         """
-        integrator_arguments = {'temperature':temperature, 'friction':friction, 'dt':dt}
-        integrator_units = {'temperature':unit.kelvin, 'friction':1/unit.picoseconds, 'dt':unit.picoseconds}
-        for key in integrator_arguments:
-            try:
-                integrator_arguments[key]._value
-            except:
-                self.log.info('Units for {}:{} not specified. Using default units of {}'.format(key, integrator_arguments[key], integrator_units[key]))
-                integrator_arguments[key] = integrator_arguments[key]*integrator_units[key]
-
         if ncmc:
             #During NCMC simulation, lambda parameters are controlled by function dict below
             # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
@@ -283,9 +258,9 @@ class SimulationFactory(object):
             integrator = AlchemicalExternalLangevinIntegrator(
                                     alchemical_functions=alchemical_functions,
                                    splitting= "H V R O R V H",
-                                   temperature=integrator_arguments['temperature'],
+                                   temperature=temperature,
                                    nsteps_neq=nstepsNC,
-                                   timestep=integrator_arguments['dt'],
+                                   timestep=dt,
                                    nprop=nprop,
                                    prop_lambda=prop_lambda
                                    )
@@ -294,9 +269,9 @@ class SimulationFactory(object):
                 system, integrator = move.initializeSystem(system, integrator)
 
         else:
-            integrator = openmm.LangevinIntegrator(integrator_arguments['temperature'],
-                                                   integrator_arguments['friction'],
-                                                   integrator_arguments['dt'])
+            integrator = openmm.LangevinIntegrator(temperature,
+                                                   friction,
+                                                   dt)
 
         #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
@@ -326,7 +301,7 @@ class SimulationFactory(object):
 
     def createSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
-        self.system = self.generateSystem(self.structure, **self.system_opt)
+        self.system = self.generateSystem(self.structure, self.system_opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.system_opt)
         self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
                                             ncmc=False, **self.system_opt)
