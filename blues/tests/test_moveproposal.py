@@ -32,9 +32,7 @@ class MoveEngineTester(unittest.TestCase):
         self.engine.selectMove()
         #Initialize the SimulationFactory object
         sims = SimulationFactory(structure, self.engine, **self.opt)
-        system = sims.generateSystem(structure, **self.opt)
-        alch_system = sims.generateAlchSystem(system, self.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, self.engine, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.nc
 
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
