@@ -53,7 +53,6 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
 
     # Generate the MD, NCMC, ALCHEMICAL Simulation objects
     simulations = SimulationFactory(struct, ligand_mover, **opt)
-    simulations.createSimulationSet()
 
     # Add reporters to MD simulation.
     traj_reporter = openmm.app.DCDReporter(opt['outfname']+'-nc{}.dcd'.format(nstepsNC), opt['trajectory_interval'])
@@ -81,7 +80,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     simulations.nc.reporters.append(ncmc_progress_reporter)
 
     # Run BLUES Simulation
-    blues = Simulation(simulations, ligand_mover, **opt)
+    blues = Simulation(simulations, **opt)
     blues.run(opt['nIter'])
 
 parser = OptionParser()
