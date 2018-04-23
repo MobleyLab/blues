@@ -346,7 +346,7 @@ class Simulation(object):
         blues.run()
 
     """
-    def __init__(self, simulations, move_engine, **opt
+    def __init__(self, simulations, **opt
         ):
         """Initialize the BLUES Simulation object.
 
@@ -427,7 +427,6 @@ class Simulation(object):
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
         self.nc_sim = simulations.nc
-        self.move_engine = move_engine
         self.temperature = self.md_sim.integrator.getTemperature()
         self.accept = 0
         self.reject = 0
@@ -635,22 +634,22 @@ class Simulation(object):
         self.log.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch region
-        self.move_engine.selectMove()
-        move_idx = self.move_engine.selected_move
-        move_name = self.move_engine.moves[move_idx].__class__.__name__
+        self.simulations.move_engine.selectMove()
+        move_idx = self.simulations.move_engine.selected_move
+        move_name = self.simulations.move_engine.moves[move_idx].__class__.__name__
 
         for nc_step in range(int(nstepsNC)):
             try:
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
-                    self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_sim.context)
+                    self.nc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].beforeMove(self.nc_sim.context)
 
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
                     self.log.info('Performing %s...' % move_name)
-                    self.nc_sim.context = self.move_engine.runEngine(self.nc_sim.context)
+                    self.nc_sim.context = self.simulations.move_engine.runEngine(self.nc_sim.context)
 
                 # Do 1 NCMC step with the integrator
                 self.nc_sim.step(1)
@@ -659,11 +658,11 @@ class Simulation(object):
                 self.log.debug('%s' % self.getWorkInfo(self.nc_sim.context._integrator, self.work_keys))
                 #Attempt anything related to the move after protocol is performed
                 if nc_step == nstepsNC-1:
-                    self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_sim.context)
+                    self.nc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].afterMove(self.nc_sim.context)
 
             except Exception as e:
                 self.log.error(e)
-                self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_sim.context)
+                self.simulations.move_engine.moves[self.simulations.move_engine.selected_move]._error(self.nc_sim.context)
                 break
 
         nc_state1 = self.getStateInfo(self.nc_sim.context, self.state_keys)
@@ -722,9 +721,9 @@ class Simulation(object):
         """Function that performs the MC simulation."""
 
         #choose a move to be performed according to move probabilities
-        self.move_engine.selectMove()
+        self.simulations.move_engine.selectMove()
         #change coordinates according to Moves in MoveEngine
-        new_context = self.move_engine.runEngine(self.md_sim.context)
+        new_context = self.simulations.move_engine.runEngine(self.md_sim.context)
         md_state1 = self.getStateInfo(new_context, self.state_keys)
         self.setSimState('md', 'state1', md_state1)
 

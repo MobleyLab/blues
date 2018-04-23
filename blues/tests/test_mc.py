@@ -91,7 +91,7 @@ class BLUESTester(unittest.TestCase):
         self.nc_sim = sims.nc
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        mc_sim = Simulation(sims, self.mover, **self.opt)
+        mc_sim = Simulation(sims, **self.opt)
         #monkeypatch to access acceptance value
         def nacceptRejectMC(self, temperature=300, **opt):
             """Function that chooses to accept or reject the proposed move.
