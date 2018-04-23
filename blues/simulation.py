@@ -112,6 +112,7 @@ class SimulationFactory(object):
         self.nc  = None
         self.nstepsNC = calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
         self.nstepsMD = nstepsMD
+        self.nprop = nprop
         self.opt = opt
         self.system_opt = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
                             'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
@@ -747,7 +748,7 @@ class Simulation(object):
         self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def runMC(self):
+    def runMC(self, nIter):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
@@ -760,8 +761,6 @@ class Simulation(object):
             the Simulation class was created.
         """
 
-        #set inital conditions
-        nIter = self.simulations.nIter
         #controls how many mc moves are performed during each iteration
         try:
             self.mc_per_iter = self.simulations.mc_per_iter
