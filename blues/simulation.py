@@ -498,7 +498,7 @@ class Simulation(object):
             if self.simulations.nprop > 1:
                 self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.simulations.nprop, prop_lambda[0],prop_lambda[1]))
             #Get number of NCMC steps before extra propagation
-            normal_ncmc_steps = round(prop_lambda[0] * self.simluations.nstepsNC,4)
+            normal_ncmc_steps = round(prop_lambda[0] * self.simulations.nstepsNC,4)
 
             #Get number of NCMC steps for extra propagation
             extra_ncmc_steps = (prop_range * self.simulations.nstepsNC) * self.simulations.nprop
