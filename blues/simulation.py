@@ -213,7 +213,25 @@ class SimulationFactory(object):
 
         return alch_system
 
-    def generateSystem(self, structure, system_opt):
+    def generateSystem(self, structure,
+                       nonbondedMethod=None,
+                       nonbondedCutoff=8.0*unit.angstroms,
+                       switchDistance=0.0*unit.angstroms,
+                       constraints=None,
+                       rigidWater=True,
+                       implicitSolvent=None,
+                       implicitSolventKappa=None,
+                       implicitSolventSaltConc=0.0*unit.moles/unit.liters,
+                       soluteDielectric=1.0,
+                       solventDielectric=78.5,
+                       useSASA=False,
+                       removeCMMotion=True,
+                       hydrogenMass=None,
+                       ewaldErrorTolerance=0.0005,
+                       flexibleConstraints=True,
+                       verbose=False,
+                       splitDihedrals=False,
+                       **system_opt):
         """Returns the OpenMM System for the reference system.
 
         Parameters
@@ -223,7 +241,15 @@ class SimulationFactory(object):
         system_opt : arguments for createSystem (i.e. cutoffs/constraints)
         """
         #distrubute list of options according to catagory
-        system = structure.createSystem(**system_opt)
+        system = structure.createSystem(nonbondedMethod=nonbondedMethod, nonbondedCutoff=nonbondedCutoff,
+                                        switchDistance=switchDistance, constraints=constraints,
+                                        rigidWater=rigidWater, implicitSolvent=implicitSolvent,
+                                        implicitSolventKappa=implicitSolventKappa,
+                                        implicitSolventSaltConc=implicitSolventSaltConc,
+                                        soluteDielectric=soluteDielectric, solventDielectric=solventDielectric,
+                                        useSASA=useSASA, removeCMMotion=removeCMMotion, hydrogenMass=hydrogenMass,
+                                        ewaldErrorTolerance=ewaldErrorTolerance, flexibleConstraints=flexibleConstraints,
+                                        verbose=verbose, splitDihedrals=splitDihedrals)
         return system
 
     def generateSimFromStruct(self, structure, move_engine, system, nstepsNC,
@@ -300,7 +326,7 @@ class SimulationFactory(object):
 
     def createSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
-        self.system = self.generateSystem(self.structure, self.system_opt)
+        self.system = self.generateSystem(self.structure, **self.system_opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.system_opt)
         self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
                                             ncmc=False, **self.system_opt)
