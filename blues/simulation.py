@@ -439,7 +439,7 @@ class Simulation(object):
         if (self.simulations.nstepsNC % 2) != 0:
             raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.simulations.nstepsNC))
         else:
-            self.movestep = int(self.simluations.nstepsNC) / 2
+            self.movestep = int(self.simulations.nstepsNC) / 2
 
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
