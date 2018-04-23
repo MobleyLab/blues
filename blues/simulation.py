@@ -143,8 +143,7 @@ class SimulationFactory(object):
                         'splitDihedrals']
 
         combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
-        method_arguments = list(combined_options.keys())
-        for sel in method_arguments:
+        for sel in system_opt:
             if sel in combined_options:
                 if sel in unit_options:
                     #if the value requires units check that it has units
@@ -155,7 +154,7 @@ class SimulationFactory(object):
                         try:
                             system_opt[sel]._value
                         except:
-                            self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, method_arguments[sel], unit_options[sel]))
+                            self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, system_opt[sel], unit_options[sel]))
                             system_opt[sel] = system_opt[sel]*unit_options[sel]
                 #if selection requires an OpenMM evaluation do it here
                 elif sel in app_options:
