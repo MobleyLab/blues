@@ -111,8 +111,6 @@ class SimulationFactory(object):
         self.alch  = None
         self.nc  = None
         self.nstepsNC = calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
-        self.nstepsMD = nstepsMD
-        self.nprop = nprop
         self.opt = opt
         self.system_opt = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
                             'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
@@ -437,10 +435,10 @@ class Simulation(object):
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
 
-        if (self.simulations.nstepsNC % 2) != 0:
-            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.simulations.nstepsNC))
+        if (self.simulations.system_options['nstepsNC'] % 2) != 0:
+            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.simulations.system_options['nstepsNC']))
         else:
-            self.movestep = int(self.simulations.nstepsNC) / 2
+            self.movestep = int(self.simulations.system_options['nstepsNC']) / 2
 
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
@@ -495,13 +493,13 @@ class Simulation(object):
         prop_lambda = self.nc_sim.context._integrator._prop_lambda
         prop_range = round(prop_lambda[1] - prop_lambda[0],4)
         if prop_range >= 0.0:
-            if self.simulations.nprop > 1:
-                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.simulations.nprop, prop_lambda[0],prop_lambda[1]))
+            if self.simulations.system_options['nprop'] > 1:
+                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.simulations.system_options['nprop'], prop_lambda[0],prop_lambda[1]))
             #Get number of NCMC steps before extra propagation
-            normal_ncmc_steps = round(prop_lambda[0] * self.simulations.nstepsNC,4)
+            normal_ncmc_steps = round(prop_lambda[0] * self.simulations.system_options['nstepsNC'],4)
 
             #Get number of NCMC steps for extra propagation
-            extra_ncmc_steps = (prop_range * self.simulations.nstepsNC) * self.simulations.nprop
+            extra_ncmc_steps = (prop_range * self.simulations.system_options['nstepsNC']) * self.simulations.system_options['nprop']
 
             self.log.info('\tLambda: 0.0 -> %s = %s NCMC Steps' % (prop_lambda[0],normal_ncmc_steps))
             self.log.info('\tLambda: %s -> %s = %s NCMC Steps' % (prop_lambda[0],prop_lambda[1],extra_ncmc_steps))
@@ -512,15 +510,15 @@ class Simulation(object):
             self.log.info('\t%s NCMC Steps/iter' % total_ncmc_steps)
 
         else:
-            total_ncmc_steps = self.simulations.nstepsNC
+            total_ncmc_steps = self.simulations.system_options['nstepsNC']
 
         #Total NCMC simulation time
-        time_ncmc_steps = total_ncmc_steps * self.simulations.dt
+        time_ncmc_steps = total_ncmc_steps * self.simulations.system_options['dt']
         self.log.info('\t%s NCMC ps/iter' % time_ncmc_steps)
 
         #Total MD simulation time
-        time_md_steps = self.simulations.nstepsMD * self.simulations.dt
-        self.log.info('MD Steps = %s' % self.simulations.nstepsMD)
+        time_md_steps = self.simulations.system_options['nstepsMD'] * self.simulations.system_options['dt']
+        self.log.info('MD Steps = %s' % self.simulations.system_options['nstepsMD'])
         self.log.info('\t%s MD ps/iter' % time_md_steps)
 
         #Total BLUES simulation time
@@ -530,7 +528,7 @@ class Simulation(object):
         self.log.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(nIter)))
 
         #Get trajectory frame interval timing for BLUES simulation
-        frame_iter = self.simulations.nstepsMD / self.simulations.trajectory_interval
+        frame_iter = self.simulations.system_options['nstepsMD'] / self.simulations.system_options['trajectory_interval']
         timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
         self.log.info('\tTrajectory Interval = %s ps' % timetraj_frame)
         self.log.info('\t\t%s frames/iter' % frame_iter )
@@ -620,7 +618,7 @@ class Simulation(object):
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.outfname, self.current_iter))
+            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.system_options['outfname'], self.current_iter))
 
         else:
             self.reject += 1
@@ -763,7 +761,7 @@ class Simulation(object):
 
         #controls how many mc moves are performed during each iteration
         try:
-            self.mc_per_iter = self.simulations.mc_per_iter
+            self.mc_per_iter = self.simulations.system_options['mc_per_iter']
         except:
             self.mc_per_iter = 1
 
