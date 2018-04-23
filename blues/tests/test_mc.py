@@ -117,7 +117,7 @@ class BLUESTester(unittest.TestCase):
         mc_sim.acceptRejectMC = nacceptRejectMC
         nacceptRejectMC.__get__(mc_sim)
         mc_sim.acceptRejectMC = types.MethodType(nacceptRejectMC, mc_sim)
-        mc_sim.runMC()
+        mc_sim.runMC(self.opt['nIter'])
         #get log acceptance
         print(mc_sim.log_mc)
         #if mc is working, should be around -24.1

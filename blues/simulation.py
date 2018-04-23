@@ -15,9 +15,9 @@ from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 from blues.reporters import init_logger
-
+from math import floor, ceil
 def calcNCMCSteps(total_steps, nprop, prop_lambda, log):
-    nstepsNC = total/(2*(nprop*prop_lambda+0.5-prop_lambda))
+    nstepsNC = total_steps/(2*(nprop*prop_lambda+0.5-prop_lambda))
     if int(nstepsNC) % 2 == 0:
         nstepsNC = int(nstepsNC)
     else:
@@ -32,6 +32,7 @@ def calcNCMCSteps(total_steps, nprop, prop_lambda, log):
         log.info('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
                        'Instead using {} total propogation steps, '.format(calc_total)+
                        '({} steps inside `prop_lambda` and {} steps outside `prop_lambda`.'.format(in_prop, out_prop))
+    log.info('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
     return nstepsNC
 
 
@@ -46,14 +47,14 @@ class SimulationFactory(object):
     """
     def __init__(self, structure, move_engine,
                 #integrator parameters
-                dt=0.002, friction=1, temperature=298*unit.kelvin,
+                dt=0.002, friction=1/unit.picoseconds, temperature=298*unit.kelvin,
                 nprop=5, prop_lambda=0.3, nstepsNC=1000,
                 nstepsMD=5000,
                 alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' },
 
 
-                trajectory_interval=None, reporter_interval=None,
+                trajectory_interval=5000, reporter_interval=5000,
                 #system parameters
                 nonbondedMethod=None,
                 nonbondedCutoff=8.0*unit.angstroms,
@@ -77,8 +78,10 @@ class SimulationFactory(object):
                 freeze_distance=0,
                 freeze_center='LIG',
                 freeze_solvent='HOH,NA,CL',
+                #mc options
+                mc_per_iter=1,
 
-        **opt):
+                **opt):
         """Requires a parmed.Structure of the entire system and the ncmc.Model
         object being perturbed.
 
@@ -114,13 +117,12 @@ class SimulationFactory(object):
                             'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
                             'implicitSolventSaltConc':implicitSolventSaltConc, 'temperature':temperature, 'soluteDielectric':soluteDielectric, 'useSASA':useSASA,
                             'removeCMMotion':removeCMMotion, 'hydrogenMass':hydrogenMass, 'ewaldErrorTolerance':ewaldErrorTolerance,
-                            'flexibleConstraints':flexibleConstraints, 'verbose':verbose, 'splitDihedrals':splitDihedrals}
-        self.alch_system_opt = {'freeze_distance':freeze_distance, 'freeze_center':freeze_center, 'freeze_solvent':freeze_solvent}
-
-        #Add check here to fail earlier
-        self.integrator_opt = {'dt':dt, 'friction':friction, 'temperature':temperature,
-                'nprop':nprop, 'prop_lambda':prop_lambda, 'nstepsNC':self.nstepsNC}
-
+                            'flexibleConstraints':flexibleConstraints, 'verbose':verbose, 'splitDihedrals':splitDihedrals,
+                            'freeze_distance':freeze_distance, 'freeze_center':freeze_center, 'freeze_solvent':freeze_solvent,
+                            'dt':dt, 'friction':friction, 'temperature':temperature,
+                            'nprop':nprop, 'prop_lambda':prop_lambda, 'nstepsNC':self.nstepsNC,
+                            'alchemical_functions':alchemical_functions,
+                            'mc_per_iter':mc_per_iter}
         for k,v in opt.items():
             self.log.info('{} = {}'.format(k,v))
         self.createSimulationSet()
@@ -267,20 +269,18 @@ class SimulationFactory(object):
             region defined by `prop_lambda`
         """
         integrator_arguments = {'temperature':temperature, 'friction':friction, 'dt':dt}
-        integrator_units = {'temperature', unit.kelvin, 'friction':1/unit.picoseconds, 'dt':unit.picoseconds}
+        integrator_units = {'temperature':unit.kelvin, 'friction':1/unit.picoseconds, 'dt':unit.picoseconds}
         for key in integrator_arguments:
             try:
                 integrator_arguments[key]._value
             except:
                 self.log.info('Units for {}:{} not specified. Using default units of {}'.format(key, integrator_arguments[key], integrator_units[key]))
-
                 integrator_arguments[key] = integrator_arguments[key]*integrator_units[key]
+
         if ncmc:
             #During NCMC simulation, lambda parameters are controlled by function dict below
             # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
-            functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
             integrator = AlchemicalExternalLangevinIntegrator(
                                     alchemical_functions=alchemical_functions,
                                    splitting= "H V R O R V H",
@@ -328,13 +328,13 @@ class SimulationFactory(object):
     def createSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.system_opt)
-        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.alch_system_opt)
+        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.system_opt)
         self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
-                                            ncmc=False, **self.opt)
+                                            ncmc=False, **self.system_opt)
         self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
-                                            ncmc=False, **self.opt)
+                                            ncmc=False, **self.system_opt)
         self.nc = self.generateSimFromStruct(self.structure, self.move_engine, self.alch_system,
-                                            ncmc=True, **self.opt)
+                                            ncmc=True, **self.system_opt)
 
 
 class Simulation(object):
@@ -346,7 +346,7 @@ class Simulation(object):
         blues.run()
 
     """
-    def __init__(self, simulations, move_engine, nIter, **opt
+    def __init__(self, simulations, move_engine, **opt
         ):
         """Initialize the BLUES Simulation object.
 
@@ -428,7 +428,7 @@ class Simulation(object):
         self.alch_sim = simulations.alch
         self.nc_sim = simulations.nc
         self.move_engine = move_engine
-
+        self.temperature = self.md_sim.integrator.getTemperature()
         self.accept = 0
         self.reject = 0
         self.accept_ratio = 0
@@ -619,7 +619,7 @@ class Simulation(object):
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.outfname,self.current_iter))
+            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.outfname, self.current_iter))
 
         else:
             self.reject += 1
@@ -709,9 +709,9 @@ class Simulation(object):
         for n in range(int(nIter)):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC(**self.opt)
-            self.acceptRejectNCMC(**self.opt)
-            self.simulateMD(self.simulations.nstepsMD, **self.opt)
+            self.simulateNCMC(**self.simulations.system_options)
+            self.acceptRejectNCMC(**self.simulations.system_options)
+            self.simulateMD(**self.simulations.system_options)
 
         # END OF NITER
         self.accept_ratio = self.accept/float(nIter)
@@ -774,5 +774,5 @@ class Simulation(object):
             for i in range(self.mc_per_iter):
                 self.setStateConditions()
                 self.simulateMC()
-                self.acceptRejectMC(**self.opt)
-            self.simulateMD(**self.opt)
+                self.acceptRejectMC(**self.simulations.system_options)
+            self.simulateMD(**self.simulations.system_options)
