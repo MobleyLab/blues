@@ -88,10 +88,7 @@ class BLUESTester(unittest.TestCase):
         #Initialize the SimulationFactory object
         sims = SimulationFactory(structure, self.mover, **self.opt)
         #print(sims)
-        system = sims.generateSystem(structure, **self.opt)
-        simdict = sims.createSimulationSet()
-        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, self.mover, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.nc
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         mc_sim = Simulation(sims, self.mover, **self.opt)
@@ -113,7 +110,7 @@ class BLUESTester(unittest.TestCase):
                 print('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
                 self.md_sim.context.setPositions(md_state0['positions'])
             self.log_mc = log_mc
-            self.md_sim.context.setVelocitiesToTemperature(self.opt['temperature'])
+            self.md_sim.context.setVelocitiesToTemperature(temperature)
         mc_sim.acceptRejectMC = nacceptRejectMC
         nacceptRejectMC.__get__(mc_sim)
         mc_sim.acceptRejectMC = types.MethodType(nacceptRejectMC, mc_sim)

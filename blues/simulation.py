@@ -16,25 +16,6 @@ from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 from blues.reporters import init_logger
 from math import floor, ceil
-def calcNCMCSteps(total_steps, nprop, prop_lambda, log):
-    nstepsNC = total_steps/(2*(nprop*prop_lambda+0.5-prop_lambda))
-    if int(nstepsNC) % 2 == 0:
-        nstepsNC = int(nstepsNC)
-    else:
-        nstepsNC = int(nstepsNC) + 1
-
-    number = 1./nstepsNC
-
-    in_prop = int(nprop*(2*floor(float(prop_lambda)/number)))
-    out_prop = int((2*ceil(float(0.5-prop_lambda)/number)))
-    calc_total = int(in_prop + out_prop)
-    if calc_total != total_steps:
-        log.info('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
-                       'Instead using {} total propogation steps, '.format(calc_total)+
-                       '({} steps inside `prop_lambda` and {} steps outside `prop_lambda`.'.format(in_prop, out_prop))
-    log.info('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
-    return nstepsNC
-
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -110,7 +91,7 @@ class SimulationFactory(object):
         self.md = None
         self.alch  = None
         self.nc  = None
-        self.nstepsNC = calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
+        self.nstepsNC = self.calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
         self.opt = opt
         system_opt = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
                             'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
@@ -119,15 +100,16 @@ class SimulationFactory(object):
                             'flexibleConstraints':flexibleConstraints, 'verbose':verbose, 'splitDihedrals':splitDihedrals,
                             'freeze_distance':freeze_distance, 'freeze_center':freeze_center, 'freeze_solvent':freeze_solvent,
                             'dt':dt, 'friction':friction, 'temperature':temperature,
-                            'nprop':nprop, 'prop_lambda':prop_lambda, 'nstepsNC':self.nstepsNC,
+                            'nprop':nprop, 'prop_lambda':prop_lambda, 'nstepsNC':self.nstepsNC, 'nstepsMD':nstepsMD,
                             'alchemical_functions':alchemical_functions,
-                            'mc_per_iter':mc_per_iter}
-        self.system_opt = self.add_units(system_opt)
+                            'mc_per_iter':mc_per_iter, 'trajectory_interval':trajectory_interval, 'reporter_interval':reporter_interval}
+        self.system_opt = self.add_units(system_opt, self.log)
         for k,v in opt.items():
             self.log.info('{} = {}'.format(k,v))
         self.createSimulationSet()
 
-    def add_units(self, system_opt):
+    @staticmethod
+    def add_units(system_opt, logger):
         #for system setup portion
 
         #set unit defaults to OpenMM defaults
@@ -143,7 +125,7 @@ class SimulationFactory(object):
                         'splitDihedrals']
 
         combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
-        for sel in system_opt:
+        for sel in system_opt.keys():
             if sel in combined_options:
                 if sel in unit_options:
                     #if the value requires units check that it has units
@@ -154,7 +136,7 @@ class SimulationFactory(object):
                         try:
                             system_opt[sel]._value
                         except:
-                            self.log.info('Units for {}:{} not specified. Using default units of {}'.format(sel, system_opt[sel], unit_options[sel]))
+                            logger.info('Units for {}:{} not specified. Using default units of {}'.format(sel, system_opt[sel], unit_options[sel]))
                             system_opt[sel] = system_opt[sel]*unit_options[sel]
                 #if selection requires an OpenMM evaluation do it here
                 elif sel in app_options:
@@ -168,6 +150,25 @@ class SimulationFactory(object):
                     pass
         return system_opt
 
+    @staticmethod
+    def calcNCMCSteps(total_steps, nprop, prop_lambda, log):
+        nstepsNC = total_steps/(2*(nprop*prop_lambda+0.5-prop_lambda))
+        if int(nstepsNC) % 2 == 0:
+            nstepsNC = int(nstepsNC)
+        else:
+            nstepsNC = int(nstepsNC) + 1
+
+        number = 1./nstepsNC
+
+        in_prop = int(nprop*(2*floor(float(prop_lambda)/number)))
+        out_prop = int((2*ceil(float(0.5-prop_lambda)/number)))
+        calc_total = int(in_prop + out_prop)
+        if calc_total != total_steps:
+            log.info('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
+                           'Instead using {} total propogation steps, '.format(calc_total)+
+                           '({} steps inside `prop_lambda` and {} steps outside `prop_lambda`.'.format(in_prop, out_prop))
+        log.info('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
+        return nstepsNC
 
     def _zero_allother_masses(self, system, indexlist):
         num_atoms = system.getNumParticles()
@@ -435,10 +436,10 @@ class Simulation(object):
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
 
-        if (self.simulations.system_options['nstepsNC'] % 2) != 0:
-            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.simulations.system_options['nstepsNC']))
+        if (self.simulations.system_opt['nstepsNC'] % 2) != 0:
+            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.simulations.system_opt['nstepsNC']))
         else:
-            self.movestep = int(self.simulations.system_options['nstepsNC']) / 2
+            self.movestep = int(self.simulations.system_opt['nstepsNC']) / 2
 
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
@@ -493,13 +494,13 @@ class Simulation(object):
         prop_lambda = self.nc_sim.context._integrator._prop_lambda
         prop_range = round(prop_lambda[1] - prop_lambda[0],4)
         if prop_range >= 0.0:
-            if self.simulations.system_options['nprop'] > 1:
-                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.simulations.system_options['nprop'], prop_lambda[0],prop_lambda[1]))
+            if self.simulations.system_opt['nprop'] > 1:
+                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.simulations.system_opt['nprop'], prop_lambda[0],prop_lambda[1]))
             #Get number of NCMC steps before extra propagation
-            normal_ncmc_steps = round(prop_lambda[0] * self.simulations.system_options['nstepsNC'],4)
+            normal_ncmc_steps = round(prop_lambda[0] * self.simulations.system_opt['nstepsNC'],4)
 
             #Get number of NCMC steps for extra propagation
-            extra_ncmc_steps = (prop_range * self.simulations.system_options['nstepsNC']) * self.simulations.system_options['nprop']
+            extra_ncmc_steps = (prop_range * self.simulations.system_opt['nstepsNC']) * self.simulations.system_opt['nprop']
 
             self.log.info('\tLambda: 0.0 -> %s = %s NCMC Steps' % (prop_lambda[0],normal_ncmc_steps))
             self.log.info('\tLambda: %s -> %s = %s NCMC Steps' % (prop_lambda[0],prop_lambda[1],extra_ncmc_steps))
@@ -510,15 +511,15 @@ class Simulation(object):
             self.log.info('\t%s NCMC Steps/iter' % total_ncmc_steps)
 
         else:
-            total_ncmc_steps = self.simulations.system_options['nstepsNC']
+            total_ncmc_steps = self.simulations.system_opt['nstepsNC']
 
         #Total NCMC simulation time
-        time_ncmc_steps = total_ncmc_steps * self.simulations.system_options['dt']
+        time_ncmc_steps = total_ncmc_steps * self.simulations.system_opt['dt'].value_in_unit(unit.picoseconds)
         self.log.info('\t%s NCMC ps/iter' % time_ncmc_steps)
 
         #Total MD simulation time
-        time_md_steps = self.simulations.system_options['nstepsMD'] * self.simulations.system_options['dt']
-        self.log.info('MD Steps = %s' % self.simulations.system_options['nstepsMD'])
+        time_md_steps = self.simulations.system_opt['nstepsMD'] * self.simulations.system_opt['dt'].value_in_unit(unit.picoseconds)
+        self.log.info('MD Steps = %s' % self.simulations.system_opt['nstepsMD'])
         self.log.info('\t%s MD ps/iter' % time_md_steps)
 
         #Total BLUES simulation time
@@ -528,7 +529,7 @@ class Simulation(object):
         self.log.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(nIter)))
 
         #Get trajectory frame interval timing for BLUES simulation
-        frame_iter = self.simulations.system_options['nstepsMD'] / self.simulations.system_options['trajectory_interval']
+        frame_iter = self.simulations.system_opt['nstepsMD'] / self.simulations.system_opt['trajectory_interval']
         timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
         self.log.info('\tTrajectory Interval = %s ps' % timetraj_frame)
         self.log.info('\t\t%s frames/iter' % frame_iter )
@@ -618,7 +619,7 @@ class Simulation(object):
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.system_options['outfname'], self.current_iter))
+            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.system_opt['outfname'], self.current_iter))
 
         else:
             self.reject += 1
@@ -708,9 +709,9 @@ class Simulation(object):
         for n in range(int(nIter)):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC(**self.simulations.system_options)
-            self.acceptRejectNCMC(**self.simulations.system_options)
-            self.simulateMD(**self.simulations.system_options)
+            self.simulateNCMC(**self.simulations.system_opt)
+            self.acceptRejectNCMC(**self.simulations.system_opt)
+            self.simulateMD(**self.simulations.system_opt)
 
         # END OF NITER
         self.accept_ratio = self.accept/float(nIter)
@@ -761,7 +762,7 @@ class Simulation(object):
 
         #controls how many mc moves are performed during each iteration
         try:
-            self.mc_per_iter = self.simulations.system_options['mc_per_iter']
+            self.mc_per_iter = self.simulations.system_opt['mc_per_iter']
         except:
             self.mc_per_iter = 1
 
@@ -771,5 +772,5 @@ class Simulation(object):
             for i in range(self.mc_per_iter):
                 self.setStateConditions()
                 self.simulateMC()
-                self.acceptRejectMC(**self.simulations.system_options)
-            self.simulateMD(**self.simulations.system_options)
+                self.acceptRejectMC(**self.simulations.system_opt)
+            self.simulateMD(**self.simulations.system_opt)
