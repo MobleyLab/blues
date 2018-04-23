@@ -27,7 +27,7 @@ class SimulationFactory(object):
     """
     def __init__(self, structure, move_engine,
                 #integrator parameters
-                dt=0.002, friction=1, temperature=298*unit.kelvin, friction=
+                dt=0.002, friction=1, temperature=298*unit.kelvin, friction=1,
                 nprop=5, prop_lambda=0.3, nstepsNC=1000,
 
                 trajectory_interval=None, reporter_interval=None,
