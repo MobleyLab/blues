@@ -12,6 +12,7 @@ from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
 from math import floor, ceil
+from collections import OrderedDict
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -168,20 +169,23 @@ class SimulationFactory(object):
         self.md = None
         self.alch  = None
         self.nc  = None
-        self.nstepsNC = self.calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
+        self.nstepsNC, self.integration_steps = self.calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
         self.opt = opt
-        system_opt = {'nonbondedMethod':nonbondedMethod, 'nonbondedCutoff':nonbondedCutoff, 'switchDistance':switchDistance, 'constraints':constraints,
-                            'rigidWater':rigidWater, 'implicitSolvent':implicitSolvent, 'implicitSolventKappa':implicitSolventKappa,
-                            'implicitSolventSaltConc':implicitSolventSaltConc, 'temperature':temperature, 'soluteDielectric':soluteDielectric, 'useSASA':useSASA,
-                            'removeCMMotion':removeCMMotion, 'hydrogenMass':hydrogenMass, 'ewaldErrorTolerance':ewaldErrorTolerance,
-                            'flexibleConstraints':flexibleConstraints, 'verbose':verbose, 'splitDihedrals':splitDihedrals,
-                            'freeze_distance':freeze_distance, 'freeze_center':freeze_center, 'freeze_solvent':freeze_solvent,
-                            'dt':dt, 'friction':friction, 'temperature':temperature,
-                            'nprop':nprop, 'prop_lambda':prop_lambda, 'nstepsNC':self.nstepsNC, 'nstepsMD':nstepsMD,
-                            'alchemical_functions':alchemical_functions,
-                            'mc_per_iter':mc_per_iter, 'trajectory_interval':trajectory_interval, 'reporter_interval':reporter_interval}
+        system_opt = OrderedDict([('nonbondedMethod',nonbondedMethod), ('nonbondedCutoff',nonbondedCutoff), ('switchDistance',switchDistance), ('constraints',constraints),
+                            ('rigidWater',rigidWater), ('implicitSolvent',implicitSolvent), ('implicitSolventKappa',implicitSolventKappa),
+                            ('implicitSolventSaltConc',implicitSolventSaltConc), ('temperature',temperature), ('soluteDielectric',soluteDielectric), ('useSASA',useSASA),
+                            ('removeCMMotion',removeCMMotion), ('hydrogenMass',hydrogenMass), ('ewaldErrorTolerance',ewaldErrorTolerance),
+                            ('flexibleConstraints',flexibleConstraints), ('verbose',verbose), ('splitDihedrals',splitDihedrals),
+                            ('freeze_distance',freeze_distance), ('freeze_center',freeze_center), ('freeze_solvent',freeze_solvent),
+                            ('dt',dt), ('friction',friction), ('temperature',temperature),
+                            ('nprop',nprop), ('prop_lambda',prop_lambda), ('nstepsNC',self.nstepsNC), ('nstepsMD',nstepsMD),
+                            ('alchemical_functions',alchemical_functions),
+                            ('mc_per_iter',mc_per_iter), ('trajectory_interval',trajectory_interval), ('reporter_interval',reporter_interval),
+                            ('softcore_alpha',softcore_alpha), ('softcore_a',softcore_a), ('softcore_b',softcore_b), ('softcore_c',softcore_c),
+                            ('softcore_beta',softcore_beta), ('softcore_d',softcore_d), ('softcore_e',softcore_e), ('softcore_f',softcore_f),
+                            ('annihilate_electrostatics',annihilate_electrostatics), ('annihilate_sterics',annihilate_sterics)])
         self.system_opt = self.add_units(system_opt, self.log)
-        for k,v in opt.items():
+        for k,v in system_opt.items():
             self.log.info('{} = {}'.format(k,v))
         self.createSimulationSet()
 
@@ -249,7 +253,7 @@ class SimulationFactory(object):
                            'Instead using {} total propogation steps, '.format(calc_total)+
                            '({} steps inside `prop_lambda` and {} steps outside `prop_lambda)`.'.format(in_prop, out_prop))
         log.info('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
-        return nstepsNC
+        return nstepsNC, calc_total
 
     def _zero_allother_masses(self, system, indexlist):
         num_atoms = system.getNumParticles()
@@ -578,27 +582,7 @@ class Simulation(object):
     def _getSimulationInfo(self, nIter):
         """self.log.infos out simulation timing and related information."""
 
-        prop_lambda = self.nc_sim.context._integrator._prop_lambda
-        prop_range = round(prop_lambda[1] - prop_lambda[0],4)
-        if prop_range >= 0.0:
-            if self.simulations.system_opt['nprop'] > 1:
-                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.simulations.system_opt['nprop'], prop_lambda[0],prop_lambda[1]))
-            #Get number of NCMC steps before extra propagation
-            normal_ncmc_steps = round(prop_lambda[0] * self.simulations.system_opt['nstepsNC'],4)
-
-            #Get number of NCMC steps for extra propagation
-            extra_ncmc_steps = (prop_range * self.simulations.system_opt['nstepsNC']) * self.simulations.system_opt['nprop']
-
-            self.log.info('\tLambda: 0.0 -> %s = %s NCMC Steps' % (prop_lambda[0],normal_ncmc_steps))
-            self.log.info('\tLambda: %s -> %s = %s NCMC Steps' % (prop_lambda[0],prop_lambda[1],extra_ncmc_steps))
-            self.log.info('\tLambda: %s -> 1.0 = %s NCMC Steps' % (prop_lambda[1],normal_ncmc_steps))
-
-            #Get total number of NCMC steps including extra propagation
-            total_ncmc_steps = (normal_ncmc_steps * 2.0) + extra_ncmc_steps
-            self.log.info('\t%s NCMC Steps/iter' % total_ncmc_steps)
-
-        else:
-            total_ncmc_steps = self.simulations.system_opt['nstepsNC']
+        total_ncmc_steps = self.simulations.integration_steps
 
         #Total NCMC simulation time
         time_ncmc_steps = total_ncmc_steps * self.simulations.system_opt['dt'].value_in_unit(unit.picoseconds)
