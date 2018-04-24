@@ -8,15 +8,10 @@ import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
 import parmed, math
-import mdtraj
-import sys, time, os
-from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
-from blues.reporters import init_logger
 from math import floor, ceil
-from decimal import Decimal
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -26,6 +21,99 @@ class SimulationFactory(object):
         sims = SimulationFactory(structure, move_engine, **opt)
         sims.createSimulationSet()
     #TODO: add functionality for handling multiple alchemical regions
+
+    Parameters
+    ----------
+    simulations : blues.ncmc.SimulationFactory object
+        SimulationFactory Object which carries the 3 required
+        OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
+    move_engine : blues.ncmc.MoveEngine object
+        MoveProposal object which contains the dict of moves performed
+        in the NCMC simulation.
+
+    Integrator options
+    ------------------
+    dt: int, optional, default=0.002
+        The timestep of the integrator to use (in ps).
+    nprop: int, optional, default=5
+        The number of additional propogation steps to be inserted
+        during the middle of the NCMC protocol (defined by
+        `prop_lambda`)
+    prop_lambda: float, optional, default=0.3
+        The range which additional propogation steps are added,
+        defined by [0.5-prop_lambda, 0.5+prop_lambda].
+    nstepsNC: int, optional, default=1000
+        The number of NCMC relaxation steps to use.
+
+    System options
+    --------------
+    Any arguments that are used to create a system from
+    parmed Structure.createSystem() can be passed, where
+    the string key in the dictionarycorresponds to the particular
+    argument (such as nonbondedMethod, hydrogenMass, etc.).
+    For arugments that require units, units can be specified,
+    or if floats/ints are used, then the default OpenMM units
+    are used. These are:
+        length: nanometers
+        time: picoseconds
+        mass: atomic mass units (daltons)
+        charge: proton charge
+        temperature: Kelvin
+    For arguments that require classes from openmm.app,
+    such as nonbondedMethod either the class can be used directly,
+    or the string corresponding to that class can be used.
+    So for the `nonbondedMethod` arugment, for example, either
+    openmm.app.PME or 'PME' can be used.
+
+    Simulation options
+    ------------------
+    nIter: int, optional, default=100
+        The number of MD + NCMC/MC iterations to perform.
+    mc_per_iter: int, optional, default=1
+        The number of MC moves to perform during each
+        iteration of a MD + MC simulations.
+
+    Reporter options
+    ----------------
+    trajectory_interval: int or None, optional, default=None
+        Used to calculate the number of trajectory frames
+        per iteration. If None, defaults to the value of nstepsNC.
+    reporter_interval: int or None, optional, default=None
+        Outputs information (steps, speed, accepted moves, iterations)
+        about the NCMC simulation every reporter_interval interval.
+        If None, defaults to the value of nstepsNC.
+    outfname: str
+        Prefix of log file to output to.
+    Logger: logging.Logger
+        Adds a logger that will output relevant non-trajectory
+        simulation information to a log.
+
+    Alchemical System options
+    -------------------------
+    freeze_center : str, optional, default='HOH,NA,CL'
+        AmberMask selection for the center in which to select atoms for zeroing their masses. Default: LIG
+    freeze_distance : float, optional, default=0
+        Distance (angstroms) to select atoms for retaining their masses.
+        Atoms outside the set distance will have their masses set to 0.0. Default: 0.0
+    freeze_solvent : str
+        AmberMask selection in which to select solvent atoms for zeroing their masses. Default: HOH,NA,CL
+    annihilate_electrostatics : bool, optional
+        If True, electrostatics should be annihilated, rather than decoupled
+        (default is True).
+    annihilate_sterics : bool, optional
+        If True, sterics (Lennard-Jones or Halgren potential) will be annihilated,
+        rather than decoupled (default is False).
+    softcore_alpha : float, optional
+        Alchemical softcore parameter for Lennard-Jones (default is 0.5).
+    softcore_a, softcore_b, softcore_c : float, optional
+        Parameters modifying softcore Lennard-Jones form. Introduced in
+        Eq. 13 of Ref. [1] (default is 1 for a,b and 6 for c).
+    softcore_beta : float, optional
+        Alchemical softcore parameter for electrostatics. Set this to zero
+        to recover standard electrostatic scaling (default is 0.0).
+    softcore_d, softcore_e, softcore_f : float, optional
+        Parameters modifying softcore electrostatics form (default is 1 for d,e and 2 for f).
+
     """
     def __init__(self, structure, move_engine,
                 #integrator parameters
@@ -34,32 +122,20 @@ class SimulationFactory(object):
                 nstepsMD=5000,
                 alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' },
-
-
                 trajectory_interval=5000, reporter_interval=5000,
-                #system parameters
-                nonbondedMethod=None,
-                nonbondedCutoff=8.0*unit.angstroms,
-                switchDistance=0.0*unit.angstroms,
-                constraints=None,
-                rigidWater=True,
-                implicitSolvent=None,
-                implicitSolventKappa=None,
-                implicitSolventSaltConc=0.0*unit.moles/unit.liters,
-                soluteDielectric=1.0,
-                solventDielectric=78.5,
-                useSASA=False,
-                removeCMMotion=True,
-                hydrogenMass=None,
-                ewaldErrorTolerance=0.0005,
-                flexibleConstraints=True,
-                verbose=False,
-                splitDihedrals=False,
+                #createSystem parameters
+                nonbondedMethod=None, nonbondedCutoff=8.0*unit.angstroms, switchDistance=0.0*unit.angstroms,
+                constraints=None, rigidWater=True, implicitSolvent=None, implicitSolventKappa=None,
+                implicitSolventSaltConc=0.0*unit.moles/unit.liters, soluteDielectric=1.0, solventDielectric=78.5,
+                useSASA=False, removeCMMotion=True, hydrogenMass=None, ewaldErrorTolerance=0.0005,
+                flexibleConstraints=True, verbose=False, splitDihedrals=False,
 
                 #alchemical system parameters
-                freeze_distance=0,
-                freeze_center='LIG',
-                freeze_solvent='HOH,NA,CL',
+                freeze_distance=0, freeze_center='LIG', freeze_solvent='HOH,NA,CL',
+                softcore_alpha=0.5, softcore_a=1, softcore_b=1, softcore_c=6,
+                softcore_beta=0.0, softcore_d=1, softcore_e=1, softcore_f=2,
+                annihilate_electrostatics=True, annihilate_sterics=False,
+
                 #mc options
                 mc_per_iter=1,
 
@@ -186,6 +262,9 @@ class SimulationFactory(object):
 
     def generateAlchSystem(self, system, atom_indices,
                             freeze_distance=0, freeze_center='LIG', freeze_solvent='HOH,NA,CL',
+                            softcore_alpha=0.5, softcore_a=1, softcore_b=1, softcore_c=6,
+                            softcore_beta=0.0, softcore_d=1, softcore_e=1, softcore_f=2,
+                            annihilate_electrostatics=True, annihilate_sterics=False,
                             **opt):
         """Returns the OpenMM System for alchemical perturbations.
 
@@ -204,7 +283,11 @@ class SimulationFactory(object):
         """
         logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
         factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
-        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
+        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, softcore_alpha=softcore_alpha,
+                                softcore_a=softcore_a, softcore_b=softcore_b, softcore_c=softcore_c,
+                                softcore_beta=softcore_beta, softcore_d=softcore_d, softcore_e=softcore_e,
+                                softcore_f=softcore_f, annihilate_electrostatics=annihilate_electrostatics,
+                                annihilate_sterics=annihilate_sterics)
         alch_system = factory.create_alchemical_system(system, alch_region)
 
         if freeze_distance:
