@@ -11,7 +11,7 @@ https://github.com/pandegroup/openmm/blob/master/examples/benchmark.py
 """
 
 from __future__ import print_function
-from blues.mold import MolDartMove
+from blues.moves import MolDartMove
 from blues.engine import MoveEngine
 from blues import utils
 from blues.simulation import Simulation, SimulationFactory
@@ -49,6 +49,7 @@ def runNCMC(platform_name):
                                       pdb_files=[posA, posB],
                                       fit_atoms=fit_atoms,
                                       restrained_receptor_atoms=[1605, 1735, 1837],
+                                      rigid_ring=True
                                       )
 
     # Initialize object that proposes moves.
