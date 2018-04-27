@@ -63,6 +63,35 @@ class BLUESTester(unittest.TestCase):
         nc_sim = sims.generateSimFromStruct(self.full_struct, engine, alch_system, ncmc=True, **self.opt)
         self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
 
+    def test_barostat_force(self):
+        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
+                'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2, 'nprop' : 1,
+                'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
+                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
+                'platform' : None, 'write_move' : False, 'barostat_frequency':25}
+
+        #Initialize the SimulationFactory object
+        move = RandomLigandRotationMove(self.full_struct, 'LIG')
+        engine = MoveEngine(move)
+        sims = SimulationFactory(self.full_struct, engine, **self.opt)
+
+        system = sims.generateSystem(self.full_struct, **self.opt)
+        self.assertIsInstance(system, openmm.System)
+
+        alch_system = sims.generateAlchSystem(system, move.atom_indices)
+        self.assertIsInstance(alch_system, openmm.System)
+
+        md_sim = sims.generateSimFromStruct(self.full_struct, engine, system, **self.opt)
+        self.assertIsInstance(md_sim, openmm.app.simulation.Simulation)
+
+        nc_sim = sims.generateSimFromStruct(self.full_struct, engine, alch_system, ncmc=True, **self.opt)
+        for asystem in [md_sim.system, nc_sim.system]:
+            nc_forces = asystem.getForces()
+            barostat = [i for i in nc_forces if isinstance(i, openmm.MonteCarloBarostat)]
+            assert len(barostat) == 1
+        self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
+
+
     def test_simulationRun(self):
         """Tests the Simulation.runNCMC() function"""
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
