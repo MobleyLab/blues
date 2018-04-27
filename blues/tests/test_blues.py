@@ -4,8 +4,9 @@ from blues import utils
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.simulation import Simulation, SimulationFactory
-from simtk import openmm
+from simtk import openmm, unit
 from openmmtools import testsystems
+import logging
 
 
 class BLUESTester(unittest.TestCase):
@@ -17,12 +18,11 @@ class BLUESTester(unittest.TestCase):
         self.prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
         self.inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
         self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
-        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
+        self.opt = SimulationFactory.add_units({ 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
-                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
+                'nonbondedMethod' : openmm.app.PME, 'nonbondedCutoff': 10*unit.angstroms, 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
-                'platform' : None,
-                'verbose' : True }
+                'platform' : None}, logging.getLogger(__name__))
 
 
     def test_moveproperties(self):
@@ -69,8 +69,7 @@ class BLUESTester(unittest.TestCase):
                 'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
-                'platform' : None, 'write_ncmc' : False, 'write_move' : False,
-                'verbose' : True }
+                'platform' : None, 'write_move' : False}
 
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
         structure = parmed.openmm.topsystem.load_topology(topology=testsystem.topology,
@@ -87,13 +86,10 @@ class BLUESTester(unittest.TestCase):
         #Initialize the SimulationFactory object
         sims = SimulationFactory(structure, self.mover, **self.opt)
         #print(sims)
-        system = sims.generateSystem(structure, **self.opt)
-        simdict = sims.createSimulationSet()
-        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, self.mover, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.nc
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        asim = Simulation(sims, self.mover, **self.opt)
+        asim = Simulation(sims, **self.opt)
         asim.run(self.opt['nIter'])
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ class MoveEngineTester(unittest.TestCase):
                            'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
-                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
+                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 1, 'constraints': 'HBonds',
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
                 'outfname' : 'moveproposal-test',
                 'platform' : None,
@@ -32,9 +32,7 @@ class MoveEngineTester(unittest.TestCase):
         self.engine.selectMove()
         #Initialize the SimulationFactory object
         sims = SimulationFactory(structure, self.engine, **self.opt)
-        system = sims.generateSystem(structure, **self.opt)
-        alch_system = sims.generateAlchSystem(system, self.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, self.engine, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.nc
 
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
