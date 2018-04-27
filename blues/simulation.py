@@ -9,28 +9,12 @@ from simtk import unit, openmm
 from simtk.openmm import app
 import parmed, math
 import mdtraj
-import sys, time
+import sys, time, os
 from datetime import datetime
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 import logging
-
-def init_logger(outfname='blues'):
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(levelname)s-%(asctime)s %(message)s',  "%H:%M:%S")
-    # Write to File
-    fh = logging.FileHandler(outfname+'.log')
-    fh.setLevel(logging.INFO)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    # Stream to terminal
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    return logger
+from blues.reporters import init_logger
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -49,19 +33,19 @@ class SimulationFactory(object):
         nIter=5, nstepsNC=50, nstepsMD=10000,
         temperature=300, friction=1, dt=0.002,
         nonbondedMethod='PME', nonbondedCutoff=10, constraints='HBonds',
-        trajectory_interval=1000, reporter_interval=1000, platform=None,
-        verbose=False"""
+        trajectory_interval=1000, reporter_interval=1000, platform=None"""
         if 'Logger' in opt:
             self.log = opt['Logger']
         else:
-            self.log = init_logger(opt['outfname'])
+            self.log = logging.getLogger(__name__)
+            #self.log = init_logger(logger)
 
         #Structure of entire system
         self.structure = structure
         #Atom indicies from move_engine
         #TODO: change atom_indices selection for multiple regions
         self.atom_indices = move_engine.moves[0].atom_indices
-
+        self.move_engine = move_engine
         self.system = None
         self.alch_system = None
         self.md = None
@@ -69,8 +53,14 @@ class SimulationFactory(object):
         self.nc  = None
 
         self.opt = opt
+        #Add check here to fail earlier
+        if (self.opt['nstepsNC'] % 2) != 0:
+            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
+            #rounded_val = self.opt['nstepsNC'] & ~1
+            #self.log.warn("NCMC steps must be even for symmetric protocol. Setting 'nstepsNC = %i'" % (rounded_val))
+            #self.opt['nstepsNC'] = rounded_val
         for k,v in opt.items():
-            self.log.info('Options: {} = {}'.format(k,v))
+            self.log.info('{} = {}'.format(k,v))
 
     def _zero_allother_masses(self, system, indexlist):
         num_atoms = system.getNumParticles()
@@ -102,15 +92,14 @@ class SimulationFactory(object):
         logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
         factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices)
-        #alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, annihilate_electrostatics=True, annihilate_sterics=True)
         alch_system = factory.create_alchemical_system(system, alch_region)
-
 
         if freeze_distance:
             #Atom selection for zeroing protein atom masses
             mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance,freeze_solvent))
             site_idx = [i for i in mask.Selected()]
-            self.log.info('Zeroing mass of %s atoms %.1f Angstroms from LIG' % (len(site_idx), freeze_distance))
+            self.log.info('Zeroing mass of %s atoms %.1f Angstroms from %s in alchemical system' % (len(site_idx), freeze_distance, freeze_center))
+            self.log.debug('\nFreezing atom selection = %s' % site_idx)
             alch_system = self._zero_allother_masses(alch_system, site_idx)
         else:
             pass
@@ -118,7 +107,7 @@ class SimulationFactory(object):
         return alch_system
 
     def generateSystem(self, structure, nonbondedMethod='PME', nonbondedCutoff=10,
-                       constraints='HBonds', hydrogenMass=None, **opt):
+                       constraints='HBonds', hydrogenMass=None, barostat_frequency=0, barostat_pressure=1*unit.bar, temperature=300, **opt):
         """Returns the OpenMM System for the reference system.
 
         Parameters
@@ -136,13 +125,14 @@ class SimulationFactory(object):
                             nonbondedCutoff=nonbondedCutoff*unit.angstroms,
                             constraints=eval("app.%s" % constraints),
                             hydrogenMass=hydrogenMass)
+        if barostat_frequency:
+            system.addForce(openmm.MonteCarloBarostat(barostat_pressure, temperature, barostat_frequency))
         return system
 
-    def generateSimFromStruct(self, structure, system, nIter, nstepsNC, nstepsMD,
+    def generateSimFromStruct(self, structure, move_engine, system, nIter, nstepsNC, nstepsMD,
                              temperature=300, dt=0.002, friction=1,
                              reporter_interval=1000, nprop=1, prop_lambda=0.3,
-                             ncmc=False, platform=None, verbose=True,
-                             **opt):
+                             ncmc=False, platform=None, **opt):
         """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
 
         Parameters
@@ -175,10 +165,15 @@ class SimulationFactory(object):
                                    nprop=nprop,
                                    prop_lambda=prop_lambda
                                    )
+
+            for move in move_engine.moves:
+                system, integrator = move.initializeSystem(system, integrator)
+
         else:
             integrator = openmm.LangevinIntegrator(temperature*unit.kelvin,
                                                    friction/unit.picosecond,
                                                    dt*unit.picoseconds)
+
         #TODO SIMPLIFY TO 1 LINE.
         #Specifying platform properties here used for local development.
         if platform is None:
@@ -188,16 +183,15 @@ class SimulationFactory(object):
             platform = openmm.Platform.getPlatformByName(platform)
             simulation = app.Simulation(structure.topology, system, integrator, platform)
 
-        if verbose:
+        if ncmc: #Encapsulate so this self.log.infos once
             # OpenMM platform information
             mmver = openmm.version.version
             mmplat = simulation.context.getPlatform()
-            self.log.debug('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()))
-
+            self.log.info('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()))
             # Platform properties
             for prop in mmplat.getPropertyNames():
                 val = mmplat.getPropertyValue(simulation.context, prop)
-                self.log.debug('PlatformProperties: {} - {}'.format(prop,val))
+                self.log.info('{} = {}'.format(prop,val))
 
         # Set initial positions/velocities
         # Will get overwritten from saved State.
@@ -210,9 +204,9 @@ class SimulationFactory(object):
         """Function used to generate the 3 OpenMM Simulation objects."""
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
-        self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
-        self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
+        self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,  **self.opt)
+        self.nc = self.generateSimFromStruct(self.structure, self.move_engine, self.alch_system,
                                             ncmc=True, **self.opt)
 
 
@@ -239,15 +233,15 @@ class Simulation(object):
         """
         if 'Logger' in opt:
             self.log = opt['Logger']
+        elif simulations.log:
+            self.log = simulations.log
         else:
             self.log = logging.getLogger(__name__)
 
         self.opt = opt
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
-        self.nc_context = simulations.nc.context
         self.nc_sim = simulations.nc
-        self.nc_integrator = simulations.nc.context._integrator
         self.move_engine = move_engine
 
         self.accept = 0
@@ -257,7 +251,7 @@ class Simulation(object):
         #if nstepsNC not specified, set it to 0
         #will be caught if NCMC simulation is run
         if (self.opt['nstepsNC'] % 2) != 0:
-            raise ValueError('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (nstepsNC))
+            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.opt['nstepsNC']))
         else:
             self.movestep = int(self.opt['nstepsNC']) / 2
 
@@ -266,14 +260,6 @@ class Simulation(object):
                                'nc'   : { 'state0' : {}, 'state1' : {} },
                                'alch' : { 'state0' : {}, 'state1' : {} }
                             }
-        #attach ncmc reporter if specified
-        if 'ncmc_traj' in self.opt:
-            # Add reporter to NCMC Simulation useful for debugging:
-            self.ncmc_reporter = app.dcdreporter.DCDReporter('{ncmc_traj}.dcd'.format(**self.opt), 1)
-            self.nc_sim.reporters.append(self.ncmc_reporter)
-        else:
-            pass
-
 
         #controls how many mc moves are performed during each iteration
         if 'mc_per_iter' in opt:
@@ -316,23 +302,21 @@ class Simulation(object):
         the current state of the MD simulation.
         """
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
-        nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
-        self.nc_context.setPeriodicBoxVectors(*md_state0['box_vectors'])
-        self.nc_context.setPositions(md_state0['positions'])
-        self.nc_context.setVelocities(md_state0['velocities'])
+        nc_state0 = self.getStateInfo(self.nc_sim.context, self.state_keys)
+        self.nc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
+        self.nc_sim.context.setPositions(md_state0['positions'])
+        self.nc_sim.context.setVelocities(md_state0['velocities'])
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
 
     def _getSimulationInfo(self):
-        """Prints out simulation timing and related information."""
-        self.log.info('Iterations = %s' % self.opt['nIter'])
-        self.log.info('Timestep = %s ps' % self.opt['dt'])
-        self.log.info('NCMC Steps = %s' % self.opt['nstepsNC'])
+        """self.log.infos out simulation timing and related information."""
 
-        prop_lambda = self.nc_integrator._prop_lambda
+        prop_lambda = self.nc_sim.context._integrator._prop_lambda
         prop_range = round(prop_lambda[1] - prop_lambda[0],4)
         if prop_range >= 0.0:
-            self.log.info('\tAdding {} extra propgation steps in lambda [{}, {}]'.format(self.opt['nprop'], prop_lambda[0],prop_lambda[1]))
+            if self.opt['nprop'] > 1:
+                self.log.info('Adding {} extra propgation steps in lambda [{}, {}]'.format(self.opt['nprop'], prop_lambda[0],prop_lambda[1]))
             #Get number of NCMC steps before extra propagation
             normal_ncmc_steps = round(prop_lambda[0] * self.opt['nstepsNC'],4)
 
@@ -441,7 +425,7 @@ class Simulation(object):
         nc_state0 = self.current_state['nc']['state0']
         nc_state1 = self.current_state['nc']['state1']
 
-        log_ncmc = self.nc_integrator.getLogAcceptanceProbability(self.nc_context)
+        log_ncmc = self.nc_sim.context._integrator.getLogAcceptanceProbability(self.nc_sim.context)
         randnum =  math.log(np.random.random())
 
         # Compute Alchemical Correction Term
@@ -450,7 +434,7 @@ class Simulation(object):
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
-            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_integrator.kT)
+            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_sim.context._integrator.kT)
             log_ncmc = log_ncmc + correction_factor
 
         if log_ncmc > randnum:
@@ -464,13 +448,13 @@ class Simulation(object):
         else:
             self.reject += 1
             self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
-            self.nc_context.setPositions(md_state0['positions'])
+            self.nc_sim.context.setPositions(md_state0['positions'])
 
-        self.nc_integrator.reset()
+        self.nc_sim.currentStep = 0
+        self.nc_sim.context._integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def simulateNCMC(self, nstepsNC=5000, ncmc_traj=None,
-                    reporter_interval=1000, verbose=False, **opt):
+    def simulateNCMC(self, nstepsNC=5000, **opt):
         """Function that performs the NCMC simulation."""
         self.log.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
         #choose a move to be performed according to move probabilities
@@ -478,35 +462,35 @@ class Simulation(object):
         self.move_engine.selectMove()
         move_idx = self.move_engine.selected_move
         move_name = self.move_engine.moves[move_idx].__class__.__name__
+
         for nc_step in range(int(nstepsNC)):
-            start = time.time()
-            self._initialSimulationTime = self.nc_context.getState().getTime()
             try:
+                #Attempt anything related to the move before protocol is performed
+                if nc_step == 0:
+                    self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_sim.context)
+
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
                     self.log.info('Performing %s...' % move_name)
-                    self.nc_context = self.move_engine.runEngine(self.nc_context)
+                    self.nc_sim.context = self.move_engine.runEngine(self.nc_sim.context)
 
                 # Do 1 NCMC step with the integrator
-                self.nc_integrator.step(1)
+                self.nc_sim.step(1)
 
                 ###DEBUG options at every NCMC step
-                if verbose:
-                    # Print energies at every step
-                    work = self.getWorkInfo(self.nc_integrator, self.work_keys)
-                    self.log.debug('%s' % work)
-                if ncmc_traj:
-                    self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
+                self.log.debug('%s' % self.getWorkInfo(self.nc_sim.context._integrator, self.work_keys))
+                #Attempt anything related to the move after protocol is performed
+                if nc_step == nstepsNC-1:
+                    self.nc_sim.context = self.move_engine.moves[self.move_engine.selected_move].afterMove(self.nc_sim.context)
 
             except Exception as e:
                 self.log.error(e)
+                self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_sim.context)
                 break
 
-            self._report(start, nc_step)
-
-        nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
+        nc_state1 = self.getStateInfo(self.nc_sim.context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
 
     def simulateMD(self, nstepsMD=5000, **opt):
@@ -518,7 +502,7 @@ class Simulation(object):
         try:
             self.md_sim.step(nstepsMD)
         except Exception as e:
-            self.log.error(e)
+            self.log.error(e, exc_info=True)
             self.log.error('potential energy before NCMC: %s' % md_state0['potential_energy'])
             self.log.error('kinetic energy before NCMC: %s' % md_state0['kinetic_energy'])
             #Write out broken frame
@@ -528,23 +512,9 @@ class Simulation(object):
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         self.setSimState('md', 'state0', md_state0)
         # Set NC poistions to last positions from MD
-        self.nc_context.setPeriodicBoxVectors(*md_state0['box_vectors'])
-        self.nc_context.setPositions(md_state0['positions'])
-        self.nc_context.setVelocities(md_state0['velocities'])
-
-    def _report(self,start,nc_step):
-        end = time.time()
-        headers = ['Step', 'Speed (ns/day)', 'Acc. Moves', 'Iter']
-        if self.current_iter == 0 and nc_step == 0:
-            self.log.info('[NCMC] "%s"' % ('"'+'\t'+'"').join(headers))
-        if nc_step % self.opt['reporter_interval'] == 0 or nc_step+1 == self.opt['nstepsNC']:
-            elapsed = end-start
-            elapsedDays = (elapsed/86400.0)
-            elapsedNs = (self.nc_context.getState().getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
-            speed = (elapsedNs/elapsedDays)
-            speed = "%.3g" % speed
-            values = [nc_step, speed, self.accept, self.current_iter]
-            self.log.info('\t\t'.join(str(v) for v in values))
+        self.nc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
+        self.nc_sim.context.setPositions(md_state0['positions'])
+        self.nc_sim.context.setVelocities(md_state0['velocities'])
 
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:

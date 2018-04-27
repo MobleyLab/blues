@@ -23,8 +23,7 @@ class BLUESTester(unittest.TestCase):
                 'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'mc-test',
-                'platform' : None,
-                'verbose' : True }
+                'platform' : None }
 
 
     def test_simulationRun(self):
@@ -35,7 +34,6 @@ class BLUESTester(unittest.TestCase):
                 'trajectory_interval' : 1, 'reporter_interval' : 1,
                 'outfname' : 'mc-test',
                 'platform' : None,
-                'verbose' : True,
                 'constraints' : 'HBonds',
                 'mc_per_iter' : 2 }
 
@@ -93,7 +91,7 @@ class BLUESTester(unittest.TestCase):
         system = sims.generateSystem(structure, **self.opt)
         simdict = sims.createSimulationSet()
         alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.generateSimFromStruct(structure, self.mover, alch_system, ncmc=True, **self.opt)
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         mc_sim = Simulation(sims, self.mover, **self.opt)
@@ -103,7 +101,7 @@ class BLUESTester(unittest.TestCase):
             """
             md_state0 = self.current_state['md']['state0']
             md_state1 = self.current_state['md']['state1']
-            log_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_integrator.kT)
+            log_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_sim.context._integrator.kT)
             randnum =  math.log(np.random.random())
 
             if log_mc > randnum:
