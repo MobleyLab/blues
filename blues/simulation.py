@@ -317,6 +317,7 @@ class Simulation(object):
         """
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         nc_state0 = self.getStateInfo(self.nc_context, self.state_keys)
+        self.nc_context.setPeriodicBoxVectors(*md_state0['box_vectors'])
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
         self.setSimState('md', 'state0', md_state0)
@@ -390,6 +391,7 @@ class Simulation(object):
         stateinfo['velocities'] = state.getVelocities(asNumpy=True)
         stateinfo['potential_energy'] = state.getPotentialEnergy()
         stateinfo['kinetic_energy'] = state.getKineticEnergy()
+        stateinfo['box_vectors'] = state.getPeriodicBoxVectors()
         return stateinfo
 
     def getWorkInfo(self, nc_integrator, parameters):
@@ -444,6 +446,7 @@ class Simulation(object):
 
         # Compute Alchemical Correction Term
         if np.isnan(log_ncmc) == False:
+            self.alch_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
@@ -453,6 +456,7 @@ class Simulation(object):
         if log_ncmc > randnum:
             self.accept += 1
             self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+            self.md_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
             	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'],self.current_iter))
@@ -524,6 +528,7 @@ class Simulation(object):
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         self.setSimState('md', 'state0', md_state0)
         # Set NC poistions to last positions from MD
+        self.nc_context.setPeriodicBoxVectors(*md_state0['box_vectors'])
         self.nc_context.setPositions(md_state0['positions'])
         self.nc_context.setVelocities(md_state0['velocities'])
 
