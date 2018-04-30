@@ -18,7 +18,7 @@ from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNo
 
 class MolDartMove(RandomLigandRotationMove):
     """
-    Class for performing smart darting moves during an NCMC simulation.
+    Class for performing molecular darting (moldarting) moves during an NCMC simulation.
 
     Parameters
     ----------
@@ -33,6 +33,13 @@ class MolDartMove(RandomLigandRotationMove):
         translations changes from interfering the darting procedure.
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
+    transition_matrix: None or nxn numpy.array, optional, default=None
+        The transition matrix to define transition probabilities between darts.
+        If None, this assumes a uniform transition matrix with the self transition
+        probability set to 0 (zeros across the diagonal).
+        Otherwise a nxn matrix must be passed, where n == len(pdb_files), where entry
+        Mij corresponds to the probability when in the pdb_files[i] dart to dart to
+        the pdb_files[j] dart.
     rigid_move: boolean, default=False:
         If True, will ignore internal coordinate changes while darting
         and will effectively perform a rigid body rotation between darts
@@ -69,6 +76,7 @@ class MolDartMove(RandomLigandRotationMove):
 
     """
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
+        transition_matrix=None,
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=True, restrained_receptor_atoms=None,
         K_r=10, K_angle=10, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
@@ -106,26 +114,15 @@ class MolDartMove(RandomLigandRotationMove):
         self.K_angle = K_angle
         self.lambda_restraints = lambda_restraints
 
-        #flattens pdb files in the case input is list of lists
-        #currently set up so that poses in a list don't jump to the same poses in that list
-        pdb_files = [[i] if isinstance(i, str) else i for i in pdb_files]
-        flat_pdb = list(set([item for sublist in pdb_files for item in sublist]))
-        #find the unique pdb inputs inputs and group them according to their lists
-        self.pdb_dict = {}
-        for index, key in enumerate(flat_pdb):
-            self.pdb_dict[key] = index
-        if len(self.pdb_dict) <= 1:
+        #find pdb inputs inputs
+        if len(pdb_files) <= 1:
             raise ValueError('Should specify at least two pdbs in pdb_files for darting to be beneficial')
-        self.dart_groups = []
-        for group in pdb_files:
-            glist = [self.pdb_dict[key] for key in group]
-            self.dart_groups.append(glist)
-        print('dart_groups', self.dart_groups)
+        self.dart_groups = list(range(len(pdb_files)))
         #chemcoords reads in xyz files only, so we need to use mdtraj
         #to get the ligand coordinates in an xyz file
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
             fname = t.name
-            traj = md.load(flat_pdb[0]).atom_slice(self.atom_indices)
+            traj = md.load(pdb_files[0]).atom_slice(self.atom_indices)
             xtraj = XYZTrajectoryFile(filename=fname, mode='w')
             xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
                         types=[i.element.symbol for i in traj.top.atoms] )
@@ -137,12 +134,25 @@ class MolDartMove(RandomLigandRotationMove):
                 from openeye import oechem
                 ifs = oechem.oemolistream()
                 ifs.open(fname)
+                double_bonds = []
                 for mol in ifs.GetOEGraphMols():
                     for atom in mol.GetAtoms():
                         if atom.IsInRing():
                             ring_atoms.append(atom.GetIdx())
-                dihedral_ring_atoms = [i for i in ring_atoms if self.buildlist.at[i, 'd'] in ring_atoms]
-                self.dihedral_ring_atoms = dihedral_ring_atoms
+                    #for bond in mol.GetBonds():
+                    #    print('bond', bond.GetOrder())
+                    bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
+                    end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
+                    double_bonds = bgn_idx + end_idx
+                #    for bond in mol.GetBonds():
+                #        if bond.GetOrder() > 1:
+                #            [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetOrder > 1]
+                #        print('bai', bond.GetBgnIdx(), 'eai', bond.GetEndIdx())
+                #        print('order', bond.GetOrder())
+                rigid_atoms = set(ring_atoms + double_bonds)
+                angle_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
+                self.dihedral_ring_atoms = angle_ring_atoms
+
             #get the construction table so internal coordinates are consistent between poses
 
 
@@ -152,11 +162,11 @@ class MolDartMove(RandomLigandRotationMove):
             fname = t.name
             self.structure.save(fname, overwrite=True)
             struct_traj = md.load(fname)
-        ref_traj = md.load(flat_pdb[0])[0]
+        ref_traj = md.load(pdb_files[0])[0]
         num_atoms = ref_traj.n_atoms
         self.ref_traj = copy.deepcopy(struct_traj)
         #add the trajectory and xyz coordinates to a list
-        for j, pdb_file in enumerate(flat_pdb):
+        for j, pdb_file in enumerate(pdb_files):
             traj = copy.deepcopy(self.ref_traj)
             pdb_traj = md.load(pdb_file)[0]
             traj.xyz[0][:num_atoms] = pdb_traj.xyz[0]
@@ -178,6 +188,15 @@ class MolDartMove(RandomLigandRotationMove):
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
+        if transition_matrix is None:
+            self.transition_matrix = np.ones((len(pdb_files), len(pdb_files)))
+            np.fill_diagonal(self.transition_matrix, 0)
+        else:
+            self.transition_matrix = transition_matrix
+        row_sums = self.transition_matrix.sum(axis=1)
+        self.transition_matrix = self.transition_matrix / row_sums[:, np.newaxis]
+        if np.shape(self.transition_matrix) != (len(pdb_files), len(pdb_files)):
+            raise ValueError('Transition matrix should be an nxn matrix, where n is the length of pdb_files')
 
 
     def _poseDart(self, context, atom_indices):
@@ -248,23 +267,34 @@ class MolDartMove(RandomLigandRotationMove):
         elif len(selected) == 0:
             return []
 
-    def _dart_selection(self, binding_mode_index):
-        possible_groups = []
-        for group_index, group_list in enumerate(self.dart_groups):
-            if binding_mode_index in group_list:
-                possible_groups.append(group_index)
-        group_choice = np.random.choice(possible_groups)
-        dart_groups_removed = [j for i, j in enumerate(self.dart_groups) if i != group_choice]
-        #included to correct detailed balance
-        #checks the probability of chosing the chosen dart in the forward direction of the move
-        #the ratio will be taken of this probability and the probability of choosing the original dart
-        #in the reverse direction and will be used in the acceptance criteria
-        num_groups = float(len(possible_groups))
-        num_group_choice = float(len(dart_groups_removed))
-        probability_selection_before = (1./num_groups)*(1./num_group_choice)
+    def _dart_selection(self, binding_mode_index, transition_matrix):
+        """
+        Picks a new dart based on an inital binding mode index and transition matrix.
+        Returns the randomly selected dart and acceptance criteria factoring in the probabilities
+        from the transition matrix
 
-        rand_index = np.random.choice(dart_groups_removed[np.random.choice(len(dart_groups_removed))])
-        return rand_index, probability_selection_before
+        Parameters
+        ----------
+        binding_mode_index: int
+            The binding mode index of a dart
+        transition_matrix: nxn np.array
+            The transition matrix to determine the transition probabilities
+            from a given dart
+
+        Returns
+        -------
+        rand_index: int
+            The randomly chosen binding mode index selected using the transition matrix
+            probabilities.
+        acceptance_ratio:
+            The probability ratio that needs to be factored into the acceptance criterion
+            for using the transition matrix.
+        """
+        rand_index = np.random.choice(self.dart_groups, p=transition_matrix[binding_mode_index])
+        prob_forward = transition_matrix[binding_mode_index][rand_index]
+        prob_reverse = transition_matrix[rand_index][binding_mode_index]
+        acceptance_ratio = float(prob_reverse)/prob_forward
+        return rand_index, acceptance_ratio
 
     def _moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, rigid_ring=False, rigid_move=False):
         """
@@ -302,7 +332,11 @@ class MolDartMove(RandomLigandRotationMove):
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
                             )
-        rand_index, probability_selection_before = self._dart_selection(binding_mode_index)
+        #rand_index = np.random.choice(self.dart_groups, self.transition_matrix[binding_mode_index])
+        rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix)
+        dart_ratio = self.dart_ratio
+        print('dart_ratio', self.dart_ratio)
+        self.acceptance_ratio = self.acceptance_ratio * dart_ratio
         #get matching binding mode pose and get rotation/translation to that pose
         #TODO decide on making a copy or always point to same object
         xyz_ref = copy.deepcopy(self.internal_xyz[0])
@@ -455,7 +489,7 @@ class MolDartMove(RandomLigandRotationMove):
                 ref_atom_indices=self.fit_atoms
                 )
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
-        return nc_pos, rand_index, probability_selection_before
+        return nc_pos, rand_index
 
     def initializeSystem(self, system, integrator):
         """
@@ -624,8 +658,12 @@ class MolDartMove(RandomLigandRotationMove):
         if self.restraints == True:
             #if using restraints
             selected_list = self._poseDart(context, self.atom_indices)
+
             if len(selected_list) >= 1:
                 self.selected_pose = np.random.choice(selected_list, replace=False)
+                self.dart_begin = self.selected_pose
+                self.num_poses_begin_restraints = len(selected_list)
+
                 for i in range(len(self.binding_mode_traj)):
                     context.setParameter('restraint_pose_'+str(i), 0)
                 context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
@@ -664,9 +702,14 @@ class MolDartMove(RandomLigandRotationMove):
             if self.selected_pose not in selected_list:
                 self.acceptance_ratio = 0
             else:
-                pass
+                self.num_poses_end_restraints = len(selected_list)
             for i in range(len(self.binding_mode_traj)):
                 context.setParameter('restraint_pose_'+str(i), 0)
+            self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end_restraints)/self.num_poses_begin_restraints)
+
+        #take into account the number of possible states at the start/end of this proceudre
+        #and factor that into the acceptance criterion
+
 
         return context
 
@@ -724,7 +767,10 @@ class MolDartMove(RandomLigandRotationMove):
             state_restraint1_off = context.getState(getPositions=True, getEnergy=True)
             total_pe_restraint1_off = state_restraint1_off.getPotentialEnergy()
             restraint1_energy = total_pe_restraint1_on - total_pe_restraint1_off
-
+        else:
+            #the move is instantaneous without restraints, so find overlap of darting regions
+            #to incorporate later into the acceptance criterion
+            self.num_poses_begin = len(selected_list)
 
         if len(selected_list) == 0:
             #this means that the current ligand positions are outside the defined darts
@@ -741,7 +787,7 @@ class MolDartMove(RandomLigandRotationMove):
             #translate new pose to center of first molecule
             #find rotation that matches atom1 and atom2s of the build list
             #apply that rotation using atom1 as the origin
-            new_pos, darted_pose, prob_before = self._moldRedart(atom_indices=self.atom_indices,
+            new_pos, darted_pose = self._moldRedart(atom_indices=self.atom_indices,
                                             binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=self.selected_pose,
                                             nc_pos=oldDartPos,
@@ -750,16 +796,14 @@ class MolDartMove(RandomLigandRotationMove):
             self.selected_pose = darted_pose
             context.setPositions(new_pos)
             overlap_after = self._poseDart(context, self.atom_indices)
-            dummy_index, prob_after = self._dart_selection(self.selected_pose)
+            #the acceptance depends on the instantaenous move
+            #therefore find the ratio of number of poses before and after
+            #TODO: Check if probability order is right
+            self.num_poses_end = len(overlap_after)
+            self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/self.num_poses_begin)
 
             # to maintain detailed balance, check to see the overlap of the start and end darting regions
             # if there is no overlap after the move, acceptance ratio will be 0
-            #TODO: Check if probability order is right
-            group_ratio = prob_after/prob_before
-            if len(overlap_after) == 0:
-                self.acceptance_ratio = 0
-            else:
-                self.acceptance_ratio = self.acceptance_ratio*float(len(selected_list))/float(len(overlap_after)*(group_ratio))
 
             #check if new positions overlap when moving
             if self.restraints == True:
@@ -815,10 +859,8 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
                  nsteps_neq=100,
                  nprop=1,
                  prop_lambda=0.3,
-                 #lambda_restraints='max(0, 1-(1/0.30)*abs(lambda-0.5))',
                  lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
                  *args, **kwargs):
-        print('lambda_restraints', lambda_restraints)
         self.lambda_restraints = lambda_restraints
         self.restraint_energy = "energy"+str(restraint_group)
 

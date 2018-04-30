@@ -87,6 +87,16 @@ class DartTester(unittest.TestCase):
         #check that the reverse of the move gives the same positions
         assert np.allclose(begin_compare._value, begin_traj.openmm_positions(0)._value, rtol=1e-4, atol=1e-4)
 
+    def test_transition_matrix(self):
+        self.ligand.acceptance_ratio=1
+        self.ligand.transition_matrix = np.array([[0, 1],[0.1,0.9]])
+        begin_traj = md.load(utils.get_data_filename('blues', 'tests/data/VA68.pdb' ))
+        self.blues.md_sim.context.setPositions(begin_traj.openmm_positions(0))
+        self.ligand.move(self.blues.md_sim.context).getState(getPositions=True).getPositions(asNumpy=True)
+
+        assert self.ligand.acceptance_ratio == 0.1
+
+
 class BoreschRestraintTester(unittest.TestCase):
     """
     Tests that the ic dart move is reversible
@@ -132,7 +142,8 @@ class BoreschRestraintTester(unittest.TestCase):
 
         self.blues = Simulation(self.simulations, self.ligand_mover, **self.opt)
 
-    def test_dartreverse(self):
+
+    def test_restraints(self):
         forces = self.blues.nc_sim.system.getForces()
         n_boresch = np.sum([1 if isinstance(i, mm.CustomCompoundBondForce) else 0 for i in forces])
         assert n_boresch == 2
