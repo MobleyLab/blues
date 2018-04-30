@@ -222,14 +222,10 @@ class SimulationFactory(object):
         self.system = self.generateSystem(self.structure, **self.opt)
         self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.opt)
         self.md = self.generateSimFromStruct(self.structure, self.system, **self.opt)
-        print( "Done MD\n")
         self.alch = self.generateSimFromStruct(self.structure, self.system,  **self.opt)
-        print( "Done Alch\n")
 
         self.nc = self.generateSimFromStruct(self.structure, self.alch_system,
                                             ncmc=True, **self.opt)
-        print( "Done NC\n")
-
 
 class Simulation(object):
     """Simulation class provides the functions that perform the BLUES run.
@@ -501,6 +497,7 @@ class Simulation(object):
         move_idx = self.move_engine.selected_move
         move_name = self.move_engine.moves[move_idx].__class__.__name__
         for nc_step in range(int(nstepsNC)):
+            #print( nc_step )
             start = time.time()
             self._initialSimulationTime = self.nc_context.getState().getTime()
             try:

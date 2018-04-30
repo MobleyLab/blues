@@ -473,7 +473,7 @@ class RotatableBondMove(object):
         The class contains functions to randomly select a bond and angle to be rotated
         and applies a rotation matrix to the target atoms to update their coordinates"""
   
-    def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, resname='LIG'): 
+    def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, alch_list, resname='LIG'): 
         """Initialize the model.
         Parameters
         ----------
@@ -488,11 +488,10 @@ class RotatableBondMove(object):
 
         """
         self.structure = structure
-        self.atom_indices = self.getAtomIndices(structure, resname)
+        self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
         self.dihedral_atoms = dihedral_atoms
-        self.positions = structure[self.atom_indices].positions
+        self.positions = structure[self.atom_indices_ligand].positions
         self.molecule = self._pmdStructureToOEMol(prmtop, inpcrd, resname)
-
     def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
 
         from oeommtools.utils import openmmTop_to_oemol
@@ -510,7 +509,7 @@ class RotatableBondMove(object):
 
         return molecule
          
-    def getAtomIndices(self, structure, resname):
+    def getAtomIndices(self, structure, resname, alch_list):
         """
         Get atom indices of a ligand from ParmEd Structure.
         Arguments
@@ -526,11 +525,19 @@ class RotatableBondMove(object):
         """
 #       TODO: Add option for resnum to better select residue names
         atom_indices = []
+        atom_indices_ligand = []
         topology = structure.topology
         for atom in topology.atoms():
-            if str(resname) in atom.residue.name:
-                atom_indices.append(atom.index)
-        return atom_indices
+           if str(resname) in atom.residue.name:
+              atom_indices_ligand.append(atom.index)
+              if atom.name in alch_list: 
+                  atom_indices.append(atom.index)
+
+#            if str(resname) in atom.residue.name:
+#                atom_indices.append(atom.index)
+        print("Region selected for alchemical simulations");
+        print(atom_indices) 
+        return atom_indices, atom_indices_ligand
 
     def move(self, context):
         """Function that performs a random rotation about the
@@ -547,10 +554,13 @@ class RotatableBondMove(object):
 
         """
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
-
-        self.positions = positions[self.atom_indices]
+#        print( self.molecule.GetMaxAtomIdx() )
+#        print( np.size( positions[self.atom_indices_ligand] ) )
+        self.molecule.SetCoords( positions[self.atom_indices_ligand].ravel() )
+#        self.positions = positions[self.atom_indices_ligand]
 #        self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
 #        reduced_pos = self.positions - self.center_of_mass
+        # write molecule
 
         # Define random torsional move on the ligand
         rand_torsion = random.uniform ( - math.pi, math.pi )
@@ -558,6 +568,7 @@ class RotatableBondMove(object):
         atom2 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[1]))
         atom3 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[2]))
         atom4 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[3]))
+        print("Dihedral values before and after rotation");
         print(OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4 )) 
         if OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False : 
            print("Torsional bond couldn't be rotated. Please enter correct atoms!");
@@ -566,18 +577,158 @@ class RotatableBondMove(object):
 #        OESetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12")), 2) 
 #        print(OEGetTorsion(self.molecule, self.molecule.GetAtom(OEHasAtomName("C8")), self.molecule.GetAtom(OEHasAtomName("C9")),self.molecule.GetAtom(OEHasAtomName("C11")), self.molecule.GetAtom(OEHasAtomName("C12"))) )
 
+        #write molecule
+
         # Update ligand positions in nc_sim
         updated_pos = self.molecule.GetCoords()
         #print(updated_pos)
-    
-        #structure_LIG.positions = pos
-        for index, atomidx in enumerate(self.atom_indices):
-            positions[atomidx] = np.array(updated_pos[index])*unit.nanometers
-        #print(positions[0])
         #print(updated_pos[0])
+        #print(np.shape(self.atom_indices))
+        #exit()
+    
+#        #structure_LIG.positions = pos
+        for index, atomidx in enumerate(self.atom_indices_ligand):
+            positions[atomidx] = np.array(updated_pos[index])*unit.nanometers
+#        #print(positions[0])
+#        #print(updated_pos[0])
         context.setPositions(positions)
 #        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
-#        self.positions = positions[self.atom_indices]
+        self.positions = positions[self.atom_indices_ligand]   #Check with Sam whether this line is neccessary
+        return context
+
+class RotatableBond180Move( RotatableBondMove ):
+    """
+       Edited by Sukanya
+       Move that provides methods for:
+        1. calculating the properties needed to rotate a rotatable bond
+        of a structure in the NCMC simulation
+        2. Executing a rotation of a random 'rotatable' bond in the designated 
+        small molecule by a random angle of rotation: 'theta'
+
+        Calculated properties include: needs to be updated **** 
+
+        The class contains functions to randomly select a bond and angle to be rotated
+        and applies a rotation matrix to the target atoms to update their coordinates"""
+
+    def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, alch_list, resname='LIG'):
+        """Initialize the model.
+        Parameters
+        ----------
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the relevant system to be moved.
+        prmtop: prmtop file
+            This is a quick fix for now to generate a stripped prmtop.
+        dihedral_atoms: an array of characters
+            Contains the four atoms defining the dihedral angle
+
+        """
+        self.structure = structure
+        self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
+        self.dihedral_atoms = dihedral_atoms
+        self.positions = structure[self.atom_indices_ligand].positions
+        self.molecule = self._pmdStructureToOEMol(prmtop, inpcrd, resname)
+    def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
+
+        from oeommtools.utils import openmmTop_to_oemol
+#        pos = self.positions
+        structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
+        mask = "!(:%s)" %resname
+        structure_LIG.strip(mask)
+#        structure_LIG.positions = pos
+        pos = structure_LIG.positions
+        top = structure_LIG.topology
+        molecule = openmmTop_to_oemol(top, pos, verbose=False)
+        OEPerceiveBondOrders(molecule)
+        OEAssignAromaticFlags(molecule)
+        OEFindRingAtomsAndBonds(molecule)
+
+        return molecule
+
+    def getAtomIndices(self, structure, resname, alch_list):
+        """
+        Get atom indices of a ligand from ParmEd Structure.
+        Arguments
+        ---------
+        resname : str
+            String specifying the resiue name of the ligand.
+        structure: parmed.Structure
+            ParmEd Structure object of the atoms to be moved.
+        Returns
+        -------
+        atom_indices : list of ints
+            list of atoms in the coordinate file matching lig_resname
+        """
+#       TODO: Add option for resnum to better select residue names
+        atom_indices = []
+        atom_indices_ligand = []
+        topology = structure.topology
+        for atom in topology.atoms():
+           if str(resname) in atom.residue.name:
+              atom_indices_ligand.append(atom.index)
+              if atom.name in alch_list:
+                  atom_indices.append(atom.index)
+
+#            if str(resname) in atom.residue.name:
+#                atom_indices.append(atom.index)
+        print("Region selected for alchemical simulations");
+        print(atom_indices)
+        return atom_indices, atom_indices_ligand
+
+    def move(self, context):
+        """Function that performs a random rotation about the
+        center of mass of the ligand.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+#        print( self.molecule.GetMaxAtomIdx() )
+#        print( np.size( positions[self.atom_indices_ligand] ) )
+        self.molecule.SetCoords( positions[self.atom_indices_ligand].ravel() )
+#        self.positions = positions[self.atom_indices_ligand]
+#        self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
+#        reduced_pos = self.positions - self.center_of_mass
+        # write molecule
+
+        # Define random torsional move on the ligand
+        rand_torsion_rot = random.uniform ( math.pi - 0.349, math.pi + 0.349)
+        atom1 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[0]))
+        atom2 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[1]))
+        atom3 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[2]))
+        atom4 = self.molecule.GetAtom(OEHasAtomName(self.dihedral_atoms[3]))
+        print("Dihedral values before and after rotation");
+        print(OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4 ))
+        oldTorsion = OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4 );       
+        if OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, oldTorsion + rand_torsion_rot ) == False :
+           print("Torsional bond couldn't be rotated. Please enter correct atoms!");
+        print(OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4 ))
+
+        #write molecule
+
+        # Update ligand positions in nc_sim
+        updated_pos = self.molecule.GetCoords()
+        #print(updated_pos)
+        #print(updated_pos[0])
+        #print(np.shape(self.atom_indices))
+        #exit()
+
+#        #structure_LIG.positions = pos
+        for index, atomidx in enumerate(self.atom_indices_ligand):
+            positions[atomidx] = np.array(updated_pos[index])*unit.nanometers
+#        #print(positions[0])
+#        #print(updated_pos[0])
+        context.setPositions(positions)
+#        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.positions = positions[self.atom_indices_ligand]   #Check with Sam whether this line is neccessary
         return context
 
 class CombinationMove(Move):
