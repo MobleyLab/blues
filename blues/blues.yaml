@@ -1,0 +1,56 @@
+options:
+  output_dir: .
+  outfname: t4-toluene
+  logger_level: info #critical, error, warning, info, debug
+
+structure:
+  prmtop: tests/data/eqToluene.prmtop
+  inpcrd: tests/data/eqToluene.inpcrd
+
+system:
+  nonbondedMethod: PME
+  nonbondedCutoff: 10 #Angstroms
+  switchDistance: 0
+  constraints: HBonds
+  rigidWater: True
+  #implicitSolvent: None
+  #implicitSolventKappa: None
+  #implicitSolventSaltConc: 0
+  #soluteDielectric: 1.0
+  #solventDielectric: 78.5
+  #useSASA: False
+  removeCMMotion: True
+  hydrogenMass: 3.024
+  ewaldErrorTolerance: 0.005
+  flexibleConstraints: True
+  splitDihedrals: False
+
+alchemical:
+  softcore_alpha: 0.0001 #Default: 0.5
+  softcore_a' : 1
+  softcore_b' : 1
+  softcore_c' : 48 #Default: 6
+  softcore_beta' : 0.0
+  softcore_d' : 1
+  softcore_e' : 1
+  softcore_f' : 2
+  annihilate_electrostatics' : True
+  annihilate_sterics' : False
+
+freeze:
+  freeze_center: LIG
+  freeze_solvent: HOH,NA,CL
+  freeze_distance: 5
+
+simulation:
+  dt: 0.004
+  friction: 1
+  temperature: 300
+  nIter: 5000
+  nstepsMD: 10000
+  total_steps: 10000
+  nprop: 1
+  prop_lambda: 0.3
+  reporters:
+    trajectory_interval: 2500
+    reporter_interval: 2500

@@ -6,60 +6,145 @@ Contributors: Nathan M. Lim, David L. Mobley
 """
 
 from __future__ import print_function
-import os, copy
+import os, copy, yaml, logging, sys
 import mdtraj
+from simtk import unit
+from blues import utils
+from blues import reporters
+from math import floor, ceil
+from simtk.openmm import app
 
-def rand_rotation_matrix():
-    """
-    Creates a uniform random rotation matrix
-    Returns
-    -------
-    matrix_out: 3x3 np.array
-        random rotation matrix
-    """
-    rand_quat = mdtraj.utils.uniform_quaternion()
-    matrix_out = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
-    return matrix_out
+def startup(config):
+    def load_yaml(yaml_file):
+        #Parse input parameters from YAML
+        with open(yaml_file, 'r') as stream:
+            try:
+                opt = (yaml.load(stream))
+            except Exception as exc:
+                print (exc)
+        return opt
 
-def get_particle_masses(self, system, residueList=None, set_self=True):
-    """
-    Finds the mass of each particle given by residueList and returns
-    a list of those particle masses as well as the total mass. If
-    set_self=True, sets corresponding SimNCMC attributes as well as
-    returning them.
-    Arguments
-    ---------
-    system: simtk.openmm.system
-        Openmm system object containing the particles of interest
-    residueList: list of ints
-        particle indices to find the masses of
-    set_self: boolean
-        if true, sets self.total_mass and self.mass_list to the
-        outputs of this function
-    """
-    if residueList == None:
-        residueList = self.residueList
-    mass_list = []
-    total_mass = 0*unit.dalton
-    for index in residueList:
-        mass = system.getParticleMass(int(index))
-        total_mass = total_mass + mass
-        mass_list.append([mass])
-    total_mass = np.sum(mass_list)
-    mass_list = np.asarray(mass_list)
-    mass_list.reshape((-1,1))
-    total_mass = np.array(total_mass)
-    total_mass = np.sum(mass_list)
-    temp_list = np.zeros((len(residueList), 1))
-    for index in range(len(residueList)):
-        mass_list[index] = (np.sum(mass_list[index])).value_in_unit(unit.daltons)
-    mass_list =  mass_list*unit.daltons
-    if set_self == True:
-        self.total_mass = total_mass
-        self.mass_list = mass_list
-    return total_mass, mass_list
+    def set_parameters(opt):
+        #Set file paths
+        try:
+            output_dir = opt['options']['output_dir']
+        except Exception as exc:
+            output_dir = '.'
+        outfname = os.path.join(output_dir, opt['options']['outfname'])
+        opt['simulation']['outfname'] = outfname
 
-def zero_masses(self, system, atomList=None):
+        #Initialize root Logger module
+        level = opt['options']['logger_level'].upper()
+        if level == 'DEBUG':
+            #Add verbosity if logging is set to DEBUG
+            opt['options']['verbose'] = True
+            opt['system']['verbose'] = True
+            opt['simulation']['verbose'] = True
+        else:
+            opt['options']['verbose'] = False
+            opt['system']['verbose'] = False
+            opt['simulation']['verbose'] = False
+
+
+        level = eval("logging.%s" % level)
+        logger = reporters.init_logger(logging.getLogger(), level, outfname)
+        opt['Logger'] = logger
+
+        #Ensure proper units
+        try:
+            opt['simulation']['nstepsNC'], opt['simulation']['integration_steps'] = calcNCMCSteps(logger=logger, **opt['simulation'])
+            opt['system'] = add_units(opt['system'], logger)
+            opt['simulation'] = add_units(opt['simulation'], logger)
+            opt['freeze'] = add_units(opt['freeze'], logger)
+        except:
+            print(sys.exc_info()[0])
+            raise
+
+
+        return opt
+
+    def add_units(opt, logger):
+        #for system setup portion
+        #set unit defaults to OpenMM defaults
+        unit_options = {'nonbondedCutoff':unit.angstroms,
+                        'switchDistance':unit.angstroms,
+                        'implicitSolventKappa':unit.angstroms,
+                        'implicitSolventSaltConc':unit.mole/unit.liters,
+                        'temperature':unit.kelvins,
+                        'hydrogenMass':unit.daltons,
+                        'dt':unit.picoseconds,
+                        'friction':1/unit.picoseconds,
+                        'freeze_distance': unit.angstroms
+                        }
+
+        app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']
+        scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
+        bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
+                        'splitDihedrals']
+
+        combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
+        for sel in opt.keys():
+            if sel in combined_options:
+                if sel in unit_options:
+                    #if the value requires units check that it has units
+                    #if it doesn't assume default units are used
+                    if opt[sel] is None:
+                        opt[sel] = None
+                    else:
+                        try:
+                            opt[sel]._value
+                        except:
+                            logger.warn("Units for '{} = {}' not specified. Setting units to '{}'".format(sel, opt[sel], unit_options[sel]))
+                            opt[sel] = opt[sel]*unit_options[sel]
+                #if selection requires an OpenMM evaluation do it here
+                elif sel in app_options:
+                    try:
+                        opt[sel] = eval("app.%s" % opt[sel])
+                    except:
+                        #if already an app object we can just pass
+                        pass
+                #otherwise just take the value as is, should just be a bool or float
+                else:
+                    pass
+        return opt
+
+    def calcNCMCSteps(total_steps, nprop, prop_lambda, logger, **kwargs):
+        if (total_steps % 2) != 0:
+           raise Exception('`total_steps = %i` must be even for symmetric protocol.' % (total_steps))
+
+        nstepsNC = total_steps/(2*(nprop*prop_lambda+0.5-prop_lambda))
+        if int(nstepsNC) % 2 == 0:
+            nstepsNC = int(nstepsNC)
+        else:
+            nstepsNC = int(nstepsNC) + 1
+
+        in_portion =  (prop_lambda)*nstepsNC
+        out_portion = (0.5-prop_lambda)*nstepsNC
+        if in_portion.is_integer():
+            in_portion= int(in_portion)
+        if out_portion.is_integer():
+            int(out_portion)
+        in_prop = int(nprop*(2*floor(in_portion)))
+        out_prop = int((2*ceil(out_portion)))
+        calc_total = int(in_prop + out_prop)
+        if calc_total != total_steps:
+            logger.warn('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
+                           'Instead using {} total propogation steps, '.format(calc_total)+
+                           '({} steps inside `prop_lambda` and {} steps outside `prop_lambda)`.'.format(in_prop, out_prop))
+        logger.warn('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
+        return nstepsNC, calc_total
+
+    #Parse YAML into dict
+    if config.endswith('.yaml'):
+        config = load_yaml(config)
+
+    #Parse the options dict
+    if type(config) is dict:
+        opt = set_parameters(config)
+
+    return opt
+
+def zero_masses(system, atomList=None):
     """
     Zeroes the masses of specified atoms to constrain certain degrees of freedom.
     Arguments
@@ -71,63 +156,8 @@ def zero_masses(self, system, atomList=None):
     """
     for index in (atomList):
         system.setParticleMass(index, 0*unit.daltons)
+    return system
 
-
-def calculate_com(pos_state, total_mass, mass_list, residueList, rotate=False):
-    """
-    This function calculates the com of specified residues and optionally
-    rotates them around the center of mass.
-    Arguments
-    ---------
-    total_mass: simtk.unit.quantity.Quantity in units daltons
-        contains the total masses of the particles for COM calculation
-    mass_list:  nx1 np.array in units daltons,
-        contains the masses of the particles for COM calculation
-    pos_state:  nx3 np. array in units.nanometers
-        returned from state.getPositions
-    residueList: list of int,
-        list of atom indicies which you'll calculate the total com for
-    rotate: boolean
-        if True, rotates center of mass by random rotation matrix,
-        else returns center of mass coordiantes
-    Returns
-    -------
-    if rotate==True
-    rotation : nx3 np.array in units.nm
-        positions of ligand with or without random rotation (depending on rotate)
-    if rotate==False
-    com_coord: 1x3 np.array in units.nm
-        position of the center of mass coordinate
-    """
-
-    #choose ligand indicies
-    copy_orig = copy.deepcopy(pos_state)
-
-    lig_coord = np.zeros((len(residueList), 3))
-    for index, resnum in enumerate(residueList):
-        lig_coord[index] = copy_orig[resnum]
-    lig_coord = lig_coord*unit.nanometers
-    copy_coord = copy.deepcopy(lig_coord)
-
-    #mass corrected coordinates (to find COM)
-    mass_corrected = mass_list / total_mass * copy_coord
-    sum_coord = mass_corrected.sum(axis=0).value_in_unit(unit.nanometers)
-    com_coord = [0.0, 0.0, 0.0]*unit.nanometers
-
-    #units are funky, so do this step to get them to behave right
-    for index in range(3):
-        com_coord[index] = sum_coord[index]*unit.nanometers
-
-    if rotate ==True:
-        for index in range(3):
-            lig_coord[:,index] = lig_coord[:,index] - com_coord[index]
-        #multiply lig coordinates by rot matrix and add back COM translation from origin
-        rotation =  np.dot(lig_coord.value_in_unit(unit.nanometers), rand_rotation_matrix())*unit.nanometers
-        rotation = rotation + com_coord
-        return rotation
-    else:
-    #remove COM from ligand coordinates to then perform rotation
-        return com_coord            #remove COM from ligand coordinates to then perform rotation
 
 def atomIndexfromTop(resname, topology):
     """
