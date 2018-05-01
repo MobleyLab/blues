@@ -28,7 +28,7 @@ ligand_mover = MoveEngine(ligand)
 
 #Generate the openmm.Systems outside SimulationFactory to allow modifications
 system = SystemFactory.generateSystem(structure, **opt['system'])
-alch_system = SystemFactory.generateAlchSystem(system, atom_indices=ligand.atom_indices, **opt['alchemical'])
+alch_system = SystemFactory.generateAlchSystem(system, ligand.atom_indices, **opt['alchemical'])
 
 #Freeze atoms in the alchemical system
 alch_system = SystemFactory.freeze_atoms(structure, alch_system, **opt['freeze'])
@@ -71,5 +71,5 @@ simulations.nc.reporters.append(ncmc_reporter)
 simulations.nc.reporters.append(ncmc_progress_reporter)
 
 # Run BLUES Simulation
-blues = Simulation(simulations, **opt['simulation'])
+blues = Simulation(simulations)
 blues.run(**opt['simulation'])

@@ -74,7 +74,8 @@ def startup(config):
                         'hydrogenMass':unit.daltons,
                         'dt':unit.picoseconds,
                         'friction':1/unit.picoseconds,
-                        'freeze_distance': unit.angstroms
+                        'freeze_distance': unit.angstroms,
+                        'pressure': unit.atmospheres
                         }
 
         app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']

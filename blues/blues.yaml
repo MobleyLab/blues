@@ -45,6 +45,7 @@ freeze:
 simulation:
   dt: 0.004
   friction: 1
+  pressure: 1
   temperature: 300
   nIter: 5000
   nstepsMD: 10000

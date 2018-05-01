@@ -133,8 +133,8 @@ class LoggerFormatter(logging.Formatter):
 
     err_fmt  = "%(levelname)s (%(asctime)s):  [%(module)s.%(funcName)s] %(message)s"
     dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
-    info_fmt = "%(levelname)s: %(message)s"
-    rep_fmt = "%(message)s"
+    warn_fmt = "%(levelname)s: %(message)s"
+    info_fmt = "%(message)s"
 
     def __init__(self):
         super().__init__(fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
@@ -154,13 +154,13 @@ class LoggerFormatter(logging.Formatter):
             self._style._fmt = LoggerFormatter.info_fmt
 
         elif record.levelno == logging.WARNING:
-            self._style._fmt = LoggerFormatter.info_fmt
+            self._style._fmt = LoggerFormatter.warn_fmt
 
         elif record.levelno == logging.ERROR:
             self._style._fmt = LoggerFormatter.err_fmt
 
         elif record.levelno == logging.REPORT:
-            self._style._fmt = LoggerFormatter.rep_fmt
+            self._style._fmt = LoggerFormatter.info_fmt
 
         # Call the original formatter class to do the grunt work
         result = logging.Formatter.format(self, record)
