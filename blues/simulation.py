@@ -770,15 +770,21 @@ class Simulation(object):
         md_state1 = self.current_state['md']['state1']
         log_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.nc_integrator.kT)
         randnum =  math.log(np.random.random())
-
-        if log_mc > randnum:
-            self.accept += 1
-            self.log.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
-            self.md_sim.context.setPositions(md_state1['positions'])
-        else:
+        if self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio == 0:
             self.reject += 1
             self.log.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state0['positions'])
+        else:
+            log_mc = log_mc + math.log(self.move_engine.moves[self.move_engine.selected_move].acceptance_ratio)
+
+            if log_mc > randnum:
+                self.accept += 1
+                self.log.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
+                self.md_sim.context.setPositions(md_state1['positions'])
+            else:
+                self.reject += 1
+                self.log.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
+                self.md_sim.context.setPositions(md_state0['positions'])
         self.log_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
