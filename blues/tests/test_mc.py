@@ -21,7 +21,7 @@ class BLUESTester(unittest.TestCase):
         self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
         self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.00002,
                 'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
-                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
+                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 1, 'constraints': 'HBonds',
                 'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'mc-test',
                 'platform' : None }
 
@@ -88,13 +88,10 @@ class BLUESTester(unittest.TestCase):
         #Initialize the SimulationFactory object
         sims = SimulationFactory(structure, self.mover, **self.opt)
         #print(sims)
-        system = sims.generateSystem(structure, **self.opt)
-        simdict = sims.createSimulationSet()
-        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, self.mover, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.nc
         self.model.calculateProperties()
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        mc_sim = Simulation(sims, self.mover, **self.opt)
+        mc_sim = Simulation(sims, **self.opt)
         #monkeypatch to access acceptance value
         def nacceptRejectMC(self, temperature=300, **opt):
             """Function that chooses to accept or reject the proposed move.
@@ -113,7 +110,7 @@ class BLUESTester(unittest.TestCase):
                 print('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
                 self.md_sim.context.setPositions(md_state0['positions'])
             self.log_mc = log_mc
-            self.md_sim.context.setVelocitiesToTemperature(self.opt['temperature'])
+            self.md_sim.context.setVelocitiesToTemperature(temperature)
         mc_sim.acceptRejectMC = nacceptRejectMC
         nacceptRejectMC.__get__(mc_sim)
         mc_sim.acceptRejectMC = types.MethodType(nacceptRejectMC, mc_sim)

@@ -32,7 +32,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     #Define some options
     opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
             'nIter' : 100, 'nstepsNC' : 10000, 'nstepsMD' : 10000, 'nprop' : 1,
-            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10,
+            'nonbondedMethod' : 'PME', 'nonbondedCutoff': 1,
             'constraints': 'HBonds', 'freeze_distance' : 5.0,
             'trajectory_interval' : 2000, 'reporter_interval' : 1000,
             'write_move' : False,
@@ -53,7 +53,6 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
 
     # Generate the MD, NCMC, ALCHEMICAL Simulation objects
     simulations = SimulationFactory(struct, ligand_mover, **opt)
-    simulations.createSimulationSet()
 
     # Add reporters to MD simulation.
     traj_reporter = openmm.app.DCDReporter(opt['outfname']+'-nc{}.dcd'.format(nstepsNC), opt['trajectory_interval'])
@@ -81,7 +80,7 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
     simulations.nc.reporters.append(ncmc_progress_reporter)
 
     # Run BLUES Simulation
-    blues = Simulation(simulations, ligand_mover, **opt)
+    blues = Simulation(simulations, **opt)
     blues.run(opt['nIter'])
 
 parser = OptionParser()
