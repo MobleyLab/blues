@@ -28,9 +28,10 @@ class MolDartMove(RandomLigandRotationMove):
         List of paths to pdb files with the same system as the structure,
         whose ligand internal coordinates will be used as the darts for
         internal coordinate darting.
-    fit_atoms:
-        The atoms of the protein to be fitted, to remove rotations/
-        translations changes from interfering the darting procedure.
+    fit_atoms: list of ints
+        A list of ints corresponding to the atoms of the protein to be fitted,
+        to remove rotations/translations changes from interfering
+        with the darting procedure.
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
     transition_matrix: None or nxn numpy.array, optional, default=None
@@ -40,7 +41,11 @@ class MolDartMove(RandomLigandRotationMove):
         Otherwise a nxn matrix must be passed, where n == len(pdb_files), where entry
         Mij corresponds to the probability when in the pdb_files[i] dart to dart to
         the pdb_files[j] dart.
-    rigid_move: boolean, default=False:
+    rigid_ring:boolean, optional, default=False:
+        If True will rigidfy any dihedrals of molecules that are bonded to
+        either a double bonded or ring atom, which are otherwise extremely
+        senstive to these dihedral changes.
+    rigid_move: boolean, optional, default=False:
         If True, will ignore internal coordinate changes while darting
         and will effectively perform a rigid body rotation between darts
         instead.
@@ -64,14 +69,17 @@ class MolDartMove(RandomLigandRotationMove):
         The three atoms of the receptor to use for boresch style restraints.
         If unspecified uses a random selection through a heuristic process
         via Yank. This is only necessary when `restraints==True`
-    K_r: float
+    K_r: float, optional, default=10
         The value of the bond restraint portion of the boresch restraints
         (given in units of kcal/(mol*angstrom**2)).
         Only used if restraints=True.
-    K_angle: flaot
+    K_angle: float, optional, default=10
         The value of the angle and dihedral restraint portion of the boresh restraints
         (given in units of kcal/(mol*rad**2)).
         Only used if restraints=True.
+    lambda_restraints: str, optional, default='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        The Lepton-compatible string specifying how the restraint lambda parameters
+        are handled.
 
 
     """
@@ -193,10 +201,39 @@ class MolDartMove(RandomLigandRotationMove):
             np.fill_diagonal(self.transition_matrix, 0)
         else:
             self.transition_matrix = transition_matrix
+        self.transition_matrix = self._checkTransitionMatrix(self.transition_matrix, self.dart_groups)
         row_sums = self.transition_matrix.sum(axis=1)
         self.transition_matrix = self.transition_matrix / row_sums[:, np.newaxis]
         if np.shape(self.transition_matrix) != (len(pdb_files), len(pdb_files)):
             raise ValueError('Transition matrix should be an nxn matrix, where n is the length of pdb_files')
+
+    @staticmethod
+    def _checkTransitionMatrix(transition_matrix, dart_groups):
+        """Checks if transition matrix obeys the proper
+        properties if used in a Monte Carlo scheme"""
+        #check if values are non-negative
+        ltz = np.where(transition_matrix<0)[0]
+        if len(ltz)>0:
+            raise ValueError('transition_matrix values should all be non-negative')
+        #check reversiblility
+        indices = np.triu_indices(np.shape(transition_matrix)[0])
+        error_indices = []
+        for i,j in zip(indices[0],indices[1]):
+                if transition_matrix[i,j]==0 or transition_matrix[j,i]==0:
+                    if transition_matrix[j,i]>0 or transition_matrix[i,j]>0:
+                        missing_indices="[{},{}][{},{}]".format(i,j,j,i)
+                        error_indices.append(missing_indices)
+        if len(error_indices)>0:
+            raise ValueError('transition_matrix needs to be reversible to maintain detailed balance. '+
+            'The following pairs should either both be zero or non-zero {}'.format(error_indices))
+        #check if size of transition matrix is correct
+        row_sums = transition_matrix.sum(axis=1)
+        transition_matrix = transition_matrix / row_sums[:, np.newaxis]
+        if np.shape(transition_matrix) != (len(dart_groups), len(dart_groups)):
+            raise ValueError('Transition matrix should be an nxn matrix, where n is the length of pdb_files')
+
+        return transition_matrix
+
 
 
     def _poseDart(self, context, atom_indices):
@@ -335,7 +372,6 @@ class MolDartMove(RandomLigandRotationMove):
         #rand_index = np.random.choice(self.dart_groups, self.transition_matrix[binding_mode_index])
         rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix)
         dart_ratio = self.dart_ratio
-        print('dart_ratio', self.dart_ratio)
         self.acceptance_ratio = self.acceptance_ratio * dart_ratio
         #get matching binding mode pose and get rotation/translation to that pose
         #TODO decide on making a copy or always point to same object

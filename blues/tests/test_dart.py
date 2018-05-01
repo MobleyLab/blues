@@ -87,6 +87,28 @@ class DartTester(unittest.TestCase):
         #check that the reverse of the move gives the same positions
         assert np.allclose(begin_compare._value, begin_traj.openmm_positions(0)._value, rtol=1e-4, atol=1e-4)
 
+    def test_checkTransitionMatrix(self):
+        dart_group =[1,1,1]
+        #should fail because not reversible
+        matrix_1 = np.array([[1,0,1],
+                            [1,0.5,1],
+                            [1,1,1]])
+        #should fail because negative value
+        matrix_2 = np.array([[1,-1,1],
+                            [1,0.5,1],
+                            [1,1,1]])
+        #should pass
+        matrix_3 = np.array([[1,1,1],
+                            [1,0.5,1],
+                            [1,1,1]])
+
+
+
+        self.assertRaises(ValueError, self.ligand._checkTransitionMatrix, matrix_1, dart_group)
+        self.assertRaises(ValueError, self.ligand._checkTransitionMatrix, matrix_2, dart_group)
+        self.ligand._checkTransitionMatrix(matrix_3, dart_group)
+
+
     def test_transition_matrix(self):
         self.ligand.acceptance_ratio=1
         self.ligand.transition_matrix = np.array([[0, 1],[0.1,0.9]])
@@ -95,6 +117,8 @@ class DartTester(unittest.TestCase):
         self.ligand.move(self.blues.md_sim.context).getState(getPositions=True).getPositions(asNumpy=True)
 
         assert self.ligand.acceptance_ratio == 0.1
+
+
 
 
 class BoreschRestraintTester(unittest.TestCase):
