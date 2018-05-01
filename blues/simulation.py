@@ -10,274 +10,179 @@ from simtk.openmm import app
 import parmed, math
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
+from blues import utils
 import logging
-from math import floor, ceil
+
 from collections import OrderedDict
 
-class SimulationFactory(object):
-    """SimulationFactory is used to generate the 3 required OpenMM Simulation
-    objects (MD, NCMC, ALCH) required for the BLUES run.
-    Ex.
-        from blues.ncmc import SimulationFactory
-        sims = SimulationFactory(structure, move_engine, **opt)
-        sims.createSimulationSet()
-    #TODO: add functionality for handling multiple alchemical regions
+logger = logging.getLogger(__name__)
 
-    Parameters
-    ----------
-    simulations : blues.ncmc.SimulationFactory object
-        SimulationFactory Object which carries the 3 required
-        OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
-    move_engine : blues.ncmc.MoveEngine object
-        MoveProposal object which contains the dict of moves performed
-        in the NCMC simulation.
-
-    Integrator options
-    ------------------
-    dt: int, optional, default=0.002
-        The timestep of the integrator to use (in ps).
-    nprop: int, optional, default=5
-        The number of additional propogation steps to be inserted
-        during the middle of the NCMC protocol (defined by
-        `prop_lambda`)
-    prop_lambda: float, optional, default=0.3
-        The range which additional propogation steps are added,
-        defined by [0.5-prop_lambda, 0.5+prop_lambda].
-    nstepsNC: int, optional, default=1000
-        The number of NCMC relaxation steps to use.
-
-    System options
-    --------------
-    Any arguments that are used to create a system from
-    parmed Structure.createSystem() can be passed, where
-    the string key in the dictionarycorresponds to the particular
-    argument (such as nonbondedMethod, hydrogenMass, etc.).
-    For arugments that require units, units can be specified,
-    or if floats/ints are used, then the default OpenMM units
-    are used. These are:
-        length: nanometers
-        time: picoseconds
-        mass: atomic mass units (daltons)
-        charge: proton charge
-        temperature: Kelvin
-    For arguments that require classes from openmm.app,
-    such as nonbondedMethod either the class can be used directly,
-    or the string corresponding to that class can be used.
-    So for the `nonbondedMethod` arugment, for example, either
-    openmm.app.PME or 'PME' can be used.
-
-    Simulation options
-    ------------------
-    nIter: int, optional, default=100
-        The number of MD + NCMC/MC iterations to perform.
-    mc_per_iter: int, optional, default=1
-        The number of MC moves to perform during each
-        iteration of a MD + MC simulations.
-
-    Reporter options
-    ----------------
-    trajectory_interval: int or None, optional, default=None
-        Used to calculate the number of trajectory frames
-        per iteration. If None, defaults to the value of nstepsNC.
-    reporter_interval: int or None, optional, default=None
-        Outputs information (steps, speed, accepted moves, iterations)
-        about the NCMC simulation every reporter_interval interval.
-        If None, defaults to the value of nstepsNC.
-    outfname: str
-        Prefix of log file to output to.
-    Logger: logging.Logger
-        Adds a logger that will output relevant non-trajectory
-        simulation information to a log.
-
-    Alchemical System options
-    -------------------------
-    freeze_center : str, optional, default='HOH,NA,CL'
-        AmberMask selection for the center in which to select atoms for zeroing their masses. Default: LIG
-    freeze_distance : float, optional, default=0
-        Distance (angstroms) to select atoms for retaining their masses.
-        Atoms outside the set distance will have their masses set to 0.0. Default: 0.0
-    freeze_solvent : str
-        AmberMask selection in which to select solvent atoms for zeroing their masses. Default: HOH,NA,CL
-    annihilate_electrostatics : bool, optional
-        If True, electrostatics should be annihilated, rather than decoupled
-        (default is True).
-    annihilate_sterics : bool, optional
-        If True, sterics (Lennard-Jones or Halgren potential) will be annihilated,
-        rather than decoupled (default is False).
-    softcore_alpha : float, optional
-        Alchemical softcore parameter for Lennard-Jones (default is 0.5).
-    softcore_a, softcore_b, softcore_c : float, optional
-        Parameters modifying softcore Lennard-Jones form. Introduced in
-        Eq. 13 of Ref. [1] (default is 1 for a,b and 6 for c).
-    softcore_beta : float, optional
-        Alchemical softcore parameter for electrostatics. Set this to zero
-        to recover standard electrostatic scaling (default is 0.0).
-    softcore_d, softcore_e, softcore_f : float, optional
-        Parameters modifying softcore electrostatics form (default is 1 for d,e and 2 for f).
-
+class SystemFactory(object):
     """
-    def __init__(self, structure, move_engine,
-                #integrator parameters
-                dt=0.002, friction=1/unit.picoseconds, temperature=298*unit.kelvin,
-                nprop=5, prop_lambda=0.3, nstepsNC=1000,
-                nstepsMD=5000,
-                alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' },
-                trajectory_interval=5000, reporter_interval=5000,
-                #createSystem parameters
-                nonbondedMethod=None, nonbondedCutoff=8.0*unit.angstroms, switchDistance=0.0*unit.angstroms,
-                constraints=None, rigidWater=True, implicitSolvent=None, implicitSolventKappa=None,
-                implicitSolventSaltConc=0.0*unit.moles/unit.liters, soluteDielectric=1.0, solventDielectric=78.5,
-                useSASA=False, removeCMMotion=True, hydrogenMass=None, ewaldErrorTolerance=0.0005,
-                flexibleConstraints=True, verbose=False, splitDihedrals=False,
+    SystemFactory contains methods to generate/modify the OpenMM System object required for
+    generating the openmm.Simulation using a given parmed.Structure()
 
-                #alchemical system parameters
-                freeze_distance=0, freeze_center='LIG', freeze_solvent='HOH,NA,CL',
-                softcore_alpha=0.5, softcore_a=1, softcore_b=1, softcore_c=6,
-                softcore_beta=0.0, softcore_d=1, softcore_e=1, softcore_f=2,
-                annihilate_electrostatics=True, annihilate_sterics=False,
+    Methods
+    -------
+    #Generate the reference OpenMM system.
+    system = SystemFactory.generateSystem(structure, **opt['system'])
 
-                #mc options
-                mc_per_iter=1,
+    #Generate the alchemical System
+    alch_system = SystemFactory.generateAlchSystem(system, ligand_atom_indices, **opt['alchemical'])
 
-                **opt):
-        """Requires a parmed.Structure of the entire system and the ncmc.Model
-        object being perturbed.
+    #Freeze atoms in the alchemical system
+    alch_system = SystemFactory.freeze_atoms(structure,
+                                            alch_system,
+                                            freeze_distance=5.0,
+                                            freeze_center='LIG'
+                                            freeze_solvent='HOH,NA,CL')
+    """
 
-        Options is expected to be a dict of values. Ex:
-        nIter=5, nstepsNC=50, nstepsMD=10000,
-        temperature=300, friction=1, dt=0.002,
-        nonbondedMethod='PME', nonbondedCutoff=10, constraints='HBonds',
-        trajectory_interval=1000, reporter_interval=1000, platform=None"""
-        if (nstepsNC % 2) != 0:
-            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (nstepsNC))
+    @classmethod
+    def generateSystem(cls, structure, **kwargs):
+        """
+        Construct an OpenMM System representing the topology described by the
+        prmtop file. This function calls parmed Structure.createSystem().
 
-        if 'Logger' in opt:
-            self.log = opt['Logger']
-        else:
-            self.log = logging.getLogger(__name__)
-            #self.log = init_logger(logger)
+        Parameters
+        ----------
+        nonbondedMethod : cutoff method
+            This is the cutoff method. It can be either the NoCutoff,
+            CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald objects from the
+            simtk.openmm.app namespace
+        nonbondedCutoff : float or distance Quantity
+            The nonbonded cutoff must be either a floating point number
+            (interpreted as nanometers) or a Quantity with attached units. This
+            is ignored if nonbondedMethod is NoCutoff.
+        switchDistance : float or distance Quantity
+            The distance at which the switching function is turned on for van
+            der Waals interactions. This is ignored when no cutoff is used, and
+            no switch is used if switchDistance is 0, negative, or greater than
+            the cutoff
+        constraints : None, app.HBonds, app.HAngles, or app.AllBonds
+            Which type of constraints to add to the system (e.g., SHAKE). None
+            means no bonds are constrained. HBonds means bonds with hydrogen are
+            constrained
+        rigidWater : bool=True
+            If True, water is kept rigid regardless of the value of constraints.
+            A value of False is ignored if constraints is not None.
+        implicitSolvent : None, app.HCT, app.OBC1, app.OBC2, app.GBn, app.GBn2
+            The Generalized Born implicit solvent model to use.
+        implicitSolventKappa : float or 1/distance Quantity = None
+            This is the Debye kappa property related to modeling saltwater
+            conditions in GB. It should have units of 1/distance (1/nanometers
+            is assumed if no units present). A value of None means that kappa
+            will be calculated from implicitSolventSaltConc (below)
+        implicitSolventSaltConc : float or amount/volume Quantity=0 moles/liter
+            If implicitSolventKappa is None, the kappa will be computed from the
+            salt concentration. It should have units compatible with mol/L
+        temperature : float or temperature Quantity = 298.15 kelvin
+            This is only used to compute kappa from implicitSolventSaltConc
+        soluteDielectric : float=1.0
+            The dielectric constant of the protein interior used in GB
+        solventDielectric : float=78.5
+            The dielectric constant of the water used in GB
+        useSASA : bool=False
+            If True, use the ACE non-polar solvation model. Otherwise, use no
+            SASA-based nonpolar solvation model.
+        removeCMMotion : bool=True
+            If True, the center-of-mass motion will be removed periodically
+            during the simulation. If False, it will not.
+        hydrogenMass : float or mass quantity = None
+            If not None, hydrogen masses will be changed to this mass and the
+            difference subtracted from the attached heavy atom (hydrogen mass
+            repartitioning)
+        ewaldErrorTolerance : float=0.0005
+            When using PME or Ewald, the Ewald parameters will be calculated
+            from this value
+        flexibleConstraints : bool=True
+            If False, the energies and forces from the constrained degrees of
+            freedom will NOT be computed. If True, they will (but those degrees
+            of freedom will *still* be constrained).
+        verbose : bool=False
+            If True, the progress of this subroutine will be printed to stdout
+        splitDihedrals : bool=False
+            If True, the dihedrals will be split into two forces -- proper and
+            impropers. This is primarily useful for debugging torsion parameter
+            assignments.
 
-        #Structure of entire system
-        self.structure = structure
-        #Atom indicies from move_engine
-        #TODO: change atom_indices selection for multiple regions
-        self.atom_indices = move_engine.moves[0].atom_indices
-        self.move_engine = move_engine
-        self.system = None
-        self.alch_system = None
-        self.md = None
-        self.alch  = None
-        self.nc  = None
-        self.nstepsNC, self.integration_steps = self.calcNCMCSteps(nstepsNC, nprop, prop_lambda, self.log)
-        self.opt = opt
-        system_opt = OrderedDict([('nonbondedMethod',nonbondedMethod), ('nonbondedCutoff',nonbondedCutoff), ('switchDistance',switchDistance), ('constraints',constraints),
-                            ('rigidWater',rigidWater), ('implicitSolvent',implicitSolvent), ('implicitSolventKappa',implicitSolventKappa),
-                            ('implicitSolventSaltConc',implicitSolventSaltConc), ('temperature',temperature), ('soluteDielectric',soluteDielectric), ('useSASA',useSASA),
-                            ('removeCMMotion',removeCMMotion), ('hydrogenMass',hydrogenMass), ('ewaldErrorTolerance',ewaldErrorTolerance),
-                            ('flexibleConstraints',flexibleConstraints), ('verbose',verbose), ('splitDihedrals',splitDihedrals),
-                            ('freeze_distance',freeze_distance), ('freeze_center',freeze_center), ('freeze_solvent',freeze_solvent),
-                            ('dt',dt), ('friction',friction), ('temperature',temperature),
-                            ('nprop',nprop), ('prop_lambda',prop_lambda), ('nstepsNC',self.nstepsNC), ('nstepsMD',nstepsMD),
-                            ('alchemical_functions',alchemical_functions),
-                            ('mc_per_iter',mc_per_iter), ('trajectory_interval',trajectory_interval), ('reporter_interval',reporter_interval),
-                            ('softcore_alpha',softcore_alpha), ('softcore_a',softcore_a), ('softcore_b',softcore_b), ('softcore_c',softcore_c),
-                            ('softcore_beta',softcore_beta), ('softcore_d',softcore_d), ('softcore_e',softcore_e), ('softcore_f',softcore_f),
-                            ('annihilate_electrostatics',annihilate_electrostatics), ('annihilate_sterics',annihilate_sterics)])
-        self.system_opt = self.add_units(system_opt, self.log)
-        for k,v in system_opt.items():
-            self.log.info('{} = {}'.format(k,v))
-        self.createSimulationSet()
+        Notes
+        -----
+        This function calls prune_empty_terms if any Topology lists have changed
+        """
+        return structure.createSystem(**kwargs)
 
-    @staticmethod
-    def add_units(system_opt, logger):
-        #for system setup portion
-
-        #set unit defaults to OpenMM defaults
-        unit_options = {'nonbondedCutoff':unit.nanometers,
-                        'switchDistance':unit.nanometers, 'implicitSolventKappa':unit.nanometers,
-                        'implicitSolventSaltConc':unit.mole/unit.liters, 'temperature':unit.kelvins,
-                        'hydrogenMass':unit.daltons,
-                        'dt':unit.picoseconds, 'friction':1/unit.picoseconds
-                        }
-        app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']
-        scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
-        bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
-                        'splitDihedrals']
-
-        combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
-        for sel in system_opt.keys():
-            if sel in combined_options:
-                if sel in unit_options:
-                    #if the value requires units check that it has units
-                    #if it doesn't assume default units are used
-                    if system_opt[sel] is None:
-                        system_opt[sel] = None
-                    else:
-                        try:
-                            system_opt[sel]._value
-                        except:
-                            logger.info('Units for {}:{} not specified. Using default units of {}'.format(sel, system_opt[sel], unit_options[sel]))
-                            system_opt[sel] = system_opt[sel]*unit_options[sel]
-                #if selection requires an OpenMM evaluation do it here
-                elif sel in app_options:
-                    try:
-                        system_opt[sel] = eval("app.%s" % system_opt[sel])
-                    except:
-                        #if already an app object we can just pass
-                        pass
-                #otherwise just take the value as is, should just be a bool or float
-                else:
-                    pass
-        return system_opt
-
-    @staticmethod
-    def calcNCMCSteps(total_steps, nprop, prop_lambda, log):
-        nstepsNC = total_steps/(2*(nprop*prop_lambda+0.5-prop_lambda))
-        if int(nstepsNC) % 2 == 0:
-            nstepsNC = int(nstepsNC)
-        else:
-            nstepsNC = int(nstepsNC) + 1
-
-        in_portion =  (prop_lambda)*nstepsNC
-        out_portion = (0.5-prop_lambda)*nstepsNC
-        if in_portion.is_integer():
-            in_portion= int(in_portion)
-        if out_portion.is_integer():
-            int(out_portion)
-        in_prop = int(nprop*(2*floor(in_portion)))
-        out_prop = int((2*ceil(out_portion)))
-        calc_total = int(in_prop + out_prop)
-        if calc_total != total_steps:
-            log.info('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
-                           'Instead using {} total propogation steps, '.format(calc_total)+
-                           '({} steps inside `prop_lambda` and {} steps outside `prop_lambda)`.'.format(in_prop, out_prop))
-        log.info('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
-        return nstepsNC, calc_total
-
-    def _zero_allother_masses(self, system, indexlist):
-        num_atoms = system.getNumParticles()
-        for index in range(num_atoms):
-            if index in indexlist:
-                pass
-            else:
-                system.setParticleMass(index, 0*unit.daltons)
-        return system
-
-    def generateAlchSystem(self, system, atom_indices,
-                            freeze_distance=0, freeze_center='LIG', freeze_solvent='HOH,NA,CL',
+    @classmethod
+    def generateAlchSystem(cls, system, atom_indices,
                             softcore_alpha=0.5, softcore_a=1, softcore_b=1, softcore_c=6,
                             softcore_beta=0.0, softcore_d=1, softcore_e=1, softcore_f=2,
                             annihilate_electrostatics=True, annihilate_sterics=False,
-                            **opt):
+                            disable_alchemical_dispersion_correction=True,
+                            **kwargs):
         """Returns the OpenMM System for alchemical perturbations.
-
         Parameters
         ----------
         system : openmm.System
             The OpenMM System object corresponding to the reference system.
-        atom_indices : list
-            Atom indicies of the move.
+        atom_indices : list of int
+            Atom indicies of the move or designated for which the nonbonded forces
+            (both sterics and electrostatics components) have to be alchemically
+            modified.
+        annihilate_electrostatics : bool, optional
+            If True, electrostatics should be annihilated, rather than decoupled
+            (default is True).
+        annihilate_sterics : bool, optional
+            If True, sterics (Lennard-Jones or Halgren potential) will be annihilated,
+            rather than decoupled (default is False).
+        softcore_alpha : float, optional
+            Alchemical softcore parameter for Lennard-Jones (default is 0.5).
+        softcore_a, softcore_b, softcore_c : float, optional
+            Parameters modifying softcore Lennard-Jones form. Introduced in
+            Eq. 13 of Ref. [1] (default is 1).
+        softcore_beta : float, optional
+            Alchemical softcore parameter for electrostatics. Set this to zero
+            to recover standard electrostatic scaling (default is 0.0).
+        softcore_d, softcore_e, softcore_f : float, optional
+            Parameters modifying softcore electrostatics form (default is 1).
+
+        References
+        ----------
+        [1] Pham TT and Shirts MR. Identifying low variance pathways for free
+        energy calculations of molecular transformations in solution phase.
+        JCP 135:034114, 2011. http://dx.doi.org/10.1063/1.3607597
+        """
+        #Lower logger level to suppress excess warnings
+        logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
+
+        #Disabled correction term due to increased computational cost
+        factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=disable_alchemical_dispersion_correction)
+        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices,
+                                            softcore_alpha=softcore_alpha,
+                                            softcore_a=softcore_a,
+                                            softcore_b=softcore_b,
+                                            softcore_c=softcore_c,
+                                            softcore_beta=softcore_beta,
+                                            softcore_d=softcore_d,
+                                            softcore_e=softcore_e,
+                                            softcore_f=softcore_f,
+                                            annihilate_electrostatics=annihilate_electrostatics,
+                                            annihilate_sterics=annihilate_sterics)
+
+        alch_system = factory.create_alchemical_system(system, alch_region)
+        return alch_system
+
+    @classmethod
+    def freeze_atoms(cls, structure, system, freeze_distance=5.0,
+                    freeze_center='LIG', freeze_solvent='HOH,NA,CL', **kwargs):
+        """
+        Function to zero the masses of selected atoms and solvent. Massless atoms
+        will be ignored by the integrator and will not change positions.
+        Parameters
+        ----------
+        structure : parmed.Structure()
+            Structure of the system, used for atom selection.
+        system : openmm.System
+            The OpenMM System object to be modified.
         freeze_center : str
             AmberMask selection for the center in which to select atoms for zeroing their masses. Default: LIG
         freeze_distance : float
@@ -285,113 +190,144 @@ class SimulationFactory(object):
         freeze_solvent : str
             AmberMask selection in which to select solvent atoms for zeroing their masses. Default: HOH,NA,CL
         """
-        logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
-        factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=True)
-        alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices, softcore_alpha=softcore_alpha,
-                                softcore_a=softcore_a, softcore_b=softcore_b, softcore_c=softcore_c,
-                                softcore_beta=softcore_beta, softcore_d=softcore_d, softcore_e=softcore_e,
-                                softcore_f=softcore_f, annihilate_electrostatics=annihilate_electrostatics,
-                                annihilate_sterics=annihilate_sterics)
-        alch_system = factory.create_alchemical_system(system, alch_region)
 
-        if freeze_distance:
-            #Atom selection for zeroing protein atom masses
-            mask = parmed.amber.AmberMask(self.structure,"(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance,freeze_solvent))
-            site_idx = [i for i in mask.Selected()]
-            self.log.info('Zeroing mass of %s atoms %.1f Angstroms from %s in alchemical system' % (len(site_idx), freeze_distance, freeze_center))
-            self.log.debug('\nFreezing atom selection = %s' % site_idx)
-            alch_system = self._zero_allother_masses(alch_system, site_idx)
-        else:
-            pass
+        #Atom selection for zeroing protein atom masses
+        mask = parmed.amber.AmberMask(structure,"(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance._value,freeze_solvent))
+        site_idx = [i for i in mask.Selected()]
+        logger.info('Zeroing mass of %s atoms %.1f Angstroms from %s in System' % (len(site_idx), freeze_distance._value, freeze_center))
+        logger.debug('\nFreezing atom selection = %s' % site_idx)
+        freeze_indices = set(range(system.getNumParticles())) - set(site_idx)
+        return utils.zero_masses(system, freeze_indices)
 
-        return alch_system
+class SimulationFactory(object):
+    """SimulationFactory is used to generate the 3 required OpenMM Simulation
+    objects (MD, NCMC, ALCH) required for the BLUES run.
 
-    def generateSystem(self, structure,
-                       nonbondedMethod=None,
-                       nonbondedCutoff=8.0*unit.angstroms,
-                       switchDistance=0.0*unit.angstroms,
-                       constraints=None,
-                       rigidWater=True,
-                       implicitSolvent=None,
-                       implicitSolventKappa=None,
-                       implicitSolventSaltConc=0.0*unit.moles/unit.liters,
-                       soluteDielectric=1.0,
-                       solventDielectric=78.5,
-                       useSASA=False,
-                       removeCMMotion=True,
-                       hydrogenMass=None,
-                       ewaldErrorTolerance=0.0005,
-                       flexibleConstraints=True,
-                       verbose=False,
-                       splitDihedrals=False,
-                       **system_opt):
-        """Returns the OpenMM System for the reference system.
+    Example.
+    ----
+    from blues.ncmc import SimulationFactory
+    simulations = SimulationFactory(structure, system, alch_system, ligand_mover, **opt['simulation'])
 
-        Parameters
-        ----------
-        structure: parmed.Structure
-            ParmEd Structure object of the entire system to be simulated.
-        system_opt : arguments for createSystem (i.e. cutoffs/constraints)
+
+    Parameters
+    ----------
+    structure : parmed.Structure
+        A chemical structure composed of atoms, bonds, angles, torsions, and
+        other topological features.
+    system : openmm.System
+        The OpenMM System object corresponding to the reference system.
+    alch_system : openmm.System
+        The OpenMM System object corresponding to the system for alchemical perturbations.
+    move_engine : blues.ncmc.MoveEngine object
+        MoveProposal object which contains the dict of moves performed
+        in the NCMC simulation.
+    kwargs : parameters for the simulation (i.e timestep, temperature, etc.)
+    """
+    def __init__(self, structure, system, alch_system, move_engine, **opt):
+        #Structure of entire system
+        self.structure = structure
+        #Atom indicies from move_engine
+        #TODO: change atom_indices selection for multiple regions
+        self.atom_indices = move_engine.moves[0].atom_indices
+        self.move_engine = move_engine
+        self.system = system
+        self.alch_system = alch_system
+        self.opt = opt
+        self.generateSimulationSet()
+
+    def addBarostat(self, system, temperature=300, pressure=1, frequency=25, **kwargs):
         """
-        #distrubute list of options according to catagory
-        system = structure.createSystem(nonbondedMethod=nonbondedMethod, nonbondedCutoff=nonbondedCutoff,
-                                        switchDistance=switchDistance, constraints=constraints,
-                                        rigidWater=rigidWater, implicitSolvent=implicitSolvent,
-                                        implicitSolventKappa=implicitSolventKappa,
-                                        implicitSolventSaltConc=implicitSolventSaltConc,
-                                        soluteDielectric=soluteDielectric, solventDielectric=solventDielectric,
-                                        useSASA=useSASA, removeCMMotion=removeCMMotion, hydrogenMass=hydrogenMass,
-                                        ewaldErrorTolerance=ewaldErrorTolerance, flexibleConstraints=flexibleConstraints,
-                                        verbose=verbose, splitDihedrals=splitDihedrals)
+        Adds a MonteCarloBarostat to the MD system.
+
+        Parameters:
+        ----------
+        temperature : float, default=300
+            temperature (Kelvin) to be simulated at.
+        pressure : int, optional, default=None
+            Pressure (atm) for Barostat for NPT simulations.
+        frequency : int, default=25
+            Frequency at which Monte Carlo pressure changes should be attempted (in time steps)
+        """
+        logger.info('Adding MonteCarloBarostat with %s. MD simulation will be NPT.' %(pressure))
+        # Add Force Barostat to the system
+        system.addForce(openmm.MonteCarloBarostat(pressure, temperature, frequency))
         return system
 
-    def generateSimFromStruct(self, structure, move_engine, system, nstepsNC,
-                             temperature=300, dt=0.002, friction=1,
-                             nprop=1, prop_lambda=0.3,
-                             alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-                          'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' },
-                             ncmc=False, platform=None, **opt):
-        """Used to generate the OpenMM Simulation objects given a ParmEd Structure.
+    def generateIntegrator(self, temperature=300, dt=0.002, friction=1, **kwargs):
+        """
+        Generates a LangevinIntegrator for the Simulations.
 
-        Parameters
+        Parameters:
         ----------
-        structure: parmed.Structure
-            ParmEd Structure object of the entire system to be simulated.
-        system :
-        opt : optional parameters (i.e. cutoffs/constraints)
-        atom_indices : list
-            Atom indicies of the move.
-        prop_lambda : float (Default = 0.3)
-            Defines the region in which to add extra propagation
-            steps during the NCMC simulation from the midpoint 0.5.
-            i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.
+        temperature : float, default=300
+            temperature (Kelvin) to be simulated at.
+        friction: float, default=1
+            friction coefficient which couples to the heat bath, measured in 1/ps
+        dt: int, optional, default=0.002
+            The timestep of the integrator to use (in ps).
+        """
+        integrator = openmm.LangevinIntegrator(temperature, friction, dt)
+        return integrator
+
+    def generateNCMCIntegrator(self, alch_system, nstepsNC,
+                               alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+                               'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'},
+                               splitting="H V R O R V H",
+                               temperature=300,
+                               dt=0.002,
+                               nprop=1,
+                               prop_lambda=0.3, **kwargs):
+        """
+        Generates the Integrator for the NCMC simulation .
+
+        Parameters:
+        -----------
+        alch_system : openmm.System
+            The OpenMM System object corresponding to the alchemical system.
+        nstepsNC : int, optional, default=1000
+            The number of NCMC relaxation steps to use.
+        alchemical_functions : dict,
+
+        splitting : str, default = "H V R O R V H"
+
+        temperature : float, default=300
+            temperature (Kelvin) to be simulated at.
+        dt: int, optional, default=0.002
+            The timestep of the integrator to use (in ps).
         nprop : int (Default: 1)
             Controls the number of propagation steps to add in the lambda
             region defined by `prop_lambda`
+        prop_lambda: float, optional, default=0.3
+            The range which additional propogation steps are added,
+            defined by [0.5-prop_lambda, 0.5+prop_lambda].
         """
-        if ncmc:
-            #During NCMC simulation, lambda parameters are controlled by function dict below
-            # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
-            # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
-            integrator = AlchemicalExternalLangevinIntegrator(
-                                    alchemical_functions=alchemical_functions,
-                                   splitting= "H V R O R V H",
-                                   temperature=temperature,
-                                   nsteps_neq=nstepsNC,
-                                   timestep=dt,
-                                   nprop=nprop,
-                                   prop_lambda=prop_lambda
-                                   )
+        #During NCMC simulation, lambda parameters are controlled by function dict below
+        # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
+        # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
+        ncmc_integrator = AlchemicalExternalLangevinIntegrator(
+                                alchemical_functions=alchemical_functions,
+                               splitting=splitting,
+                               temperature=temperature,
+                               nsteps_neq=nstepsNC,
+                               timestep=dt,
+                               nprop=nprop,
+                               prop_lambda=prop_lambda)
+        return ncmc_integrator
 
-            for move in move_engine.moves:
-                system, integrator = move.initializeSystem(system, integrator)
+    def generateSimFromStruct(self, structure, system, integrator, platform=None, **kwargs):
+        """Used to generate the OpenMM Simulation objects from a given parmed.Structure()
 
-        else:
-            integrator = openmm.LangevinIntegrator(temperature,
-                                                   friction,
-                                                   dt)
+        Parameters
+        ----------
+        topology : parmed.Structure
+            ParmEd Structure object of the entire system to be simulated.
+        system :
 
-        #TODO SIMPLIFY TO 1 LINE.
+        integrator :
+
+        platform :
+
+        """
         #Specifying platform properties here used for local development.
         if platform is None:
             #Use the fastest available platform
@@ -400,46 +336,57 @@ class SimulationFactory(object):
             platform = openmm.Platform.getPlatformByName(platform)
             simulation = app.Simulation(structure.topology, system, integrator, platform)
 
-        if ncmc: #Encapsulate so this self.log.infos once
-            # OpenMM platform information
-            mmver = openmm.version.version
-            mmplat = simulation.context.getPlatform()
-            self.log.info('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()))
-            # Platform properties
-            for prop in mmplat.getPropertyNames():
-                val = mmplat.getPropertyValue(simulation.context, prop)
-                self.log.info('{} = {}'.format(prop,val))
-
         # Set initial positions/velocities
         # Will get overwritten from saved State.
         simulation.context.setPositions(structure.positions)
-        simulation.context.setVelocitiesToTemperature(temperature*unit.kelvin)
+        simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
 
         return simulation
 
-    def createSimulationSet(self):
-        """Function used to generate the 3 OpenMM Simulation objects."""
-        self.system = self.generateSystem(self.structure, **self.system_opt)
-        self.alch_system = self.generateAlchSystem(self.system, self.atom_indices, **self.system_opt)
-        self.md = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
-                                            ncmc=False, **self.system_opt)
-        self.alch = self.generateSimFromStruct(self.structure, self.move_engine, self.system,
-                                            ncmc=False, **self.system_opt)
-        self.nc = self.generateSimFromStruct(self.structure, self.move_engine, self.alch_system,
-                                            ncmc=True, **self.system_opt)
+    def _simulation_info_(self, simulation):
+        # Host information
+        from platform import uname
+        for k, v in uname()._asdict().items():
+            logger.info('{} = {}'.format(k,v))
 
+        # OpenMM platform information
+        mmver = openmm.version.version
+        mmplat = simulation.context.getPlatform()
+        logger.info('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()))
+        # Platform properties
+        for prop in mmplat.getPropertyNames():
+            val = mmplat.getPropertyValue(simulation.context, prop)
+            logger.info('{} = {}'.format(prop,val))
+
+    def generateSimulationSet(self):
+        """Function used to generate the 3 OpenMM Simulation objects."""
+        #Construct MD Integrator and Simulation
+        self.integrator = self.generateIntegrator(**self.opt)
+        if 'pressure' in self.opt.keys():
+            self.system = self.addBarostat(self.system, **self.opt)
+            logger.warning('NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
+        else:
+            logger.info('MD simulation will be NVT.')
+        self.md = self.generateSimFromStruct(self.structure, self.system, self.integrator, **self.opt)
+
+        #Alchemical Simulation is used for computing correction term from MD simulation.
+        alch_integrator = self.generateIntegrator(**self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self.system, alch_integrator, **self.opt)
+
+        #Construct NCMC Integrator and Simulation
+        self.ncmc_integrator = self.generateNCMCIntegrator(self.alch_system, **self.opt)
+
+        #Initialize the Move Engine with the Alchemical System and NCMC Integrator
+        for move in self.move_engine.moves:
+            self.alch_system, self.ncmc_integrator = move.initializeSystem(self.alch_system, self.ncmc_integrator)
+        self.nc = self.generateSimFromStruct(self.structure, self.alch_system, self.ncmc_integrator, **self.opt)
+
+        self._simulation_info_(self.nc)
 
 class Simulation(object):
     """Simulation class provides the functions that perform the BLUES run.
-
-    Ex.
-        import blues.ncmc
-        blues = ncmc.Simulation(sims, move_engine, **opt)
-        blues.run()
-
     """
-    def __init__(self, simulations, **opt
-        ):
+    def __init__(self, simulations):
         """Initialize the BLUES Simulation object.
 
         Parameters
@@ -447,43 +394,7 @@ class Simulation(object):
         simulations : blues.ncmc.SimulationFactory object
             SimulationFactory Object which carries the 3 required
             OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
-        move_engine : blues.ncmc.MoveEngine object
-            MoveProposal object which contains the dict of moves performed
-            in the NCMC simulation.
 
-        Integrator options
-        ------------------
-        dt: int, optional, default=0.002
-            The timestep of the integrator to use (in ps).
-        nprop: int, optional, default=5
-            The number of additional propogation steps to be inserted
-            during the middle of the NCMC protocol (defined by
-            `prop_lambda`)
-        prop_lambda: float, optional, default=0.3
-            The range which additional propogation steps are added,
-            defined by [0.5-prop_lambda, 0.5+prop_lambda].
-        nstepsNC: int, optional, default=1000
-            The number of NCMC relaxation steps to use.
-
-        System options
-        --------------
-        Any arguments that are used to create a system from
-        parmed Structure.createSystem() can be passed, where
-        the string key in the dictionarycorresponds to the particular
-        argument (such as nonbondedMethod, hydrogenMass, etc.).
-        For arugments that require units, units can be specified,
-        or if floats/ints are used, then the default OpenMM units
-        are used. These are:
-            length: nanometers
-            time: picoseconds
-            mass: atomic mass units (daltons)
-            charge: proton charge
-            temperature: Kelvin
-        For arguments that require classes from openmm.app,
-        such as nonbondedMethod either the class can be used directly,
-        or the string corresponding to that class can be used.
-        So for the `nonbondedMethod` arugment, for example, either
-        openmm.app.PME or 'PME' can be used.
 
         Simulation options
         ------------------
@@ -493,28 +404,7 @@ class Simulation(object):
             The number of MC moves to perform during each
             iteration of a MD + MC simulations.
 
-        Reporter options
-        ----------------
-        trajectory_interval: int or None, optional, default=None
-            Used to calculate the number of trajectory frames
-            per iteration. If None, defaults to the value of nstepsNC.
-        reporter_interval: int or None, optional, default=None
-            Outputs information (steps, speed, accepted moves, iterations)
-            about the NCMC simulation every reporter_interval interval.
-            If None, defaults to the value of nstepsNC.
-        outfname: str
-            Prefix of log file to output to.
-        Logger: logging.Logger
-            Adds a logger that will output relevant non-trajectory
-            simulation information to a log.
-
         """
-        if 'Logger' in opt:
-            self.log = opt['Logger']
-        elif simulations.log:
-            self.log = simulations.log
-        else:
-            self.log = logging.getLogger(__name__)
         self.simulations = simulations
         self.md_sim = simulations.md
         self.alch_sim = simulations.alch
@@ -523,14 +413,9 @@ class Simulation(object):
         self.accept = 0
         self.reject = 0
         self.accept_ratio = 0
+        self.opt = simulations.opt
 
-        #if nstepsNC not specified, set it to 0
-        #will be caught if NCMC simulation is run
-
-        if (self.simulations.system_opt['nstepsNC'] % 2) != 0:
-            raise Exception('nstepsNC needs to be even to ensure the protocol is symmetric (currently %i)' % (self.simulations.system_opt['nstepsNC']))
-        else:
-            self.movestep = int(self.simulations.system_opt['nstepsNC']) / 2
+        self.movestep = int(self.opt['nstepsNC']) / 2
 
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
@@ -580,30 +465,30 @@ class Simulation(object):
         self.setSimState('nc', 'state0', nc_state0)
 
     def _getSimulationInfo(self, nIter):
-        """self.log.infos out simulation timing and related information."""
+        """logger.infos out simulation timing and related information."""
 
-        total_ncmc_steps = self.simulations.integration_steps
+        total_ncmc_steps = self.opt['integration_steps']
 
         #Total NCMC simulation time
-        time_ncmc_steps = total_ncmc_steps * self.simulations.system_opt['dt'].value_in_unit(unit.picoseconds)
-        self.log.info('\t%s NCMC ps/iter' % time_ncmc_steps)
+        time_ncmc_steps = total_ncmc_steps * self.opt['dt'].value_in_unit(unit.picoseconds)
+        logger.info('\t%s NCMC ps/iter' % time_ncmc_steps)
 
         #Total MD simulation time
-        time_md_steps = self.simulations.system_opt['nstepsMD'] * self.simulations.system_opt['dt'].value_in_unit(unit.picoseconds)
-        self.log.info('MD Steps = %s' % self.simulations.system_opt['nstepsMD'])
-        self.log.info('\t%s MD ps/iter' % time_md_steps)
+        time_md_steps = self.opt['nstepsMD'] * self.opt['dt'].value_in_unit(unit.picoseconds)
+        logger.info('MD Steps = %s' % self.opt['nstepsMD'])
+        logger.info('\t%s MD ps/iter' % time_md_steps)
 
         #Total BLUES simulation time
         totaltime = (time_ncmc_steps + time_md_steps) * nIter
-        self.log.info('Total Simulation Time = %s ps' % totaltime)
-        self.log.info('\tTotal NCMC time = %s ps' % (int(time_ncmc_steps) * int(nIter)))
-        self.log.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(nIter)))
+        logger.info('Total Simulation Time = %s ps' % totaltime)
+        logger.info('\tTotal NCMC time = %s ps' % (int(time_ncmc_steps) * int(nIter)))
+        logger.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(nIter)))
 
         #Get trajectory frame interval timing for BLUES simulation
-        frame_iter = self.simulations.system_opt['nstepsMD'] / self.simulations.system_opt['trajectory_interval']
+        frame_iter = self.opt['nstepsMD'] / self.opt['reporters']['trajectory_interval']
         timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
-        self.log.info('\tTrajectory Interval = %s ps' % timetraj_frame)
-        self.log.info('\t\t%s frames/iter' % frame_iter )
+        logger.info('\tTrajectory Interval = %s ps' % timetraj_frame)
+        logger.info('\t\t%s frames/iter' % frame_iter )
 
     def getStateInfo(self, context, parameters):
         """Function that gets the State information from the given context and
@@ -665,7 +550,7 @@ class Simulation(object):
                                    xyz=state.getPositions())
 
         structure.save(outfname,overwrite=True)
-        self.log.info('\tSaving Frame to: %s' % outfname)
+        logger.info('\tSaving Frame to: %s' % outfname)
 
     def acceptRejectNCMC(self, temperature=300, write_move=False, **opt):
         """Function that chooses to accept or reject the proposed move.
@@ -678,7 +563,7 @@ class Simulation(object):
         randnum =  math.log(np.random.random())
 
         # Compute Alchemical Correction Term
-        if np.isnan(log_ncmc) == False:
+        if np.isnan(log_ncmc) is False:
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
@@ -687,14 +572,14 @@ class Simulation(object):
 
         if log_ncmc > randnum:
             self.accept += 1
-            self.log.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+            logger.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.simulations.system_opt['outfname'], self.current_iter))
+            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'], self.current_iter))
 
         else:
             self.reject += 1
-            self.log.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+            logger.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
             self.nc_sim.context.setPositions(md_state0['positions'])
 
         self.nc_sim.currentStep = 0
@@ -703,7 +588,7 @@ class Simulation(object):
 
     def simulateNCMC(self, nstepsNC=5000, **opt):
         """Function that performs the NCMC simulation."""
-        self.log.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
+        logger.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch region
         self.simulations.move_engine.selectMove()
@@ -720,20 +605,20 @@ class Simulation(object):
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
-                    self.log.info('Performing %s...' % move_name)
+                    logger.report('Performing %s...' % move_name)
                     self.nc_sim.context = self.simulations.move_engine.runEngine(self.nc_sim.context)
 
                 # Do 1 NCMC step with the integrator
                 self.nc_sim.step(1)
 
                 ###DEBUG options at every NCMC step
-                self.log.debug('%s' % self.getWorkInfo(self.nc_sim.context._integrator, self.work_keys))
+                logger.debug('%s' % self.getWorkInfo(self.nc_sim.context._integrator, self.work_keys))
                 #Attempt anything related to the move after protocol is performed
                 if nc_step == nstepsNC-1:
                     self.nc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].afterMove(self.nc_sim.context)
 
             except Exception as e:
-                self.log.error(e)
+                logger.error(e)
                 self.simulations.move_engine.moves[self.simulations.move_engine.selected_move]._error(self.nc_sim.context)
                 break
 
@@ -743,15 +628,15 @@ class Simulation(object):
     def simulateMD(self, nstepsMD=5000, **opt):
         """Function that performs the MD simulation."""
 
-        self.log.info('[Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
+        logger.info('[Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
 
         md_state0 = self.current_state['md']['state0']
         try:
             self.md_sim.step(nstepsMD)
         except Exception as e:
-            self.log.error(e, exc_info=True)
-            self.log.error('potential energy before NCMC: %s' % md_state0['potential_energy'])
-            self.log.error('kinetic energy before NCMC: %s' % md_state0['kinetic_energy'])
+            logger.error(e, exc_info=True)
+            logger.error('potential energy before NCMC: %s' % md_state0['potential_energy'])
+            logger.error('kinetic energy before NCMC: %s' % md_state0['kinetic_energy'])
             #Write out broken frame
             self.writeFrame(self.md_sim, 'MD-fail-it%s-md%i.pdb' %(self.current_iter, self.md_sim.currentStep))
             exit()
@@ -762,7 +647,7 @@ class Simulation(object):
         self.nc_sim.context.setPositions(md_state0['positions'])
         self.nc_sim.context.setVelocities(md_state0['velocities'])
 
-    def run(self, nIter):
+    def run(self, nIter,**kwargs):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state niter number of times.
@@ -773,21 +658,21 @@ class Simulation(object):
             Number of iterations of NCMC+MD to perform.
 
         """
-        self.log.info('Running %i BLUES iterations...' % (nIter))
+        logger.info('Running %i BLUES iterations...' % (nIter))
         self._getSimulationInfo(nIter)
         #set inital conditions
         self.setStateConditions()
         for n in range(int(nIter)):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC(**self.simulations.system_opt)
-            self.acceptRejectNCMC(**self.simulations.system_opt)
-            self.simulateMD(**self.simulations.system_opt)
+            self.simulateNCMC(**self.opt)
+            self.acceptRejectNCMC(**self.opt)
+            self.simulateMD(**self.opt)
 
         # END OF NITER
         self.accept_ratio = self.accept/float(nIter)
-        self.log.info('Acceptance Ratio: %s' % self.accept_ratio)
-        self.log.info('nIter: %s ' % nIter)
+        logger.info('Acceptance Ratio: %s' % self.accept_ratio)
+        logger.info('nIter: %s ' % nIter)
 
     def simulateMC(self):
         """Function that performs the MC simulation."""
@@ -809,13 +694,13 @@ class Simulation(object):
 
         if log_mc > randnum:
             self.accept += 1
-            self.log.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
+            logger.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state1['positions'])
         else:
             self.reject += 1
-            self.log.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
+            logger.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
             self.md_sim.context.setPositions(md_state0['positions'])
-        self.log_mc = log_mc
+        logger_mc = log_mc
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
     def runMC(self, nIter):
@@ -833,7 +718,7 @@ class Simulation(object):
 
         #controls how many mc moves are performed during each iteration
         try:
-            self.mc_per_iter = self.simulations.system_opt['mc_per_iter']
+            self.mc_per_iter = self.opt['mc_per_iter']
         except:
             self.mc_per_iter = 1
 
@@ -843,5 +728,5 @@ class Simulation(object):
             for i in range(self.mc_per_iter):
                 self.setStateConditions()
                 self.simulateMC()
-                self.acceptRejectMC(**self.simulations.system_opt)
-            self.simulateMD(**self.simulations.system_opt)
+                self.acceptRejectMC(**self.opt)
+            self.simulateMD(**self.opt)

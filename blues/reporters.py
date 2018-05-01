@@ -1,6 +1,6 @@
 from mdtraj.formats.hdf5 import HDF5TrajectoryFile
 from mdtraj.reporters import HDF5Reporter
-from simtk.openmm.app import StateDataReporter
+from simtk.openmm.app import StateDataReporter as omm_StateDataReporter
 import simtk.unit as units
 import json, yaml
 import subprocess
@@ -13,6 +13,7 @@ import simtk.openmm.version
 import blues.version
 import logging
 import sys, time
+import parmed
 
 def _check_mode(m, modes):
     if m not in modes:
@@ -68,7 +69,7 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
-def init_logger(logger, level=logging.INFO, outfname=None):
+def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
     fmt = LoggerFormatter()
 
     # Stream to terminal
@@ -86,6 +87,88 @@ def init_logger(logger, level=logging.INFO, outfname=None):
     logger.setLevel(level)
 
     return logger
+
+def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interval=1000, **opt):
+    """
+    Creates 3 OpenMM Reporters for the simulation.
+    Parameters
+    ----------
+    totalSteps : int
+        The total number of simulation steps
+    reportInterval : (opt), int, default=1000
+        Step frequency to write to reporter file.
+    outfname : str
+        Specifies the filename prefix for the reporters.
+    Returns
+    -------
+    reporters : list of three openmm.app.simulation.reporters
+        (0) state_reporter: writes energies to '.log' file.
+        (1) progress_reporter: prints simulation progress to 'sys.stdout'
+        (2) traj_reporter: writes trajectory to '.nc' file. AMBER NetCDF(3.0)
+    """
+    reporters = []
+    state_reporter = parmed.openmm.reporters.StateDataReporter(outfname+'.ene', separator="\t",
+                                    reportInterval=reporter_interval,
+                                    step=True,time=True,
+                                    potentialEnergy=True, totalEnergy=True,
+                                    volume=True, temperature=True)
+
+    reporters.append(state_reporter)
+    progress_reporter = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', separator="\t",
+                                        reportInterval=reporter_interval,
+                                        totalSteps=totalSteps,
+                                        potentialEnergy=True,
+                                        kineticEnergy=True,
+                                        totalEnergy=True,
+                                        temperature=True,
+                                        volume=True, step=True, time=True)
+    reporters.append(progress_reporter)
+    traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=True, frcs=True)
+    reporters.append(traj_reporter)
+
+    return reporters
+
+# Custom formatter
+class LoggerFormatter(logging.Formatter):
+
+    err_fmt  = "%(levelname)s (%(asctime)s):  [%(module)s.%(funcName)s] %(message)s"
+    dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
+    warn_fmt = "%(levelname)s: %(message)s"
+    info_fmt = "%(message)s"
+
+    def __init__(self):
+        super().__init__(fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
+        addLoggingLevel('REPORT', logging.WARNING - 5)
+
+    def format(self, record):
+
+        # Save the original format configured by the user
+        # when the logger formatter was instantiated
+        format_orig = self._style._fmt
+
+        # Replace the original format with one customized by logging level
+        if record.levelno == logging.DEBUG:
+            self._style._fmt = LoggerFormatter.dbg_fmt
+
+        elif record.levelno == logging.INFO:
+            self._style._fmt = LoggerFormatter.info_fmt
+
+        elif record.levelno == logging.WARNING:
+            self._style._fmt = LoggerFormatter.warn_fmt
+
+        elif record.levelno == logging.ERROR:
+            self._style._fmt = LoggerFormatter.err_fmt
+
+        elif record.levelno == logging.REPORT:
+            self._style._fmt = LoggerFormatter.info_fmt
+
+        # Call the original formatter class to do the grunt work
+        result = logging.Formatter.format(self, record)
+
+        # Restore the original format configured by the user
+        self._style._fmt = format_orig
+
+        return result
 
 class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
     #This is a subclass of the HDF5TrajectoryFile class from mdtraj that handles the writing of
@@ -402,14 +485,16 @@ class BLUESHDF5Reporter(HDF5Reporter):
 
         self._checkForErrors(simulation, state)
 
+        #Only record data in given frames
+        if self._frame_indices:
+            if simulation.currentStep not in self._frame_indices:
+                return
+
         args = ()
         kwargs = {}
         if self._coordinates:
             coordinates = state.getPositions(asNumpy=True)[self._atomSlice]
             coordinates = coordinates.value_in_unit(getattr(units, self._traj_file.distance_unit))
-            if self._frame_indices:
-                if simulation.currentStep not in self._frame_indices:
-                    coordinates = np.zeros(coordinates.shape)
             args = (coordinates,)
         if self._time:
             kwargs['time'] = state.getTime()
@@ -450,49 +535,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if hasattr(self._traj_file, 'flush'):
             self._traj_file.flush()
 
-# Custom formatter
-class LoggerFormatter(logging.Formatter):
-
-    err_fmt  = "(%(asctime)s) %(levelname)s: [%(module)s.%(funcName)s] %(message)s"
-    dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
-    info_fmt = "%(levelname)s: %(message)s"
-    rep_fmt = "%(message)s"
-
-    def __init__(self):
-        super().__init__(fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
-        addLoggingLevel('REPORT', logging.WARNING - 5)
-
-    def format(self, record):
-
-        # Save the original format configured by the user
-        # when the logger formatter was instantiated
-        format_orig = self._style._fmt
-
-        # Replace the original format with one customized by logging level
-        if record.levelno == logging.DEBUG:
-            self._style._fmt = LoggerFormatter.dbg_fmt
-
-        elif record.levelno == logging.INFO:
-            self._style._fmt = LoggerFormatter.info_fmt
-
-        elif record.levelno == logging.WARNING:
-            self._style._fmt = LoggerFormatter.info_fmt
-
-        elif record.levelno == logging.ERROR:
-            self._style._fmt = LoggerFormatter.err_fmt
-
-        elif record.levelno == logging.REPORT:
-            self._style._fmt = LoggerFormatter.rep_fmt
-
-        # Call the original formatter class to do the grunt work
-        result = logging.Formatter.format(self, record)
-
-        # Restore the original format configured by the user
-        self._style._fmt = format_orig
-
-        return result
-
-class BLUESStateDataReporter(StateDataReporter):
+class BLUESStateDataReporter(omm_StateDataReporter):
     def __init__(self, file,  reportInterval, title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
     progress=False, remainingTime=False, speed=False, elapsedTime=False, separator=',', systemMass=None, totalSteps=None):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
