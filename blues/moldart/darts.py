@@ -102,21 +102,16 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
         diff_dict[second_index] = diff_dict[second_index].loc[sort_index]
 
     dihedral_dict = {}
-    print('diff_dict', diff_dict)
     for i in internal_mat[0].index:
         dihedral_dict[i] = []
     #loop over entries in poses and find the distances for each
     for i in internal_mat[0].index[3:]:
         for key, df in iteritems(diff_dict):
             for pose in df.columns[1:]:
-                #print('pose', pose)
                 if df['atom'].loc[i] != 'H':
-                    print('debug', df['atom'].loc[i], i)
-                    #print('appending', df[pose].loc[i])
                     dihedral_dict[i].append(df[pose].loc[i])
 
     #remove redundant entries in dict
-    print('dihedral_dict', dihedral_dict)
     for key, di_list in iteritems(dihedral_dict):
         di_list = list(set(di_list))
         #only keep track of the sensible dihedrals (above a small cutoff distance)
@@ -130,7 +125,6 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
 
     ndf = None
     entry_counter = 0
-    print('dihedral dict', dihedral_dict)
     for key, di_list in iteritems(dihedral_dict):
         for idx, di in enumerate(di_list):
             temp_frame = pd.DataFrame(data={'atomnum':key, 'diff':di}, index=[entry_counter])
@@ -145,7 +139,6 @@ def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
     if entry_counter == 0:
         return None
     ndf = ndf.sort_values(by='diff', ascending=False)
-    print('ndf', ndf)
     #change internal_mat to the internal zmat storage variable
     return ndf
 
