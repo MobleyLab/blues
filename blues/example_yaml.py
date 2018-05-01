@@ -37,6 +37,7 @@ alch_system = SystemFactory.freeze_atoms(structure, alch_system, **opt['freeze']
 simulations = SimulationFactory(structure, system, alch_system, ligand_mover, **opt['simulation'])
 
 # Add reporters to MD simulation.
+#TODO: Generate reporters from YAML.
 outfname = opt['options']['outfname']
 totalSteps = opt['simulation']['nIter']*opt['simulation']['nstepsMD']
 reportInterval = opt['simulation']['reporters']['reporter_interval']
