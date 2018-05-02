@@ -11,18 +11,163 @@ import parmed, math
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues import utils
-import logging
+import os, copy, yaml, logging, sys
+import mdtraj
+from simtk import unit
+from blues import utils
+from blues import reporters
+from math import floor, ceil
+from simtk.openmm import app
 
 logger = logging.getLogger(__name__)
+
+def startup(config):
+    def load_yaml(yaml_file):
+        #Parse input parameters from YAML
+        with open(yaml_file, 'r') as stream:
+            try:
+                opt = (yaml.load(stream))
+            except Exception as exc:
+                print (exc)
+        return opt
+
+    def set_parameters(opt):
+        #Set file paths
+        try:
+            output_dir = opt['options']['output_dir']
+        except Exception as exc:
+            output_dir = '.'
+        outfname = os.path.join(output_dir, opt['options']['outfname'])
+        opt['simulation']['outfname'] = outfname
+
+        #Initialize root Logger module
+        level = opt['options']['logger_level'].upper()
+        if level == 'DEBUG':
+            #Add verbosity if logging is set to DEBUG
+            opt['options']['verbose'] = True
+            opt['system']['verbose'] = True
+            opt['simulation']['verbose'] = True
+        else:
+            opt['options']['verbose'] = False
+            opt['system']['verbose'] = False
+            opt['simulation']['verbose'] = False
+
+
+        level = eval("logging.%s" % level)
+        logger = reporters.init_logger(logging.getLogger(), level, outfname)
+        opt['Logger'] = logger
+
+        #Ensure proper units
+        try:
+            opt['simulation']['nstepsNC'], opt['simulation']['integration_steps'] = calcNCMCSteps(logger=logger, **opt['simulation'])
+            opt['system'] = add_units(opt['system'], logger)
+            opt['simulation'] = add_units(opt['simulation'], logger)
+            opt['freeze'] = add_units(opt['freeze'], logger)
+        except:
+            logger.error(sys.exc_info()[0])
+            raise
+
+
+        return opt
+
+    def add_units(opt, logger):
+        #for system setup portion
+        #set unit defaults to OpenMM defaults
+        unit_options = {'nonbondedCutoff':unit.angstroms,
+                        'switchDistance':unit.angstroms,
+                        'implicitSolventKappa':unit.angstroms,
+                        'implicitSolventSaltConc':unit.mole/unit.liters,
+                        'temperature':unit.kelvins,
+                        'hydrogenMass':unit.daltons,
+                        'dt':unit.picoseconds,
+                        'friction':1/unit.picoseconds,
+                        'freeze_distance': unit.angstroms,
+                        'pressure': unit.atmospheres
+                        }
+
+        app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']
+        scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
+        bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
+                        'splitDihedrals']
+
+        combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
+        for sel in opt.keys():
+            if sel in combined_options:
+                if sel in unit_options:
+                    #if the value requires units check that it has units
+                    #if it doesn't assume default units are used
+                    if opt[sel] is None:
+                        opt[sel] = None
+                    else:
+                        try:
+                            opt[sel]._value
+                        except:
+                            logger.warn("Units for '{} = {}' not specified. Setting units to '{}'".format(sel, opt[sel], unit_options[sel]))
+                            opt[sel] = opt[sel]*unit_options[sel]
+                #if selection requires an OpenMM evaluation do it here
+                elif sel in app_options:
+                    try:
+                        opt[sel] = eval("app.%s" % opt[sel])
+                    except:
+                        #if already an app object we can just pass
+                        pass
+                #otherwise just take the value as is, should just be a bool or float
+                else:
+                    pass
+        return opt
+
+    def calcNCMCSteps(total_steps, nprop, prop_lambda, logger, **kwargs):
+        if (total_steps % 2) != 0:
+           raise Exception('`total_steps = %i` must be even for symmetric protocol.' % (total_steps))
+
+        nstepsNC = total_steps/(2*(nprop*prop_lambda+0.5-prop_lambda))
+        if int(nstepsNC) % 2 == 0:
+            nstepsNC = int(nstepsNC)
+        else:
+            nstepsNC = int(nstepsNC) + 1
+
+        in_portion =  (prop_lambda)*nstepsNC
+        out_portion = (0.5-prop_lambda)*nstepsNC
+        if in_portion.is_integer():
+            in_portion= int(in_portion)
+        if out_portion.is_integer():
+            int(out_portion)
+        in_prop = int(nprop*(2*floor(in_portion)))
+        out_prop = int((2*ceil(out_portion)))
+        calc_total = int(in_prop + out_prop)
+        if calc_total != total_steps:
+            logger.warn('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
+                           'Instead using {} total propogation steps, '.format(calc_total)+
+                           '({} steps inside `prop_lambda` and {} steps outside `prop_lambda)`.'.format(in_prop, out_prop))
+        logger.warn('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
+        return nstepsNC, calc_total
+
+    #Parse YAML into dict
+    if config.endswith('.yaml'):
+        config = load_yaml(config)
+
+    #Parse the options dict
+    if type(config) is dict:
+        opt = set_parameters(config)
+
+    return opt
 
 class SystemFactory(object):
     """
     SystemFactory contains methods to generate/modify the OpenMM System object required for
     generating the openmm.Simulation using a given parmed.Structure()
 
-    Example
-    --------
-    #Generate the reference OpenMM system.
+    Usage Example
+    -------------
+    #Load Parmed Structure
+    structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
+
+    #Select move type
+    ligand = RandomLigandRotationMove(structure, 'LIG')
+    #Iniitialize object that selects movestep
+    ligand_mover = MoveEngine(ligand)
+
+    #Generate the openmm.Systems
     systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
 
     #The MD and alchemical Systems are generated and stored as an attribute
@@ -201,10 +346,10 @@ class SystemFactory(object):
         will be ignored by the integrator and will not change positions.
         Parameters
         ----------
-        structure : parmed.Structure()
-            Structure of the system, used for atom selection.
         system : openmm.System
             The OpenMM System object to be modified.
+        structure : parmed.Structure(), optional
+            Structure of the system, used for atom selection.
 
         Kwargs
         -------
@@ -233,34 +378,41 @@ class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
     objects (MD, NCMC, ALCH) required for the BLUES run.
 
-    Example.
-    ----
-    from blues.ncmc import SimulationFactory
-    simulations = SimulationFactory(structure, system, alch_system, ligand_mover, **opt['simulation'])
+    Usage Example
+    -------------
+    #Load Parmed Structure
+    structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
 
+    #Select move type
+    ligand = RandomLigandRotationMove(structure, 'LIG')
+    #Iniitialize object that selects movestep
+    ligand_mover = MoveEngine(ligand)
+
+    #Generate the openmm.Systems
+    systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
+
+    #Generate the OpenMM Simulations
+    simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
 
     Parameters
     ----------
-    structure : parmed.Structure
-        A chemical structure composed of atoms, bonds, angles, torsions, and
-        other topological features.
-    system : openmm.System
-        The OpenMM System object corresponding to the reference system.
-    alch_system : openmm.System
-        The OpenMM System object corresponding to the system for alchemical perturbations.
-    move_engine : blues.ncmc.MoveEngine object
+    systems : blues.simulation.SystemFactory object
+        The object containing the MD and alchemical openmm.Systems
+    move_engine : blues.engine.MoveEngine object
         MoveProposal object which contains the dict of moves performed
         in the NCMC simulation.
     opt : dict of parameters for the simulation (i.e timestep, temperature, etc.)
     """
     def __init__(self, systems, move_engine, **opt):
-        self.structure = systems.structure
-        #Atom indicies from move_engine
-        #TODO: change atom_indices selection for multiple regions
-        self.atom_indices = move_engine.moves[0].atom_indices
-        self.move_engine = move_engine
+        #Hide these properties since they exist on the SystemsFactory object.
+        self._structure = systems.structure
         self._system = systems.md
         self._alch_system = systems.alch
+        #Atom indicies from move_engine
+        #TODO: change atom_indices selection for multiple regions
+        self._atom_indices = move_engine.moves[0].atom_indices
+        self.move_engine = move_engine
+
         self.opt = opt
         self.generateSimulationSet()
 
@@ -412,15 +564,15 @@ class SimulationFactory(object):
         #Construct MD Integrator and Simulation
         self.integrator = self.generateIntegrator(**self.opt)
         if 'pressure' in self.opt.keys():
-            self.system = self.addBarostat(self._system, **self.opt)
+            self._system = self.addBarostat(self._system, **self.opt)
             logger.warning('NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
         else:
             logger.info('MD simulation will be NVT.')
-        self.md = self.generateSimFromStruct(self.structure, self._system, self.integrator, **self.opt)
+        self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **self.opt)
 
         #Alchemical Simulation is used for computing correction term from MD simulation.
         alch_integrator = self.generateIntegrator(**self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, self._system, alch_integrator, **self.opt)
+        self.alch = self.generateSimFromStruct(self._structure, self._system, alch_integrator, **self.opt)
 
         #Construct NCMC Integrator and Simulation
         self.ncmc_integrator = self.generateNCMCIntegrator(self._alch_system, **self.opt)
@@ -428,7 +580,7 @@ class SimulationFactory(object):
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self.move_engine.moves:
             self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
-        self.nc = self.generateSimFromStruct(self.structure, self._alch_system, self.ncmc_integrator, **self.opt)
+        self.nc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **self.opt)
 
         self._simulation_info_(self.nc)
 
@@ -455,14 +607,14 @@ class Simulation(object):
 
         """
         self.simulations = simulations
-        self.md_sim = simulations.md
-        self.alch_sim = simulations.alch
-        self.nc_sim = simulations.nc
+        self.md_sim = self.simulations.md
+        self.alch_sim = self.simulations.alch
+        self.nc_sim = self.simulations.nc
         self.temperature = self.md_sim.integrator.getTemperature()
         self.accept = 0
         self.reject = 0
         self.accept_ratio = 0
-        self.opt = simulations.opt
+        self.opt = self.simulations.opt
 
         self.movestep = int(self.opt['nstepsNC']) / 2
 
