@@ -15,6 +15,10 @@ import logging
 import sys, time
 import parmed
 
+from parmed import unit as u
+from parmed.amber.netcdffiles import NetCDFTraj
+import netCDF4 as nc
+
 def _check_mode(m, modes):
     if m not in modes:
         raise ValueError('This operation is only available when a file '
@@ -123,7 +127,8 @@ def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interv
                                         temperature=True,
                                         volume=True, step=True, time=True)
     reporters.append(progress_reporter)
-    traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
+    traj_reporter = NetCDF4Reporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
+    #traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
     reporters.append(traj_reporter)
 
     return reporters
@@ -535,7 +540,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
             self._traj_file.flush()
 
 class BLUESStateDataReporter(omm_StateDataReporter):
-    def __init__(self, file,  reportInterval, title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
+    def __init__(self, file, reportInterval, title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
     progress=False, remainingTime=False, speed=False, elapsedTime=False, separator=',', systemMass=None, totalSteps=None):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
             potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
@@ -578,3 +583,72 @@ class BLUESStateDataReporter(omm_StateDataReporter):
             self._out.flush()
         except AttributeError:
             pass
+
+class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
+    """ Temporary class to read or write NetCDF
+    """
+
+    def __init__(self, file, reportInterval, crds=True, vels=False, frcs=False):
+        super(NetCDF4Reporter,self).__init__(file, reportInterval, crds, vels, frcs)
+
+    def report(self, simulation, state):
+        """Generate a report.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The Simulation to generate a report for
+        state : :class:`mm.State`
+            The current state of the simulation
+        """
+        global VELUNIT, FRCUNIT
+        if self.crds:
+            crds = state.getPositions().value_in_unit(u.angstrom)
+        if self.vels:
+            vels = state.getVelocities().value_in_unit(VELUNIT)
+        if self.frcs:
+            frcs = state.getForces().value_in_unit(FRCUNIT)
+        if self._out is None:
+            # This must be the first frame, so set up the trajectory now
+            if self.crds:
+                atom = len(crds)
+            elif self.vels:
+                atom = len(vels)
+            elif self.frcs:
+                atom = len(frcs)
+            self.uses_pbc = simulation.topology.getUnitCellDimensions() is not None
+            self._out = NetCDF4Traj.open_new(
+                    self.fname, atom, self.uses_pbc, self.crds, self.vels,
+                    self.frcs, title="ParmEd-created trajectory using OpenMM"
+            )
+        if self.uses_pbc:
+            vecs = state.getPeriodicBoxVectors()
+            lengths, angles = box_vectors_to_lengths_and_angles(*vecs)
+            self._out.add_cell_lengths_angles(lengths.value_in_unit(u.angstrom),
+                                              angles.value_in_unit(u.degree))
+
+        # Add the coordinates, velocities, and/or forces as needed
+        if self.crds:
+            self._out.add_coordinates(crds)
+        if self.vels:
+            # The velocities get scaled right before writing
+            self._out.add_velocities(vels)
+        if self.frcs:
+            self._out.add_forces(frcs)
+        # Now it's time to add the time.
+        self._out.add_time(state.getTime().value_in_unit(u.picosecond))
+
+
+class NetCDF4Traj(NetCDFTraj):
+    """
+    Temporary class to allow for proper flushing
+    """
+
+    def __init__(self, fname, mode='r'):
+        super(NetCDF4Traj,self).__init__(fname, mode)
+
+    def flush(self):
+        if nc is None:
+            # netCDF4.Dataset does not have a flush method
+            self._ncfile.flush()
+        if nc:
+            self._ncfile.sync()

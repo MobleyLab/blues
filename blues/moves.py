@@ -146,7 +146,7 @@ class RandomLigandRotationMove(Move):
     ligand.positions : np.array of ligands positions
     """
 
-    def __init__(self, structure, resname='LIG', theta_cutoff=90.0):
+    def __init__(self, structure, resname='LIG'):
         """Initialize the model.
         Parameters
         ----------
@@ -154,13 +154,9 @@ class RandomLigandRotationMove(Move):
             String specifying the resiue name of the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
-        theta_cutoff : float
-            Cutoff in degrees for random rotational matrix. Values smaller
-            than cutoff will result in generating a new rotation matrix.
         """
 
         self.resname = resname
-        self.theta_cutoff = theta_cutoff
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
@@ -168,6 +164,7 @@ class RandomLigandRotationMove(Move):
 
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
+        self.calculateProperties()
 
     def getAtomIndices(self, structure, resname):
         """
@@ -194,12 +191,10 @@ class RandomLigandRotationMove(Move):
     def getMasses(self, topology):
         """
         Returns a list of masses of the specified ligand atoms.
-
         Parameters
         ----------
         topology: parmed.Topology
             ParmEd topology object containing atoms of the system.
-
         Returns
         -------
         masses: 1xn numpy.array * simtk.unit.dalton
@@ -207,7 +202,6 @@ class RandomLigandRotationMove(Move):
             the masses of the atoms in self.atom_indices
         totalmass: float* simtk.unit.dalton
             The sum of the mass found in masses
-
         """
         masses = unit.Quantity(np.zeros([int(topology.getNumAtoms()),1],np.float32), unit.dalton)
         for idx,atom in enumerate(topology.atoms()):
@@ -223,12 +217,10 @@ class RandomLigandRotationMove(Move):
             ParmEd positions of the atoms to be moved.
         masses : numpy.array
             np.array of particle masses
-
         Returns
         -------
         center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
             1x3 np.array of the center of mass of the given positions
-
         """
         coordinates = np.asarray(positions._value, np.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
@@ -239,18 +231,9 @@ class RandomLigandRotationMove(Move):
         self.masses, self.totalmass = self.getMasses(self.topology)
         self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
 
-    def _get_rot_matrix_(self):
-        rand_quat = mdtraj.utils.uniform_quaternion()
-        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
-        Tr = np.trace(rand_rotation_matrix)
-        theta_rad = np.arccos((Tr - 1)/2)
-        theta_deg = np.rad2deg(theta_rad)
-        return rand_rotation_matrix, theta_deg
-
     def move(self, context):
         """Function that performs a random rotation about the
         center of mass of the ligand.
-
         Parameters
         ----------
         context: simtk.openmm.Context object
@@ -259,7 +242,6 @@ class RandomLigandRotationMove(Move):
         -------
         context: simtk.openmm.Context object
             The same input context, but whose positions were changed by this function.
-
         """
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
 
@@ -268,12 +250,8 @@ class RandomLigandRotationMove(Move):
         reduced_pos = self.positions - self.center_of_mass
 
         # Define random rotational move on the ligand
-        while True:
-            rand_rotation_matrix, theta_deg = self._get_rot_matrix_()
-            #Pick rotational moves that are larger than cutoff
-            if theta_deg > self.theta_cutoff:
-                break
-
+        rand_quat = mdtraj.utils.uniform_quaternion()
+        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
         rot_move = np.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
 

@@ -62,7 +62,7 @@ ncmc_reporter = BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
 
 ncmc_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='ncmc',
                              reportInterval=reportInterval,
-                             step=True, totalSteps=opt['simulation']['nIter']*opt['simulation']['nstepsNC'],
+                             step=True, totalSteps=opt['simulation']['nstepsNC'],
                              time=False, speed=True, progress=True, remainingTime=True)
 
 simulations.nc.reporters.append(ncmc_reporter)

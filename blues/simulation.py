@@ -633,6 +633,7 @@ class Simulation(object):
                        'getForces' : False,
                        'getEnergy' : True,
                        'getParameters': True,
+                       'getPeriodicBoxVectors' : True,
                        'enforcePeriodicBox' : True}
 
 
@@ -762,21 +763,21 @@ class Simulation(object):
         nc_state0 = self.current_state['nc']['state0']
         nc_state1 = self.current_state['nc']['state1']
 
-        log_ncmc = self.nc_sim.context._integrator.getLogAcceptanceProbability(self.nc_sim.context)
+        work_ncmc = self.nc_sim.context._integrator.getLogAcceptanceProbability(self.nc_sim.context)
         randnum =  math.log(np.random.random())
 
         # Compute Alchemical Correction Term
-        if np.isnan(log_ncmc) is False:
+        if np.isnan(work_ncmc) is False:
             self.alch_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
             correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_sim.context._integrator.kT)
-            log_ncmc = log_ncmc + correction_factor
+            work_ncmc = work_ncmc + correction_factor
 
-        if log_ncmc > randnum:
+        if work_ncmc > randnum:
             self.accept += 1
-            logger.info('NCMC MOVE ACCEPTED: log_ncmc {} > randnum {}'.format(log_ncmc, randnum) )
+            logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum) )
             self.md_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
@@ -784,7 +785,7 @@ class Simulation(object):
 
         else:
             self.reject += 1
-            logger.info('NCMC MOVE REJECTED: log_ncmc {} < {}'.format(log_ncmc, randnum) )
+            logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum) )
             self.nc_sim.context.setPositions(md_state0['positions'])
 
         self.nc_sim.currentStep = 0
