@@ -20,24 +20,42 @@ class SystemFactory(object):
     SystemFactory contains methods to generate/modify the OpenMM System object required for
     generating the openmm.Simulation using a given parmed.Structure()
 
-    Methods
-    -------
+    Example
+    --------
     #Generate the reference OpenMM system.
-    system = SystemFactory.generateSystem(structure, **opt['system'])
+    systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
 
-    #Generate the alchemical System
-    alch_system = SystemFactory.generateAlchSystem(system, ligand_atom_indices, **opt['alchemical'])
+    #The MD and alchemical Systems are generated and stored as an attribute
+    systems.md
+    systems.alch
 
     #Freeze atoms in the alchemical system
-    alch_system = SystemFactory.freeze_atoms(structure,
-                                            alch_system,
+    systems.alch = SystemFactory.freeze_atoms(systems.alch,
                                             freeze_distance=5.0,
                                             freeze_center='LIG'
                                             freeze_solvent='HOH,NA,CL')
-    """
 
-    @classmethod
-    def generateSystem(cls, structure, **kwargs):
+    Parameters
+    ----------
+    structure : parmed.Structure
+        A chemical structure composed of atoms, bonds, angles, torsions, and
+        other topological features.
+    atom_indices : list of int
+        Atom indicies of the move or designated for which the nonbonded forces
+        (both sterics and electrostatics components) have to be alchemically
+        modified.
+    """
+    def __init__(self, structure, atom_indices, **opt):
+        self.structure = structure
+        self.atom_indices = atom_indices
+        self.opt = opt
+
+        self.alch_opt = self.opt.pop('alchemical')
+
+        self.md = self.generateSystem(self.structure, **self.opt)
+        self.alch = self.generateAlchSystem(self.md, self.atom_indices, **self.alch_opt)
+
+    def generateSystem(self, structure, **kwargs):
         """
         Construct an OpenMM System representing the topology described by the
         prmtop file. This function is just a wrapper for parmed Structure.createSystem().
@@ -115,8 +133,7 @@ class SystemFactory(object):
         """
         return structure.createSystem(**kwargs)
 
-    @classmethod
-    def generateAlchSystem(cls, system, atom_indices,
+    def generateAlchSystem(self, system, atom_indices,
                             softcore_alpha=0.5, softcore_a=1, softcore_b=1, softcore_c=6,
                             softcore_beta=0.0, softcore_d=1, softcore_e=1, softcore_f=2,
                             annihilate_electrostatics=True, annihilate_sterics=False,
@@ -177,8 +194,7 @@ class SystemFactory(object):
         alch_system = factory.create_alchemical_system(system, alch_region)
         return alch_system
 
-    @classmethod
-    def freeze_atoms(cls, structure, system, freeze_distance=5.0,
+    def freeze_atoms(self, system, structure=None, freeze_distance=5.0,
                     freeze_center='LIG', freeze_solvent='HOH,NA,CL', **kwargs):
         """
         Function to zero the masses of selected atoms and solvent. Massless atoms
@@ -203,11 +219,12 @@ class SystemFactory(object):
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
+        if not structure: structure = self.structure
 
         #Atom selection for zeroing protein atom masses
         mask = parmed.amber.AmberMask(structure,"(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance._value,freeze_solvent))
         site_idx = [i for i in mask.Selected()]
-        logger.info('Zeroing mass of %s atoms %.1f Angstroms from %s in System' % (len(site_idx), freeze_distance._value, freeze_center))
+        logger.info('Zeroing mass of %s atoms %.1f Angstroms from %s on %s' % (len(site_idx), freeze_distance._value, freeze_center, system))
         logger.debug('\nFreezing atom selection = %s' % site_idx)
         freeze_indices = set(range(system.getNumParticles())) - set(site_idx)
         return utils.zero_masses(system, freeze_indices)
@@ -236,14 +253,14 @@ class SimulationFactory(object):
         in the NCMC simulation.
     opt : dict of parameters for the simulation (i.e timestep, temperature, etc.)
     """
-    def __init__(self, structure, system, alch_system, move_engine, **opt):
-        self.structure = structure
+    def __init__(self, systems, move_engine, **opt):
+        self.structure = systems.structure
         #Atom indicies from move_engine
         #TODO: change atom_indices selection for multiple regions
         self.atom_indices = move_engine.moves[0].atom_indices
         self.move_engine = move_engine
-        self.system = system
-        self.alch_system = alch_system
+        self._system = systems.md
+        self._alch_system = systems.alch
         self.opt = opt
         self.generateSimulationSet()
 
@@ -342,7 +359,7 @@ class SimulationFactory(object):
                                prop_lambda=prop_lambda)
         return ncmc_integrator
 
-    def generateSimFromStruct(self, structure, system, integrator, platform=None, **kwargs):
+    def generateSimFromStruct(self, structure, system, integrator, platform=None, properties={}, **kwargs):
         """Used to generate the OpenMM Simulation objects from a given parmed.Structure()
 
         Parameters
@@ -363,7 +380,9 @@ class SimulationFactory(object):
             simulation = app.Simulation(structure.topology, system, integrator)
         else:
             platform = openmm.Platform.getPlatformByName(platform)
-            simulation = app.Simulation(structure.topology, system, integrator, platform)
+            #Make sure key/values are strings
+            properties = { str(k) : str(v) for k,v in properties.items()}
+            simulation = app.Simulation(structure.topology, system, integrator, platform, properties)
 
         # Set initial positions/velocities
         # Will get overwritten from saved State.
@@ -393,23 +412,23 @@ class SimulationFactory(object):
         #Construct MD Integrator and Simulation
         self.integrator = self.generateIntegrator(**self.opt)
         if 'pressure' in self.opt.keys():
-            self.system = self.addBarostat(self.system, **self.opt)
+            self.system = self.addBarostat(self._system, **self.opt)
             logger.warning('NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
         else:
             logger.info('MD simulation will be NVT.')
-        self.md = self.generateSimFromStruct(self.structure, self.system, self.integrator, **self.opt)
+        self.md = self.generateSimFromStruct(self.structure, self._system, self.integrator, **self.opt)
 
         #Alchemical Simulation is used for computing correction term from MD simulation.
         alch_integrator = self.generateIntegrator(**self.opt)
-        self.alch = self.generateSimFromStruct(self.structure, self.system, alch_integrator, **self.opt)
+        self.alch = self.generateSimFromStruct(self.structure, self._system, alch_integrator, **self.opt)
 
         #Construct NCMC Integrator and Simulation
-        self.ncmc_integrator = self.generateNCMCIntegrator(self.alch_system, **self.opt)
+        self.ncmc_integrator = self.generateNCMCIntegrator(self._alch_system, **self.opt)
 
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self.move_engine.moves:
-            self.alch_system, self.ncmc_integrator = move.initializeSystem(self.alch_system, self.ncmc_integrator)
-        self.nc = self.generateSimFromStruct(self.structure, self.alch_system, self.ncmc_integrator, **self.opt)
+            self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
+        self.nc = self.generateSimFromStruct(self.structure, self._alch_system, self.ncmc_integrator, **self.opt)
 
         self._simulation_info_(self.nc)
 

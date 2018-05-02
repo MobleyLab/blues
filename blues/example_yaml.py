@@ -22,19 +22,16 @@ structure = parmed.load_file(prmtop, xyz=inpcrd)
 
 #Select move type
 ligand = RandomLigandRotationMove(structure, 'LIG')
-
 #Iniitialize object that selects movestep
 ligand_mover = MoveEngine(ligand)
 
 #Generate the openmm.Systems outside SimulationFactory to allow modifications
-system = SystemFactory.generateSystem(structure, **opt['system'])
-alch_system = SystemFactory.generateAlchSystem(system, ligand.atom_indices, **opt['alchemical'])
-
+systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
 #Freeze atoms in the alchemical system
-alch_system = SystemFactory.freeze_atoms(structure, alch_system, **opt['freeze'])
+systems.alch = systems.freeze_atoms(systems.alch, **opt['freeze'])
 
 #Generate the OpenMM Simulations
-simulations = SimulationFactory(structure, system, alch_system, ligand_mover, **opt['simulation'])
+simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
 
 # Add reporters to MD simulation.
 #TODO: Generate reporters from YAML.
@@ -65,7 +62,7 @@ ncmc_reporter = BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
 
 ncmc_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='ncmc',
                              reportInterval=reportInterval,
-                             step=True, totalSteps=opt['simulation']['nstepsNC'],
+                             step=True, totalSteps=opt['simulation']['nIter']*opt['simulation']['nstepsNC'],
                              time=False, speed=True, progress=True, remainingTime=True)
 
 simulations.nc.reporters.append(ncmc_reporter)

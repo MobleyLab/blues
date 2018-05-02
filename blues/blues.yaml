@@ -25,17 +25,17 @@ system:
   flexibleConstraints: True
   splitDihedrals: False
 
-alchemical:
-  softcore_alpha: 0.0001 #Default: 0.5
-  softcore_a' : 1
-  softcore_b' : 1
-  softcore_c' : 48 #Default: 6
-  softcore_beta' : 0.0
-  softcore_d' : 1
-  softcore_e' : 1
-  softcore_f' : 2
-  annihilate_electrostatics' : True
-  annihilate_sterics' : False
+  alchemical:
+    softcore_alpha: 0.0001 #Default: 0.5
+    softcore_a' : 1
+    softcore_b' : 1
+    softcore_c' : 48 #Default: 6
+    softcore_beta' : 0.0
+    softcore_d' : 1
+    softcore_e' : 1
+    softcore_f' : 2
+    annihilate_electrostatics' : True
+    annihilate_sterics' : False
 
 freeze:
   freeze_center: LIG
@@ -43,15 +43,21 @@ freeze:
   freeze_distance: 5
 
 simulation:
+  platform: OpenCL
+  properties:
+    #CudaPrecision: mixed
+    #CudaDeviceIndex: 1
+    OpenCLPrecision: single
+    OpenCLDeviceIndex: 2
   dt: 0.004
   friction: 1
-  pressure: 1
+  #pressure: 1
   temperature: 300
-  nIter: 5000
-  nstepsMD: 10000
-  total_steps: 10000
+  nIter: 100
+  nstepsMD: 1000
+  total_steps: 1000
   nprop: 1
   prop_lambda: 0.3
   reporters:
-    trajectory_interval: 2500
-    reporter_interval: 2500
+    trajectory_interval: 250
+    reporter_interval: 250

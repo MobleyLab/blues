@@ -131,7 +131,6 @@ def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interv
 # Custom formatter
 class LoggerFormatter(logging.Formatter):
 
-    err_fmt  = "%(levelname)s (%(asctime)s): [%(module)s.%(funcName)s] %(message)s"
     dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
     info_fmt = "%(levelname)s: %(message)s"
     rep_fmt = "%(message)s"
@@ -157,7 +156,7 @@ class LoggerFormatter(logging.Formatter):
             self._style._fmt = LoggerFormatter.info_fmt
 
         elif record.levelno == logging.ERROR:
-            self._style._fmt = LoggerFormatter.err_fmt
+            self._style._fmt = LoggerFormatter.dbg_fmt
 
         elif record.levelno == logging.REPORT:
             self._style._fmt = LoggerFormatter.rep_fmt
