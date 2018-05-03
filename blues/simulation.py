@@ -13,7 +13,6 @@ from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues import utils
 import os, copy, yaml, logging, sys
 import mdtraj
-from simtk import unit
 from blues import utils
 from blues import reporters
 from math import floor, ceil
@@ -22,6 +21,20 @@ from simtk.openmm import app
 logger = logging.getLogger(__name__)
 
 def startup(config):
+    #for system setup portion
+    #set unit defaults to OpenMM defaults
+    unit_options = {'nonbondedCutoff':unit.angstroms,
+                    'switchDistance':unit.angstroms,
+                    'implicitSolventKappa':unit.angstroms,
+                    'implicitSolventSaltConc':unit.mole/unit.liters,
+                    'temperature':unit.kelvins,
+                    'hydrogenMass':unit.daltons,
+                    'dt':unit.picoseconds,
+                    'friction':1/unit.picoseconds,
+                    'freeze_distance': unit.angstroms,
+                    'pressure': unit.atmospheres
+                    }
+
     def load_yaml(yaml_file):
         #Parse input parameters from YAML
         with open(yaml_file, 'r') as stream:
@@ -31,7 +44,19 @@ def startup(config):
                 print (exc)
         return opt
 
-    def set_parameters(opt):
+    def parse_amber_selection(opt):
+        freeze_keys = ['freeze_center', 'freeze_solvent']
+        restraint_keys = ['selection']
+        try:
+            for key in freeze_keys:
+                opt[key] = str(opt[key])
+            for key in restraint_keys:
+                opt[key] = str(opt[key])
+        except:
+            pass
+        return opt
+
+    def set_output(opt):
         #Set file paths
         try:
             output_dir = opt['options']['output_dir']
@@ -39,9 +64,12 @@ def startup(config):
             output_dir = '.'
         outfname = os.path.join(output_dir, opt['options']['outfname'])
         opt['simulation']['outfname'] = outfname
+        return opt, outfname
 
+    def set_Logger(opt):
         #Initialize root Logger module
         level = opt['options']['logger_level'].upper()
+        outfname = opt['options']['outfname']
         if level == 'DEBUG':
             #Add verbosity if logging is set to DEBUG
             opt['options']['verbose'] = True
@@ -51,11 +79,38 @@ def startup(config):
             opt['options']['verbose'] = False
             opt['system']['verbose'] = False
             opt['simulation']['verbose'] = False
-
-
-        level = eval("logging.%s" % level)
-        logger = reporters.init_logger(logging.getLogger(), level, outfname)
+        logger_level = eval("logging.%s" % level)
+        logger = reporters.init_logger(logging.getLogger(), logger_level, outfname)
         opt['Logger'] = logger
+
+        return opt, logger
+
+    def set_units(opt, key):
+        for k,v in opt[key].items():
+            if 'outfname' in k:
+                pass
+            elif '*' in str(v):
+                opt[key][k] = getUnitQuantity(v)
+            else:
+                pass
+        opt[key] = add_units(opt[key], opt['Logger'])
+        return opt
+
+    def getUnitQuantity(string_quantity):
+        value, u = string_quantity.replace(' ', '').split('*')
+        if '/' in u:
+            u = u.split('/')
+            return unit.Quantity(value, eval('%s/unit.%s' % (u[0],u[1])))
+        return unit.Quantity(value, eval('unit.%s' % u))
+
+    def set_parameters(opt):
+        opt, outfname = set_output(opt)
+        opt, logger = set_Logger(opt)
+        unit_opts = ['system', 'simulation', 'freeze', 'restraints']
+        for key in unit_opts:
+            opt = set_units(opt, key)
+        print(opt)
+        exit()
 
         #Ensure proper units
         try:
@@ -67,6 +122,10 @@ def startup(config):
             logger.error(e, exc_info=True)
             raise
 
+        if 'freeze' in opt.keys():
+            opt['freeze'] = parse_amber_selection(opt['freeze'])
+        if 'restraints' in opt.keys():
+            opt['restraints'] = parse_amber_selection(opt['restraints'])
 
         return opt
 
@@ -141,6 +200,8 @@ def startup(config):
                            '({} steps inside `prop_lambda` and {} steps outside `prop_lambda)`.'.format(in_prop, out_prop))
         logger.warn('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
         return nstepsNC, calc_total
+
+
 
     #Parse YAML into dict
     if config.endswith('.yaml'):
@@ -633,9 +694,10 @@ class SimulationFactory(object):
 
         # Set initial positions/velocities
         # Will get overwritten from saved State.
+        simulation.context.setPeriodicBoxVectors(*structure.box_vectors)
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
-        simulation.context.setPeriodicBoxVectors(*structure.box_vectors)
+
 
         return simulation
 
