@@ -34,7 +34,6 @@ systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
 #Freeze atoms in the alchemical system
 systems.alch = systems.freeze_radius(systems.alch, **opt['freeze'])
 
-
 #Generate the OpenMM Simulations
 simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
 
@@ -43,6 +42,7 @@ simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
 outfname = opt['options']['outfname']
 totalSteps = opt['simulation']['nIter']*opt['simulation']['nstepsMD']
 reportInterval = opt['simulation']['reporters']['reporter_interval']
+frame_indices = opt['simulation']['reporters']['frame_indices']
 reporters = getReporters(totalSteps, outfname, **opt['simulation']['reporters'])
 
 md_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='md',
@@ -50,23 +50,23 @@ md_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='md'
                              step=True, totalSteps=totalSteps,
                              time=False, speed=True, progress=True, remainingTime=True)
 reporters.append(md_progress_reporter)
-
+#simulations.md.reporters.append(md_progress_reporter)
 for rep in reporters:
     simulations.md.reporters.append(rep)
 
 # Add reporters to NCMC simulation.
 ###TODO: Recommended to only write to HDF5 at the last frame.
 ncmc_reporter = BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
-                                 reportInterval=opt['simulation']['nstepsNC'],
-                                 coordinates=True, frame_indices=[1,opt['simulation']['nstepsNC']],
+                                 #reportInterval=opt['simulation']['nstepsNC'],
+                                 coordinates=True, frame_indices=frame_indices,
                                  time=False, cell=True, temperature=False,
                                  potentialEnergy=True, kineticEnergy=False,
                                  velocities=False, atomSubset=None,
                                  protocolWork=True, alchemicalLambda=True,
                                  parameters=None, environment=True)
 
-ncmc_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='ncmc',
-                             reportInterval=reportInterval,
+ncmc_progress_reporter = BLUESStateDataReporter(logger, reportInterval=reportInterval,
+                             separator="\t", title='ncmc',
                              step=True, totalSteps=opt['simulation']['nstepsNC'],
                              time=False, speed=True, progress=True, remainingTime=True)
 

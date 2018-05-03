@@ -801,7 +801,6 @@ class Simulation(object):
             A list that defines what information to get from the context State.
         """
         stateinfo = {}
-        print(parameters)
         state  = context.getState(**parameters)
         stateinfo['iter'] = int(self.current_iter)
         stateinfo['positions'] =  state.getPositions(asNumpy=True)
@@ -919,7 +918,7 @@ class Simulation(object):
                     self.nc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].afterMove(self.nc_sim.context)
 
             except Exception as e:
-                logger.error(e, exc_info=True)
+                logger.error(e)
                 self.simulations.move_engine.moves[self.simulations.move_engine.selected_move]._error(self.nc_sim.context)
                 break
 
@@ -932,15 +931,16 @@ class Simulation(object):
         logger.info('[Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
 
         md_state0 = self.current_state['md']['state0']
-        try:
-            self.md_sim.step(nstepsMD)
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            logger.error('potential energy before NCMC: %s' % md_state0['potential_energy'])
-            logger.error('kinetic energy before NCMC: %s' % md_state0['kinetic_energy'])
-            #Write out broken frame
-            self.writeFrame(self.md_sim, 'MD-fail-it%s-md%i.pdb' %(self.current_iter, self.md_sim.currentStep))
-            exit()
+        for md_step in range(int(nstepsMD)):
+            try:
+                self.md_sim.step(1)
+            except Exception as e:
+                logger.error(e, exc_info=True)
+                logger.error('potential energy before NCMC: %s' % md_state0['potential_energy'])
+                logger.error('kinetic energy before NCMC: %s' % md_state0['kinetic_energy'])
+                #Write out broken frame
+                self.writeFrame(self.md_sim, 'MD-fail-it%s-md%i.pdb' %(self.current_iter, self.md_sim.currentStep))
+                exit()
 
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         self.setSimState('md', 'state0', md_state0)

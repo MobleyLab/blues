@@ -58,11 +58,13 @@ simulation:
   friction: 1
   pressure: 1
   temperature: 300
-  nIter: 10
-  nstepsMD: 1000
-  total_steps: 1000
+  nIter: 1
+  nstepsMD: 500
+  total_steps: 500
   nprop: 1
   prop_lambda: 0.3
+
   reporters:
-    trajectory_interval: 250
-    reporter_interval: 250
+    trajectory_interval: 100
+    reporter_interval: 100
+    frame_indices: [1,250,500]

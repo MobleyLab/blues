@@ -1,6 +1,6 @@
 from mdtraj.formats.hdf5 import HDF5TrajectoryFile
 from mdtraj.reporters import HDF5Reporter
-from simtk.openmm.app import StateDataReporter as omm_StateDataReporter
+from simtk.openmm import app
 import simtk.unit as units
 import json, yaml
 import subprocess
@@ -17,6 +17,7 @@ import parmed
 
 from parmed import unit as u
 from parmed.amber.netcdffiles import NetCDFTraj
+from parmed.geometry import box_vectors_to_lengths_and_angles
 import netCDF4 as nc
 
 def _check_mode(m, modes):
@@ -92,7 +93,7 @@ def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d
 
     return logger
 
-def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interval=1000, **opt):
+def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interval=1000, frame_indices=[], **opt):
     """
     Creates 3 OpenMM Reporters for the simulation.
     Parameters
@@ -117,7 +118,7 @@ def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interv
                                     potentialEnergy=True, totalEnergy=True,
                                     volume=True, temperature=True)
 
-    reporters.append(state_reporter)
+    #reporters.append(state_reporter)
     progress_reporter = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', separator="\t",
                                         reportInterval=reporter_interval,
                                         totalSteps=totalSteps,
@@ -126,14 +127,16 @@ def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interv
                                         totalEnergy=True,
                                         temperature=True,
                                         volume=True, step=True, time=True)
-    reporters.append(progress_reporter)
-    traj_reporter = NetCDF4Reporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
+    #reporters.append(progress_reporter)
+    traj_reporter = NetCDF4Reporter(outfname+'.nc', reportInterval=reporter_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False)
     #traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
     reporters.append(traj_reporter)
 
     return reporters
 
-# Custom formatter
+######################
+#  REPORTER FORMATS  #
+######################
 class LoggerFormatter(logging.Formatter):
 
     dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
@@ -173,6 +176,21 @@ class LoggerFormatter(logging.Formatter):
         self._style._fmt = format_orig
 
         return result
+
+class NetCDF4Traj(NetCDFTraj):
+    """
+    Temporary class to allow for proper flushing
+    """
+
+    def __init__(self, fname, mode='r'):
+        super(NetCDF4Traj,self).__init__(fname, mode)
+
+    def flush(self):
+        if nc is None:
+            # netCDF4.Dataset does not have a flush method
+            self._ncfile.flush()
+        if nc:
+            self._ncfile.sync()
 
 class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
     #This is a subclass of the HDF5TrajectoryFile class from mdtraj that handles the writing of
@@ -448,6 +466,10 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
                 print(e)
                 pass
 
+######################
+#     REPORTERS      #
+######################
+
 class BLUESHDF5Reporter(HDF5Reporter):
     #This is a subclass of the HDF5 class from mdtraj that handles the reporting of
     #the trajectory.
@@ -455,9 +477,9 @@ class BLUESHDF5Reporter(HDF5Reporter):
     def backend(self):
         return BLUESHDF5TrajectoryFile
 
-    def __init__(self, file, reportInterval,
+    def __init__(self, file, reportInterval=1,
                  title='NCMC Trajectory',
-                 coordinates=True, frame_indices=None,
+                 coordinates=True, frame_indices=[],
                  time=False, cell=True, temperature=False,
                  potentialEnergy=False, kineticEnergy=False,
                  velocities=False, atomSubset=None,
@@ -469,10 +491,41 @@ class BLUESHDF5Reporter(HDF5Reporter):
             temperature, velocities, atomSubset)
         self._protocolWork = bool(protocolWork)
         self._alchemicalLambda = bool(alchemicalLambda)
-        self._frame_indices = frame_indices
+
         self._environment = bool(environment)
         self._title = title
         self._parameters = parameters
+
+        self.frame_indices = frame_indices
+        if self.frame_indices:
+            #If simulation.currentStep = 1, store the frame from the previous step.
+            # i.e. frame_indices=[1,100] will store the first and frame 100
+            self.frame_indices = [x-1 for x in frame_indices]
+
+    def describeNextReport(self, simulation):
+        """
+        Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The simulation to generate a report for
+        Returns
+        -------
+        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
+            nsteps is the number of steps until the next report
+            pos, vel, frc, and ene are flags indicating whether positions,
+            velocities, forces, and/or energies are needed from the Context
+        """
+        #Monkeypatch to report at certain frame indices
+        if self.frame_indices:
+            if simulation.currentStep in self.frame_indices:
+                steps = 1
+            else:
+                steps = -1
+        if not self.frame_indices:
+            steps_left = simulation.currentStep % self._reportInterval
+            steps = self._reportInterval - steps_left
+        return (steps, self._coordinates, self._velocities, False, self._needEnergy)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -483,16 +536,12 @@ class BLUESHDF5Reporter(HDF5Reporter):
         state : simtk.openmm.State
             The current state of the simulation
         """
+        print('REPORTING HDF5 at', simulation.currentStep)
         if not self._is_intialized:
             self._initialize(simulation)
             self._is_intialized = True
 
         self._checkForErrors(simulation, state)
-
-        #Only record data in given frames
-        if self._frame_indices:
-            if simulation.currentStep not in self._frame_indices:
-                return
 
         args = ()
         kwargs = {}
@@ -539,8 +588,8 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if hasattr(self._traj_file, 'flush'):
             self._traj_file.flush()
 
-class BLUESStateDataReporter(omm_StateDataReporter):
-    def __init__(self, file, reportInterval, title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
+class BLUESStateDataReporter(app.StateDataReporter):
+    def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
     progress=False, remainingTime=False, speed=False, elapsedTime=False, separator=',', systemMass=None, totalSteps=None):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
             potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
@@ -548,6 +597,39 @@ class BLUESStateDataReporter(omm_StateDataReporter):
 
         self.log = self._out
         self.title = title
+
+        self.frame_indices = frame_indices
+        if self.frame_indices:
+            #If simulation.currentStep = 1, store the frame from the previous step.
+            # i.e. frame_indices=[1,100] will store the first and frame 100
+            self.frame_indices = [x-1 for x in frame_indices]
+
+    def describeNextReport(self, simulation):
+        """
+        Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The simulation to generate a report for
+        Returns
+        -------
+        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
+            nsteps is the number of steps until the next report
+            pos, vel, frc, and ene are flags indicating whether positions,
+            velocities, forces, and/or energies are needed from the Context
+        """
+        #Monkeypatch to report at certain frame indices
+        if self.frame_indices:
+            if simulation.currentStep in self.frame_indices:
+                steps = 1
+            else:
+                steps = -1
+        if not self.frame_indices:
+            steps_left = simulation.currentStep % self._reportInterval
+            steps = self._reportInterval - steps_left
+
+        return (steps, self._needsPositions, self._needsVelocities,
+                self._needsForces, self._needEnergy)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -573,7 +655,6 @@ class BLUESStateDataReporter(omm_StateDataReporter):
 
         # Check for errors.
         self._checkForErrors(simulation, state)
-
         # Query for the values
         values = self._constructReportValues(simulation, state)
 
@@ -588,8 +669,40 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
     """ Temporary class to read or write NetCDF
     """
 
-    def __init__(self, file, reportInterval, crds=True, vels=False, frcs=False):
+    def __init__(self, file, reportInterval=0, frame_indices=[], crds=True, vels=False, frcs=False):
         super(NetCDF4Reporter,self).__init__(file, reportInterval, crds, vels, frcs)
+
+        self.frame_indices = frame_indices
+        if self.frame_indices:
+            #If simulation.currentStep = 1, store the frame from the previous step.
+            # i.e. frame_indices=[1,100] will store the first and frame 100
+            self.frame_indices = [x-1 for x in frame_indices]
+
+    def describeNextReport(self, simulation):
+        """
+        Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The simulation to generate a report for
+        Returns
+        -------
+        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
+            nsteps is the number of steps until the next report
+            pos, vel, frc, and ene are flags indicating whether positions,
+            velocities, forces, and/or energies are needed from the Context
+        """
+        #Monkeypatch to report at certain frame indices
+        if self.frame_indices:
+            #print(self.frame_indices)
+            if simulation.currentStep in self.frame_indices:
+                steps = 1
+            else:
+                steps = -1
+        if not self.frame_indices:
+            steps_left = simulation.currentStep % self._reportInterval
+            steps = self._reportInterval - steps_left
+        return (steps, self.crds, self.vels, self.frcs, False)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -600,6 +713,7 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         state : :class:`mm.State`
             The current state of the simulation
         """
+        print('REPORTING NETCDF at', simulation.currentStep)
         global VELUNIT, FRCUNIT
         if self.crds:
             crds = state.getPositions().value_in_unit(u.angstrom)
@@ -636,19 +750,3 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             self._out.add_forces(frcs)
         # Now it's time to add the time.
         self._out.add_time(state.getTime().value_in_unit(u.picosecond))
-
-
-class NetCDF4Traj(NetCDFTraj):
-    """
-    Temporary class to allow for proper flushing
-    """
-
-    def __init__(self, fname, mode='r'):
-        super(NetCDF4Traj,self).__init__(fname, mode)
-
-    def flush(self):
-        if nc is None:
-            # netCDF4.Dataset does not have a flush method
-            self._ncfile.flush()
-        if nc:
-            self._ncfile.sync()
