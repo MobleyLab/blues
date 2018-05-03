@@ -63,8 +63,8 @@ def startup(config):
             opt['system'] = add_units(opt['system'], logger)
             opt['simulation'] = add_units(opt['simulation'], logger)
             opt['freeze'] = add_units(opt['freeze'], logger)
-        except:
-            logger.error(sys.exc_info()[0])
+        except Exception as e:
+            logger.error(e, exc_info=True)
             raise
 
 
@@ -339,11 +339,23 @@ class SystemFactory(object):
         alch_system = factory.create_alchemical_system(system, alch_region)
         return alch_system
 
-    def freeze_atoms(self, system, structure=None, freeze_distance=5.0,
-                    freeze_center='LIG', freeze_solvent='HOH,NA,CL', **kwargs):
+    def _amber_selection_to_atom_indices_(self, structure, selection):
+        mask = parmed.amber.AmberMask(structure, str(selection))
+        mask_idx = [i for i in mask.Selected()]
+        return mask_idx
+
+    def _print_atomlist_from_atom_indices(self, structure, mask_idx):
+        atom_list = []
+        for i, at in enumerate(structure.atoms):
+            if i in mask_idx:
+                atom_list.append(structure.atoms[i])
+        logger.debug('\nFreezing {}'.format(atom_list))
+        return atom_list
+
+    def restrain_positions(self, system, structure=None, selection=":LIG", weight=5.0, **kwargs):
         """
-        Function to zero the masses of selected atoms and solvent. Massless atoms
-        will be ignored by the integrator and will not change positions.
+        Applies positional restraints to the given openmm.System.
+
         Parameters
         ----------
         system : openmm.System
@@ -353,26 +365,109 @@ class SystemFactory(object):
 
         Kwargs
         -------
-        freeze_center : str
-            AmberMask selection for the center in which to select atoms for zeroing their masses. Default: LIG
-        freeze_distance : float
-            Distance (angstroms) to select atoms for retaining their masses. Atoms outside the set distance will have their masses set to 0.0. Default: 5.0
-        freeze_solvent : str
-            AmberMask selection in which to select solvent atoms for zeroing their masses. Default: HOH,NA,CL
+        selection : str, Default = ":LIG"
+            AmberMask selection for the center in which to select atoms for zeroing their masses.
+        weight : float, Default = 5.0
+            Restraint weight for xyz atom restraints in kcal/(mol A^2)
+
+        References
+        -----
+        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        """
+
+        if not structure: structure = self.structure
+        mask_idx = self._amber_selection_to_atom_indices_(structure, selection)
+
+        logger.info("Positional restraints applied to selection: '{}' ({} atoms) on {}"
+                    "\tRestraint weight: {}".format(selection, len(mask_idx), system,
+                                                    weight *
+                                                    unit.kilocalories_per_mole/unit.angstroms**2))
+        # define the custom force to restrain atoms to their starting positions
+        force = openmm.CustomExternalForce('k_restr*periodicdistance(x, y, z, x0, y0, z0)^2')
+        # Add the restraint weight as a global parameter in kcal/mol/A^2
+        force.addGlobalParameter("k_restr", weight*unit.kilocalories_per_mole/unit.angstroms**2)
+        # Define the target xyz coords for the restraint as per-atom (per-particle) parameters
+        force.addPerParticleParameter("x0")
+        force.addPerParticleParameter("y0")
+        force.addPerParticleParameter("z0")
+
+        for i, atom_crd in enumerate(structure.positions):
+            if i in mask_idx:
+                logger.debug(i, structure.atoms[i])
+                force.addParticle(i, atom_crd.value_in_unit(unit.nanometers))
+        system.addForce(force)
+
+        return system
+
+    def freeze_atoms(self, system, structure=None, selection=":LIG", **kwargs):
+        """
+        Function that will zero the masses of atoms from the given selection.
+        Massless atoms will be ignored by the integrator and will not change positions.
+
+        Parameters
+        ----------
+        system : openmm.System
+            The OpenMM System object to be modified.
+        structure : parmed.Structure(), optional
+            Structure of the system, used for atom selection.
+
+        Kwargs
+        -------
+        selection : str, Default = ":LIG"
+            AmberMask selection for the center in which to select atoms for zeroing their masses. Default=':LIG'
 
         References
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         if not structure: structure = self.structure
+        mask_idx = self._amber_selection_to_atom_indices_(structure, selection)
+        logger.info("Freezing selection '{}' ({} atoms) on {}".format(selection, len(mask_idx), system))
+
+        self._print_atomlist_from_atom_indices(structure, mask_idx)
+        system = utils.zero_masses(system, mask_idx)
+        return
+
+    def freeze_radius(self, system, structure=None, freeze_distance=5.0,
+                    freeze_center=':LIG', freeze_solvent=':HOH,NA,CL', **kwargs):
+        """
+        Function that will zero the masses of atoms outside the given raidus of
+        the `freeze_center` selection. Massless atoms will be ignored by the
+        integrator and will not change positions.This is intended to freeze
+        the solvent and protein atoms around the ligand binding site.
+
+        Parameters
+        ----------
+        system : openmm.System
+            The OpenMM System object to be modified.
+        structure : parmed.Structure(), optional
+            Structure of the system, used for atom selection.
+
+        Kwargs
+        -------
+        freeze_center : str, Default = ":LIG"
+            AmberMask selection for the center in which to select atoms for zeroing their masses. Default: LIG
+        freeze_distance : float, Default = 5.0
+            Distance (angstroms) to select atoms for retaining their masses.
+            Atoms outside the set distance will have their masses set to 0.0.
+        freeze_solvent : str, Default = ":HOH,NA,CL"
+            AmberMask selection in which to select solvent atoms for zeroing their masses.
+
+        References
+        -----
+        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        """
+        if not structure: structure = self.structure
+        selection = "(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance._value,freeze_solvent)
+        site_idx = self._amber_selection_to_atom_indices_(structure, selection)
+        freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
 
         #Atom selection for zeroing protein atom masses
-        mask = parmed.amber.AmberMask(structure,"(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance._value,freeze_solvent))
-        site_idx = [i for i in mask.Selected()]
-        logger.info('Zeroing mass of %s atoms %.1f Angstroms from %s on %s' % (len(site_idx), freeze_distance._value, freeze_center, system))
-        logger.debug('\nFreezing atom selection = %s' % site_idx)
-        freeze_indices = set(range(system.getNumParticles())) - set(site_idx)
-        return utils.zero_masses(system, freeze_indices)
+        logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance._value, freeze_center, system))
+
+        self._print_atomlist_from_atom_indices(structure, freeze_idx)
+        system = utils.zero_masses(system, freeze_idx)
+        return system
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
@@ -633,7 +728,6 @@ class Simulation(object):
                        'getForces' : False,
                        'getEnergy' : True,
                        'getParameters': True,
-                       'getPeriodicBoxVectors' : True,
                        'enforcePeriodicBox' : True}
 
 
@@ -707,6 +801,7 @@ class Simulation(object):
             A list that defines what information to get from the context State.
         """
         stateinfo = {}
+        print(parameters)
         state  = context.getState(**parameters)
         stateinfo['iter'] = int(self.current_iter)
         stateinfo['positions'] =  state.getPositions(asNumpy=True)
@@ -824,7 +919,7 @@ class Simulation(object):
                     self.nc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].afterMove(self.nc_sim.context)
 
             except Exception as e:
-                logger.error(e)
+                logger.error(e, exc_info=True)
                 self.simulations.move_engine.moves[self.simulations.move_engine.selected_move]._error(self.nc_sim.context)
                 break
 

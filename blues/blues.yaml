@@ -37,18 +37,23 @@ system:
     annihilate_electrostatics' : True
     annihilate_sterics' : False
 
+restraints:
+    selection: '@CA,C,N' #:LIG
+    weight: 5
+
 freeze:
   freeze_center: LIG
   freeze_solvent: HOH,NA,CL
   freeze_distance: 5
 
 simulation:
-  platform: CUDA
+  #platform: CUDA
+  platform: OpenCL
   properties:
-    CudaPrecision: single
-    CudaDeviceIndex: 0
-    #OpenCLPrecision: single
-    #OpenCLDeviceIndex: 2
+    #CudaPrecision: single
+    #CudaDeviceIndex: 0
+    OpenCLPrecision: single
+    OpenCLDeviceIndex: 2
   dt: 0.004
   friction: 1
   pressure: 1

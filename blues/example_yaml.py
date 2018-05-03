@@ -27,8 +27,13 @@ ligand_mover = MoveEngine(ligand)
 
 #Generate the openmm.Systems outside SimulationFactory to allow modifications
 systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
+
+#Apply positional restraints
+#systems.md = systems.restrain_positions(systems.md, **opt['restraints'])
+
 #Freeze atoms in the alchemical system
-systems.alch = systems.freeze_atoms(systems.alch, **opt['freeze'])
+systems.alch = systems.freeze_radius(systems.alch, **opt['freeze'])
+
 
 #Generate the OpenMM Simulations
 simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
