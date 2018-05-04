@@ -27,6 +27,7 @@ systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
 systems.md = systems.restrain_positions(structure, systems.md, **opt['restraints'])
 
 #Freeze atoms in the alchemical system
+systems.md = systems.freeze_atoms(structure, systems.md, **opt['freeze'])
 systems.alch = systems.freeze_radius(structure, systems.alch, **opt['freeze'])
 
 #Generate the OpenMM Simulations

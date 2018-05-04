@@ -230,9 +230,9 @@ def startup(yaml_config):
                     config['system'][method] = eval("app.%s" % user_input)
                 except:
                     config['Logger'].exception("'{}' was not a valid option for '{}'. Valid options: {}".format(user_input, method, app_type))
-        return opt
+        return config
 
-    def set_Parameters(opt):
+    def set_Parameters(config):
         """
         MAIN execution function for updating/correcting (placing units) in the config
         """
@@ -288,8 +288,8 @@ def startup(yaml_config):
 
 
     #Parse YAML into dict
-    if config.endswith('.yaml'):
-        config = load_yaml(config)
+    if yaml_config.endswith('.yaml'):
+        config = load_yaml(yaml_config)
 
     #Parse the configions dict
     if type(config) is dict:
@@ -548,7 +548,7 @@ class SystemFactory(object):
         return system
 
     @classmethod
-    def freeze_atoms(cls, structure, system, selection=":LIG", **kwargs):
+    def freeze_atoms(cls, structure, system, freeze_selection=":LIG", **kwargs):
         """
         Function that will zero the masses of atoms from the given selection.
         Massless atoms will be ignored by the integrator and will not change positions.
@@ -562,7 +562,7 @@ class SystemFactory(object):
 
         Kwargs
         -------
-        selection : str, Default = ":LIG"
+        freeze_selection : str, Default = ":LIG"
             AmberMask selection for the center in which to select atoms for zeroing their masses.
             Defaults to freezing protein backbone atoms.
 
@@ -570,10 +570,10 @@ class SystemFactory(object):
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
-        mask_idx = cls._amber_selection_to_atom_indices_(structure, selection)
-        logger.info("Freezing selection '{}' ({} atoms) on {}".format(selection, len(mask_idx), system))
+        mask_idx = cls._amber_selection_to_atom_indices_(structure, freeze_selection)
+        logger.info("Freezing selection '{}' ({} atoms) on {}".format(freeze_selection, len(mask_idx), system))
 
-        self._print_atomlist_from_atom_indices_(structure, mask_idx)
+        cls._print_atomlist_from_atom_indices_(structure, mask_idx)
         system = utils.zero_masses(system, mask_idx)
         return system
 
@@ -607,11 +607,12 @@ class SystemFactory(object):
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
+        #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance._value,freeze_solvent)
         site_idx = cls._amber_selection_to_atom_indices_(structure, selection)
+        #Invert that selection to freeze everything but the binding site.
         freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
 
-        #Atom selection for zeroing protein atom masses
         logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance._value, freeze_center, system))
 
         cls._print_atomlist_from_atom_indices_(structure, freeze_idx)
