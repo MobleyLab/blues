@@ -20,7 +20,16 @@ from simtk.openmm import app
 
 logger = logging.getLogger(__name__)
 
-def startup(config):
+def startup(yaml_config):
+    """
+    Function that will parse the YAML configuration file for setup and running
+    BLUES simulations.
+
+    Parameters
+    ----------
+    yaml_config : filepath to YAML file (or JSON)
+    """
+
     #Default parmed units.
     default_units = {'nonbondedCutoff':unit.angstroms,
                     'switchDistance':unit.angstroms,
@@ -41,24 +50,44 @@ def startup(config):
 
                     }
 
-    valid_apps = {'nonbondedMethod' : ['NoCutoff', 'CutoffNonPeriodic', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME', 'Ewald'],
-                   'constraints' : [None, 'HBonds', 'HAngles', 'AllBonds'],
-                   'implicitSolvent' : ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']}
+    #System related parameters that require import from the simtk.openmm.app namesapce
+    valid_apps = {
+                'nonbondedMethod' : ['NoCutoff', 'CutoffNonPeriodic',
+                                    'CutoffPeriodic', 'PME', 'Ewald'],
+                'constraints' : [None, 'HBonds', 'HAngles', 'AllBonds'],
+                'implicitSolvent' : ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
+                }
     #     scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
     #     bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
     #                     'splitDihedrals']
     #
 
-    def load_yaml(yaml_file):
+    def load_yaml(yaml_config):
+        """
+        Function that reads the YAML configuration file and parameters are
+        returned as a dict.
+        """
         #Parse input parameters from YAML
-        with open(yaml_file, 'r') as stream:
+        with open(yaml_config, 'r') as stream:
             try:
-                opt = (yaml.load(stream))
+                config = (yaml.load(stream))
             except Exception as exc:
                 print (exc)
-        return opt
+        return config
 
     def check_amber_selection(structure, selection, logger):
+        """
+        Given a AmberMask selection (str) for selecting atoms to freeze or restrain,
+        check if it will actually select atoms. If the selection produces None,
+        suggest valid residues or atoms.
+
+        Parameters
+        ----------
+        structure: parmed.Structure object
+        selection: str (Amber syntax), atoms to restrain/freeze during simulation.
+        logger: logging.Logger object, records information
+        """
+
         mask_idx = []
         mask = parmed.amber.AmberMask(structure, str(selection))
         mask_idx = [i for i in mask.Selected()]
@@ -72,6 +101,23 @@ def startup(config):
             sys.exit(1)
 
     def load_Structure(filename, restart=None, logger=None, *args, **kwargs):
+        """
+        Load the input/reference files (.prmtop, .inpcrd) into a parmed.Structure. If a `restart` (.rst7)
+        file is given, overwrite the reference positions, velocities, and box vectors on the Structure.
+
+        Parameters
+        -----------
+        filename: str, filepath to input (.prmtop)
+        restart: str, file path to Amber restart file (.rst7)
+        logger: logging.Logger object, records information
+
+        Args
+        ----
+
+        Kwargs
+        ------
+
+        """
         structure = parmed.load_file(filename, *args, **kwargs)
         if restart:
             logger.info('Restarting simulation from {}'.format(restart))
@@ -83,99 +129,136 @@ def startup(config):
         return structure
 
     def parse_unit_quantity(unit_quantity_str):
+        """
+        Utility for parsing parameters from the YAML file that require units.
+        Takes a str, i.e. '3.024 * daltons' and returns as a simtk.unit.Quantity
+        `unit.Quantity(3.024, unit=dalton)``
+        """
         value, u = unit_quantity_str.replace(' ', '').split('*')
         if '/' in u:
             u = u.split('/')
             return unit.Quantity(float(value), eval('%s/unit.%s' % (u[0],u[1])))
         return unit.Quantity(float(value), eval('unit.%s' % u))
 
-    def set_Output(opt):
+    def set_Output(config):
+        """
+        Parses/updates the config (dict) with the given path for storing output files.
+
+        """
         #Set file paths
-        if 'output_dir' in opt.keys():
-            output_dir = opt['output_dir']
+        if 'output_dir' in config.keys():
+            output_dir = config['output_dir']
         else:
             output_dir = '.'
-        outfname = os.path.join(output_dir, opt['outfname'])
-        opt['simulation']['outfname'] = outfname
-        return opt
+        outfname = os.path.join(output_dir, config['outfname'])
+        config['simulation']['outfname'] = outfname
+        return config
 
-    def set_Logger(opt):
+    def set_Logger(config):
+        """
+        Initializes the logging.Logger modules and parses/updates the
+        config (dict) with the logger_level and the file path to store the .log file
+
+        """
         #Initialize root Logger module
-        level = opt['logger_level'].upper()
-        outfname = opt['outfname']
+        level = config['logger_level'].upper()
+        outfname = config['outfname']
         if level == 'DEBUG':
             #Add verbosity if logging is set to DEBUG
-            opt['verbose'] = True
-            opt['system']['verbose'] = True
-            opt['simulation']['verbose'] = True
+            config['verbose'] = True
+            config['system']['verbose'] = True
+            config['simulation']['verbose'] = True
         else:
-            opt['verbose'] = False
-            opt['system']['verbose'] = False
-            opt['simulation']['verbose'] = False
+            config['verbose'] = False
+            config['system']['verbose'] = False
+            config['simulation']['verbose'] = False
         logger_level = eval("logging.%s" % level)
         logger = reporters.init_logger(logging.getLogger(), logger_level, outfname)
-        opt['Logger'] = logger
+        config['Logger'] = logger
 
-        return opt
+        return config
 
-    def set_Units(opt):
+    def set_Units(config):
+        """
+        Parses/updates the config (dict) values with parameters that should have
+        units on them. If no unit is provided, the default units are assumed.
+
+            Distances: unit.angstroms
+            Temperature: unit.kelvins
+            Masses: unit.daltons
+            Time: unit.picoseconds
+            Pressure: unit.atmospheres
+            Force:  unit.kilocalories_per_mole/unit.angstroms**2
+
+        """
         #Loop over parameters which require units
         for param, unit_type in default_units.items():
 
             #Check each nested subset of parameters
             for setup_keys in ['system', 'simulation', 'freeze', 'restraints']:
                 #If the parameter requires units, cheeck if provided by user
-                if param in opt[setup_keys]:
-                    user_input = opt[setup_keys][param]
+                if param in config[setup_keys]:
+                    user_input = config[setup_keys][param]
 
                     if '*' in str(user_input):
-                        opt[setup_keys][param] =  parse_unit_quantity(user_input)
+                        config[setup_keys][param] =  parse_unit_quantity(user_input)
 
                     #If not provided, set default units
                     else:
-                        opt['Logger'].warn("Units for '{} = {}' not specified. Setting units to '{}'".format(param, user_input, unit_type))
-                        opt[setup_keys][param] = user_input*unit_type
+                        config['Logger'].warn("Units for '{} = {}' not specified. Setting units to '{}'".format(param, user_input, unit_type))
+                        config[setup_keys][param] = user_input*unit_type
 
                 else:
                     pass
 
-        return opt
+        return config
 
-    def set_Apps(opt):
-        #Check parameters which require loading from the simtk.openmm.app namespace
+    def set_Apps(config):
+        """
+        Check system parameters which require loading from the simtk.openmm.app namespace
+
+
+        nonbondedMethod : ['NoCutoff', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME', 'Ewald'],
+        constraints : [None, 'HBonds', 'HAngles', 'AllBonds'],
+        implicitSolvent : ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
+
+        """
         for method, app_type in valid_apps.items():
-            if method in opt['system']:
-                user_input = opt['system'][method]
+            if method in config['system']:
+                user_input = config['system'][method]
                 try:
-                    opt['system'][method] = eval("app.%s" % user_input)
+                    config['system'][method] = eval("app.%s" % user_input)
                 except:
-                    opt['Logger'].exception("'{}' was not a valid option for '{}'. Valid options: {}".format(user_input, method, app_type))
+                    config['Logger'].exception("'{}' was not a valid option for '{}'. Valid options: {}".format(user_input, method, app_type))
         return opt
 
     def set_Parameters(opt):
+        """
+        MAIN execution function for updating/correcting (placing units) in the config
+        """
         try:
-            opt = set_Output(opt)
-            opt = set_Logger(opt)
-            opt['Structure'] = load_Structure(logger=opt['Logger'],**opt['structure'])
-            opt = set_Units(opt)
-            opt = set_Apps(opt)
+            config = set_Output(config)
+            config = set_Logger(config)
+            config['Structure'] = load_Structure(logger=config['Logger'],**config['structure'])
+            config = set_Units(config)
+            config = set_Apps(config)
 
             #Check Amber Selections
-            if 'freeze' in opt.keys():
+            if 'freeze' in config.keys():
                 for sel in ['freeze_center', 'freeze_solvent']:
-                    check_amber_selection(opt['Structure'], opt['freeze'][sel], opt['Logger'])
+                    check_amber_selection(config['Structure'], config['freeze'][sel], config['Logger'])
 
-            if 'restraints' in opt.keys():
-                check_amber_selection(opt['Structure'], opt['restraints']['selection'], opt['Logger'])
+            if 'restraints' in config.keys():
+                check_amber_selection(config['Structure'], config['restraints']['selection'], config['Logger'])
 
             #Calculate NCMC steps with nprop
-            opt['simulation']['nstepsNC'], opt['simulation']['integration_steps'] = calcNCMCSteps(logger=opt['Logger'], **opt['simulation'])
+            config['simulation']['nstepsNC'], config['simulation']['integration_steps'] = calcNCMCSteps(logger=config['Logger'], **config['simulation'])
 
         except Exception as e:
             logger.exception(e)
             raise
 
-        return opt
+        return config
 
     def calcNCMCSteps(total_steps, nprop, prop_lambda, logger, **kwargs):
         if (total_steps % 2) != 0:
@@ -208,11 +291,11 @@ def startup(config):
     if config.endswith('.yaml'):
         config = load_yaml(config)
 
-    #Parse the options dict
+    #Parse the configions dict
     if type(config) is dict:
-        opt = set_Parameters(config)
+        config = set_Parameters(config)
 
-    return opt
+    return config
 
 class SystemFactory(object):
     """
@@ -230,7 +313,7 @@ class SystemFactory(object):
     ligand_mover = MoveEngine(ligand)
 
     #Generate the openmm.Systems
-    systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
+    systems = SystemFactory(structure, ligand.atom_indices, **config['system'])
 
     #The MD and alchemical Systems are generated and stored as an attribute
     systems.md
@@ -252,15 +335,15 @@ class SystemFactory(object):
         (both sterics and electrostatics components) have to be alchemically
         modified.
     """
-    def __init__(self, structure, atom_indices, **opt):
+    def __init__(self, structure, atom_indices, **config):
         self.structure = structure
         self.atom_indices = atom_indices
-        self.opt = opt
+        self.config = config
 
-        self.alch_opt = self.opt.pop('alchemical')
+        self.alch_config = self.config.pop('alchemical')
 
-        self.md = SystemFactory.generateSystem(self.structure, **self.opt)
-        self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_opt)
+        self.md = SystemFactory.generateSystem(self.structure, **self.config)
+        self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
 
     @classmethod
     def generateSystem(cls, structure, **kwargs):
@@ -564,7 +647,7 @@ class SimulationFactory(object):
         in the NCMC simulation.
     opt : dict of parameters for the simulation (i.e timestep, temperature, etc.)
     """
-    def __init__(self, systems, move_engine, **opt):
+    def __init__(self, systems, move_engine, **config):
         #Hide these properties since they exist on the SystemsFactory object.
         self._structure = systems.structure
         self._system = systems.md
@@ -574,7 +657,7 @@ class SimulationFactory(object):
         self._atom_indices = move_engine.moves[0].atom_indices
         self.move_engine = move_engine
 
-        self.opt = opt
+        self.opt = config
         self.generateSimulationSet()
 
     @classmethod
@@ -591,7 +674,7 @@ class SimulationFactory(object):
         ------
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
-        pressure : int, optional, default=None
+        pressure : int, configional, default=None
             Pressure (atm) for Barostat for NPT simulations.
         frequency : int, default=25
             Frequency at which Monte Carlo pressure changes should be attempted (in time steps)
@@ -612,7 +695,7 @@ class SimulationFactory(object):
             temperature (Kelvin) to be simulated at.
         friction: float, default=1
             friction coefficient which couples to the heat bath, measured in 1/ps
-        dt: int, optional, default=0.002
+        dt: int, configional, default=0.002
             The timestep of the integrator to use (in ps).
         """
         integrator = openmm.LangevinIntegrator(temperature, friction, dt)
@@ -726,25 +809,25 @@ class SimulationFactory(object):
     def generateSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
         #Construct MD Integrator and Simulation
-        self.integrator = self.generateIntegrator(**self.opt)
-        if 'pressure' in self.opt.keys():
-            self._system = self.addBarostat(self._system, **self.opt)
+        self.integrator = self.generateIntegrator(**self.config)
+        if 'pressure' in self.config.keys():
+            self._system = self.addBarostat(self._system, **self.config)
             logger.warning('NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
         else:
             logger.info('MD simulation will be NVT.')
-        self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **self.opt)
+        self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **self.config)
 
         #Alchemical Simulation is used for computing correction term from MD simulation.
-        alch_integrator = self.generateIntegrator(**self.opt)
-        self.alch = self.generateSimFromStruct(self._structure, self._system, alch_integrator, **self.opt)
+        alch_integrator = self.generateIntegrator(**self.config)
+        self.alch = self.generateSimFromStruct(self._structure, self._system, alch_integrator, **self.config)
 
         #Construct NCMC Integrator and Simulation
-        self.ncmc_integrator = self.generateNCMCIntegrator(**self.opt)
+        self.ncmc_integrator = self.generateNCMCIntegrator(**self.config)
 
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self.move_engine.moves:
             self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
-        self.nc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **self.opt)
+        self.nc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **self.config)
 
         SimulationFactory.print_simulation_info(self.nc)
 
@@ -778,9 +861,9 @@ class Simulation(object):
         self.accept = 0
         self.reject = 0
         self.accept_ratio = 0
-        self.opt = self.simulations.opt
+        self.config = self.simulations.config
 
-        self.movestep = int(self.opt['nstepsNC']) / 2
+        self.movestep = int(self.config['nstepsNC']) / 2
 
         self.current_iter = 0
         self.current_state = { 'md'   : { 'state0' : {}, 'state1' : {} },
@@ -833,15 +916,15 @@ class Simulation(object):
     def _getSimulationInfo(self, nIter):
         """logger.infos out simulation timing and related information."""
 
-        total_ncmc_steps = self.opt['integration_steps']
+        total_ncmc_steps = self.config['integration_steps']
 
         #Total NCMC simulation time
-        time_ncmc_steps = total_ncmc_steps * self.opt['dt'].value_in_unit(unit.picoseconds)
+        time_ncmc_steps = total_ncmc_steps * self.config['dt'].value_in_unit(unit.picoseconds)
         logger.info('\t%s NCMC ps/iter' % time_ncmc_steps)
 
         #Total MD simulation time
-        time_md_steps = self.opt['nstepsMD'] * self.opt['dt'].value_in_unit(unit.picoseconds)
-        logger.info('MD Steps = %s' % self.opt['nstepsMD'])
+        time_md_steps = self.config['nstepsMD'] * self.config['dt'].value_in_unit(unit.picoseconds)
+        logger.info('MD Steps = %s' % self.config['nstepsMD'])
         logger.info('\t%s MD ps/iter' % time_md_steps)
 
         #Total BLUES simulation time
@@ -851,7 +934,7 @@ class Simulation(object):
         logger.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(nIter)))
 
         #Get trajectory frame interval timing for BLUES simulation
-        frame_iter = self.opt['nstepsMD'] / self.opt['reporters']['trajectory_interval']
+        frame_iter = self.config['nstepsMD'] / self.config['reporters']['trajectory_interval']
         timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
         logger.info('\tTrajectory Interval = %s ps' % timetraj_frame)
         logger.info('\t\t%s frames/iter' % frame_iter )
@@ -919,7 +1002,7 @@ class Simulation(object):
         structure.save(outfname,overwrite=True)
         logger.info('\tSaving Frame to: %s' % outfname)
 
-    def acceptRejectNCMC(self, temperature=300, write_move=False, **opt):
+    def acceptRejectNCMC(self, temperature=300, write_move=False, **config):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.current_state['md']['state0']
@@ -944,7 +1027,7 @@ class Simulation(object):
             self.md_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
             self.md_sim.context.setPositions(nc_state1['positions'])
             if write_move:
-            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.opt['outfname'], self.current_iter))
+            	self.writeFrame(self.md_sim, '{}acc-it{}.pdb'.format(self.config['outfname'], self.current_iter))
 
         else:
             self.reject += 1
@@ -955,7 +1038,7 @@ class Simulation(object):
         self.nc_sim.context._integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def simulateNCMC(self, nstepsNC=5000, **opt):
+    def simulateNCMC(self, nstepsNC=5000, **config):
         """Function that performs the NCMC simulation."""
         logger.info('[Iter %i] Advancing %i NCMC steps...' % (self.current_iter, nstepsNC))
         #choose a move to be performed according to move probabilities
@@ -994,7 +1077,7 @@ class Simulation(object):
         nc_state1 = self.getStateInfo(self.nc_sim.context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
 
-    def simulateMD(self, nstepsMD=5000, **opt):
+    def simulateMD(self, nstepsMD=5000, **config):
         """Function that performs the MD simulation."""
 
         logger.info('[Iter %i] Advancing %i MD steps...' % (self.current_iter, nstepsMD))
@@ -1036,9 +1119,9 @@ class Simulation(object):
         for n in range(int(nIter)):
             self.current_iter = int(n)
             self.setStateConditions()
-            self.simulateNCMC(**self.opt)
-            self.acceptRejectNCMC(**self.opt)
-            self.simulateMD(**self.opt)
+            self.simulateNCMC(**self.config)
+            self.acceptRejectNCMC(**self.config)
+            self.simulateMD(**self.config)
 
         # END OF NITER
         self.accept_ratio = self.accept/float(nIter)
@@ -1055,7 +1138,7 @@ class Simulation(object):
         md_state1 = self.getStateInfo(new_context, self.state_keys)
         self.setSimState('md', 'state1', md_state1)
 
-    def acceptRejectMC(self, temperature=300, **opt):
+    def acceptRejectMC(self, temperature=300, **config):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.current_state['md']['state0']
@@ -1089,7 +1172,7 @@ class Simulation(object):
 
         #controls how many mc moves are performed during each iteration
         try:
-            self.mc_per_iter = self.opt['mc_per_iter']
+            self.mc_per_iter = self.config['mc_per_iter']
         except:
             self.mc_per_iter = 1
 
@@ -1099,5 +1182,5 @@ class Simulation(object):
             for i in range(self.mc_per_iter):
                 self.setStateConditions()
                 self.simulateMC()
-                self.acceptRejectMC(**self.opt)
-            self.simulateMD(**self.opt)
+                self.acceptRejectMC(**self.config)
+            self.simulateMD(**self.config)
