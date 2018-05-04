@@ -11,7 +11,7 @@ import parmed, math
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues import utils
-import os, copy, yaml, logging, sys
+import os, copy, yaml, logging, sys, json
 import mdtraj
 from blues import utils
 from blues import reporters
@@ -21,19 +21,33 @@ from simtk.openmm import app
 logger = logging.getLogger(__name__)
 
 def startup(config):
-    #for system setup portion
-    #set unit defaults to OpenMM defaults
-    unit_options = {'nonbondedCutoff':unit.angstroms,
+    #Default parmed units.
+    default_units = {'nonbondedCutoff':unit.angstroms,
                     'switchDistance':unit.angstroms,
                     'implicitSolventKappa':unit.angstroms,
+                    'freeze_distance': unit.angstroms,
+
                     'implicitSolventSaltConc':unit.mole/unit.liters,
                     'temperature':unit.kelvins,
+
                     'hydrogenMass':unit.daltons,
+
                     'dt':unit.picoseconds,
                     'friction':1/unit.picoseconds,
-                    'freeze_distance': unit.angstroms,
-                    'pressure': unit.atmospheres
+
+                    'pressure': unit.atmospheres,
+
+                    'weight': unit.kilocalories_per_mole/unit.angstroms**2,
+
                     }
+
+    valid_apps = {'nonbondedMethod' : ['NoCutoff', 'CutoffNonPeriodic', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME', 'Ewald'],
+                   'constraints' : [None, 'HBonds', 'HAngles', 'AllBonds'],
+                   'implicitSolvent' : ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']}
+    #     scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
+    #     bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
+    #                     'splitDihedrals']
+    #
 
     def load_yaml(yaml_file):
         #Parse input parameters from YAML
@@ -44,138 +58,128 @@ def startup(config):
                 print (exc)
         return opt
 
-    def parse_amber_selection(opt):
-        freeze_keys = ['freeze_center', 'freeze_solvent']
-        restraint_keys = ['selection']
-        try:
-            for key in freeze_keys:
-                opt[key] = str(opt[key])
-            for key in restraint_keys:
-                opt[key] = str(opt[key])
-        except:
-            pass
-        return opt
+    def check_amber_selection(structure, selection, logger):
+        mask_idx = []
+        mask = parmed.amber.AmberMask(structure, str(selection))
+        mask_idx = [i for i in mask.Selected()]
+        if not mask_idx:
+            if ':' in selection:
+                res_set = set(residue.name for residue in structure.residues)
+                logger.error("'{}' was not a valid Amber selection. Valid residues: {}".format(selection, res_set))
+            elif '@' in selection:
+                atom_set = set(atom.name for atom in structure.atoms)
+                logger.error("'{}' was not a valid Amber selection. Valid atoms: {}".format(selection, atom_set))
+            sys.exit(1)
 
-    def set_output(opt):
+    def load_Structure(filename, restart=None, logger=None, *args, **kwargs):
+        structure = parmed.load_file(filename, *args, **kwargs)
+        if restart:
+            logger.info('Restarting simulation from {}'.format(restart))
+            restart = parmed.amber.Rst7(restart)
+            structure.positions = restart.positions
+            structure.velocities = restart.velocities
+            structure.box = restart.box
+
+        return structure
+
+    def parse_unit_quantity(unit_quantity_str):
+        value, u = unit_quantity_str.replace(' ', '').split('*')
+        if '/' in u:
+            u = u.split('/')
+            return unit.Quantity(float(value), eval('%s/unit.%s' % (u[0],u[1])))
+        return unit.Quantity(float(value), eval('unit.%s' % u))
+
+    def set_Output(opt):
         #Set file paths
-        try:
-            output_dir = opt['options']['output_dir']
-        except Exception as exc:
+        if 'output_dir' in opt.keys():
+            output_dir = opt['output_dir']
+        else:
             output_dir = '.'
-        outfname = os.path.join(output_dir, opt['options']['outfname'])
+        outfname = os.path.join(output_dir, opt['outfname'])
         opt['simulation']['outfname'] = outfname
-        return opt, outfname
+        return opt
 
     def set_Logger(opt):
         #Initialize root Logger module
-        level = opt['options']['logger_level'].upper()
-        outfname = opt['options']['outfname']
+        level = opt['logger_level'].upper()
+        outfname = opt['outfname']
         if level == 'DEBUG':
             #Add verbosity if logging is set to DEBUG
-            opt['options']['verbose'] = True
+            opt['verbose'] = True
             opt['system']['verbose'] = True
             opt['simulation']['verbose'] = True
         else:
-            opt['options']['verbose'] = False
+            opt['verbose'] = False
             opt['system']['verbose'] = False
             opt['simulation']['verbose'] = False
         logger_level = eval("logging.%s" % level)
         logger = reporters.init_logger(logging.getLogger(), logger_level, outfname)
         opt['Logger'] = logger
 
-        return opt, logger
-
-    def set_units(opt, key):
-        for k,v in opt[key].items():
-            if 'outfname' in k:
-                pass
-            elif '*' in str(v):
-                opt[key][k] = getUnitQuantity(v)
-            else:
-                pass
-        opt[key] = add_units(opt[key], opt['Logger'])
         return opt
 
-    def getUnitQuantity(string_quantity):
-        value, u = string_quantity.replace(' ', '').split('*')
-        if '/' in u:
-            u = u.split('/')
-            return unit.Quantity(float(value), eval('%s/unit.%s' % (u[0],u[1])))
-        return unit.Quantity(float(value), eval('unit.%s' % u))
+    def set_Units(opt):
+        #Loop over parameters which require units
+        for param, unit_type in default_units.items():
 
-    def set_parameters(opt):
-        opt, outfname = set_output(opt)
-        opt, logger = set_Logger(opt)
-        unit_opts = ['system', 'simulation', 'freeze', 'restraints']
-        for key in unit_opts:
-            opt = set_units(opt, key)
+            #Check each nested subset of parameters
+            for setup_keys in ['system', 'simulation', 'freeze', 'restraints']:
+                #If the parameter requires units, cheeck if provided by user
+                if param in opt[setup_keys]:
+                    user_input = opt[setup_keys][param]
 
-        #Ensure proper units
-        try:
-            opt['simulation']['nstepsNC'], opt['simulation']['integration_steps'] = calcNCMCSteps(logger=logger, **opt['simulation'])
-            #opt['system'] = add_units(opt['system'], logger)
-            #opt['simulation'] = add_units(opt['simulation'], logger)
-            #opt['freeze'] = add_units(opt['freeze'], logger)
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            raise
+                    if '*' in str(user_input):
+                        opt[setup_keys][param] =  parse_unit_quantity(user_input)
 
-        if 'freeze' in opt.keys():
-            opt['freeze'] = parse_amber_selection(opt['freeze'])
-        if 'restraints' in opt.keys():
-            opt['restraints'] = parse_amber_selection(opt['restraints'])
-
-        return opt
-
-    def add_units(opt, logger):
-        #for system setup portion
-        #set unit defaults to OpenMM defaults
-        unit_options = {'nonbondedCutoff':unit.angstroms,
-                        'switchDistance':unit.angstroms,
-                        'implicitSolventKappa':unit.angstroms,
-                        'implicitSolventSaltConc':unit.mole/unit.liters,
-                        'temperature':unit.kelvins,
-                        'hydrogenMass':unit.daltons,
-                        'dt':unit.picoseconds,
-                        'friction':1/unit.picoseconds,
-                        'freeze_distance': unit.angstroms,
-                        'pressure': unit.atmospheres
-                        }
-
-        app_options = ['nonbondedMethod', 'constraints', 'implicitSolvent']
-        scalar_options = ['soluteDielectric', 'solvent', 'ewaldErrorTolerance']
-        bool_options = ['rigidWater', 'useSASA', 'removeCMMotion', 'flexibleConstraints', 'verbose',
-                        'splitDihedrals']
-
-        combined_options = list(unit_options.keys()) + app_options + scalar_options + bool_options
-        for sel in opt.keys():
-            if sel in combined_options:
-                if sel in unit_options:
-                    #if the value requires units check that it has units
-                    #if it doesn't assume default units are used
-                    if opt[sel] is None:
-                        opt[sel] = None
+                    #If not provided, set default units
                     else:
-                        try:
-                            opt[sel]._value
-                        except:
-                            logger.warn("Units for '{} = {}' not specified. Setting units to '{}'".format(sel, opt[sel], unit_options[sel]))
-                            opt[sel] = opt[sel]*unit_options[sel]
-                #if selection requires an OpenMM evaluation do it here
-                elif sel in app_options:
-                    try:
-                        opt[sel] = eval("app.%s" % opt[sel])
-                    except:
-                        #if already an app object we can just pass
-                        pass
-                #otherwise just take the value as is, should just be a bool or float
+                        opt['Logger'].warn("Units for '{} = {}' not specified. Setting units to '{}'".format(param, user_input, unit_type))
+                        opt[setup_keys][param] = user_input*unit_type
+
                 else:
                     pass
+
+        return opt
+
+    def set_Apps(opt):
+        #Check parameters which require loading from the simtk.openmm.app namespace
+        for method, app_type in valid_apps.items():
+            if method in opt['system']:
+                user_input = opt['system'][method]
+                try:
+                    opt['system'][method] = eval("app.%s" % user_input)
+                except:
+                    opt['Logger'].exception("'{}' was not a valid option for '{}'. Valid options: {}".format(user_input, method, app_type))
+        return opt
+
+    def set_Parameters(opt):
+        try:
+            opt = set_Output(opt)
+            opt = set_Logger(opt)
+            opt['Structure'] = load_Structure(logger=opt['Logger'],**opt['structure'])
+            opt = set_Units(opt)
+            opt = set_Apps(opt)
+
+            #Check Amber Selections
+            if 'freeze' in opt.keys():
+                for sel in ['freeze_center', 'freeze_solvent']:
+                    check_amber_selection(opt['Structure'], opt['freeze'][sel], opt['Logger'])
+
+            if 'restraints' in opt.keys():
+                check_amber_selection(opt['Structure'], opt['restraints']['selection'], opt['Logger'])
+
+            #Calculate NCMC steps with nprop
+            opt['simulation']['nstepsNC'], opt['simulation']['integration_steps'] = calcNCMCSteps(logger=opt['Logger'], **opt['simulation'])
+
+        except Exception as e:
+            logger.exception(e)
+            raise
+
         return opt
 
     def calcNCMCSteps(total_steps, nprop, prop_lambda, logger, **kwargs):
         if (total_steps % 2) != 0:
-           raise Exception('`total_steps = %i` must be even for symmetric protocol.' % (total_steps))
+           logger.exception('`total_steps = %i` must be even for symmetric protocol.' % (total_steps))
 
         nstepsNC = total_steps/(2*(nprop*prop_lambda+0.5-prop_lambda))
         if int(nstepsNC) % 2 == 0:
@@ -196,9 +200,8 @@ def startup(config):
             logger.warn('total nstepsNC requested ({}) does not divide evenly with the chosen values of prop_lambda and nprop. '.format(total_steps)+
                            'Instead using {} total propogation steps, '.format(calc_total)+
                            '({} steps inside `prop_lambda` and {} steps outside `prop_lambda)`.'.format(in_prop, out_prop))
-        logger.warn('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
+        logger.info('NCMC protocol will consist of {} lambda switching steps and {} total integration steps'.format(nstepsNC, calc_total))
         return nstepsNC, calc_total
-
 
 
     #Parse YAML into dict
@@ -207,7 +210,7 @@ def startup(config):
 
     #Parse the options dict
     if type(config) is dict:
-        opt = set_parameters(config)
+        opt = set_Parameters(config)
 
     return opt
 
@@ -256,10 +259,11 @@ class SystemFactory(object):
 
         self.alch_opt = self.opt.pop('alchemical')
 
-        self.md = self.generateSystem(self.structure, **self.opt)
-        self.alch = self.generateAlchSystem(self.md, self.atom_indices, **self.alch_opt)
+        self.md = SystemFactory.generateSystem(self.structure, **self.opt)
+        self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_opt)
 
-    def generateSystem(self, structure, **kwargs):
+    @classmethod
+    def generateSystem(cls, structure, **kwargs):
         """
         Construct an OpenMM System representing the topology described by the
         prmtop file. This function is just a wrapper for parmed Structure.createSystem().
@@ -337,11 +341,13 @@ class SystemFactory(object):
         """
         return structure.createSystem(**kwargs)
 
-    def generateAlchSystem(self, system, atom_indices,
+    @classmethod
+    def generateAlchSystem(cls, system, atom_indices,
                             softcore_alpha=0.5, softcore_a=1, softcore_b=1, softcore_c=6,
                             softcore_beta=0.0, softcore_d=1, softcore_e=1, softcore_f=2,
                             annihilate_electrostatics=True, annihilate_sterics=False,
                             disable_alchemical_dispersion_correction=True,
+                            suppress_warnings=True,
                             **kwargs):
         """Returns the OpenMM System for alchemical perturbations.
         Parameters
@@ -378,8 +384,9 @@ class SystemFactory(object):
         energy calculations of molecular transformations in solution phase.
         JCP 135:034114, 2011. http://dx.doi.org/10.1063/1.3607597
         """
-        #Lower logger level to suppress excess warnings
-        logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
+        if suppress_warnings:
+            #Lower logger level to suppress excess warnings
+            logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
 
         #Disabled correction term due to increased computational cost
         factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=disable_alchemical_dispersion_correction)
@@ -398,12 +405,14 @@ class SystemFactory(object):
         alch_system = factory.create_alchemical_system(system, alch_region)
         return alch_system
 
-    def _amber_selection_to_atom_indices_(self, structure, selection):
+    @staticmethod
+    def _amber_selection_to_atom_indices_(structure, selection):
         mask = parmed.amber.AmberMask(structure, str(selection))
         mask_idx = [i for i in mask.Selected()]
         return mask_idx
 
-    def _print_atomlist_from_atom_indices(self, structure, mask_idx):
+    @staticmethod
+    def _print_atomlist_from_atom_indices_(structure, mask_idx):
         atom_list = []
         for i, at in enumerate(structure.atoms):
             if i in mask_idx:
@@ -411,7 +420,8 @@ class SystemFactory(object):
         logger.debug('\nFreezing {}'.format(atom_list))
         return atom_list
 
-    def restrain_positions(self, system, structure=None, selection=":LIG", weight=5.0, **kwargs):
+    @classmethod
+    def restrain_positions(cls, structure, system, selection="(@CA,C,N)", weight=5.0, **kwargs):
         """
         Applies positional restraints to the given openmm.System.
 
@@ -419,13 +429,13 @@ class SystemFactory(object):
         ----------
         system : openmm.System
             The OpenMM System object to be modified.
-        structure : parmed.Structure(), optional
+        structure : parmed.Structure()
             Structure of the system, used for atom selection.
 
         Kwargs
         -------
-        selection : str, Default = ":LIG"
-            AmberMask selection for the center in which to select atoms for zeroing their masses.
+        selection : str, Default = "(@CA,C,N)"
+            AmberMask selection to apply positional restraints to
         weight : float, Default = 5.0
             Restraint weight for xyz atom restraints in kcal/(mol A^2)
 
@@ -433,18 +443,14 @@ class SystemFactory(object):
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
+        mask_idx = cls._amber_selection_to_atom_indices_(structure, selection)
 
-        if not structure: structure = self.structure
-        mask_idx = self._amber_selection_to_atom_indices_(structure, selection)
-
-        logger.info("Positional restraints applied to selection: '{}' ({} atoms) on {}"
-                    "\tRestraint weight: {}".format(selection, len(mask_idx), system,
-                                                    weight *
-                                                    unit.kilocalories_per_mole/unit.angstroms**2))
+        logger.info("{} positional restraints applied to selection: '{}' ({} atoms) on {}".format(weight, selection, len(mask_idx), system))
         # define the custom force to restrain atoms to their starting positions
         force = openmm.CustomExternalForce('k_restr*periodicdistance(x, y, z, x0, y0, z0)^2')
         # Add the restraint weight as a global parameter in kcal/mol/A^2
-        force.addGlobalParameter("k_restr", weight*unit.kilocalories_per_mole/unit.angstroms**2)
+        force.addGlobalParameter("k_restr", weight)
+        #force.addGlobalParameter("k_restr", weight*unit.kilocalories_per_mole/unit.angstroms**2)
         # Define the target xyz coords for the restraint as per-atom (per-particle) parameters
         force.addPerParticleParameter("x0")
         force.addPerParticleParameter("y0")
@@ -458,7 +464,8 @@ class SystemFactory(object):
 
         return system
 
-    def freeze_atoms(self, system, structure=None, selection="(@CA,C,N)", **kwargs):
+    @classmethod
+    def freeze_atoms(cls, structure, system, selection=":LIG", **kwargs):
         """
         Function that will zero the masses of atoms from the given selection.
         Massless atoms will be ignored by the integrator and will not change positions.
@@ -467,12 +474,12 @@ class SystemFactory(object):
         ----------
         system : openmm.System
             The OpenMM System object to be modified.
-        structure : parmed.Structure(), optional
+        structure : parmed.Structure()
             Structure of the system, used for atom selection.
 
         Kwargs
         -------
-        selection : str, Default = "(@CA,C,N)"
+        selection : str, Default = ":LIG"
             AmberMask selection for the center in which to select atoms for zeroing their masses.
             Defaults to freezing protein backbone atoms.
 
@@ -480,15 +487,15 @@ class SystemFactory(object):
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
-        if not structure: structure = self.structure
-        mask_idx = self._amber_selection_to_atom_indices_(structure, selection)
+        mask_idx = cls._amber_selection_to_atom_indices_(structure, selection)
         logger.info("Freezing selection '{}' ({} atoms) on {}".format(selection, len(mask_idx), system))
 
-        self._print_atomlist_from_atom_indices(structure, mask_idx)
+        self._print_atomlist_from_atom_indices_(structure, mask_idx)
         system = utils.zero_masses(system, mask_idx)
-        return
+        return system
 
-    def freeze_radius(self, system, structure=None, freeze_distance=5.0,
+    @classmethod
+    def freeze_radius(cls, structure, system, freeze_distance=5.0,
                     freeze_center=':LIG', freeze_solvent=':HOH,NA,CL', **kwargs):
         """
         Function that will zero the masses of atoms outside the given raidus of
@@ -500,7 +507,7 @@ class SystemFactory(object):
         ----------
         system : openmm.System
             The OpenMM System object to be modified.
-        structure : parmed.Structure(), optional
+        structure : parmed.Structure()
             Structure of the system, used for atom selection.
 
         Kwargs
@@ -517,15 +524,14 @@ class SystemFactory(object):
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
-        if not structure: structure = self.structure
         selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance._value,freeze_solvent)
-        site_idx = self._amber_selection_to_atom_indices_(structure, selection)
+        site_idx = cls._amber_selection_to_atom_indices_(structure, selection)
         freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
 
         #Atom selection for zeroing protein atom masses
         logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance._value, freeze_center, system))
 
-        self._print_atomlist_from_atom_indices(structure, freeze_idx)
+        cls._print_atomlist_from_atom_indices_(structure, freeze_idx)
         system = utils.zero_masses(system, freeze_idx)
         return system
 
@@ -571,7 +577,8 @@ class SimulationFactory(object):
         self.opt = opt
         self.generateSimulationSet()
 
-    def addBarostat(self, system, temperature=300, pressure=1, frequency=25, **kwargs):
+    @classmethod
+    def addBarostat(cls, system, temperature=300, pressure=1, frequency=25, **kwargs):
         """
         Adds a MonteCarloBarostat to the MD system.
 
@@ -594,7 +601,8 @@ class SimulationFactory(object):
         system.addForce(openmm.MonteCarloBarostat(pressure, temperature, frequency))
         return system
 
-    def generateIntegrator(self, temperature=300, dt=0.002, friction=1, **kwargs):
+    @classmethod
+    def generateIntegrator(cls, temperature=300, dt=0.002, friction=1, **kwargs):
         """
         Generates a LangevinIntegrator for the Simulations.
 
@@ -610,7 +618,8 @@ class SimulationFactory(object):
         integrator = openmm.LangevinIntegrator(temperature, friction, dt)
         return integrator
 
-    def generateNCMCIntegrator(self, alch_system, nstepsNC,
+    @classmethod
+    def generateNCMCIntegrator(cls, nstepsNC,
                                alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                                'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'},
                                splitting="H V R O R V H",
@@ -623,8 +632,6 @@ class SimulationFactory(object):
 
         Parameters
         -----------
-        alch_system : openmm.System
-            The OpenMM System object corresponding to the alchemical system.
         nstepsNC : int, optional, default=1000
             The number of NCMC relaxation steps to use.
 
@@ -666,7 +673,8 @@ class SimulationFactory(object):
                                prop_lambda=prop_lambda)
         return ncmc_integrator
 
-    def generateSimFromStruct(self, structure, system, integrator, platform=None, properties={}, **kwargs):
+    @classmethod
+    def generateSimFromStruct(cls, structure, system, integrator, platform=None, properties={}, **kwargs):
         """Used to generate the OpenMM Simulation objects from a given parmed.Structure()
 
         Parameters
@@ -699,7 +707,8 @@ class SimulationFactory(object):
 
         return simulation
 
-    def _simulation_info_(self, simulation):
+    @staticmethod
+    def print_simulation_info(simulation):
         # Host information
         from platform import uname
         for k, v in uname()._asdict().items():
@@ -730,14 +739,14 @@ class SimulationFactory(object):
         self.alch = self.generateSimFromStruct(self._structure, self._system, alch_integrator, **self.opt)
 
         #Construct NCMC Integrator and Simulation
-        self.ncmc_integrator = self.generateNCMCIntegrator(self._alch_system, **self.opt)
+        self.ncmc_integrator = self.generateNCMCIntegrator(**self.opt)
 
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self.move_engine.moves:
             self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
         self.nc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **self.opt)
 
-        self._simulation_info_(self.nc)
+        SimulationFactory.print_simulation_info(self.nc)
 
 class Simulation(object):
     """Simulation class provides the functions that perform the BLUES run.

@@ -1,11 +1,11 @@
-options:
-  output_dir: .
-  outfname: t4-toluene-rst71
-  logger_level: info #critical, error, warning, info, debug
+output_dir: .
+outfname: t4-toluene_2
+logger_level: info #critical, error, warning, info, debug
 
 structure:
-  prmtop: tests/data/eqToluene.prmtop
-  inpcrd: tests/data/eqToluene.inpcrd
+  filename: tests/data/eqToluene.prmtop
+  xyz: tests/data/eqToluene.inpcrd
+  restart: t4-toluene_2.rst7
 
 system:
   nonbondedMethod: PME
@@ -20,7 +20,7 @@ system:
   #solventDielectric: 78.5
   #useSASA: False
   removeCMMotion: True
-  hydrogenMass: 3.024 #* daltons
+  hydrogenMass: 3.024 * daltons
   ewaldErrorTolerance: 0.005
   flexibleConstraints: True
   splitDihedrals: False
@@ -43,7 +43,8 @@ restraints:
 
 freeze:
   freeze_center: ':LIG'
-  freeze_solvent: ':HOH,NA,CL'
+  freeze_solvent: ':WAT,Cl-'
+  #freeze_solvent: ':HOH,NA,CL'
   freeze_distance: 5 * angstroms
 
 simulation:
@@ -67,4 +68,4 @@ simulation:
   reporters:
     trajectory_interval: 100
     reporter_interval: 100
-    frame_indices: [1,250,500]
+    #frame_indices: [1,250,500]

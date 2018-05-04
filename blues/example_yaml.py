@@ -13,17 +13,7 @@ from blues.reporters import init_logger, BLUESHDF5Reporter, BLUESStateDataReport
 opt = startup('blues.yaml')
 print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
 logger = opt['Logger']
-
-#Load Parmed Structure
-prmtop = opt['structure']['prmtop']
-inpcrd = opt['structure']['inpcrd']
-structure = parmed.load_file(prmtop, xyz=inpcrd)
-
-#Load a Restart File
-#restart = parmed.amber.Rst7('t4-toluene-rst7.rst7')
-#structure.positions = restart.positions
-#structure.velocities = restart.velocities
-#structure.box = restart.box
+structure = opt['Structure']
 
 #Select move type
 ligand = RandomLigandRotationMove(structure, 'LIG')
@@ -34,21 +24,23 @@ ligand_mover = MoveEngine(ligand)
 systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
 
 #Apply positional restraints
-#systems.md = systems.restrain_positions(systems.md, **opt['restraints'])
+systems.md = systems.restrain_positions(structure, systems.md, **opt['restraints'])
 
 #Freeze atoms in the alchemical system
-systems.alch = systems.freeze_radius(systems.alch, **opt['freeze'])
+systems.alch = systems.freeze_radius(structure, systems.alch, **opt['freeze'])
 
 #Generate the OpenMM Simulations
 simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
 
-
 # Add reporters to MD simulation.
 #TODO: Generate reporters from YAML.
-outfname = opt['options']['outfname']
+outfname = opt['outfname']
 totalSteps = opt['simulation']['nIter']*opt['simulation']['nstepsMD']
 reportInterval = opt['simulation']['reporters']['reporter_interval']
-frame_indices = opt['simulation']['reporters']['frame_indices']
+if 'frame_indices' in opt['simulation']['reporters']:
+    frame_indices = opt['simulation']['reporters']['frame_indices']
+else:
+    frame_indices = None
 reporters = getReporters(totalSteps, outfname, **opt['simulation']['reporters'])
 
 md_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='md',
