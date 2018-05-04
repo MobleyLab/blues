@@ -134,7 +134,7 @@ def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interv
         reporters.append(progress_reporter)
 
     if traj:
-        traj_reporter = NetCDF4Reporter(outfname+'.nc', reportInterval=reporter_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False)
+        traj_reporter = NetCDF4Reporter(outfname+'.nc', reportInterval=reporter_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False, protocolWork=False)
         #traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
         reporters.append(traj_reporter)
 
@@ -476,6 +476,156 @@ class NetCDF4Traj(NetCDFTraj):
         if nc:
             self._ncfile.sync()
 
+    @classmethod
+    def open_new(cls, fname, natom, box, crds=True, vels=False, frcs=False,
+                 remd=None, remd_dimension=None, protocolWork=None, title=''):
+        """
+        Opens a new NetCDF file and sets the attributes
+        Parameters
+        ----------
+        fname : str
+            Name of the new file to open (overwritten)
+        natom : int
+            Number of atoms in the restart
+        box : bool
+            Indicates if cell lengths and angles are written to the NetCDF file
+        crds : bool=True
+            Indicates if coordinates are written to the NetCDF file
+        vels : bool=False
+            Indicates if velocities are written to the NetCDF file
+        frcs : bool=False
+            Indicates if forces are written to the NetCDF file
+        remd : str=None
+            'T[emperature]' if replica temperature is written
+            'M[ulti]' if Multi-D REMD information is written
+            None if no REMD information is written
+        remd_dimension : int=None
+            If remd above is 'M[ulti]', this is how many REMD dimensions exist
+        title : str=''
+            The title of the NetCDF trajectory file
+        """
+        inst = cls(fname, 'w')
+        ncfile = inst._ncfile
+        if remd is not None:
+            if remd[0] in 'Tt':
+                inst.remd = 'TEMPERATURE'
+            elif remd[0] in 'Mm':
+                inst.remd = 'MULTI'
+                if remd_dimension is None:
+                    raise ValueError('remd_dimension must be given '
+                                     'for multi-D REMD')
+                inst.remd_dimension = int(remd_dimension)
+            else:
+                raise ValueError('remd must be T[emperature] or M[ultiD]')
+        else:
+            inst.remd = None
+        inst.hasbox = bool(box)
+        inst.hasvels = bool(vels)
+        inst.hascrds = bool(crds)
+        inst.hasfrcs = bool(frcs)
+
+        inst.hasprotocolWork = bool(protocolWork)
+
+        # Assign the main attributes
+        ncfile.Conventions = "AMBER"
+        ncfile.ConventionVersion = "1.0"
+        ncfile.application = "AmberTools"
+        ncfile.program = "ParmEd"
+        ncfile.programVersion = parmed.__version__
+        ncfile.title = "ParmEd-created trajectory"
+        inst.Conventions = "AMBER"
+        inst.ConventionVersion = "1.0"
+        inst.application = "AmberTools"
+        inst.program = "ParmEd"
+        inst.programVersion = parmed.__version__
+        inst.title = ncfile.title
+        # Create the dimensions
+        ncfile.createDimension('frame', None)
+        ncfile.createDimension('spatial', 3)
+        ncfile.createDimension('atom', natom)
+        if inst.remd == 'MULTI':
+            ncfile.createDimension('remd_dimension', inst.remd_dimension)
+        inst.frame, inst.spatial, inst.atom = None, 3, natom
+        if inst.hasbox:
+            ncfile.createDimension('cell_spatial', 3)
+            ncfile.createDimension('cell_angular', 3)
+            ncfile.createDimension('label', 5)
+            inst.cell_spatial, inst.cell_angular, inst.label = 3, 3, 5
+        # Create the variables and assign units and scaling factors
+        v = ncfile.createVariable('spatial', 'c', ('spatial',))
+        v[:] = np.asarray(list('xyz'))
+        if inst.hasbox:
+            v = ncfile.createVariable('cell_spatial', 'c',
+                                            ('cell_spatial',))
+            v[:] = np.asarray(list('abc'))
+            v = ncfile.createVariable('cell_angular', 'c',
+                                            ('cell_angular', 'label',))
+            v[:] = np.asarray([list('alpha'), list('beta '), list('gamma')])
+        v = ncfile.createVariable('time', 'f', ('frame',))
+        v.units = 'picosecond'
+        if inst.hascrds:
+            v = ncfile.createVariable('coordinates', 'f',
+                                            ('frame', 'atom', 'spatial'))
+            v.units = 'angstrom'
+            inst._last_crd_frame = 0
+        if inst.hasvels:
+            v = ncfile.createVariable('velocities', 'f',
+                                            ('frame', 'atom', 'spatial'))
+            v.units = 'angstrom/picosecond'
+            inst.velocity_scale = v.scale_factor = 20.455
+            inst._last_vel_frame = 0
+            if nc is not None:
+                v.set_auto_maskandscale(False)
+        if inst.hasfrcs:
+            v = ncfile.createVariable('forces', 'f',
+                                            ('frame', 'atom', 'spatial'))
+            v.units = 'kilocalorie/mole/angstrom'
+            inst._last_frc_frame = 0
+        if inst.hasbox:
+            v = ncfile.createVariable('cell_lengths', 'd',
+                                            ('frame', 'cell_spatial'))
+            v.units = 'angstrom'
+            v = ncfile.createVariable('cell_angles', 'd',
+                                            ('frame', 'cell_angular'))
+            v.units = 'degree'
+            inst._last_box_frame = 0
+        if inst.remd == 'TEMPERATURE':
+            v = ncfile.createVariable('temp0', 'd', ('frame',))
+            v.units = 'kelvin'
+            inst._last_remd_frame = 0
+        elif inst.remd == 'MULTI':
+            ncfile.createVariable('remd_indices', 'i',
+                                        ('frame', 'remd_dimension'))
+            ncfile.createVariable('remd_dimtype', 'i',
+                                        ('remd_dimension',))
+            inst._last_remd_frame = 0
+
+        inst._last_time_frame = 0
+
+        if inst.hasprotocolWork:
+            v = ncfile.createVariable('protocolWork', 'f', ('frame',))
+            v.units = 'kT'
+            inst._last_protocolWork_frame = 0
+
+        return inst
+
+    @property
+    def protocolWork(self):
+        return self._ncfile.variables['protocolWork'][:]
+
+    def add_protocolWork(self, stuff):
+        """ Adds the time to the current frame of the NetCDF file
+        Parameters
+        ----------
+        stuff : float or time-dimension Quantity
+            The time to add to the current frame
+        """
+        #if u.is_quantity(stuff): stuff = stuff.value_in_unit(u.picoseconds)
+        self._ncfile.variables['protocolWork'][self._last_protocolWork_frame] = float(stuff)
+        self._last_protocolWork_frame += 1
+        self.flush()
+
+
 class NetCDF4Restart(NetCDFRestart):
     """
     Temporary class to allow for proper flushing
@@ -692,9 +842,9 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
     """ Temporary class to read or write NetCDF
     """
 
-    def __init__(self, file, reportInterval=0, frame_indices=[], crds=True, vels=False, frcs=False):
+    def __init__(self, file, reportInterval=0, frame_indices=[], crds=True, vels=False, frcs=False, protocolWork=True):
         super(NetCDF4Reporter,self).__init__(file, reportInterval, crds, vels, frcs)
-
+        self.crds, self.vels, self.frcs, self.protocolWork = crds, vels, frcs, protocolWork
         self.frame_indices = frame_indices
         if self.frame_indices:
             #If simulation.currentStep = 1, store the frame from the previous step.
@@ -742,6 +892,10 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             vels = state.getVelocities().value_in_unit(VELUNIT)
         if self.frcs:
             frcs = state.getForces().value_in_unit(FRCUNIT)
+
+        if self.protocolWork:
+            protocolWork = simulation.integrator.get_protocol_work(dimensionless=True)
+
         if self._out is None:
             # This must be the first frame, so set up the trajectory now
             if self.crds:
@@ -750,10 +904,12 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
                 atom = len(vels)
             elif self.frcs:
                 atom = len(frcs)
+            elif self.protocolWork:
+                atom = len(protocolWork)
             self.uses_pbc = simulation.topology.getUnitCellDimensions() is not None
             self._out = NetCDF4Traj.open_new(
                     self.fname, atom, self.uses_pbc, self.crds, self.vels,
-                    self.frcs, title="ParmEd-created trajectory using OpenMM"
+                    self.frcs, protocolWork=self.protocolWork, title="ParmEd-created trajectory using OpenMM"
             )
         if self.uses_pbc:
             vecs = state.getPeriodicBoxVectors()
@@ -769,6 +925,9 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             self._out.add_velocities(vels)
         if self.frcs:
             self._out.add_forces(frcs)
+        if self.protocolWork:
+            self._out.add_protocolWork(protocolWork)
+
         # Now it's time to add the time.
         self._out.add_time(state.getTime().value_in_unit(u.picosecond))
 

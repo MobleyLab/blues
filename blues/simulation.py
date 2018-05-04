@@ -266,21 +266,22 @@ def startup(yaml_config):
         else:
             frame_indices = None
 
-        ncmc_hdf5_reporter = reporters.BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
-                                         #reportInterval=opt['simulation']['nstepsNC'],
-                                         coordinates=True, frame_indices=frame_indices,
-                                         time=False, cell=True, temperature=False,
-                                         potentialEnergy=True, kineticEnergy=False,
-                                         velocities=False, atomSubset=None,
-                                         protocolWork=True, alchemicalLambda=True,
-                                         parameters=None, environment=True)
+        ncmc_traj_reporter = reporters.NetCDF4Reporter(outfname+'-pmoves.nc', reportInterval=ncmc_report_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False, protocolWork=True)
+        # ncmc_traj_reporter = reporters.BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
+        #                                  #reportInterval=opt['simulation']['nstepsNC'],
+        #                                  coordinates=True, frame_indices=frame_indices,
+        #                                  time=False, cell=True, temperature=False,
+        #                                  potentialEnergy=True, kineticEnergy=False,
+        #                                  velocities=False, atomSubset=None,
+        #                                  protocolWork=True, alchemicalLambda=True,
+        #                                  parameters=None, environment=True)
 
         ncmc_progress_reporter = reporters.BLUESStateDataReporter(config['Logger'], reportInterval=ncmc_report_interval,
                                      separator="\t", title='ncmc',
                                      step=True, totalSteps=config['simulation']['nstepsNC'],
                                      time=False, speed=True, progress=True, remainingTime=True)
 
-        ncmc_reporters.append(ncmc_hdf5_reporter)
+        ncmc_reporters.append(ncmc_traj_reporter)
         ncmc_reporters.append(ncmc_progress_reporter)
         config['simulation']['reporters']['ncmc']['Reporters'] = ncmc_reporters
         return config
