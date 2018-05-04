@@ -1,11 +1,11 @@
 output_dir: .
-outfname: t4-toluene_2
+outfname: t4-toluene
 logger_level: info #critical, error, warning, info, debug
 
 structure:
   filename: tests/data/eqToluene.prmtop
   xyz: tests/data/eqToluene.inpcrd
-  restart: t4-toluene_2.rst7
+  #restart: t4-toluene_2.rst7
 
 system:
   nonbondedMethod: PME
@@ -37,9 +37,9 @@ system:
     annihilate_electrostatics' : True
     annihilate_sterics' : False
 
-restraints:
-    selection: '@CA,C,N' #:LIG
-    weight: 5
+#restraints:
+  #  selection: '@CA,C,N' #:LIG
+  #  weight: 5
 
 freeze:
   #freeze_selection: ':WAT'
@@ -49,28 +49,28 @@ freeze:
   freeze_distance: 5 * angstroms
 
 simulation:
-  #platform: CUDA
-  platform: OpenCL
+  platform: CUDA
+  #platform: OpenCL
   properties:
-    #CudaPrecision: single
-    #CudaDeviceIndex: 0
-    OpenCLPrecision: single
-    OpenCLDeviceIndex: 2
+    CudaPrecision: single
+    CudaDeviceIndex: 0
+    #OpenCLPrecision: single
+    #OpenCLDeviceIndex: 2
   dt: 0.004 * picoseconds
   friction: 1 * 1/picoseconds
   pressure: 1 * atmospheres
   temperature: 300 * kelvin
-  nIter: 1
-  nstepsMD: 500
-  total_steps: 500
+  nIter: 100
+  nstepsMD: 10000
+  total_steps: 10000
   nprop: 1
   prop_lambda: 0.3
 
   reporters:
     md:
-        trajectory_interval: 100
-        reporter_interval: 100
+        trajectory_interval: 2500
+        reporter_interval: 2500
     ncmc:
-        trajectory_interval: 100
-        reporter_interval: 100
-        frame_indices: [500]
+        trajectory_interval: 2500
+        reporter_interval: 2500
+        frame_indices: [2500]

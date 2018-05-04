@@ -197,18 +197,19 @@ def startup(yaml_config):
             #Check each nested subset of parameters
             for setup_keys in ['system', 'simulation', 'freeze', 'restraints']:
                 #If the parameter requires units, cheeck if provided by user
-                if param in config[setup_keys]:
-                    user_input = config[setup_keys][param]
+                try:
+                    if param in config[setup_keys]:
+                        user_input = config[setup_keys][param]
 
-                    if '*' in str(user_input):
-                        config[setup_keys][param] =  parse_unit_quantity(user_input)
+                        if '*' in str(user_input):
+                            config[setup_keys][param] =  parse_unit_quantity(user_input)
 
-                    #If not provided, set default units
-                    else:
-                        config['Logger'].warn("Units for '{} = {}' not specified. Setting units to '{}'".format(param, user_input, unit_type))
-                        config[setup_keys][param] = user_input*unit_type
+                        #If not provided, set default units
+                        else:
+                            config['Logger'].warn("Units for '{} = {}' not specified. Setting units to '{}'".format(param, user_input, unit_type))
+                            config[setup_keys][param] = user_input*unit_type
 
-                else:
+                except:
                     pass
 
         return config
