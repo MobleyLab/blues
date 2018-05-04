@@ -1,18 +1,10 @@
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
-from blues import utils
 from blues.simulation import *
-import parmed
-from simtk import openmm
-from optparse import OptionParser
-import sys
-import logging, yaml,json
-from blues.reporters import init_logger, BLUESHDF5Reporter, BLUESStateDataReporter, getReporters
-
+import json
 
 opt = startup('blues.yaml')
 print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
-logger = opt['Logger']
 structure = opt['Structure']
 
 #Select move type

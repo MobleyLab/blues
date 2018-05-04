@@ -265,7 +265,6 @@ def startup(yaml_config):
         else:
             frame_indices = None
 
-        ###TODO: Recommended to only write to HDF5 at the last frame.
         ncmc_hdf5_reporter = reporters.BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
                                          #reportInterval=opt['simulation']['nstepsNC'],
                                          coordinates=True, frame_indices=frame_indices,

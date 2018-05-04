@@ -42,7 +42,7 @@ restraints:
     weight: 5
 
 freeze:
-  freeze_selection: ':WAT'
+  #freeze_selection: ':WAT'
   freeze_center: ':LIG'
   freeze_solvent: ':WAT,Cl-'
   #freeze_solvent: ':HOH,NA,CL'
