@@ -9,18 +9,18 @@ structure:
 
 system:
   nonbondedMethod: PME
-  nonbondedCutoff: 10 #Angstroms
-  switchDistance: 0
+  nonbondedCutoff: 10 * angstroms
+  #switchDistance: 0 * angstroms
   constraints: HBonds
   rigidWater: True
   #implicitSolvent: None
   #implicitSolventKappa: None
-  #implicitSolventSaltConc: 0
+  #implicitSolventSaltConc: 0 * 1/angstroms
   #soluteDielectric: 1.0
   #solventDielectric: 78.5
   #useSASA: False
   removeCMMotion: True
-  hydrogenMass: 3.024
+  hydrogenMass: 3.024 * daltons
   ewaldErrorTolerance: 0.005
   flexibleConstraints: True
   splitDihedrals: False
@@ -42,8 +42,8 @@ restraints:
     weight: 5
 
 freeze:
-  freeze_center: LIG
-  freeze_solvent: HOH,NA,CL
+  freeze_center: ':LIG'
+  freeze_solvent: ':HOH,NA,CL'
   freeze_distance: 5
 
 simulation:
@@ -54,10 +54,10 @@ simulation:
     #CudaDeviceIndex: 0
     OpenCLPrecision: single
     OpenCLDeviceIndex: 2
-  dt: 0.004
-  friction: 1
-  pressure: 1
-  temperature: 300
+  dt: 0.004 * picoseconds
+  friction: 1 * 1/picoseconds
+  pressure: 1 * atmospheres
+  temperature: 300 * kelvin
   nIter: 1
   nstepsMD: 500
   total_steps: 500

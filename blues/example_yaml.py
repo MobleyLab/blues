@@ -12,7 +12,7 @@ from blues.reporters import init_logger, BLUESHDF5Reporter, BLUESStateDataReport
 
 opt = startup('blues.yaml')
 print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
-
+exit()
 logger = opt['Logger']
 
 #Load Parmed Structure

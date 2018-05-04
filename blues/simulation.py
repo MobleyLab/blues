@@ -460,7 +460,7 @@ class SystemFactory(object):
 
         return system
 
-    def freeze_atoms(self, system, structure=None, selection=":LIG", **kwargs):
+    def freeze_atoms(self, system, structure=None, selection="(@CA,C,N)", **kwargs):
         """
         Function that will zero the masses of atoms from the given selection.
         Massless atoms will be ignored by the integrator and will not change positions.
@@ -474,8 +474,9 @@ class SystemFactory(object):
 
         Kwargs
         -------
-        selection : str, Default = ":LIG"
-            AmberMask selection for the center in which to select atoms for zeroing their masses. Default=':LIG'
+        selection : str, Default = "(@CA,C,N)"
+            AmberMask selection for the center in which to select atoms for zeroing their masses.
+            Defaults to freezing protein backbone atoms.
 
         References
         -----
@@ -697,7 +698,6 @@ class SimulationFactory(object):
         simulation.context.setPeriodicBoxVectors(*structure.box_vectors)
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
-
 
         return simulation
 
