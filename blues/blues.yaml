@@ -67,6 +67,10 @@ simulation:
   prop_lambda: 0.3
 
   reporters:
-    trajectory_interval: 100
-    reporter_interval: 100
-    #frame_indices: [1,250,500]
+    md:
+        trajectory_interval: 100
+        reporter_interval: 100
+    ncmc:
+        trajectory_interval: 100
+        reporter_interval: 100
+        frame_indices: [500]

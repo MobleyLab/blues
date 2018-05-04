@@ -93,7 +93,8 @@ def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d
 
     return logger
 
-def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interval=1000, frame_indices=[], **opt):
+def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interval=1000,
+                frame_indices=[], state=True, progress=True, traj=True, restart=True, **opt):
     """
     Creates 3 OpenMM Reporters for the simulation.
     Parameters
@@ -112,28 +113,35 @@ def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interv
         (2) traj_reporter: writes trajectory to '.nc' file. AMBER NetCDF(3.0)
     """
     reporters = []
-    state_reporter = parmed.openmm.reporters.StateDataReporter(outfname+'.ene', separator="\t",
-                                    reportInterval=reporter_interval,
-                                    step=True,time=True,
-                                    potentialEnergy=True, totalEnergy=True,
-                                    volume=True, temperature=True)
-
-    #reporters.append(state_reporter)
-    progress_reporter = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', separator="\t",
+    if state:
+        state_reporter = parmed.openmm.reporters.StateDataReporter(outfname+'.ene', separator="\t",
                                         reportInterval=reporter_interval,
-                                        totalSteps=totalSteps,
-                                        potentialEnergy=True,
-                                        kineticEnergy=True,
-                                        totalEnergy=True,
-                                        temperature=True,
-                                        volume=True, step=True, time=True)
-    #reporters.append(progress_reporter)
-    traj_reporter = NetCDF4Reporter(outfname+'.nc', reportInterval=reporter_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False)
-    #traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
-    reporters.append(traj_reporter)
+                                        step=True,time=True,
+                                        potentialEnergy=True, totalEnergy=True,
+                                        volume=True, temperature=True)
 
-    restart_reporter = NetCDF4RestartReporter(outfname+'.rst7', reportInterval=reporter_interval, write_multiple=False, netcdf=True, write_velocities=True)
-    reporters.append(restart_reporter)
+        reporters.append(state_reporter)
+
+    if progress:
+        progress_reporter = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', separator="\t",
+                                            reportInterval=reporter_interval,
+                                            totalSteps=totalSteps,
+                                            potentialEnergy=True,
+                                            kineticEnergy=True,
+                                            totalEnergy=True,
+                                            temperature=True,
+                                            volume=True, step=True, time=True)
+        reporters.append(progress_reporter)
+
+    if traj:
+        traj_reporter = NetCDF4Reporter(outfname+'.nc', reportInterval=reporter_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False)
+        #traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
+        reporters.append(traj_reporter)
+
+    if restart:
+        restart_reporter = NetCDF4RestartReporter(outfname+'.rst7', reportInterval=reporter_interval, write_multiple=False, netcdf=True, write_velocities=True)
+        reporters.append(restart_reporter)
+
     return reporters
 
 ######################
@@ -552,7 +560,6 @@ class BLUESHDF5Reporter(HDF5Reporter):
         state : simtk.openmm.State
             The current state of the simulation
         """
-        print('REPORTING HDF5 at', simulation.currentStep)
         if not self._is_intialized:
             self._initialize(simulation)
             self._is_intialized = True
@@ -710,7 +717,6 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         """
         #Monkeypatch to report at certain frame indices
         if self.frame_indices:
-            #print(self.frame_indices)
             if simulation.currentStep in self.frame_indices:
                 steps = 1
             else:
@@ -729,7 +735,6 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         state : :class:`mm.State`
             The current state of the simulation
         """
-        print('REPORTING NETCDF at', simulation.currentStep)
         global VELUNIT, FRCUNIT
         if self.crds:
             crds = state.getPositions().value_in_unit(u.angstrom)

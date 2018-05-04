@@ -232,6 +232,59 @@ def startup(yaml_config):
                     config['Logger'].exception("'{}' was not a valid option for '{}'. Valid options: {}".format(user_input, method, app_type))
         return config
 
+    def set_Reporters(config):
+        """
+        Initializes the openmm.Reporters for the simulations
+        """
+        outfname = config['outfname']
+
+        #Configure the MD simulation reporters
+        totalStepsMD = config['simulation']['nIter']*config['simulation']['nstepsMD']
+        md_report_interval = config['simulation']['reporters']['md']['reporter_interval']
+        md_trajectory_interval = config['simulation']['reporters']['md']['trajectory_interval']
+
+        if 'frame_indices' in config['simulation']['reporters']['md']:
+            frame_indices = config['simulation']['reporters']['md']['frame_indices']
+        else:
+            frame_indices = None
+        md_reporters = reporters.getReporters(totalStepsMD, outfname, progress=False, **config['simulation']['reporters']['md'])
+        md_progress_reporter = reporters.BLUESStateDataReporter(config['Logger'], separator="\t", title='md',
+                                     reportInterval=md_report_interval,
+                                     step=True, totalSteps=totalStepsMD,
+                                     time=False, speed=True, progress=True, remainingTime=True)
+        md_reporters.append(md_progress_reporter)
+        config['simulation']['reporters']['md']['Reporters'] = md_reporters
+
+        #Configure the NCMC simulation reporters
+        ncmc_reporters = []
+        totalStepsNC = config['simulation']['nstepsNC']
+        ncmc_report_interval = config['simulation']['reporters']['ncmc']['reporter_interval']
+        ncmc_trajectory_interval = config['simulation']['reporters']['ncmc']['trajectory_interval']
+        if 'frame_indices' in config['simulation']['reporters']['ncmc']:
+            frame_indices = config['simulation']['reporters']['ncmc']['frame_indices']
+        else:
+            frame_indices = None
+
+        ###TODO: Recommended to only write to HDF5 at the last frame.
+        ncmc_hdf5_reporter = reporters.BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
+                                         #reportInterval=opt['simulation']['nstepsNC'],
+                                         coordinates=True, frame_indices=frame_indices,
+                                         time=False, cell=True, temperature=False,
+                                         potentialEnergy=True, kineticEnergy=False,
+                                         velocities=False, atomSubset=None,
+                                         protocolWork=True, alchemicalLambda=True,
+                                         parameters=None, environment=True)
+
+        ncmc_progress_reporter = reporters.BLUESStateDataReporter(config['Logger'], reportInterval=ncmc_report_interval,
+                                     separator="\t", title='ncmc',
+                                     step=True, totalSteps=config['simulation']['nstepsNC'],
+                                     time=False, speed=True, progress=True, remainingTime=True)
+
+        ncmc_reporters.append(ncmc_hdf5_reporter)
+        ncmc_reporters.append(ncmc_progress_reporter)
+        config['simulation']['reporters']['ncmc']['Reporters'] = ncmc_reporters
+        return config
+
     def set_Parameters(config):
         """
         MAIN execution function for updating/correcting (placing units) in the config
@@ -254,11 +307,15 @@ def startup(yaml_config):
             #Calculate NCMC steps with nprop
             config['simulation']['nstepsNC'], config['simulation']['integration_steps'] = calcNCMCSteps(logger=config['Logger'], **config['simulation'])
 
+            config = set_Reporters(config)
+
         except Exception as e:
             logger.exception(e)
             raise
 
         return config
+
+
 
     def calcNCMCSteps(total_steps, nprop, prop_lambda, logger, **kwargs):
         if (total_steps % 2) != 0:
@@ -649,7 +706,7 @@ class SimulationFactory(object):
     opt : dict of parameters for the simulation (i.e timestep, temperature, etc.)
     """
     def __init__(self, systems, move_engine, **config):
-        #Hide these properties since they exist on the SystemsFactory object.
+        #Hide these properties since they exist on the SystemsFactory object
         self._structure = systems.structure
         self._system = systems.md
         self._alch_system = systems.alch
@@ -658,8 +715,16 @@ class SimulationFactory(object):
         self._atom_indices = move_engine.moves[0].atom_indices
         self.move_engine = move_engine
 
-        self.opt = config
+        self.config = config
         self.generateSimulationSet()
+
+        self._md_reporters = config['reporters']['md']['Reporters']
+        for rep in self._md_reporters:
+            self.md.reporters.append(rep)
+
+        self._ncmc_reporters = config['reporters']['ncmc']['Reporters']
+        for rep in self._ncmc_reporters:
+            self.ncmc.reporters.append(rep)
 
     @classmethod
     def addBarostat(cls, system, temperature=300, pressure=1, frequency=25, **kwargs):
@@ -828,9 +893,9 @@ class SimulationFactory(object):
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self.move_engine.moves:
             self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
-        self.nc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **self.config)
+        self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **self.config)
 
-        SimulationFactory.print_simulation_info(self.nc)
+        SimulationFactory.print_simulation_info(self.ncmc)
 
 class Simulation(object):
     """Simulation class provides the functions that perform the BLUES run.
@@ -857,7 +922,7 @@ class Simulation(object):
         self.simulations = simulations
         self.md_sim = self.simulations.md
         self.alch_sim = self.simulations.alch
-        self.nc_sim = self.simulations.nc
+        self.ncmc_sim = self.simulations.ncmc
         self.temperature = self.md_sim.integrator.getTemperature()
         self.accept = 0
         self.reject = 0
@@ -907,10 +972,10 @@ class Simulation(object):
         the current state of the MD simulation.
         """
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
-        nc_state0 = self.getStateInfo(self.nc_sim.context, self.state_keys)
-        self.nc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
-        self.nc_sim.context.setPositions(md_state0['positions'])
-        self.nc_sim.context.setVelocities(md_state0['velocities'])
+        nc_state0 = self.getStateInfo(self.ncmc_sim.context, self.state_keys)
+        self.ncmc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
+        self.ncmc_sim.context.setPositions(md_state0['positions'])
+        self.ncmc_sim.context.setVelocities(md_state0['velocities'])
         self.setSimState('md', 'state0', md_state0)
         self.setSimState('nc', 'state0', nc_state0)
 
@@ -935,7 +1000,7 @@ class Simulation(object):
         logger.info('\tTotal MD time = %s ps' % (int(time_md_steps) * int(nIter)))
 
         #Get trajectory frame interval timing for BLUES simulation
-        frame_iter = self.config['nstepsMD'] / self.config['reporters']['trajectory_interval']
+        frame_iter = self.config['nstepsMD'] / self.config['reporters']['md']['trajectory_interval']
         timetraj_frame = (time_ncmc_steps + time_md_steps) / frame_iter
         logger.info('\tTrajectory Interval = %s ps' % timetraj_frame)
         logger.info('\t\t%s frames/iter' % frame_iter )
@@ -1010,7 +1075,7 @@ class Simulation(object):
         nc_state0 = self.current_state['nc']['state0']
         nc_state1 = self.current_state['nc']['state1']
 
-        work_ncmc = self.nc_sim.context._integrator.getLogAcceptanceProbability(self.nc_sim.context)
+        work_ncmc = self.ncmc_sim.context._integrator.getLogAcceptanceProbability(self.ncmc_sim.context)
         randnum =  math.log(np.random.random())
 
         # Compute Alchemical Correction Term
@@ -1019,7 +1084,7 @@ class Simulation(object):
             self.alch_sim.context.setPositions(nc_state1['positions'])
             alch_state1 = self.getStateInfo(self.alch_sim.context, self.state_keys)
             self.setSimState('alch', 'state1', alch_state1)
-            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.nc_sim.context._integrator.kT)
+            correction_factor = (nc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - nc_state1['potential_energy']) * (-1.0/self.ncmc_sim.context._integrator.kT)
             work_ncmc = work_ncmc + correction_factor
 
         if work_ncmc > randnum:
@@ -1033,10 +1098,10 @@ class Simulation(object):
         else:
             self.reject += 1
             logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum) )
-            self.nc_sim.context.setPositions(md_state0['positions'])
+            self.ncmc_sim.context.setPositions(md_state0['positions'])
 
-        self.nc_sim.currentStep = 0
-        self.nc_sim.context._integrator.reset()
+        self.ncmc_sim.currentStep = 0
+        self.ncmc_sim.context._integrator.reset()
         self.md_sim.context.setVelocitiesToTemperature(temperature)
 
     def simulateNCMC(self, nstepsNC=5000, **config):
@@ -1052,30 +1117,30 @@ class Simulation(object):
             try:
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
-                    self.nc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].beforeMove(self.nc_sim.context)
+                    self.ncmc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].beforeMove(self.ncmc_sim.context)
 
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
                     #Do move
                     logger.report('Performing %s...' % move_name)
-                    self.nc_sim.context = self.simulations.move_engine.runEngine(self.nc_sim.context)
+                    self.ncmc_sim.context = self.simulations.move_engine.runEngine(self.ncmc_sim.context)
 
                 # Do 1 NCMC step with the integrator
-                self.nc_sim.step(1)
+                self.ncmc_sim.step(1)
 
                 ###DEBUG options at every NCMC step
-                logger.debug('%s' % self.getWorkInfo(self.nc_sim.context._integrator, self.work_keys))
+                logger.debug('%s' % self.getWorkInfo(self.ncmc_sim.context._integrator, self.work_keys))
                 #Attempt anything related to the move after protocol is performed
                 if nc_step == nstepsNC-1:
-                    self.nc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].afterMove(self.nc_sim.context)
+                    self.ncmc_sim.context = self.simulations.move_engine.moves[self.simulations.move_engine.selected_move].afterMove(self.ncmc_sim.context)
 
             except Exception as e:
                 logger.error(e)
-                self.simulations.move_engine.moves[self.simulations.move_engine.selected_move]._error(self.nc_sim.context)
+                self.simulations.move_engine.moves[self.simulations.move_engine.selected_move]._error(self.ncmc_sim.context)
                 break
 
-        nc_state1 = self.getStateInfo(self.nc_sim.context, self.state_keys)
+        nc_state1 = self.getStateInfo(self.ncmc_sim.context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
 
     def simulateMD(self, nstepsMD=5000, **config):
@@ -1098,9 +1163,9 @@ class Simulation(object):
         md_state0 = self.getStateInfo(self.md_sim.context, self.state_keys)
         self.setSimState('md', 'state0', md_state0)
         # Set NC poistions to last positions from MD
-        self.nc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
-        self.nc_sim.context.setPositions(md_state0['positions'])
-        self.nc_sim.context.setVelocities(md_state0['velocities'])
+        self.ncmc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
+        self.ncmc_sim.context.setPositions(md_state0['positions'])
+        self.ncmc_sim.context.setVelocities(md_state0['velocities'])
 
     def run(self, nIter,**kwargs):
         """Function that runs the BLUES engine to iterate over the actions:
