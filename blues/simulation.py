@@ -100,8 +100,8 @@ def startup(config):
         value, u = string_quantity.replace(' ', '').split('*')
         if '/' in u:
             u = u.split('/')
-            return unit.Quantity(value, eval('%s/unit.%s' % (u[0],u[1])))
-        return unit.Quantity(value, eval('unit.%s' % u))
+            return unit.Quantity(float(value), eval('%s/unit.%s' % (u[0],u[1])))
+        return unit.Quantity(float(value), eval('unit.%s' % u))
 
     def set_parameters(opt):
         opt, outfname = set_output(opt)
@@ -109,15 +109,13 @@ def startup(config):
         unit_opts = ['system', 'simulation', 'freeze', 'restraints']
         for key in unit_opts:
             opt = set_units(opt, key)
-        print(opt)
-        exit()
 
         #Ensure proper units
         try:
             opt['simulation']['nstepsNC'], opt['simulation']['integration_steps'] = calcNCMCSteps(logger=logger, **opt['simulation'])
-            opt['system'] = add_units(opt['system'], logger)
-            opt['simulation'] = add_units(opt['simulation'], logger)
-            opt['freeze'] = add_units(opt['freeze'], logger)
+            #opt['system'] = add_units(opt['system'], logger)
+            #opt['simulation'] = add_units(opt['simulation'], logger)
+            #opt['freeze'] = add_units(opt['freeze'], logger)
         except Exception as e:
             logger.error(e, exc_info=True)
             raise
@@ -520,7 +518,7 @@ class SystemFactory(object):
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         if not structure: structure = self.structure
-        selection = "(:%s<:%f)&!(:%s)" % (freeze_center,freeze_distance._value,freeze_solvent)
+        selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance._value,freeze_solvent)
         site_idx = self._amber_selection_to_atom_indices_(structure, selection)
         freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
 

@@ -16,7 +16,7 @@ import sys, time
 import parmed
 
 from parmed import unit as u
-from parmed.amber.netcdffiles import NetCDFTraj
+from parmed.amber.netcdffiles import NetCDFTraj, NetCDFRestart
 from parmed.geometry import box_vectors_to_lengths_and_angles
 import netCDF4 as nc
 
@@ -132,6 +132,8 @@ def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interv
     #traj_reporter = parmed.openmm.reporters.NetCDFReporter(outfname+'.nc', trajectory_interval, crds=True, vels=False, frcs=False)
     reporters.append(traj_reporter)
 
+    restart_reporter = NetCDF4RestartReporter(outfname+'.rst7', reportInterval=reporter_interval, write_multiple=False, netcdf=True, write_velocities=True)
+    reporters.append(restart_reporter)
     return reporters
 
 ######################
@@ -176,21 +178,6 @@ class LoggerFormatter(logging.Formatter):
         self._style._fmt = format_orig
 
         return result
-
-class NetCDF4Traj(NetCDFTraj):
-    """
-    Temporary class to allow for proper flushing
-    """
-
-    def __init__(self, fname, mode='r'):
-        super(NetCDF4Traj,self).__init__(fname, mode)
-
-    def flush(self):
-        if nc is None:
-            # netCDF4.Dataset does not have a flush method
-            self._ncfile.flush()
-        if nc:
-            self._ncfile.sync()
 
 class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
     #This is a subclass of the HDF5TrajectoryFile class from mdtraj that handles the writing of
@@ -465,6 +452,35 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             except Exception as e:
                 print(e)
                 pass
+
+class NetCDF4Traj(NetCDFTraj):
+    """
+    Temporary class to allow for proper flushing
+    """
+
+    def __init__(self, fname, mode='r'):
+        super(NetCDF4Traj,self).__init__(fname, mode)
+
+    def flush(self):
+        if nc is None:
+            # netCDF4.Dataset does not have a flush method
+            self._ncfile.flush()
+        if nc:
+            self._ncfile.sync()
+
+class NetCDF4Restart(NetCDFRestart):
+    """
+    Temporary class to allow for proper flushing
+    """
+    def __init__(self, fname, mode='r'):
+        super(NetCDF4Restart,self).__init__(fname, mode)
+
+    def flush(self):
+        if nc is None:
+            # netCDF4.Dataset does not have a flush method
+            self._ncfile.flush()
+        if nc:
+            self._ncfile.sync()
 
 ######################
 #     REPORTERS      #
@@ -750,3 +766,60 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             self._out.add_forces(frcs)
         # Now it's time to add the time.
         self._out.add_time(state.getTime().value_in_unit(u.picosecond))
+
+class NetCDF4RestartReporter(parmed.openmm.reporters.RestartReporter):
+    """
+    Use a reporter to handle writing restarts at specified intervals.
+    Parameters
+    ----------
+    file : str
+        Name of the file to write the restart to.
+    reportInterval : int
+        Number of steps between writing restart files
+    write_multiple : bool=False
+        Either write a separate restart each time (appending the step number in
+        the format .# to the file name given above) if True, or overwrite the
+        same file each time if False
+    netcdf : bool=False
+        Use the Amber NetCDF restart file format
+    write_velocities : bool=True
+        Write velocities to the restart file. You can turn this off for passing
+        in, for instance, a minimized structure.
+    """
+
+
+    def __init__(self, file, reportInterval=0, frame_indices=[], write_multiple=False, netcdf=False,
+                 write_velocities=True):
+        super(NetCDF4RestartReporter,self).__init__(file, reportInterval, write_multiple, netcdf, write_velocities)
+
+        self.frame_indices = frame_indices
+        if self.frame_indices:
+            #If simulation.currentStep = 1, store the frame from the previous step.
+            # i.e. frame_indices=[1,100] will store the first and frame 100
+            self.frame_indices = [x-1 for x in frame_indices]
+
+    def describeNextReport(self, simulation):
+        """
+        Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The simulation to generate a report for
+        Returns
+        -------
+        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
+            nsteps is the number of steps until the next report
+            pos, vel, frc, and ene are flags indicating whether positions,
+            velocities, forces, and/or energies are needed from the Context
+        """
+        #Monkeypatch to report at certain frame indices
+        if self.frame_indices:
+            #print(self.frame_indices)
+            if simulation.currentStep in self.frame_indices:
+                steps = 1
+            else:
+                steps = -1
+        if not self.frame_indices:
+            steps_left = simulation.currentStep % self._reportInterval
+            steps = self._reportInterval - steps_left
+        return (steps, True, True, False, False)

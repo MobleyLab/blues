@@ -12,13 +12,18 @@ from blues.reporters import init_logger, BLUESHDF5Reporter, BLUESStateDataReport
 
 opt = startup('blues.yaml')
 print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
-exit()
 logger = opt['Logger']
 
 #Load Parmed Structure
 prmtop = opt['structure']['prmtop']
 inpcrd = opt['structure']['inpcrd']
 structure = parmed.load_file(prmtop, xyz=inpcrd)
+
+#Load a Restart File
+#restart = parmed.amber.Rst7('t4-toluene-rst7.rst7')
+#structure.positions = restart.positions
+#structure.velocities = restart.velocities
+#structure.box = restart.box
 
 #Select move type
 ligand = RandomLigandRotationMove(structure, 'LIG')
@@ -36,6 +41,7 @@ systems.alch = systems.freeze_radius(systems.alch, **opt['freeze'])
 
 #Generate the OpenMM Simulations
 simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
+
 
 # Add reporters to MD simulation.
 #TODO: Generate reporters from YAML.
@@ -70,7 +76,7 @@ ncmc_progress_reporter = BLUESStateDataReporter(logger, reportInterval=reportInt
                              step=True, totalSteps=opt['simulation']['nstepsNC'],
                              time=False, speed=True, progress=True, remainingTime=True)
 
-simulations.nc.reporters.append(ncmc_reporter)
+#simulations.nc.reporters.append(ncmc_reporter)
 simulations.nc.reporters.append(ncmc_progress_reporter)
 
 # Run BLUES Simulation
