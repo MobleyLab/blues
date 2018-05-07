@@ -11,7 +11,7 @@ import parmed, math
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues import utils
-import os, copy, yaml, logging, sys, json
+import os, copy, yaml, logging, sys, itertools
 import mdtraj
 from blues import utils
 from blues import reporters
@@ -94,7 +94,7 @@ def startup(yaml_config):
         if not mask_idx:
             if ':' in selection:
                 res_set = set(residue.name for residue in structure.residues)
-                logger.error("'{}' was not a valid Amber selection. Valid residues: {}".format(selection, res_set))
+                logger.error("'{}' was not a valid Amber selection. \n\tValid residue names: {}".format(selection, res_set))
             elif '@' in selection:
                 atom_set = set(atom.name for atom in structure.atoms)
                 logger.error("'{}' was not a valid Amber selection. Valid atoms: {}".format(selection, atom_set))
@@ -151,6 +151,7 @@ def startup(yaml_config):
         else:
             output_dir = '.'
         outfname = os.path.join(output_dir, config['outfname'])
+        config['outfname'] = outfname
         config['simulation']['outfname'] = outfname
         return config
 
@@ -260,22 +261,13 @@ def startup(yaml_config):
         ncmc_reporters = []
         totalStepsNC = config['simulation']['nstepsNC']
         ncmc_report_interval = config['simulation']['reporters']['ncmc']['reporter_interval']
-        ncmc_trajectory_interval = config['simulation']['reporters']['ncmc']['trajectory_interval']
+        #ncmc_trajectory_interval = config['simulation']['reporters']['ncmc']['trajectory_interval']
         if 'frame_indices' in config['simulation']['reporters']['ncmc']:
             frame_indices = config['simulation']['reporters']['ncmc']['frame_indices']
         else:
             frame_indices = None
 
-        ncmc_traj_reporter = reporters.NetCDF4Reporter(outfname+'-pmoves.nc', reportInterval=ncmc_report_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False, protocolWork=True)
-        # ncmc_traj_reporter = reporters.BLUESHDF5Reporter(file=outfname+'-pmoves.h5',
-        #                                  #reportInterval=opt['simulation']['nstepsNC'],
-        #                                  coordinates=True, frame_indices=frame_indices,
-        #                                  time=False, cell=True, temperature=False,
-        #                                  potentialEnergy=True, kineticEnergy=False,
-        #                                  velocities=False, atomSubset=None,
-        #                                  protocolWork=True, alchemicalLambda=True,
-        #                                  parameters=None, environment=True)
-
+        ncmc_traj_reporter = reporters.NetCDF4Reporter(outfname+'-pmoves.nc', reportInterval=ncmc_report_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False, protocolWork=True, alchemicalLambda=True)
         ncmc_progress_reporter = reporters.BLUESStateDataReporter(config['Logger'], reportInterval=ncmc_report_interval,
                                      separator="\t", title='ncmc',
                                      step=True, totalSteps=config['simulation']['nstepsNC'],
@@ -299,8 +291,10 @@ def startup(yaml_config):
 
             #Check Amber Selections
             if 'freeze' in config.keys():
-                for sel in ['freeze_center', 'freeze_solvent']:
-                    check_amber_selection(config['Structure'], config['freeze'][sel], config['Logger'])
+                freeze_keys = ['freeze_center', 'freeze_solvent', 'freeze_selection']
+                for sel in freeze_keys:
+                    if sel in config['freeze']:
+                        check_amber_selection(config['Structure'], config['freeze'][sel], config['Logger'])
 
             if 'restraints' in config.keys():
                 check_amber_selection(config['Structure'], config['restraints']['selection'], config['Logger'])
@@ -308,7 +302,11 @@ def startup(yaml_config):
             #Calculate NCMC steps with nprop
             config['simulation']['nstepsNC'], config['simulation']['integration_steps'] = calcNCMCSteps(logger=config['Logger'], **config['simulation'])
 
-            config = set_Reporters(config)
+            if 'reporters' in config['simulation']:
+                config = set_Reporters(config)
+            else:
+                config['Logger'].error('No simulation reporter parameters found.')
+                sys.exit(1)
 
         except Exception as e:
             logger.exception(e)
@@ -746,7 +744,7 @@ class SimulationFactory(object):
         frequency : int, default=25
             Frequency at which Monte Carlo pressure changes should be attempted (in time steps)
         """
-        logger.info('Adding MonteCarloBarostat with %s. MD simulation will be NPT.' %(pressure))
+        logger.info('Adding MonteCarloBarostat with {}. MD simulation will be {} NPT.'.format(pressure, temperature))
         # Add Force Barostat to the system
         system.addForce(openmm.MonteCarloBarostat(pressure, temperature, frequency))
         return system
@@ -881,7 +879,7 @@ class SimulationFactory(object):
             self._system = self.addBarostat(self._system, **self.config)
             logger.warning('NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
         else:
-            logger.info('MD simulation will be NVT.')
+            logger.info('MD simulation will be {} NVT.'.format(self.config['temperature']))
         self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **self.config)
 
         #Alchemical Simulation is used for computing correction term from MD simulation.

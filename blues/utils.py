@@ -6,13 +6,17 @@ Contributors: Nathan M. Lim, David L. Mobley
 """
 
 from __future__ import print_function
-import os, copy, yaml, logging, sys
+import os, copy, yaml, logging, sys, itertools
 import mdtraj
 from simtk import unit
 from blues import utils
 from blues import reporters
 from math import floor, ceil
 
+def ranges(i):
+    for a, b in itertools.groupby(enumerate(i), lambda x, y: y - x ):
+        b = list(b)
+        yield b[0][1], b[-1][1]
 
 def zero_masses(system, atomList=None):
     """
