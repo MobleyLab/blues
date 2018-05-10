@@ -242,28 +242,15 @@ def startup(yaml_config):
 
         if 'md_reporters' in config.keys():
             #Return and store the Reporter objects
-            config['md_reporters']['Reporters'] = ReporterConfig(config['outfname'], config['md_reporters']).reporters
+            config['md_reporters']['Reporters'] = ReporterConfig(config['outfname'], config['md_reporters'], config['Logger']).reporters
         else:
             config['Logger'].warn('Configuration for MD reporters were not set.')
 
-        # md_progress_reporter = reporters.BLUESStateDataReporter(config['Logger'], separator="\t", title='md',
-        #                              reportInterval=md_report_interval,
-        #                              step=True, totalSteps=totalStepsMD,
-        #                              time=False, speed=True, progress=True, remainingTime=True)
-        # md_reporters.append(md_progress_reporter)
-        # config['simulation']['reporters']['md']['Reporters'] = md_reporters
-
         #Configure the NCMC simulation reporters
         if 'ncmc_reporters' in config.keys():
-            config['ncmc_reporters']['Reporters'] = ReporterConfig(config['outfname']+'-ncmc', config['ncmc_reporters']).reporters
+            config['ncmc_reporters']['Reporters'] = ReporterConfig(config['outfname']+'-ncmc', config['ncmc_reporters'], config['Logger']).reporters
         else:
             config['Logger'].warn('Configuration for NCMC reporters were not set.')
-
-        #ncmc_progress_reporter = reporters.BLUESStateDataReporter(config['Logger'],
-        #                                                        totalSteps=config['simulation']['nstepsNC'],
-        #                                                        )
-
-        #config['ncmc_reporters']['Reporters'].append(ncmc_progress_reporter)
 
         return config
 
@@ -339,9 +326,10 @@ def startup(yaml_config):
 
 class ReporterConfig:
 
-    def __init__(self, outfname, reporter_config):
+    def __init__(self, outfname, reporter_config, logger=None):
         self._outfname = outfname
         self._cfg = reporter_config
+        self._logger = logger
         self.reporters = self.get_Reporters()
 
     def make_StateReporter(self, outfname, reportInterval, step=True, time=True,
@@ -412,6 +400,12 @@ class ReporterConfig:
         return parmed.openmm.reporters.RestartReporter(outfname+'.rst7', reportInterval,
                                                        write_multiple, netcdf, write_velocities,
                                                        **kwargs)
+    def make_SpeedReporter(self, outfname, reportInterval, totalSteps, title='', **kwargs):
+        return reporters.BLUESStateDataReporter(outfname, title=title,
+                                     reportInterval=reportInterval,
+                                      step=True, totalSteps=totalSteps,
+                                      time=False, speed=True, progress=True, remainingTime=True)
+
 
     def make_ProgressReporter(self, outfname, reportInterval, totalSteps, potentialEnergy=True,
                  kineticEnergy=True, totalEnergy=True, temperature=True,
@@ -470,5 +464,8 @@ class ReporterConfig:
 
         if 'progress' in self._cfg.keys():
             reporters.append(self.make_ProgressReporter(self._outfname, **self._cfg['progress']))
+
+        if 'speed' in self._cfg.keys():
+            reporters.append(self.make_SpeedReporter(self._logger, **self._cfg['speed']))
 
         return reporters

@@ -76,9 +76,17 @@ md_reporters:
 #  progress:
 #    totalSteps: 100
 #    reportInterval: 10
+  speed:
+    title: md
+    reportInterval: 10
+    totalSteps: 100
 
 ncmc_reporters:
   traj_netcdf:
     frame_indices: [1,100]
     alchemicalLambda: True
     protocolWork: True
+  speed:
+    title: ncmc
+    reportInterval: 10
+    totalSteps: 100

@@ -217,7 +217,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
 
 class BLUESStateDataReporter(app.StateDataReporter):
     def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
-    progress=False, remainingTime=False, speed=False, elapsedTime=False, separator=',', systemMass=None, totalSteps=None):
+    progress=False, remainingTime=False, speed=False, elapsedTime=False, separator='\t', systemMass=None, totalSteps=None):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
             potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
             progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
