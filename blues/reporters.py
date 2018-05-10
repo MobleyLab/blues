@@ -94,57 +94,6 @@ def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d
 
     return logger
 
-def getReporters(totalSteps, outfname, reporter_interval=1000, trajectory_interval=1000,
-                frame_indices=[], state=True, progress=True, traj=True, restart=True, **opt):
-    """
-    Creates 3 OpenMM Reporters for the simulation.
-    Parameters
-    ----------
-    totalSteps : int
-        The total number of simulation steps
-    reportInterval : (opt), int, default=1000
-        Step frequency to write to reporter file.
-    outfname : str
-        Specifies the filename prefix for the reporters.
-    Returns
-    -------
-    reporters : list of three openmm.app.simulation.reporters
-        (0) state_reporter: writes energies to '.log' file.
-        (1) progress_reporter: prints simulation progress to 'sys.stdout'
-        (2) traj_reporter: writes trajectory to '.nc' file. AMBER NetCDF(3.0)
-    """
-    reporters = []
-    if state:
-        state_reporter = parmed.openmm.reporters.StateDataReporter(outfname+'.ene', separator="\t",
-                                        reportInterval=reporter_interval,
-                                        step=True,time=True,
-                                        potentialEnergy=True, totalEnergy=True,
-                                        volume=True, temperature=True)
-
-        reporters.append(state_reporter)
-
-    if progress:
-        progress_reporter = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', separator="\t",
-                                            reportInterval=reporter_interval,
-                                            totalSteps=totalSteps,
-                                            potentialEnergy=True,
-                                            kineticEnergy=True,
-                                            totalEnergy=True,
-                                            temperature=True,
-                                            volume=True, step=True, time=True)
-        reporters.append(progress_reporter)
-
-    if traj:
-        traj_reporter = NetCDF4Reporter(outfname+'.nc', reportInterval=reporter_interval, frame_indices=frame_indices, crds=True, vels=False, frcs=False, protocolWork=False)
-        reporters.append(traj_reporter)
-
-    if restart:
-        restart_reporter = NetCDF4RestartReporter(outfname+'.rst7', reportInterval=reporter_interval, write_multiple=False, netcdf=True, write_velocities=True)
-        reporters.append(restart_reporter)
-
-    return reporters
-
-
 ######################
 #     REPORTERS      #
 ######################
@@ -347,7 +296,7 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
     """ Temporary class to read or write NetCDF
     """
 
-    def __init__(self, file, reportInterval=0, frame_indices=[], crds=True, vels=False, frcs=False,
+    def __init__(self, file, reportInterval=1, frame_indices=[], crds=True, vels=False, frcs=False,
                 protocolWork=False, alchemicalLambda=False):
         super(NetCDF4Reporter,self).__init__(file, reportInterval, crds, vels, frcs)
         self.crds, self.vels, self.frcs, self.protocolWork, self.alchemicalLambda = crds, vels, frcs, protocolWork, alchemicalLambda
@@ -437,60 +386,3 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             self._out.add_alchemicalLambda(alchemicalLambda)
         # Now it's time to add the time.
         self._out.add_time(state.getTime().value_in_unit(u.picosecond))
-
-class NetCDF4RestartReporter(parmed.openmm.reporters.RestartReporter):
-    """
-    Use a reporter to handle writing restarts at specified intervals.
-    Parameters
-    ----------
-    file : str
-        Name of the file to write the restart to.
-    reportInterval : int
-        Number of steps between writing restart files
-    write_multiple : bool=False
-        Either write a separate restart each time (appending the step number in
-        the format .# to the file name given above) if True, or overwrite the
-        same file each time if False
-    netcdf : bool=False
-        Use the Amber NetCDF restart file format
-    write_velocities : bool=True
-        Write velocities to the restart file. You can turn this off for passing
-        in, for instance, a minimized structure.
-    """
-
-
-    def __init__(self, file, reportInterval=0, frame_indices=[], write_multiple=False, netcdf=False,
-                 write_velocities=True):
-        super(NetCDF4RestartReporter,self).__init__(file, reportInterval, write_multiple, netcdf, write_velocities)
-
-        self.frame_indices = frame_indices
-        if self.frame_indices:
-            #If simulation.currentStep = 1, store the frame from the previous step.
-            # i.e. frame_indices=[1,100] will store the first and frame 100
-            self.frame_indices = [x-1 for x in frame_indices]
-
-    def describeNextReport(self, simulation):
-        """
-        Get information about the next report this object will generate.
-        Parameters
-        ----------
-        simulation : :class:`app.Simulation`
-            The simulation to generate a report for
-        Returns
-        -------
-        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
-            nsteps is the number of steps until the next report
-            pos, vel, frc, and ene are flags indicating whether positions,
-            velocities, forces, and/or energies are needed from the Context
-        """
-        #Monkeypatch to report at certain frame indices
-        if self.frame_indices:
-            #print(self.frame_indices)
-            if simulation.currentStep in self.frame_indices:
-                steps = 1
-            else:
-                steps = -1
-        if not self.frame_indices:
-            steps_left = simulation.currentStep % self._reportInterval
-            steps = self._reportInterval - steps_left
-        return (steps, True, True, False, False)

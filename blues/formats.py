@@ -524,17 +524,3 @@ class NetCDF4Traj(NetCDFTraj):
         self._ncfile.variables['alchemicalLambda'][self._last_alchemicalLambda_frame] = float(stuff)
         self._last_alchemicalLambda_frame += 1
         self.flush()
-
-class NetCDF4Restart(NetCDFRestart):
-    """
-    Temporary class to allow for proper flushing
-    """
-    def __init__(self, fname, mode='r'):
-        super(NetCDF4Restart,self).__init__(fname, mode)
-
-    def flush(self):
-        if nc is None:
-            # netCDF4.Dataset does not have a flush method
-            self._ncfile.flush()
-        if nc:
-            self._ncfile.sync()

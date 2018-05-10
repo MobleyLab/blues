@@ -2,8 +2,9 @@ from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.simulation import *
 import json
+from blues.config import *
 
-opt = startup('blues.yaml')
+opt = startup('blues_mac.yaml')
 print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
 structure = opt['Structure']
 
@@ -13,17 +14,13 @@ ligand = RandomLigandRotationMove(structure, 'LIG')
 ligand_mover = MoveEngine(ligand)
 
 #Generate the openmm.Systems outside SimulationFactory to allow modifications
-systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
-
-#Apply positional restraints
-#systems.md = systems.restrain_positions(structure, systems.md, **opt['restraints'])
+systems = SystemFactory(structure, ligand.atom_indices, opt['system'])
 
 #Freeze atoms in the alchemical system
-#systems.md = systems.freeze_atoms(structure, systems.md, **opt['freeze'])
-systems.alch = systems.freeze_radius(structure, systems.alch, **opt['freeze'])
+#systems.alch = systems.freeze_atoms(structure, systems.alch, **opt['freeze'])
 
 #Generate the OpenMM Simulations
-simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
+simulations = SimulationFactory(systems, ligand_mover, opt['simulation'], opt['md_reporters'], opt['ncmc_reporters'])
 
 # Run BLUES Simulation
 blues = Simulation(simulations)
