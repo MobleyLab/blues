@@ -4,8 +4,8 @@ from blues.simulation import *
 import json
 from blues.config import *
 
-opt = startup('blues_mac.yaml')
-print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
+opt = startup('blues_cuda.yaml')
+#print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
 structure = opt['Structure']
 
 #Select move type

@@ -15,7 +15,7 @@ import logging
 import sys, time
 import parmed
 from blues.formats import *
-
+import blues.reporters
 from parmed import unit as u
 from parmed.amber.netcdffiles import NetCDFTraj, NetCDFRestart
 from parmed.geometry import box_vectors_to_lengths_and_angles
@@ -93,6 +93,69 @@ def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d
     logger.setLevel(level)
 
     return logger
+
+class ReporterConfig:
+    """
+    Generates a set of custom/recommended reporters for BLUES simulations from YAMl configuration
+    """
+    def __init__(self, outfname, reporter_config, logger=None):
+        self._outfname = outfname
+        self._cfg = reporter_config
+        self._logger = logger
+        self.trajectory_interval = 0
+
+    def makeReporters(self):
+        Reporters = []
+        if 'state' in self._cfg.keys():
+
+            #Use outfname specified for reporter
+            if 'outfname' in self._cfg['state']:
+                outfname = self._cfg['state']['outfname']
+            else: #Default to top level outfname
+                outfname = self._outfname
+
+            state = parmed.openmm.reporters.StateDataReporter(outfname+'.ene', **self._cfg['state'])
+            Reporters.append(state)
+
+        if 'traj_netcdf' in self._cfg.keys():
+
+            if 'outfname' in self._cfg['traj_netcdf']:
+                outfname = self._cfg['traj_netcdf']['outfname']
+            else:
+                outfname = self._outfname
+
+            #Store as an attribute for calculating time/frame
+            if 'reportInterval' in self._cfg['traj_netcdf'].keys():
+                self.trajectory_interval = self._cfg['traj_netcdf']['reportInterval']
+
+            traj_netcdf = NetCDF4Reporter(outfname+'.nc', **self._cfg['traj_netcdf'])
+            Reporters.append(traj_netcdf)
+
+        if 'restart' in self._cfg.keys():
+
+            if 'outfname' in self._cfg['restart']:
+                outfname = self._cfg['restart']['outfname']
+            else:
+                outfname = self._outfname
+
+            restart =  parmed.openmm.reporters.RestartReporter(outfname+'.rst7', netcdf=True, **self._cfg['restart'])
+            Reporters.append(restart)
+
+        if 'progress' in self._cfg.keys():
+
+            if 'outfname' in self._cfg['progress']:
+                outfname = self._cfg['progress']['outfname']
+            else:
+                outfname = self._outfname
+
+            progress = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', self._cfg['progress'])
+            Reporters.append(progress)
+
+        if 'stream' in self._cfg.keys():
+            stream = blues.reporters.BLUESStateDataReporter(self._logger, **self._cfg['stream'])
+            Reporters.append(stream)
+
+        return Reporters
 
 ######################
 #     REPORTERS      #
@@ -293,7 +356,8 @@ class BLUESStateDataReporter(app.StateDataReporter):
             pass
 
 class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
-    """ Temporary class to read or write NetCDF
+    """
+    Class to read or write NetCDF trajectory files
     """
 
     def __init__(self, file, reportInterval=1, frame_indices=[], crds=True, vels=False, frcs=False,
