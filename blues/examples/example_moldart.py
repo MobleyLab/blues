@@ -49,6 +49,7 @@ def runNCMC(platform_name):
                                       pdb_files=[posA, posB],
                                       fit_atoms=fit_atoms,
                                       restrained_receptor_atoms=[1605, 1735, 1837],
+                                      rigid_ring=True
                                       )
 
     # Initialize object that proposes moves.
