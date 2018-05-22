@@ -310,17 +310,6 @@ class Simulation(object):
                 outputs every frame this will drastically slow down
                 the simulation and generate huge files. You should
                 probably only use this for debugging purposes.
-            ncmc_move_output: str
-                If specified will create a reporter that will output
-                frames of the NCMC trajectory immediately before
-                the halfway point, before any blues.moves.Move.move()
-                occur to a file called `ncmc_move_output`_begin.dcd
-                as awell as the trajectory immediately after the
-                move() takes place to a DCD file called
-                `ncmc_move_opoutut`_end.dcd. This allows you
-                to visualize the output of your MC moves, which
-                can be useful for debugging.
-
         """
         if 'Logger' in opt:
             self.log = opt['Logger']
@@ -358,17 +347,6 @@ class Simulation(object):
             self.nc_sim.reporters.append(self.ncmc_reporter)
         else:
             pass
-
-        if 'ncmc_move_output' in self.opt:
-            # Add reporter to NCMC Simulation specific for the move proposal useful for debugging:
-            self.ncmc_begin_reporter = app.dcdreporter.DCDReporter('{ncmc_move_output}_begin.dcd'.format(**self.opt), 1)
-            self.ncmc_end_reporter = app.dcdreporter.DCDReporter('{ncmc_move_output}_end.dcd'.format(**self.opt), 1)
-            self.nc_sim.reporters.append(self.ncmc_begin_reporter)
-            self.nc_sim.reporters.append(self.ncmc_end_reporter)
-
-        else:
-            pass
-
 
         #controls how many mc moves are performed during each iteration
         if 'mc_per_iter' in opt:
@@ -593,9 +571,6 @@ class Simulation(object):
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
 
-                    if 'ncmc_move_output' in opt:
-                        self.ncmc_begin_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True))
-
                     #Do move
                     self.log.info('Performing %s...' % move_name)
                     #print('state_cond', zip(self.nc_sim.context.getParameters().keys(), self.nc_sim.context.getParameters().values()))
@@ -607,8 +582,6 @@ class Simulation(object):
                             pass
 
                     self.nc_context = self.move_engine.runEngine(self.nc_context)
-                    if 'ncmc_move_output' in opt:
-                        self.ncmc_end_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True))
 
                     if ncmc_traj and (nc_step % 5) == 0:
                         self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
@@ -749,13 +722,7 @@ class Simulation(object):
         #self.ncmc_begin_reporter.report(self.md_sim, self.md_sim.context.getState(getPositions=True))
 
         new_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.md_sim.context)
-        if 'ncmc_move_output' in self.opt:
-            self.ncmc_begin_reporter.report(self.md_sim, new_context.getState(getPositions=True))
-
         new_context = self.move_engine.runEngine(new_context)
-        if 'ncmc_move_output' in self.opt:
-            self.ncmc_end_reporter.report(self.md_sim, new_context.getState(getPositions=True))
-
         new_context = self.move_engine.moves[self.move_engine.selected_move].afterMove(new_context)
 
         md_state1 = self.getStateInfo(new_context, self.state_keys)
