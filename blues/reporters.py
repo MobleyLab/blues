@@ -529,6 +529,8 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         reportInterval : int
             How frequently to write a frame to the trajectory
         frame_indices : list, frame numbers for writing the trajectory
+            If this reporter is used for the NCMC simulation,
+            0.5 will report at the moveStep and -1 will record at the last frame.
         crds : bool=True
             Should we write coordinates to this trajectory? (Default True)
         vels : bool=False
