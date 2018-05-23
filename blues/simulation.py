@@ -622,7 +622,7 @@ class SimulationFactory(object):
         for rep in reporter_list:
             simulation.reporters.append(rep)
         return simulation
-        
+
     def generateSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
         #Construct MD Integrator and Simulation
