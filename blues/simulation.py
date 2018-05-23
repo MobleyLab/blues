@@ -38,7 +38,7 @@ class SystemFactory(object):
     ligand_mover = MoveEngine(ligand)
 
     #Generate the openmm.Systems
-    systems = SystemFactory(structure, ligand.atom_indices, **config['system'])
+    systems = SystemFactory(structure, ligand.atom_indices, config['system'])
 
     #The MD and alchemical Systems are generated and stored as an attribute
     systems.md
@@ -59,13 +59,20 @@ class SystemFactory(object):
         Atom indicies of the move or designated for which the nonbonded forces
         (both sterics and electrostatics components) have to be alchemically
         modified.
+    config : dict, parameters for generating the `openmm.System` for the MD
+        and NCMC simulation. For complete parameters, see docs for `generateSystem`
+        and `generateAlchSystem`
     """
     def __init__(self, structure, atom_indices, config):
         self.structure = structure
         self.atom_indices = atom_indices
         self._config = config
 
-        self.alch_config = self._config.pop('alchemical')
+        if 'alchemical' in self._config.keys():
+            self.alch_config = self._config.pop('alchemical')
+        else:
+            #Use function defaults if none is provided
+            self.alch_config = {}
 
         self.md = SystemFactory.generateSystem(self.structure, **self._config)
         self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
@@ -215,12 +222,31 @@ class SystemFactory(object):
 
     @staticmethod
     def _amber_selection_to_atom_indices_(structure, selection):
+        """
+        Converts AmberMask selection to list of atom indices.
+        Parameters
+        ----------
+        structure : parmed.Structure()
+            Structure of the system, used for atom selection.
+        selection : str
+            AmberMask selection that gets converted to a list of atom indices.
+        """
         mask = parmed.amber.AmberMask(structure, str(selection))
         mask_idx = [i for i in mask.Selected()]
         return mask_idx
 
     @staticmethod
     def _print_atomlist_from_atom_indices_(structure, mask_idx):
+        """
+        Goes through the structure and matches the previously selected atom
+        indices to the atom type.
+        Parameters
+        ----------
+        structure : parmed.Structure()
+            Structure of the system, used for atom selection.
+        mask_idx : list of int
+            List of atom indices.
+        """
         atom_list = []
         for i, at in enumerate(structure.atoms):
             if i in mask_idx:
@@ -359,10 +385,10 @@ class SimulationFactory(object):
     ligand_mover = MoveEngine(ligand)
 
     #Generate the openmm.Systems
-    systems = SystemFactory(structure, ligand.atom_indices, **opt['system'])
+    systems = SystemFactory(structure, ligand.atom_indices, config['system'])
 
     #Generate the OpenMM Simulations
-    simulations = SimulationFactory(systems, ligand_mover, **opt['simulation'])
+    simulations = SimulationFactory(systems, ligand_mover, config['simulation'])
 
     Parameters
     ----------
@@ -371,7 +397,9 @@ class SimulationFactory(object):
     move_engine : blues.engine.MoveEngine object
         MoveProposal object which contains the dict of moves performed
         in the NCMC simulation.
-    opt : dict of parameters for the simulation (i.e timestep, temperature, etc.)
+    config : dict of parameters for the simulation (i.e timestep, temperature, etc.)
+    md_reporters : list of Reporter objects for the MD openmm.Simulation
+    ncmc_reporters : list of Reporter objects for the NCMC openmm.Simulation
     """
     def __init__(self, systems, move_engine, config, md_reporters=None, ncmc_reporters=None):
         #Hide these properties since they exist on the SystemsFactory object
@@ -594,7 +622,7 @@ class SimulationFactory(object):
         for rep in reporter_list:
             simulation.reporters.append(rep)
         return simulation
-
+        
     def generateSimulationSet(self):
         """Function used to generate the 3 OpenMM Simulation objects."""
         #Construct MD Integrator and Simulation
@@ -605,7 +633,7 @@ class SimulationFactory(object):
             self._system = self.addBarostat(self._system, **self.config)
             logger.warning('NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
         else:
-            logger.info('MD simulation will be {} NVT.'.format(self._config['temperature']))
+            logger.info('MD simulation will be {} NVT.'.format(self.config['temperature']))
         self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **self.config)
 
         #Alchemical Simulation is used for computing correction term from MD simulation.

@@ -155,7 +155,7 @@ class RandomLigandRotationMove(Move):
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
         """
-
+        self.structure = structure
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology

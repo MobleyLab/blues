@@ -76,6 +76,8 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging, methodName, logToRoot)
 
 def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
+    """Initialize the Logger module with the given logger_level and outfname.
+    """
     fmt = LoggerFormatter()
 
     # Stream to terminal
@@ -96,7 +98,7 @@ def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d
 
 class ReporterConfig:
     """
-    Generates a set of custom/recommended reporters for BLUES simulations from YAMl configuration
+    Generates a set of custom/recommended reporters for BLUES simulations from YAML configuration
     """
     def __init__(self, outfname, reporter_config, logger=None):
         self._outfname = outfname
@@ -148,7 +150,7 @@ class ReporterConfig:
             else:
                 outfname = self._outfname
 
-            progress = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', self._cfg['progress'])
+            progress = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', **self._cfg['progress'])
             Reporters.append(progress)
 
         if 'stream' in self._cfg.keys():

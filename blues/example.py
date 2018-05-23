@@ -56,10 +56,11 @@ def runNCMC(platform_name, nstepsNC, nprop, outfname):
 
     # Add reporters to MD simulation.
     traj_reporter = openmm.app.DCDReporter(opt['outfname']+'-nc{}.dcd'.format(nstepsNC), opt['trajectory_interval'])
-    md_progress_reporter = BLUESStateDataReporter(logger, separator="\t", title='md',
+    md_progress_reporter = openmm.app.StateDataReporter(sys.stdout, separator="\t",
                                 reportInterval=opt['reporter_interval'],
                                 step=True, totalSteps=opt['nIter']*opt['nstepsMD'],
-                                time=False, speed=True, progress=True, remainingTime=True)
+                                time=True, speed=True, progress=True,
+                                elapsedTime=True, remainingTime=True)
     simulations.md.reporters.append(traj_reporter)
     simulations.md.reporters.append(md_progress_reporter)
 

@@ -243,8 +243,14 @@ def startup(yaml_config):
 
         logger = config['Logger']
         nstepsNC = config['simulation']['nstepsNC']
-        nprop = config['simulation']['nprop']
-        prop_lambda = config['simulation']['prop_lambda']
+        try:
+            nprop = config['simulation']['nprop']
+            prop_lambda = config['simulation']['prop_lambda']
+        except KeyError:
+            nprop = 1
+            prop_lambda = 0.3
+            config['simulation']['nprop'] = nprop
+            config['simulation']['prop_lambda'] = prop_lambda
 
         # Make sure provided NCMC steps is even.
         if (nstepsNC % 2) != 0:
@@ -342,7 +348,8 @@ def startup(yaml_config):
     # Parse YAML into dict
     if yaml_config.endswith('.yaml'):
         config = load_yaml(yaml_config)
-
+    if type(yaml_config) is str:
+        config = yaml.safe_load(yaml_config)
     # Parse the configions dict
     if type(config) is dict:
         config = set_Parameters(config)
