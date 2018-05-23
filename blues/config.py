@@ -294,9 +294,8 @@ def startup(yaml_config):
         logger = config['Logger']
         outfname = config['outfname']
         nstepsNC = config['simulation']['nstepsNC']
-        import json
-        print(json.dumps(config['md_reporters'], sort_keys=True, indent=2, skipkeys=True, default=str))
-        exit()
+        moveStep = config['simulation']['moveStep']
+
         if 'md_reporters' in config.keys():
             # Returns a list of Reporter objects, overwrites the configuration parameters
             md_reporter_cfg = reporters.ReporterConfig(outfname, config['md_reporters'], logger)
@@ -314,10 +313,13 @@ def startup(yaml_config):
                 if 'totalSteps' in config['ncmc_reporters'][rep].keys():
                     config['ncmc_reporters'][rep]['totalSteps'] = nstepsNC
 
-                #If -1 is given in frame_indices, record the last frame
+                #If -1 is given in frame_indices, record at the last frame
+                #If 0.5 is given in frame_indices, record at the midpoint/movestep
                 if 'frame_indices' in config['ncmc_reporters'][rep].keys():
                     frame_indices = config['ncmc_reporters'][rep]['frame_indices']
-                    config['ncmc_reporters'][rep]['frame_indices'] = [nstepsNC if x == -1 else x for x in frame_indices]
+                    frame_indices = [moveStep if x == 0.5 else x for x in frame_indices]
+                    frame_indices = [nstepsNC if x == -1 else x for x in frame_indices]
+                    config['ncmc_reporters'][rep]['frame_indices'] = frame_indices
 
             ncmc_reporter_cfg = reporters.ReporterConfig(outfname+'-ncmc', config['ncmc_reporters'], logger)
             config['ncmc_reporters'] = ncmc_reporter_cfg.makeReporters()
