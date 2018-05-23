@@ -162,9 +162,14 @@ class SystemFactory(object):
                             softcore_beta=0.0, softcore_d=1, softcore_e=1, softcore_f=2,
                             annihilate_electrostatics=True, annihilate_sterics=False,
                             disable_alchemical_dispersion_correction=True,
+                            alchemical_pme_treatment='direct-space',
                             suppress_warnings=True,
                             **kwargs):
         """Returns the OpenMM System for alchemical perturbations.
+        This function calls `openmmtools.alchemy.AbsoluteAlchemicalFactory` and 
+        `openmmtools.alchemy.AlchemicalRegion` to generate the System for the
+        NCMC simulation.
+
         Parameters
         ----------
         system : openmm.System
@@ -192,7 +197,23 @@ class SystemFactory(object):
             to recover standard electrostatic scaling (default is 0.0).
         softcore_d, softcore_e, softcore_f : float, optional
             Parameters modifying softcore electrostatics form (default is 1).
-
+        disable_alchemical_dispersion_correction : bool, optional, default=True
+            If True, the long-range dispersion correction will not be included for the alchemical
+            region to avoid the need to recompute the correction (a CPU operation that takes ~ 0.5 s)
+            every time 'lambda_sterics' is changed. If using nonequilibrium protocols, it is recommended
+            that this be set to True since this can lead to enormous (100x) slowdowns if the correction
+            must be recomputed every time step.
+        alchemical_pme_treatment : str, optional, default = 'direct-space'
+            Controls how alchemical region electrostatics are treated when PME is used.
+            Options are ['direct-space', 'coulomb', 'exact'].
+            - 'direct-space' only models the direct space contribution
+            - 'coulomb' includes switched Coulomb interaction
+            - 'exact' includes also the reciprocal space contribution, but it's
+                only possible to annihilate the charges and the softcore parameters
+                controlling the electrostatics are deactivated. Also, with this
+                method, modifying the global variable `lambda_electrostatics` is
+                not sufficient to control the charges. The recommended way to change
+                them is through the `AlchemicalState` class.
         References
         ----------
         [1] Pham TT and Shirts MR. Identifying low variance pathways for free
@@ -204,7 +225,8 @@ class SystemFactory(object):
             logging.getLogger("openmmtools.alchemy").setLevel(logging.ERROR)
 
         #Disabled correction term due to increased computational cost
-        factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=disable_alchemical_dispersion_correction)
+        factory = alchemy.AbsoluteAlchemicalFactory(disable_alchemical_dispersion_correction=disable_alchemical_dispersion_correction,
+                                                    alchemical_pme_treatment=alchemical_pme_treatment)
         alch_region = alchemy.AlchemicalRegion(alchemical_atoms=atom_indices,
                                             softcore_alpha=softcore_alpha,
                                             softcore_a=softcore_a,
