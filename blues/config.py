@@ -294,7 +294,9 @@ def startup(yaml_config):
         logger = config['Logger']
         outfname = config['outfname']
         nstepsNC = config['simulation']['nstepsNC']
-
+        import json
+        print(json.dumps(config['md_reporters'], sort_keys=True, indent=2, skipkeys=True, default=str))
+        exit()
         if 'md_reporters' in config.keys():
             # Returns a list of Reporter objects, overwrites the configuration parameters
             md_reporter_cfg = reporters.ReporterConfig(outfname, config['md_reporters'], logger)
@@ -348,8 +350,9 @@ def startup(yaml_config):
     # Parse YAML into dict
     if yaml_config.endswith('.yaml'):
         config = load_yaml(yaml_config)
-    if type(yaml_config) is str:
+    elif type(yaml_config) is str:
         config = yaml.safe_load(yaml_config)
+
     # Parse the configions dict
     if type(config) is dict:
         config = set_Parameters(config)
