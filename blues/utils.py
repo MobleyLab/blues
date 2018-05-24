@@ -8,13 +8,54 @@ Contributors: Nathan M. Lim, David L. Mobley
 from __future__ import print_function
 import os, copy, yaml, logging, sys, itertools
 import mdtraj, parmed
-from simtk import unit
+from simtk import unit, openmm
 from blues import utils
 from blues import reporters
 from math import floor, ceil
+from platform import uname
 logger = logging.getLogger(__name__)
 
+
+def saveSimulationFrame(simulation, outfname):
+    """Extracts a ParmEd structure and writes the frame given
+    an OpenMM Simulation object"""
+    topology = simulation.topology
+    system = simulation.context.getSystem()
+    state = simulation.context.getState(getPositions=True,
+                                        getVelocities=True,
+                                        getParameters=True,
+                                        getForces=True,
+                                        getParameterDerivatives=True,
+                                        getEnergy=True,
+                                        enforcePeriodicBox=True)
+
+
+    # Generate the ParmEd Structure
+    structure = parmed.openmm.load_topology(topology, system,
+                               xyz=state.getPositions())
+
+    structure.save(outfname,overwrite=True)
+    logger.info('\tSaving Frame to: %s' % outfname)
+
+def print_host_info(simulation):
+    """Prints hardware related information for the openmm.Simulation"""
+    # OpenMM platform information
+    mmver = openmm.version.version
+    mmplat = simulation.context.getPlatform()
+    msg = 'OpenMM({}) simulation generated for {} platform\n'.format(mmver, mmplat.getName())
+
+    # Host information
+    for k, v in uname()._asdict().items():
+        msg += '{} = {} \n'.format(k,v)
+
+    # Platform properties
+    for prop in mmplat.getPropertyNames():
+        val = mmplat.getPropertyValue(simulation.context, prop)
+        msg += '{} = {} \n'.format(prop,val)
+    logger.info(msg)
+
 def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
+    ncmc_parameters = {}
     # Make sure provided NCMC steps is even.
     if (nstepsNC % 2) != 0:
         rounded_val = nstepsNC & ~1
@@ -45,8 +86,10 @@ def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
         nstepsNC = lambdaSteps
 
     moveStep = int(nstepsNC/2)
+    ncmc_parameters = {'nstepsNC': nstepsNC, 'propSteps': propSteps, 'moveStep': moveStep,
+                       'nprop' : nprop, 'propLambda' : propLambda}
 
-    return nstepsNC, propSteps, moveStep
+    return ncmc_parameters
 
 
 def check_amber_selection(structure, selection):

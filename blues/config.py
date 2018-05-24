@@ -7,7 +7,7 @@ from simtk import unit
 from simtk.openmm import app
 from blues import reporters, utils
 
-class YAMLSettings(object):
+class Settings(object):
     """
     Function that will parse the YAML configuration file for setup and running
     BLUES simulations.
@@ -18,17 +18,16 @@ class YAMLSettings(object):
     """
 
 
-    def __init__(self, yaml_config):
-        self.yaml_config = yaml_config
-        # Parse YAML into dict
-        if self.yaml_config.endswith('.yaml'):
-            config = Settings.load_yaml(self.yaml_config)
-        elif type(yaml_config) is str:
-            config = yaml.safe_load(self.yaml_config)
+    def __init__(self, config):
+        # Parse YAML or YAML docstr into dict
+        if config.endswith('.yaml'):
+            config = Settings.load_yaml(config)
+        elif type(config) is str:
+            config = yaml.safe_load(config)
 
-        # Parse the configions dict
+        # Parse the config into dict
         if type(config) is dict:
-            config = YAMLSettings.set_Parameters(config)
+            config = Settings.set_Parameters(config)
             self.config = config
 
     @staticmethod
@@ -217,10 +216,9 @@ class YAMLSettings(object):
         Calculates the number of lambda switching steps and integrator steps
         for the NCMC simulation.
         """
-        nstepsNC, propSteps, moveStep = utils.calculateNCMCSteps(**config['simulation'])
-        config['simulation']['nstepsNC'] = nstepsNC
-        config['simulation']['propSteps'] = propSteps
-        config['simulation']['moveStep']  = moveStep
+        ncmc_parameters = utils.calculateNCMCSteps(**config['simulation'])
+        for k,v in ncmc_parameters.items():
+            config['simulation'][k]  = v
         return config
 
     @staticmethod
@@ -237,7 +235,8 @@ class YAMLSettings(object):
             # Returns a list of Reporter objects, overwrites the configuration parameters
             md_reporter_cfg = reporters.ReporterConfig(outfname, config['md_reporters'], logger)
             config['md_reporters'] = md_reporter_cfg.makeReporters()
-            config['simulation']['md_trajectory_interval'] = md_reporter_cfg.trajectory_interval
+            if md_reporter_cfg.trajectory_interval:
+                config['simulation']['md_trajectory_interval'] = md_reporter_cfg.trajectory_interval
         else:
             logger.warn('Configuration for MD reporters were not set.')
 
@@ -272,14 +271,14 @@ class YAMLSettings(object):
         """
         try:
             # Set top level configuration parameters
-            config = YAMLSettings.set_Output(config)
-            config = YAMLSettings.set_Logger(config)
-            if 'structure' in config: config = YAMLSettings.set_Structure(config)
-            config = YAMLSettings.set_Units(config)
-            YAMLSettings.check_SystemModifications(config)
-            config = YAMLSettings.set_Apps(config)
-            config = YAMLSettings.set_ncmcSteps(config)
-            config = YAMLSettings.set_Reporters(config)
+            config = Settings.set_Output(config)
+            config = Settings.set_Logger(config)
+            if 'structure' in config: config = Settings.set_Structure(config)
+            config = Settings.set_Units(config)
+            Settings.check_SystemModifications(config)
+            config = Settings.set_Apps(config)
+            config = Settings.set_ncmcSteps(config)
+            config = Settings.set_Reporters(config)
 
         except Exception as e:
             config['Logger'].exception(e)

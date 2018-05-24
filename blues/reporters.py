@@ -194,6 +194,7 @@ class ReporterConfig:
             Reporters.append(progress)
 
         if 'stream' in self._cfg.keys():
+            if not self._logger: self._logger = logging.getLogger(__name__)
             stream = blues.reporters.BLUESStateDataReporter(self._logger, **self._cfg['stream'])
             Reporters.append(stream)
 
@@ -493,7 +494,9 @@ class BLUESStateDataReporter(app.StateDataReporter):
         if not self._hasInitialized:
             self._initializeConstants(simulation)
             headers = self._constructHeaders()
-            self.log.report('#"%s"' % ('"'+self._separator+'"').join(headers))
+            if hasattr(self.log, 'report'):
+                self.log.info = self.log.report
+            self.log.info('#"%s"' % ('"'+self._separator+'"').join(headers))
             try:
                 self._out.flush()
             except AttributeError:
@@ -509,7 +512,9 @@ class BLUESStateDataReporter(app.StateDataReporter):
         values = self._constructReportValues(simulation, state)
 
         # Write the values.
-        self.log.report('%s: %s' % (self.title, self._separator.join(str(v) for v in values)))
+        if hasattr(self.log, 'report'):
+            self.log.info = self.log.report
+        self.log.info('%s: %s' % (self.title, self._separator.join(str(v) for v in values)))
         try:
             self._out.flush()
         except AttributeError:

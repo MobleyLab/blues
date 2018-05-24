@@ -4,7 +4,8 @@ from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues.simulation import SystemFactory, SimulationFactory, Simulation
-from blues.config import YAMLSettings
+from blues.reporters import ReporterConfig
+from blues.config import Settings
 from simtk import openmm, unit
 from simtk.openmm import app
 from openmmtools import testsystems
@@ -43,15 +44,14 @@ class SimulationTester(unittest.TestCase):
               friction: 1 * 1/picoseconds
               temperature: 400 * kelvin
               nIter: 1
-              nstepsMD: 10
-              nstepsNC: 10
-              nprop: 2
+              nstepsMD: 4
+              nstepsNC: 4
 
             md_reporters:
               stream:
                 title: md
                 reportInterval: 1
-                totalSteps: 10 # nIter * nstepsMD
+                totalSteps: 4 # nIter * nstepsMD
                 step: True
                 speed: True
                 progress: True
@@ -61,7 +61,7 @@ class SimulationTester(unittest.TestCase):
               stream:
                 title: ncmc
                 reportInterval: 1
-                totalSteps: 10 # Use nstepsNC
+                totalSteps: 4 # Use nstepsNC
                 step: True
                 speed: True
                 progress: True
@@ -69,14 +69,57 @@ class SimulationTester(unittest.TestCase):
                 protocolWork : True
                 alchemicalLambda : True
                 currentIter : True
-            """
-        yaml_cfg = YAMLSettings(yaml_cfg)
+        """
+        print('Testing Simulation.run() from YAML')
+        yaml_cfg = Settings(yaml_cfg)
         cfg = yaml_cfg.asDict()
+
         simulations = SimulationFactory(self.systems, self.engine, cfg['simulation'],
                                     cfg['md_reporters'], cfg['ncmc_reporters'])
-        blues = Simulation(simulations, cfg['simulation'])
+
+        blues = Simulation(simulations)
         blues.run()
         os.remove('ala-dipep-vac.log')
+
+    def test_simulationRunPure(self):
+        print('Testing Simulation.run() from pure python')
+        md_rep_cfg = { 'stream': { 'title': 'md',
+                                'reportInterval': 1,
+                                'totalSteps': 4,
+                                'step': True,
+                                'speed': True,
+                                'progress': True,
+                                'remainingTime': True,
+                                'currentIter' : True} }
+        ncmc_rep_cfg = { 'stream': { 'title': 'ncmc',
+                                'reportInterval': 1,
+                                'totalSteps': 4,
+                                'step': True,
+                                'speed': True,
+                                'progress': True,
+                                'remainingTime': True,
+                                'currentIter' : True} }
+
+        md_reporters = ReporterConfig('ala-dipep-vac', md_rep_cfg).makeReporters()
+        ncmc_reporters = ReporterConfig('ala-dipep-vac', ncmc_rep_cfg).makeReporters()
+
+        cfg = { 'platform': 'OpenCL',
+                    'properties' : { 'OpenCLPrecision': 'single',
+                                      'OpenCLDeviceIndex' : 2},
+                    'nprop' : 1,
+                    'prop_lambda' : 0.3,
+                    'dt' : 0.001 * unit.picoseconds,
+                    'friction' : 1 * 1/unit.picoseconds,
+                    'temperature' : 100 * unit.kelvin,
+                    'nIter': 1,
+                    'nstepsMD': 4,
+                    'nstepsNC': 4,}
+        simulations = SimulationFactory(self.systems, self.engine, cfg,
+                                    md_reporters=md_reporters,
+                                    ncmc_reporters=ncmc_reporters)
+
+        blues = Simulation(simulations)
+        blues.run()
 
 if __name__ == '__main__':
         unittest.main()
