@@ -53,7 +53,9 @@ class MoveEngine(object):
         iteration
         """
         rand_num = np.random.choice(len(self.probs), p=self.probs)
-        self.selected_move = rand_num
+        #self.selected_move = rand_num
+        self.selected_move = self.moves[rand_num]
+        self.move_name = self.selected_move.__class__.__name__
 
     def runEngine(self, context):
         """Selects a random Move object based on its
@@ -65,7 +67,7 @@ class MoveEngine(object):
         OpenMM context whose positions should be moved.
         """
         try:
-            new_context = self.moves[self.selected_move].move(context)
+            new_context = self.selected_move.move(context)
         except Exception as e:
             #In case the move isn't properly implemented, print out useful info
             print('Error: move not implemented correctly, printing traceback:')

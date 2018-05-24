@@ -49,13 +49,13 @@ system:
 #   freeze_distance: 5 * angstroms
 
 simulation:
-  platform: CUDA
-  #platform: OpenCL
+  #platform: CUDA
+  platform: OpenCL
   properties:
-    CudaPrecision: single
-    CudaDeviceIndex: 0
-    #OpenCLPrecision: single
-    #OpenCLDeviceIndex: 2
+    #CudaPrecision: single
+    #CudaDeviceIndex: 0
+    OpenCLPrecision: single
+    OpenCLDeviceIndex: 2
   dt: 0.004 * picoseconds
   friction: 1 * 1/picoseconds
   pressure: 1 * atmospheres
@@ -79,11 +79,12 @@ md_reporters:
   stream:
     title: md
     reportInterval: 250
-    totalSteps: 10000
+    totalSteps: 1000
     step: True
     speed: True
     progress: True
     remainingTime: True
+    currentIter : True
 
 ncmc_reporters:
   traj_netcdf:
@@ -97,4 +98,7 @@ ncmc_reporters:
     step: True
     speed: True
     progress: True
-    remainingTime: True
+    remainingTime : True
+    protocolWork : True
+    alchemicalLambda : True
+    currentIter : True

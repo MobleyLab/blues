@@ -1,7 +1,7 @@
 from mdtraj.formats.hdf5 import HDF5TrajectoryFile
 from mdtraj.reporters import HDF5Reporter
 from simtk.openmm import app
-import simtk.unit as units
+import simtk.unit as unit
 import json, yaml
 import subprocess
 import numpy as np
@@ -333,13 +333,13 @@ class BLUESHDF5Reporter(HDF5Reporter):
         kwargs = {}
         if self._coordinates:
             coordinates = state.getPositions(asNumpy=True)[self._atomSlice]
-            coordinates = coordinates.value_in_unit(getattr(units, self._traj_file.distance_unit))
+            coordinates = coordinates.value_in_unit(getattr(unit, self._traj_file.distance_unit))
             args = (coordinates,)
         if self._time:
             kwargs['time'] = state.getTime()
         if self._cell:
             vectors = state.getPeriodicBoxVectors(asNumpy=True)
-            vectors = vectors.value_in_unit(getattr(units, self._traj_file.distance_unit))
+            vectors = vectors.value_in_unit(getattr(unit, self._traj_file.distance_unit))
             a, b, c, alpha, beta, gamma = unitcell.box_vectors_to_lengths_and_angles(*vectors)
             kwargs['cell_lengths'] = np.array([a, b, c])
             kwargs['cell_angles'] = np.array([alpha, beta, gamma])
@@ -348,7 +348,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if self._kineticEnergy:
             kwargs['kineticEnergy'] = state.getKineticEnergy()
         if self._temperature:
-            kwargs['temperature'] = 2*state.getKineticEnergy()/(self._dof*units.MOLAR_GAS_CONSTANT_R)
+            kwargs['temperature'] = 2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)
         if self._velocities:
             kwargs['velocities'] = state.getVelocities(asNumpy=True)[self._atomSlice, :]
 
@@ -380,8 +380,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
     data to write is configurable using boolean flags passed to the constructor.  By default the data is
     written in comma-separated-value (CSV) format, but you can specify a different separator to use.
     """
-    def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
-    progress=False, remainingTime=False, speed=False, elapsedTime=False, separator='\t', systemMass=None, totalSteps=None):
+    def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False,    totalEnergy=False, temperature=False, volume=False, density=False, progress=False, remainingTime=False, speed=False, elapsedTime=False,    separator='\t', systemMass=None, totalSteps=None, protocolWork=False, alchemicalLambda=False, currentIter=True):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
             potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
             progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
@@ -440,11 +439,16 @@ class BLUESStateDataReporter(app.StateDataReporter):
             The total number of steps that will be included in the simulation.
             This is required if either progress or remainingTime is set to True,
             and defines how many steps will indicate 100% completion.
+        protocolWork : bool=False,
+            Write the protocolWork for the alchemical process in the NCMC simulation
+        alchemicalLambda : bool=False,
+            Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
         """
         self.log = self._out
         self.title = title
 
         self.frame_indices = frame_indices
+        self._protocolWork, self._alchemicalLambda, self._currentIter = protocolWork, alchemicalLambda, currentIter
         if self.frame_indices:
             #If simulation.currentStep = 1, store the frame from the previous step.
             # i.e. frame_indices=[1,100] will store the first and frame 100
@@ -510,6 +514,123 @@ class BLUESStateDataReporter(app.StateDataReporter):
             self._out.flush()
         except AttributeError:
             pass
+
+    def _constructReportValues(self, simulation, state):
+        """Query the simulation for the current state of our observables of interest.
+        Parameters
+        ----------
+        simulation : Simulation
+            The Simulation to generate a report for
+        state : State
+            The current state of the simulation
+        Returns
+        -------
+        A list of values summarizing the current state of
+        the simulation, to be printed or saved. Each element in the list
+        corresponds to one of the columns in the resulting CSV file.
+        """
+        values = []
+        box = state.getPeriodicBoxVectors()
+        volume = box[0][0]*box[1][1]*box[2][2]
+        clockTime = time.time()
+        if self._currentIter:
+            values.append(simulation.currentIter)
+        if self._progress:
+            values.append('%.1f%%' % (100.0*simulation.currentStep/self._totalSteps))
+        if self._step:
+            values.append(simulation.currentStep)
+        if self._time:
+            values.append(state.getTime().value_in_unit(unit.picosecond))
+        #add a portion like this to store things other than the protocol work
+        if self._alchemicalLambda:
+            alchemicalLambda = simulation.integrator.getGlobalVariableByName('lambda')
+            values.append(alchemicalLambda)
+        if self._protocolWork:
+            protocolWork = simulation.integrator.get_protocol_work(dimensionless=True)
+            values.append(protocolWork)
+        if self._potentialEnergy:
+            values.append(state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
+        if self._kineticEnergy:
+            values.append(state.getKineticEnergy().value_in_unit(unit.kilojoules_per_mole))
+        if self._totalEnergy:
+            values.append((state.getKineticEnergy()+state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole))
+        if self._temperature:
+            values.append((2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin))
+        if self._volume:
+            values.append(volume.value_in_unit(unit.nanometer**3))
+        if self._density:
+            values.append((self._totalMass/volume).value_in_unit(unit.gram/unit.item/unit.milliliter))
+
+        if self._speed:
+            elapsedDays = (clockTime-self._initialClockTime)/86400.0
+            elapsedNs = (state.getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
+            if elapsedDays > 0.0:
+                values.append('%.3g' % (elapsedNs/elapsedDays))
+            else:
+                values.append('--')
+        if self._elapsedTime:
+            values.append(time.time() - self._initialClockTime)
+        if self._remainingTime:
+            elapsedSeconds = clockTime-self._initialClockTime
+            elapsedSteps = simulation.currentStep-self._initialSteps
+            if elapsedSteps == 0:
+                value = '--'
+            else:
+                estimatedTotalSeconds = (self._totalSteps-self._initialSteps)*elapsedSeconds/elapsedSteps
+                remainingSeconds = int(estimatedTotalSeconds-elapsedSeconds)
+                remainingDays = remainingSeconds//86400
+                remainingSeconds -= remainingDays*86400
+                remainingHours = remainingSeconds//3600
+                remainingSeconds -= remainingHours*3600
+                remainingMinutes = remainingSeconds//60
+                remainingSeconds -= remainingMinutes*60
+                if remainingDays > 0:
+                    value = "%d:%d:%02d:%02d" % (remainingDays, remainingHours, remainingMinutes, remainingSeconds)
+                elif remainingHours > 0:
+                    value = "%d:%02d:%02d" % (remainingHours, remainingMinutes, remainingSeconds)
+                elif remainingMinutes > 0:
+                    value = "%d:%02d" % (remainingMinutes, remainingSeconds)
+                else:
+                    value = "0:%02d" % remainingSeconds
+            values.append(value)
+        return values
+
+    def _constructHeaders(self):
+        """Construct the headers for the CSV output
+        Returns: a list of strings giving the title of each observable being reported on.
+        """
+        headers = []
+        if self._currentIter:
+            headers.append('Iter')
+        if self._progress:
+            headers.append('Progress (%)')
+        if self._step:
+            headers.append('Step')
+        if self._time:
+            headers.append('Time (ps)')
+        if self._alchemicalLambda:
+            headers.append('alchemicalLambda')
+        if self._protocolWork:
+            headers.append('protocolWork')
+        if self._potentialEnergy:
+            headers.append('Potential Energy (kJ/mole)')
+        if self._kineticEnergy:
+            headers.append('Kinetic Energy (kJ/mole)')
+        if self._totalEnergy:
+            headers.append('Total Energy (kJ/mole)')
+        if self._temperature:
+            headers.append('Temperature (K)')
+        if self._volume:
+            headers.append('Box Volume (nm^3)')
+        if self._density:
+            headers.append('Density (g/mL)')
+        if self._speed:
+            headers.append('Speed (ns/day)')
+        if self._elapsedTime:
+            headers.append('Elapsed Time (s)')
+        if self._remainingTime:
+            headers.append('Time Remaining')
+        return headers
 
 class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
     """

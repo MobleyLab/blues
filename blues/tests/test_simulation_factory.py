@@ -97,7 +97,13 @@ class SimulationFactoryTester(unittest.TestCase):
         self.assertEqual(len(simulation.reporters), 0)
         simulation = SimulationFactory.attachReporters(simulation,reporters)
         self.assertEqual(len(simulation.reporters), 1)
-        os.remove('test.log')
+
+
+        from blues.simulation import Simulation
+        blues = Simulation(simulation)
+        blues.run(1)
+
+        #os.remove('test.log')
 
 if __name__ == '__main__':
         unittest.main()
