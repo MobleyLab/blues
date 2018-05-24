@@ -3,7 +3,7 @@ from blues import utils
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.integrators import AlchemicalExternalLangevinIntegrator
-from blues.simulation import SystemFactory, SimulationFactory, Simulation
+from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
 from blues.reporters import ReporterConfig
 from blues.config import Settings
 from simtk import openmm, unit
@@ -11,9 +11,9 @@ from simtk.openmm import app
 from openmmtools import testsystems
 import numpy as np
 
-class SimulationTester(unittest.TestCase):
+class BLUESSimulationTester(unittest.TestCase):
     """
-    Test the Simulation class.
+    Test the BLUESSimulation class.
     """
     def setUp(self):
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
@@ -36,10 +36,6 @@ class SimulationTester(unittest.TestCase):
               constraints: HBonds
 
             simulation:
-              platform: OpenCL
-              properties:
-                OpenCLPrecision: single
-                OpenCLDeviceIndex: 2
               dt: 0.002 * picoseconds
               friction: 1 * 1/picoseconds
               temperature: 400 * kelvin
@@ -77,8 +73,14 @@ class SimulationTester(unittest.TestCase):
         simulations = SimulationFactory(self.systems, self.engine, cfg['simulation'],
                                     cfg['md_reporters'], cfg['ncmc_reporters'])
 
-        blues = Simulation(simulations)
+        blues = BLUESSimulation(simulations)
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         blues.run()
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        #Check that our system has run dynamics
+        pos_compare = np.not_equal(before_iter, after_iter).all()
+        self.assertTrue(pos_compare)
+
         os.remove('ala-dipep-vac.log')
 
     def test_simulationRunPure(self):
@@ -101,25 +103,27 @@ class SimulationTester(unittest.TestCase):
                                 'currentIter' : True} }
 
         md_reporters = ReporterConfig('ala-dipep-vac', md_rep_cfg).makeReporters()
-        ncmc_reporters = ReporterConfig('ala-dipep-vac', ncmc_rep_cfg).makeReporters()
+        ncmc_reporters = ReporterConfig('ala-dipep-vac-ncmc', ncmc_rep_cfg).makeReporters()
 
-        cfg = { 'platform': 'OpenCL',
-                    'properties' : { 'OpenCLPrecision': 'single',
-                                      'OpenCLDeviceIndex' : 2},
-                    'nprop' : 1,
-                    'prop_lambda' : 0.3,
-                    'dt' : 0.001 * unit.picoseconds,
-                    'friction' : 1 * 1/unit.picoseconds,
-                    'temperature' : 100 * unit.kelvin,
-                    'nIter': 1,
-                    'nstepsMD': 4,
-                    'nstepsNC': 4,}
+        cfg = { 'nprop' : 1,
+                'prop_lambda' : 0.3,
+                'dt' : 0.001 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 100 * unit.kelvin,
+                'nIter': 1,
+                'nstepsMD': 4,
+                'nstepsNC': 4,}
         simulations = SimulationFactory(self.systems, self.engine, cfg,
                                     md_reporters=md_reporters,
                                     ncmc_reporters=ncmc_reporters)
 
-        blues = Simulation(simulations)
+        blues = BLUESSimulation(simulations)
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         blues.run()
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        #Check that our system has run dynamics
+        pos_compare = np.not_equal(before_iter, after_iter).all()
+        self.assertTrue(pos_compare)
 
 if __name__ == '__main__':
         unittest.main()

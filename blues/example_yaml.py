@@ -4,9 +4,7 @@ from blues.simulation import *
 import json
 from blues.config import *
 
-opt = startup('blues_cuda.yaml')
-print(opt)
-print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
+opt = Settings('blues_cuda.yaml').asDict()
 structure = opt['Structure']
 
 #Select move type
@@ -24,5 +22,5 @@ systems = SystemFactory(structure, ligand.atom_indices, opt['system'])
 simulations = SimulationFactory(systems, ligand_mover, opt['simulation'], opt['md_reporters'], opt['ncmc_reporters'])
 
 # Run BLUES Simulation
-blues = Simulation(simulations)
+blues = BLUESSimulation(simulations)
 blues.run(**opt['simulation'])

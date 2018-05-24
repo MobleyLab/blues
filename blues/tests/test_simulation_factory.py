@@ -58,7 +58,7 @@ class SimulationFactoryTester(unittest.TestCase):
                 'temperature' : 100*unit.kelvin,
                 'dt' : 0.001*unit.picoseconds,
                 'nprop' : 2,
-                'prop_lambda' : 0.1,
+                'propLambda' : 0.1,
                 'splitting' : 'V H R O R H V',
                 'alchemical_functions' : { 'lambda_sterics' : '1', 'lambda_electrostatics' : '1'} }
         ncmc_integrator = SimulationFactory.generateNCMCIntegrator(**cfg)
@@ -71,7 +71,7 @@ class SimulationFactoryTester(unittest.TestCase):
         self.assertEqual(ncmc_integrator._n_lambda_steps, cfg['nstepsNC']*cfg['nprop'])
         self.assertEqual(ncmc_integrator._alchemical_functions, cfg['alchemical_functions'])
         self.assertEqual(ncmc_integrator._splitting, cfg['splitting'])
-        prop_range = (0.5-cfg['prop_lambda'], 0.5+cfg['prop_lambda'])
+        prop_range = (0.5-cfg['propLambda'], 0.5+cfg['propLambda'])
         self.assertEqual(ncmc_integrator._prop_lambda, prop_range)
 
     def test_generateSimFromStruct(self):
@@ -101,15 +101,12 @@ class SimulationFactoryTester(unittest.TestCase):
 
     def test_generateSimulationSet(self):
         print('Testing generateSimulationSet')
-        cfg = { 'platform': 'OpenCL',
-                    'properties' : { 'OpenCLPrecision': 'single',
-                                      'OpenCLDeviceIndex' : 2},
-                    'dt' : 0.001 * unit.picoseconds,
-                    'friction' : 1 * 1/unit.picoseconds,
-                    'temperature' : 100 * unit.kelvin,
-                    'nIter': 1,
-                    'nstepsMD': 10,
-                    'nstepsNC': 10,}
+        cfg = { 'dt' : 0.001 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 100 * unit.kelvin,
+                'nIter': 1,
+                'nstepsMD': 10,
+                'nstepsNC': 10,}
         simulations = SimulationFactory(self.systems, self.engine)
         simulations.generateSimulationSet(cfg)
         #Check that we've made the MD/ALCH/NCMC simulation set
@@ -124,17 +121,14 @@ class SimulationFactoryTester(unittest.TestCase):
 
     def test_initSimulationFactory(self):
         print('Testing initialization of SimulationFactory')
-        cfg = { 'platform': 'OpenCL',
-                    'properties' : { 'OpenCLPrecision': 'single',
-                                      'OpenCLDeviceIndex' : 2},
-                    'nprop' : 1,
-                    'prop_lambda' : 0.3,
-                    'dt' : 0.001 * unit.picoseconds,
-                    'friction' : 1 * 1/unit.picoseconds,
-                    'temperature' : 100 * unit.kelvin,
-                    'nIter': 1,
-                    'nstepsMD': 10,
-                    'nstepsNC': 10,}
+        cfg = { 'nprop' : 1,
+                'prop_lambda' : 0.3,
+                'dt' : 0.001 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 100 * unit.kelvin,
+                'nIter': 1,
+                'nstepsMD': 10,
+                'nstepsNC': 10,}
         simulations = SimulationFactory(self.systems, self.engine, cfg)
         #Check that we've made the MD/ALCH/NCMC simulation set
         self.assertTrue(hasattr(simulations, 'md'))

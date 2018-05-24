@@ -18,7 +18,6 @@ from blues import reporters
 from simtk.openmm import app
 logger = logging.getLogger(__name__)
 
-
 class SystemFactory(object):
     """
     SystemFactory contains methods to generate/modify the OpenMM System object required for
@@ -662,7 +661,7 @@ class SimulationFactory(object):
         self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **config)
         utils.print_host_info(self.ncmc)
 
-class Simulation(object):
+class BLUESSimulation(object):
     """Simulation class provides the functions that perform the BLUES run.
     """
     def __init__(self, simulations, config=None):
@@ -697,9 +696,8 @@ class Simulation(object):
 
         #Dict to keep track of each simulation state before/after each iteration
         self.stateTable = { 'md'   : { 'state0' : {}, 'state1' : {} },
-                            'ncmc'   : { 'state0' : {}, 'state1' : {} },
-                            'alch' : { 'state0' : {}, 'state1' : {} }
-                            }
+                            'ncmc' : { 'state0' : {}, 'state1' : {} }
+                          }
 
         #specify nc integrator variables to report in verbose output
         self._integrator_keys_= [ 'lambda', 'shadow_work',
@@ -713,9 +711,7 @@ class Simulation(object):
                        'enforcePeriodicBox' : True}
 
     @classmethod
-    def getStateFromContext(cls, context,
-                    state_keys=[ 'positions', 'velocities', 'potential_energy', 'kinetic_energy' ],
-                    currentIter=0):
+    def getStateFromContext(cls, context, state_keys, currentIter):
         """Function that gets the State information from the given context and
         list of state_keys to query it with.
 
@@ -731,7 +727,6 @@ class Simulation(object):
         """
         stateinfo = {}
         state  = context.getState(**state_keys)
-
         stateinfo['iter'] = int(currentIter)
         stateinfo['positions'] =  state.getPositions(asNumpy=True)
         stateinfo['velocities'] = state.getVelocities(asNumpy=True)
@@ -762,7 +757,7 @@ class Simulation(object):
         return integrator_info
 
     @classmethod
-    def setContextFromState(cls, context, state, state_keys):
+    def setContextFromState(cls, context, state):
         # Replace ncmc data from the md context
         context.setPeriodicBoxVectors(*state['box_vectors'])
         context.setPositions(state['positions'])
@@ -829,49 +824,46 @@ class Simulation(object):
         """
         self.stateTable[simkey][stateidx] = stateinfo
 
-    def _get_stateTable_(self, simkey, stateidx):
-        return self.stateTable[simkey][stateidx]
-
     def _sync_states_md_to_ncmc_(self, currentIter):
         """Retrieves data on the current State of the MD context to
         replace the box vectors, positions, and velocties in the NCMC context.
 
         """
-        # Retrieve the state data from the MD/NCMC contexts
+        # Retrieve the state data from the MD/NCMC contexts before proposed move
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_, currentIter)
-        #TODO: SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD SIMUALTION?
-        nc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
-
-        # Replace ncmc data from the md context
-        #self._ncmc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
-        #self._ncmc_sim.context.setPositions(md_state0['positions'])
-        #self._ncmc_sim.context.setVelocities(md_state0['velocities'])
-        state_keys = ['box_vectors', 'positions', 'velocities']
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, state_keys)
-
-        # Update interal `stateTable` dict of the Simulation class.
         self._set_stateTable_('md', 'state0', md_state0)
-        self._set_stateTable_('ncmc', 'state0', nc_state0)
-
-        self._ncmc_sim.currentIter = currentIter
         self._md_sim.currentIter = currentIter
 
-    def _stepNCMC_(self, nstepsNC, moveStep, currentIter=0, move_engine=None):
+        #TODO: CHECK SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD?
+        #ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
+        #self._set_stateTable_('ncmc', 'state0', ncmc_state0)
+        #self._ncmc_sim.currentIter = currentIter
+
+        # Replace ncmc context data from the md context
+        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+
+        #TODO: CHECK SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD?
+        # IMPACTS ALCHEMICAL CORRECTION CALCULATION?
+        nc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
+        self._set_stateTable_('ncmc', 'state0', nc_state0)
+        self._ncmc_sim.currentIter = currentIter
+
+    def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
         """Function that advances the NCMC simulation."""
+
+        currentIter = self._ncmc_sim.currentIter
         logger.info('[Iter %i] Advancing %i NCMC switching steps...' % (currentIter, nstepsNC))
+
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch region
-        #self._mover.selectMove()
-        if not currentIter: currentIter = self.currentIter
-        if not move_engine: move_engine = self._mover
-        move_engine.selectMove()
-        #move_idx = self._move_engine.selected_move
-        #move_name = self._move_engine.moves[move_idx].__class__.__name__
+        if not move_engine: mover = self._mover
+        mover.selectMove()
+
         for step in range(int(nstepsNC)):
             try:
                 #Attempt anything related to the move before protocol is performed
                 if step == 0:
-                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
+                    self._ncmc_sim.context = mover.selected_move.beforeMove(self._ncmc_sim.context)
                     #self._ncmc_sim.context = self._move_engine.moves[move_idx].beforeMove(self._ncmc_sim.context)
 
                 # Attempt selected MoveEngine Move at the halfway point
@@ -880,8 +872,8 @@ class Simulation(object):
                     if hasattr(logger, 'report'):
                         logger.info = logger.report
                     #Do move
-                    logger.info('Performing %s...' % move_engine.move_name)
-                    self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+                    logger.info('Performing %s...' % mover.move_name)
+                    self._ncmc_sim.context = mover.runEngine(self._ncmc_sim.context)
 
                 # Do 1 NCMC step with the integrator
                 self._ncmc_sim.step(1)
@@ -891,55 +883,57 @@ class Simulation(object):
 
                 #Attempt anything related to the move after protocol is performed
                 if step == nstepsNC-1:
-                    self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+                    self._ncmc_sim.context = mover.selected_move.afterMove(self._ncmc_sim.context)
 
             except Exception as e:
                 logger.error(e)
-                move_engine.selected_move._error(self._ncmc_sim.context)
+                mover.selected_move._error(self._ncmc_sim.context)
                 break
 
-        nc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, self.currentIter)
-        # nc_state1 stores the state AFTER a proposed move.
-        self._set_stateTable_('ncmc', 'state1', nc_state1)
+        # ncmc_state1 stores the state AFTER a proposed move.
+        ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
+        self._set_stateTable_('ncmc', 'state1', ncmc_state1)
+
+    def _compute_alchemical_correction_(self):
+        # Retrieve the MD/NCMC state before the proposed move.
+        md_state0_PE = self.stateTable['md']['state0']['potential_energy']
+        ncmc_state0_PE = self.stateTable['ncmc']['state0']['potential_energy']
+
+        # Retreive the NCMC state after the proposed move.
+        ncmc_state1 = self.stateTable['ncmc']['state1']
+
+        # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
+        self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1)
+
+        # Retrieve potential_energy for alch correction
+        alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
+
+        correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
+
+        #print('Alchemical Correction', correction_factor)
+        #print(ncmc_state0_PE, md_state0_PE)
+        #print(ncmc_state0_PE - md_state0_PE)
+
+        return correction_factor
 
     def _accept_reject_move_(self, write_move=False):
         """Function that chooses to accept or reject the proposed move based
         on the acceptance criterion.
         """
 
-        # Retrieve the MD/NCMC state before the proposed move.
-        md_state0 = self._get_stateTable_('md', 'state0')
-        ncmc_state0 = self._get_stateTable_('ncmc', 'state0')
-        #md_state0 = self.stateTable['md']['state0']
-        #ncmc_state0 = self.stateTable['ncmc']['state0']
-        # Retreive the NCMC state after the proposed move.
-        ncmc_state1 = self.stateTable['ncmc']['state1']
-
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
         randnum =  math.log(np.random.random())
 
-        # Compute Alchemical Correction Term using the alchemical Simulation object.
-        if np.isnan(work_ncmc) is False:
-            # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
-            #self._alch_sim.context.setPeriodicBoxVectors(*ncmc_state1['box_vectors'])
-            #self._alch_sim.context.setPositions(ncmc_state1['positions'])
-            state_keys = ['box_vectors', 'positions']
-            self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1, state_keys)
-            # I think we only need the potential energy here
-            #alch_state1 = self.getStateFromContext(self._alch_sim.context, self._state_keys_, self.currentIter)
-            #self._set_stateTable_('alch', 'state1', alch_state1)
-            alch_state1 = self.getStateFromContext(self._alch_sim.context, state_keys='potential_energy', currentIter=self.currentIter)
-            correction_factor = (ncmc_state0['potential_energy'] - md_state0['potential_energy'] + alch_state1['potential_energy'] - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
+        # Compute correction if work_ncmc is not NaN
+        if not np.isnan(work_ncmc):
+            correction_factor = self._compute_alchemical_correction_()
             work_ncmc = work_ncmc + correction_factor
 
         if work_ncmc > randnum:
             self.accept += 1
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum) )
 
-            # If we accept, sync NCMC state to the MD context
-
-            #self._md_sim.context.setPeriodicBoxVectors(*nc_state1['box_vectors'])
-            #self._md_sim.context.setPositions(nc_state1['positions'])
+            # If accept move, sync MD context from NCMC after move.
             state_keys = ['box_vectors', 'positions', 'velocities']
             self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, state_keys)
 
@@ -950,16 +944,19 @@ class Simulation(object):
             self.reject += 1
             logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum) )
 
-            #IF we reject, reset positions in ncmc context to before move
-            #self._ncmc_sim.context.setPositions(md_state0['positions'])
-            self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, ['positions'])
+            #If reject move, reset positions in ncmc context to before move
+            md_state0 = self.stateTable['md']['state0']
+            self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
 
-    def _stepMD_(self, nstepsMD, currentIter=0):
+    def _stepMD_(self, nstepsMD):
         """Function that advances the MD simulation."""
-        if not currentIter: currentIter = self.currentIter
+        currentIter = self._md_sim.currentIter
         logger.info('[Iter %i] Advancing %i MD steps...' % (currentIter, nstepsMD))
 
+        #Retrieve MD state before proposed move
+        # Helps determine if previous iteration placed ligand poorly
         md_state0 = self.stateTable['md']['state0']
+
         for md_step in range(int(nstepsMD)):
             try:
                 self._md_sim.step(1)
@@ -971,14 +968,13 @@ class Simulation(object):
                 utils.saveSimulationFrame(self._md_sim, 'MD-fail-it%s-md%i.pdb' %(currentIter, self._md_sim.currentStep))
                 sys.exit(1)
 
+        #If MD finishes okay, update stateTable
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_, currentIter)
         self._set_stateTable_('md', 'state0', md_state0)
-        # Set NC poistions to last positions from MD
-        #self._ncmc_sim.context.setPeriodicBoxVectors(*md_state0['box_vectors'])
-        #self._ncmc_sim.context.setPositions(md_state0['positions'])
-        #self._ncmc_sim.context.setVelocities(md_state0['velocities'])
-        state_keys = ['box_vectors', 'positions', 'velocities']
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, state_keys)
+
+        # Set NCMD poistions to last state from MD
+        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+        self._set_stateTable_('ncmc', 'state0', md_state0)
 
     def _reset_simulations_(self, temperature=None):
         """At the end of each iteration:
@@ -991,6 +987,7 @@ class Simulation(object):
 
         self._ncmc_sim.currentStep = 0
         self._ncmc_sim.context._integrator.reset()
+
         #Reinitialize velocities, preserving detailed balance?
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
@@ -1026,7 +1023,12 @@ class Simulation(object):
         logger.info('Acceptance Ratio: %s' % self.acceptRatio)
         logger.info('nIter: %s ' % nIter)
 
-    def simulateMC(self):
+class MonteCarloSimulation(BLUESSimulation):
+
+    def __init__(self, simulations, config=None):
+        super(BLUESSimulation, self).__init__(simulations, config)
+
+    def _stepMC_(self):
         """Function that performs the MC simulation."""
 
         #choose a move to be performed according to move probabilities
@@ -1036,26 +1038,25 @@ class Simulation(object):
         md_state1 = self.getStateFromContext(new_context, self._state_keys_, self.currentIter)
         self._set_stateTable_('md', 'state1', md_state1)
 
-    def acceptRejectMC(self, temperature=300, **config):
+    def _accept_reject_move_(self, temperature=300, **config):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.stateTable['md']['state0']
         md_state1 = self.stateTable['md']['state1']
-        log_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.ncmc_integrator.kT)
+        work_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.integrator.kT)
         randnum =  math.log(np.random.random())
 
         if log_mc > randnum:
             self.accept += 1
-            logger.info('MC MOVE ACCEPTED: log_mc {} > randnum {}'.format(log_mc, randnum) )
+            logger.info('MC MOVE ACCEPTED: work_mc {} > randnum {}'.format(work_mc, randnum) )
             self._md_sim.context.setPositions(md_state1['positions'])
         else:
             self.reject += 1
-            logger.info('MC MOVE REJECTED: log_mc {} < {}'.format(log_mc, randnum) )
+            logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum) )
             self._md_sim.context.setPositions(md_state0['positions'])
-        logger_mc = log_mc
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def runMC(self, nIter):
+    def run(self, nIter, nstepsMC=None, write_move=False,):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
@@ -1070,7 +1071,7 @@ class Simulation(object):
 
         #controls how many mc moves are performed during each iteration
         try:
-            self.mc_per_iter = self._config['mc_per_iter']
+            self.mc_per_iter = self._config['nstepsMC']
         except:
             self.mc_per_iter = 1
 
@@ -1078,6 +1079,6 @@ class Simulation(object):
         for n in range(nIter):
             for i in range(self.mc_per_iter):
                 self._sync_states_md_to_ncmc_(currentIter=n)
-                self.simulateMC()
-                self.acceptRejectMC(**self._config)
+                self._stepMC_()
+                self._accept_reject_move_(write_move)
             self._stepMD_(**self._config)
