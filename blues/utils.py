@@ -7,11 +7,86 @@ Contributors: Nathan M. Lim, David L. Mobley
 
 from __future__ import print_function
 import os, copy, yaml, logging, sys, itertools
-import mdtraj
+import mdtraj, parmed
 from simtk import unit
 from blues import utils
 from blues import reporters
 from math import floor, ceil
+logger = logging.getLogger(__name__)
+
+def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
+    # Make sure provided NCMC steps is even.
+    if (nstepsNC % 2) != 0:
+        rounded_val = nstepsNC & ~1
+        msg = 'nstepsNC=%i must be even for symmetric protocol.' % (nstepsNC)
+        if rounded_val:
+            logger.warning(msg+' Setting to nstepsNC=%i' % rounded_val)
+            nstepsNC = rounded_val
+        else:
+            logger.error(msg)
+            sys.exit(1)
+    # Calculate the total number of lambda switching steps
+    lambdaSteps = nstepsNC / (2 * (nprop * propLambda + 0.5 - propLambda))
+    if int(lambdaSteps) % 2 == 0:
+        lambdaSteps = int(lambdaSteps)
+    else:
+        lambdaSteps = int(lambdaSteps) + 1
+
+    # Calculate number of lambda steps inside/outside region with extra propgation steps
+    in_portion = (propLambda) * lambdaSteps
+    out_portion = (0.5 - propLambda) * lambdaSteps
+    in_prop = int(nprop * (2 * floor(in_portion)))
+    out_prop = int((2 * ceil(out_portion)))
+    propSteps = int(in_prop + out_prop)
+
+    if propSteps != nstepsNC:
+        logger.warn("nstepsNC=%s is incompatible with prop_lambda=%s and nprop=%s." % (nstepsNC, propLambda, nprop))
+        logger.warn("Changing NCMC protocol to %s lambda switching within %s total propagation steps." % (lambdaSteps, propSteps))
+        nstepsNC = lambdaSteps
+
+    moveStep = int(nstepsNC/2)
+
+    return nstepsNC, propSteps, moveStep
+
+
+def check_amber_selection(structure, selection):
+    """
+    Given a AmberMask selection (str) for selecting atoms to freeze or restrain,
+    check if it will actually select atoms. If the selection produces None,
+    suggest valid residues or atoms.
+
+    Parameters
+    ----------
+    structure: parmed.Structure object
+    selection: str (Amber syntax), atoms to restrain/freeze during simulation.
+    logger: logging.Logger object, records information
+    """
+
+    mask_idx = []
+    mask = parmed.amber.AmberMask(structure, str(selection))
+    mask_idx = [i for i in mask.Selected()]
+    if not mask_idx:
+        if ':' in selection:
+            res_set = set(residue.name for residue in structure.residues)
+            logger.error("'{}' was not a valid Amber selection. \n\tValid residue names: {}".format(
+                selection, res_set))
+        elif '@' in selection:
+            atom_set = set(atom.name for atom in structure.atoms)
+            logger.error("'{}' was not a valid Amber selection. Valid atoms: {}".format(
+                selection, atom_set))
+        sys.exit(1)
+
+def parse_unit_quantity(unit_quantity_str):
+    """
+    Utility for parsing parameters from the YAML file that require units.
+    Takes a str, i.e. '3.024 * daltons' and returns as a simtk.unit.Quantity
+    `unit.Quantity(3.024, unit=dalton)``
+    """
+    value, u = unit_quantity_str.replace(' ', '').split('*')
+    if '/' in u:
+        u = u.split('/')
+        return unit.Quantity(float(value), eval('%s/unit.%s' % (u[0], u[1])))
+    return unit.Quantity(float(value), eval('unit.%s' % u))
 
 def ranges(i):
     for a, b in itertools.groupby(enumerate(i), lambda x, y: y - x ):

@@ -395,7 +395,9 @@ class SystemFactory(object):
 
 class SimulationFactory(object):
     """SimulationFactory is used to generate the 3 required OpenMM Simulation
-    objects (MD, NCMC, ALCH) required for the BLUES run.
+    objects (MD, NCMC, ALCH) required for the BLUES run. This class can take a
+    list of reporters for the MD or NCMC simulation in the arguments
+    `md_reporters` or `ncmc_reporters`.
 
     Usage Example
     -------------
@@ -411,7 +413,45 @@ class SimulationFactory(object):
     systems = SystemFactory(structure, ligand.atom_indices, config['system'])
 
     #Generate the OpenMM Simulations
-    simulations = SimulationFactory(systems, ligand_mover, config['simulation'])
+    #Explicit dict of simulation configuration parameters
+    sim_cfg = { 'platform': 'OpenCL',
+                'properties' : { 'OpenCLPrecision': 'single',
+                                  'OpenCLDeviceIndex' : 2},
+                'nprop' : 1,
+                'propLambda' : 0.3,
+                'dt' : 0.001 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 100 * unit.kelvin,
+                'nIter': 1,
+                'nstepsMD': 10,
+                'nstepsNC': 10,}
+    simulations = SimulationFactory(systems, ligand_mover, sim_cfg])
+
+    #Access the MD/NCMC simulation objects separately with `simulations.md` or
+    `simulations.ncmc`
+
+    # If a configuration is provided at on initialization, it will call
+    # `generateSimulationSet()` for convenience. Otherwise, the class can be
+    # instantiated like a normal python class:
+
+    simulations = SimulationFactory(systems, ligand_mover)
+    hasattr(simulations, 'md')
+    hasattr(simulations, 'ncmc')
+    >>> False
+    >>> False
+
+    simulations.generateSimulationSet(sim_cfg)
+    hasattr(simulations, 'md')
+    hasattr(simulations, 'ncmc')
+    >>> False
+    >>> False
+
+    # After generating the Simulations, attach your own reporters by providing
+    # the reporters in a list. Be sure to attach to either the MD or NCMC simulation.
+
+    from simtk.openmm.app import StateDataReporter
+    reporters = [ StateDataReporter('test.log', 5) ]
+    simulations.md = simulations.attachReporters( simulations.md, reporters)
 
     Parameters
     ----------
@@ -420,9 +460,11 @@ class SimulationFactory(object):
     move_engine : blues.engine.MoveEngine object
         MoveProposal object which contains the dict of moves performed
         in the NCMC simulation.
-    config : dict of parameters for the simulation (i.e timestep, temperature, etc.)
-    md_reporters : list of Reporter objects for the MD openmm.Simulation
-    ncmc_reporters : list of Reporter objects for the NCMC openmm.Simulation
+    config : dict of parameters for the simulation
+        #TODO: SET DEFAULTS OR MAKE THESE REQUIRED
+        nIter, nstepsNC, nstepsMD, nprop, propLambda, temperature, dt, propSteps, write_move
+    md_reporters : (optional) list of Reporter objects for the MD openmm.Simulation
+    ncmc_reporters : (optional) list of Reporter objects for the NCMC openmm.Simulation
     """
     def __init__(self, systems, move_engine, config=None, md_reporters=None, ncmc_reporters=None):
         #Hide these properties since they exist on the SystemsFactory object
@@ -435,18 +477,20 @@ class SimulationFactory(object):
         self._move_engine = move_engine
         self.config = config
 
-        #If parameters for generating the openmm.Simulation is given, make them.
+        #If parameters for generating the openmm.Simulation are given, make them.
         if self.config:
-            self.generateSimulationSet()
+            try:
+                self.generateSimulationSet()
+            except Exception as e:
+                logger.exception(e)
+                raise e
 
-            if md_reporters:
-                self._md_reporters = md_reporters
-                self.md = SimulationFactory.attachReporters(self.md, self._md_reporters)
-            if ncmc_reporters:
-                self._ncmc_reporters = ncmc_reporters
-                self.ncmc = SimulationFactory.attachReporters(self.ncmc, self._ncmc_reporters)
-
-            self.print_simulation_timing()
+        if md_reporters:
+            self._md_reporters = md_reporters
+            self.md = SimulationFactory.attachReporters(self.md, self._md_reporters)
+        if ncmc_reporters:
+            self._ncmc_reporters = ncmc_reporters
+            self.ncmc = SimulationFactory.attachReporters(self.ncmc, self._ncmc_reporters)
 
     @classmethod
     def addBarostat(cls, system, temperature=300*unit.kelvin, pressure=1*unit.atmospheres, frequency=25, **kwargs):
@@ -497,7 +541,7 @@ class SimulationFactory(object):
                                temperature=300*unit.kelvin,
                                dt=0.002*unit.picoseconds,
                                nprop=1,
-                               prop_lambda=0.3, **kwargs):
+                               propLambda=0.3, **kwargs):
         """
         Generates the AlchemicalExternalLangevinIntegrator using openmmtools.
 
@@ -526,10 +570,10 @@ class SimulationFactory(object):
             The timestep of the integrator to use (in ps).
         nprop : int (Default: 1)
             Controls the number of propagation steps to add in the lambda
-            region defined by `prop_lambda`
-        prop_lambda: float, optional, default=0.3
+            region defined by `propLambda`
+        propLambda: float, optional, default=0.3
             The range which additional propogation steps are added,
-            defined by [0.5-prop_lambda, 0.5+prop_lambda].
+            defined by [0.5-propLambda, 0.5+propLambda].
         """
         #During NCMC simulation, lambda parameters are controlled by function dict below
         # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
@@ -541,7 +585,7 @@ class SimulationFactory(object):
                                nsteps_neq=nstepsNC,
                                timestep=dt,
                                nprop=nprop,
-                               prop_lambda=prop_lambda)
+                               prop_lambda=propLambda)
         return ncmc_integrator
 
     @classmethod
@@ -571,8 +615,8 @@ class SimulationFactory(object):
             simulation = app.Simulation(structure.topology, system, integrator, platform, properties)
 
         # Set initial positions/velocities
-        # Will get overwritten from saved State.
-        simulation.context.setPeriodicBoxVectors(*structure.box_vectors)
+        if structure.box_vectors:
+            simulation.context.setPeriodicBoxVectors(*structure.box_vectors)
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
 
@@ -596,52 +640,6 @@ class SimulationFactory(object):
             msg += '{} = {} \n'.format(prop,val)
         logger.info(msg)
 
-    def print_simulation_timing(self):
-        """Prints the simulation timing and related information."""
-
-        dt = self.config['dt'].value_in_unit(unit.picoseconds)
-        nIter = self.config['nIter']
-        nprop  = self.config['nprop']
-        prop_lambda = self.config['prop_lambda']
-        propSteps = self.config['propSteps']
-        nstepsNC = self.config['nstepsNC']
-        nstepsMD = self.config['nstepsMD']
-
-        force_eval = nIter * (propSteps + nstepsMD)
-        time_ncmc_iter =  propSteps * dt
-        time_ncmc_total = time_ncmc_iter * nIter
-        time_md_iter = nstepsMD * dt
-        time_md_total = time_md_iter * nIter
-        time_iter = time_ncmc_iter + time_md_iter
-        time_total = time_iter * nIter
-
-        msg =  'Total BLUES Simulation Time = %s ps (%s ps/Iter)\n' % (time_total, time_iter)
-        msg += 'Total Force Evaluations = %s \n' % force_eval
-        msg += 'Total NCMC time = %s ps (%s ps/iter)\n' % (time_ncmc_total, time_ncmc_iter)
-
-        # Calculate number of lambda steps inside/outside region with extra propgation steps
-        steps_in_prop = int(  nprop * (2 * math.floor( prop_lambda * nstepsNC ) )  )
-        steps_out_prop = int( (2 * math.ceil( (0.5 - prop_lambda) * nstepsNC )  )  )
-
-        prop_lambda_window = self.ncmc.context._integrator._prop_lambda
-        prop_range = round(prop_lambda_window[1] - prop_lambda_window[0],4)
-        if propSteps != nstepsNC:
-                msg += '\t%s lambda switching steps within %s total propagation steps.\n' % (nstepsNC, propSteps)
-                msg += '\tExtra propgation steps between lambda [%s, %s]\n' % (prop_lambda_window[0], prop_lambda_window[1])
-                msg += '\tLambda: 0.0 -> %s = %s propagation steps\n' % (prop_lambda_window[0], int(steps_out_prop/2))
-                msg += '\tLambda: %s -> %s = %s propagation steps\n' % (prop_lambda_window[0], prop_lambda_window[1], steps_in_prop)
-                msg += '\tLambda: %s -> 1.0 = %s propagation steps\n' % (prop_lambda_window[1], int(steps_out_prop/2))
-
-        msg += 'Total MD time = %s ps (%s ps/iter)\n' % (time_md_total, time_md_iter)
-
-        #Get trajectory frame interval timing for BLUES simulation
-        if self.config['md_trajectory_interval']:
-            frame_iter = nstepsMD / self.config['md_trajectory_interval']
-            timetraj_frame = (time_ncmc_iter + time_md_iter) / frame_iter
-            msg += 'Trajectory Interval = %s ps/frame (%s frames/iter)\n' % (timetraj_frame, frame_iter)
-
-        logger.info(msg)
-
     @staticmethod
     def attachReporters(simulation, reporter_list):
         """Attach the list of reporters to the Simulation object"""
@@ -649,36 +647,44 @@ class SimulationFactory(object):
             simulation.reporters.append(rep)
         return simulation
 
-    def generateSimulationSet(self):
+    def generateSimulationSet(self, config=None):
         """Function used to generate the 3 OpenMM Simulation objects."""
+        if not config: config = self.config
+
         #Construct MD Integrator and Simulation
-        self.integrator = self.generateIntegrator(**self.config)
+        self.integrator = self.generateIntegrator(**config)
 
         #Check for pressure parameter to set simulation to NPT
-        if 'pressure' in self.config.keys():
-            self._system = self.addBarostat(self._system, **self.config)
+        if 'pressure' in config.keys():
+            self._system = self.addBarostat(self._system, **config)
             logger.warning('NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
         else:
-            logger.info('MD simulation will be {} NVT.'.format(self.config['temperature']))
-        self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **self.config)
+            logger.info('MD simulation will be {} NVT.'.format(config['temperature']))
+        self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **config)
 
         #Alchemical Simulation is used for computing correction term from MD simulation.
-        alch_integrator = self.generateIntegrator(**self.config)
-        self.alch = self.generateSimFromStruct(self._structure, self._system, alch_integrator, **self.config)
+        alch_integrator = self.generateIntegrator(**config)
+        self.alch = self.generateSimFromStruct(self._structure, self._system, alch_integrator, **config)
+
+        #If the moveStep hasn't been calculated, recheck the NCMC steps.
+        if 'moveStep' not in config.keys():
+            nstepsNC, propSteps, moveStep = utils.calculateNCMCSteps(**config)
+            config['nstepsNC'], config['propSteps'], config['moveStep']  = nstepsNC, propSteps, moveStep
+            self.config = config
 
         #Construct NCMC Integrator and Simulation
-        self.ncmc_integrator = self.generateNCMCIntegrator(**self.config)
+        self.ncmc_integrator = self.generateNCMCIntegrator(**config)
 
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self._move_engine.moves:
             self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
-        self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **self.config)
+        self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **config)
         SimulationFactory.print_host_info(self.ncmc)
 
 class Simulation(object):
     """Simulation class provides the functions that perform the BLUES run.
     """
-    def __init__(self, simulations):
+    def __init__(self, simulations, config=None):
         """Initialize the BLUES Simulation object.
 
         Parameters
@@ -688,7 +694,12 @@ class Simulation(object):
             OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
 
         """
-        self._config = simulations.config
+        # Check if configuration has been specified in `SimulationFactory` object
+        if hasattr(simulations, 'config'):
+            self._config = simulations.config
+        else:
+            #Otherwise take specified config
+            self._config = config
         self._mover = simulations._move_engine
         self._md_sim = simulations.md
         self._alch_sim = simulations.alch
@@ -772,6 +783,53 @@ class Simulation(object):
         context.setPositions(state['positions'])
         context.setVelocities(state['velocities'])
         return context
+
+    @staticmethod
+    def print_simulation_timing(md_simulation, ncmc_simulation):
+        """Prints the simulation timing and related information."""
+        integrator.getStepSize(), cfg['dt']
+        #dt = self.config['dt'].value_in_unit(unit.picoseconds)
+        # nIter = self.config['nIter']
+        # nprop  = self.config['nprop']
+        # propLambda = self.config['propLambda']
+        # propSteps = self.config['propSteps']
+        # nstepsNC = self.config['nstepsNC']
+        # nstepsMD = self.config['nstepsMD']
+
+        force_eval = nIter * (propSteps + nstepsMD)
+        time_ncmc_iter =  propSteps * dt
+        time_ncmc_total = time_ncmc_iter * nIter
+        time_md_iter = nstepsMD * dt
+        time_md_total = time_md_iter * nIter
+        time_iter = time_ncmc_iter + time_md_iter
+        time_total = time_iter * nIter
+
+        msg =  'Total BLUES Simulation Time = %s ps (%s ps/Iter)\n' % (time_total, time_iter)
+        msg += 'Total Force Evaluations = %s \n' % force_eval
+        msg += 'Total NCMC time = %s ps (%s ps/iter)\n' % (time_ncmc_total, time_ncmc_iter)
+
+        # Calculate number of lambda steps inside/outside region with extra propgation steps
+        steps_in_prop = int(  nprop * (2 * math.floor( propLambda * nstepsNC ) )  )
+        steps_out_prop = int( (2 * math.ceil( (0.5 - propLambda) * nstepsNC )  )  )
+
+        prop_lambda_window = self.ncmc.context._integrator._prop_lambda
+        prop_range = round(prop_lambda_window[1] - prop_lambda_window[0],4)
+        if propSteps != nstepsNC:
+                msg += '\t%s lambda switching steps within %s total propagation steps.\n' % (nstepsNC, propSteps)
+                msg += '\tExtra propgation steps between lambda [%s, %s]\n' % (prop_lambda_window[0], prop_lambda_window[1])
+                msg += '\tLambda: 0.0 -> %s = %s propagation steps\n' % (prop_lambda_window[0], int(steps_out_prop/2))
+                msg += '\tLambda: %s -> %s = %s propagation steps\n' % (prop_lambda_window[0], prop_lambda_window[1], steps_in_prop)
+                msg += '\tLambda: %s -> 1.0 = %s propagation steps\n' % (prop_lambda_window[1], int(steps_out_prop/2))
+
+        msg += 'Total MD time = %s ps (%s ps/iter)\n' % (time_md_total, time_md_iter)
+
+        #Get trajectory frame interval timing for BLUES simulation
+        if self.config['md_trajectory_interval']:
+            frame_iter = nstepsMD / self.config['md_trajectory_interval']
+            timetraj_frame = (time_ncmc_iter + time_md_iter) / frame_iter
+            msg += 'Trajectory Interval = %s ps/frame (%s frames/iter)\n' % (timetraj_frame, frame_iter)
+
+        logger.info(msg)
 
     def writeFrame(self, simulation, outfname):
         """Extracts a ParmEd structure and writes the frame given
@@ -858,7 +916,7 @@ class Simulation(object):
                 #to ensure protocol is symmetric
                 if step == moveStep:
                     #Do move
-                    logger.report('Performing %s...' % move_engine.move_name)
+                    logger.info('Performing %s...' % move_engine.move_name)
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
 
                 # Do 1 NCMC step with the integrator
@@ -972,7 +1030,7 @@ class Simulation(object):
         #Reinitialize velocities, preserving detailed balance?
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def run(self, nIter, nstepsNC, moveStep, nstepsMD, write_move=False, **config):
+    def run(self, nIter=None, nstepsNC=None, moveStep=None, nstepsMD=None, write_move=False, **config):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state niter number of times.
@@ -983,6 +1041,10 @@ class Simulation(object):
             Number of iterations of NCMC+MD to perform.
 
         """
+        if not nIter: nIter = self._config['nIter']
+        if not nstepsNC: nstepsNC = self._config['nstepsNC']
+        if not nstepsMD: nstepsMD = self._config['nstepsMD']
+        if not moveStep: moveStep = self._config['moveStep']
 
         logger.info('Running %i BLUES iterations...' % (nIter))
         #set inital conditions

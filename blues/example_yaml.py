@@ -5,6 +5,8 @@ import json
 from blues.config import *
 
 opt = startup('blues_cuda.yaml')
+print(opt)
+print(json.dumps(opt, sort_keys=True, indent=2, skipkeys=True, default=str))
 structure = opt['Structure']
 
 #Select move type

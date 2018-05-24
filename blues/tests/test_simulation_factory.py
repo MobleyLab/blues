@@ -22,12 +22,12 @@ class SimulationFactoryTester(unittest.TestCase):
         system_cfg = { 'nonbondedMethod' : app.PME,
                        'nonbondedCutoff' : 8.0*unit.angstroms,
                        'constraints'  : app.HBonds }
-        systems = SystemFactory(self.structure, self.atom_indices, system_cfg)
+        self.systems = SystemFactory(self.structure, self.atom_indices, system_cfg)
 
         move = RandomLigandRotationMove(self.structure, 'LIG')
-        engine = MoveEngine(move)
+        self.engine = MoveEngine(move)
 
-        self.simulations = SimulationFactory(systems, engine)
+        self.simulations = SimulationFactory(self.systems, self.engine)
         self.system = self.simulations._system
 
     def test_addBarostat(self):
@@ -97,13 +97,54 @@ class SimulationFactoryTester(unittest.TestCase):
         self.assertEqual(len(simulation.reporters), 0)
         simulation = SimulationFactory.attachReporters(simulation,reporters)
         self.assertEqual(len(simulation.reporters), 1)
+        os.remove('test.log')
 
+    def test_generateSimulationSet(self):
+        print('Testing generateSimulationSet')
+        cfg = { 'platform': 'OpenCL',
+                    'properties' : { 'OpenCLPrecision': 'single',
+                                      'OpenCLDeviceIndex' : 2},
+                    'dt' : 0.001 * unit.picoseconds,
+                    'friction' : 1 * 1/unit.picoseconds,
+                    'temperature' : 100 * unit.kelvin,
+                    'nIter': 1,
+                    'nstepsMD': 10,
+                    'nstepsNC': 10,}
+        simulations = SimulationFactory(self.systems, self.engine)
+        simulations.generateSimulationSet(cfg)
+        #Check that we've made the MD/ALCH/NCMC simulation set
+        self.assertTrue(hasattr(simulations, 'md'))
+        self.assertTrue(hasattr(simulations, 'alch'))
+        self.assertTrue(hasattr(simulations, 'ncmc'))
+        #Check that the physical parameters are equivalent
+        self.assertEqual(simulations.ncmc_integrator.getStepSize(), cfg['dt'])
+        self.assertEqual(simulations.integrator.getStepSize(), cfg['dt'])
+        self.assertAlmostEqual(simulations.ncmc_integrator.getTemperature()._value, cfg['temperature']._value)
+        self.assertAlmostEqual(simulations.integrator.getTemperature()._value, cfg['temperature']._value)
 
-        from blues.simulation import Simulation
-        blues = Simulation(simulation)
-        blues.run(1)
-
-        #os.remove('test.log')
+    def test_initSimulationFactory(self):
+        print('Testing initialization of SimulationFactory')
+        cfg = { 'platform': 'OpenCL',
+                    'properties' : { 'OpenCLPrecision': 'single',
+                                      'OpenCLDeviceIndex' : 2},
+                    'nprop' : 1,
+                    'prop_lambda' : 0.3,
+                    'dt' : 0.001 * unit.picoseconds,
+                    'friction' : 1 * 1/unit.picoseconds,
+                    'temperature' : 100 * unit.kelvin,
+                    'nIter': 1,
+                    'nstepsMD': 10,
+                    'nstepsNC': 10,}
+        simulations = SimulationFactory(self.systems, self.engine, cfg)
+        #Check that we've made the MD/ALCH/NCMC simulation set
+        self.assertTrue(hasattr(simulations, 'md'))
+        self.assertTrue(hasattr(simulations, 'alch'))
+        self.assertTrue(hasattr(simulations, 'ncmc'))
+        #Check that the physical parameters are equivalent
+        self.assertEqual(simulations.ncmc_integrator.getStepSize(), cfg['dt'])
+        self.assertEqual(simulations.integrator.getStepSize(), cfg['dt'])
+        self.assertAlmostEqual(simulations.ncmc_integrator.getTemperature()._value, cfg['temperature']._value)
+        self.assertAlmostEqual(simulations.integrator.getTemperature()._value, cfg['temperature']._value)
 
 if __name__ == '__main__':
         unittest.main()
