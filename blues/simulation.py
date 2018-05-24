@@ -63,19 +63,20 @@ class SystemFactory(object):
         and NCMC simulation. For complete parameters, see docs for `generateSystem`
         and `generateAlchSystem`
     """
-    def __init__(self, structure, atom_indices, config):
+    def __init__(self, structure, atom_indices, config=None):
         self.structure = structure
         self.atom_indices = atom_indices
         self._config = config
 
-        if 'alchemical' in self._config.keys():
-            self.alch_config = self._config.pop('alchemical')
-        else:
-            #Use function defaults if none is provided
-            self.alch_config = {}
-
-        self.md = SystemFactory.generateSystem(self.structure, **self._config)
-        self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
+        #If parameters for generating the openmm.System is given, make them.
+        if self._config:
+            if 'alchemical' in self._config.keys():
+                self.alch_config = self._config.pop('alchemical')
+            else:
+                #Use function defaults if none is provided
+                self.alch_config = {}
+            self.md = SystemFactory.generateSystem(self.structure, **self._config)
+            self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
 
     @classmethod
     def generateSystem(cls, structure, **kwargs):
@@ -166,7 +167,7 @@ class SystemFactory(object):
                             suppress_warnings=True,
                             **kwargs):
         """Returns the OpenMM System for alchemical perturbations.
-        This function calls `openmmtools.alchemy.AbsoluteAlchemicalFactory` and 
+        This function calls `openmmtools.alchemy.AbsoluteAlchemicalFactory` and
         `openmmtools.alchemy.AlchemicalRegion` to generate the System for the
         NCMC simulation.
 
@@ -351,7 +352,7 @@ class SystemFactory(object):
         return system
 
     @classmethod
-    def freeze_radius(cls, structure, system, freeze_distance=5.0,
+    def freeze_radius(cls, structure, system, freeze_distance=5.0*unit.angstrom,
                     freeze_center=':LIG', freeze_solvent=':HOH,NA,CL', **kwargs):
         """
         Function that will zero the masses of atoms outside the given raidus of
