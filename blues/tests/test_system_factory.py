@@ -1,11 +1,10 @@
-import unittest, parmed, yaml, logging
+import unittest, parmed, yaml
 from blues import utils
 from blues.simulation import SystemFactory
 from simtk import openmm, unit
 from simtk.openmm import app
-from openmmtools import testsystems
-logger = logging.getLogger(__name__)
-class SystemTester(unittest.TestCase):
+
+class SystemFactoryTester(unittest.TestCase):
     """
     Test the SystemFactory class.
     """
@@ -44,17 +43,17 @@ class SystemTester(unittest.TestCase):
     def test_atom_selections(self):
         atom_indices = self.systems._amber_selection_to_atom_indices_(self.structure, ':LIG')
 
-        print('Checking AMBER selection parser')
+        print('Testing AMBER selection parser')
         self.assertIsInstance(atom_indices, list)
         self.assertEqual(len(atom_indices), len(self.atom_indices))
 
-        print('Checking atoms from AMBER selection with parmed.Structure')
+        print('Testing atoms from AMBER selection with parmed.Structure')
         atom_list = SystemFactory._print_atomlist_from_atom_indices_(self.structure, atom_indices)
         atom_selection = [ self.structure.atoms[i] for i in atom_indices]
         self.assertEqual(atom_selection, atom_list)
 
     def test_restrain_postions(self):
-        print('Checking positional restraints')
+        print('Testing positional restraints')
         no_restr = self.systems.md.getForces()
 
         md_system_restr = SystemFactory.restrain_positions(self.structure, self.systems.md, ':LIG')
@@ -66,7 +65,7 @@ class SystemTester(unittest.TestCase):
         self.assertIsInstance(restr[-1], openmm.CustomExternalForce)
 
     def test_freeze_atoms(self):
-        print('Checking freeze_atoms')
+        print('Testing freeze_atoms')
         masses = [self.systems.md.getParticleMass(i) for i in self.atom_indices]
         frzn_lig = SystemFactory.freeze_atoms(self.structure, self.systems.md, ':LIG')
         massless = [frzn_lig.getParticleMass(i) for i in self.atom_indices]
@@ -74,7 +73,7 @@ class SystemTester(unittest.TestCase):
         self.assertNotEqual(massless,masses)
 
     def test_freeze_radius(self):
-        print('Checking freeze_radius')
+        print('Testing freeze_radius')
         freeze_cfg = { 'freeze_center' : ':LIG',
                        'freeze_solvent' : ':WAT,Cl-',
                        'freeze_distance' : 5.0 * unit.angstroms}

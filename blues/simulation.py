@@ -424,7 +424,7 @@ class SimulationFactory(object):
     md_reporters : list of Reporter objects for the MD openmm.Simulation
     ncmc_reporters : list of Reporter objects for the NCMC openmm.Simulation
     """
-    def __init__(self, systems, move_engine, config, md_reporters=None, ncmc_reporters=None):
+    def __init__(self, systems, move_engine, config=None, md_reporters=None, ncmc_reporters=None):
         #Hide these properties since they exist on the SystemsFactory object
         self._structure = systems.structure
         self._system = systems.md
@@ -434,19 +434,22 @@ class SimulationFactory(object):
         self._atom_indices = move_engine.moves[0].atom_indices
         self._move_engine = move_engine
         self.config = config
-        self.generateSimulationSet()
 
-        if md_reporters:
-            self._md_reporters = md_reporters
-            self.md = SimulationFactory.attachReporters(self.md, self._md_reporters)
-        if ncmc_reporters:
-            self._ncmc_reporters = ncmc_reporters
-            self.ncmc = SimulationFactory.attachReporters(self.ncmc, self._ncmc_reporters)
+        #If parameters for generating the openmm.Simulation is given, make them.
+        if self.config:
+            self.generateSimulationSet()
 
-        self.print_simulation_timing()
+            if md_reporters:
+                self._md_reporters = md_reporters
+                self.md = SimulationFactory.attachReporters(self.md, self._md_reporters)
+            if ncmc_reporters:
+                self._ncmc_reporters = ncmc_reporters
+                self.ncmc = SimulationFactory.attachReporters(self.ncmc, self._ncmc_reporters)
+
+            self.print_simulation_timing()
 
     @classmethod
-    def addBarostat(cls, system, temperature=300, pressure=1, frequency=25, **kwargs):
+    def addBarostat(cls, system, temperature=300*unit.kelvin, pressure=1*unit.atmospheres, frequency=25, **kwargs):
         """
         Adds a MonteCarloBarostat to the MD system.
 
@@ -470,7 +473,7 @@ class SimulationFactory(object):
         return system
 
     @classmethod
-    def generateIntegrator(cls, temperature=300, dt=0.002, friction=1, **kwargs):
+    def generateIntegrator(cls, temperature=300*unit.kelvin, dt=0.002*unit.picoseconds, friction=1, **kwargs):
         """
         Generates a LangevinIntegrator for the Simulations.
 
@@ -487,12 +490,12 @@ class SimulationFactory(object):
         return integrator
 
     @classmethod
-    def generateNCMCIntegrator(cls, nstepsNC,
+    def generateNCMCIntegrator(cls, nstepsNC=0,
                                alchemical_functions={'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                                'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'},
                                splitting="H V R O R V H",
-                               temperature=300,
-                               dt=0.002,
+                               temperature=300*unit.kelvin,
+                               dt=0.002*unit.picoseconds,
                                nprop=1,
                                prop_lambda=0.3, **kwargs):
         """
