@@ -4,6 +4,7 @@ package:
 
 source:
   path: ../..
+
 build:
   preserve_egg_dir: True
   number: 0
