@@ -7,9 +7,9 @@ from simtk.openmm import app
 from simtk import unit
 import numpy as np
 
-class MoveEngineTester(unittest.TestCase):
+class RandomRotationTester(unittest.TestCase):
     """
-    Test the MoveEngine class.
+    Test the RandomLigandRotationMove class.
     """
     def setUp(self):
         # Obtain topologies/positions
