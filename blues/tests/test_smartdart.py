@@ -1,11 +1,13 @@
 import unittest, parmed
 from blues import utils
-from blues.simulation import SimulationFactory
+from blues.simulation import SimulationFactory, SystemFactory
 from blues.moves import SmartDartMove
 from blues.engine import MoveEngine
+from blues.config import Settings
 from openmmtools import testsystems
 import simtk.unit as unit
 import numpy as np
+from simtk.openmm import app
 
 class SmartDartTester(unittest.TestCase):
     """
@@ -18,18 +20,7 @@ class SmartDartTester(unittest.TestCase):
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
         structure = parmed.openmm.topsystem.load_topology(topology=testsystem.topology,
                                             system=testsystem.system,
-                                            xyz=testsystem.positions,
-                                            )
-
-        #self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
-        self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
-                           'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
-        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
-                'nonbondedMethod' : 'NoCutoff', 'nonbondedCutoff': 1, 'constraints': 'HBonds',
-                'trajectory_interval' : 10, 'reporter_interval' : 10, 'outfname' : 'smartdart-test',
-                'platform' : None,
-                'verbose' : False }
+                                            xyz=testsystem.positions)
 
 
         #Initialize the Model object
@@ -43,17 +34,30 @@ class SmartDartTester(unittest.TestCase):
         self.move.positions = structure.positions
         self.move_engine = MoveEngine(self.move)
 
+        self.system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
+        self.systems = SystemFactory(structure, self.move.atom_indices, self.system_cfg)
+
         #Initialize the SimulationFactory object
-        sims = SimulationFactory(structure, self.move_engine, **self.opt)
-        self.nc_sim = sims.nc
+        self.cfg = { 'dt' : 0.002 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 300 * unit.kelvin,
+                'nIter': 10,
+                'nstepsMD': 50,
+                'nstepsNC': 10,
+                'alchemical_functions' : {
+                    'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
+                    'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+            }
+        sims = SimulationFactory(self.systems, self.move_engine, self.cfg)
+        self.ncmc_sim = sims.ncmc
         self.move.calculateProperties()
-        self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.initial_positions = self.ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
     def test_smart_dart(self):
         """Creates two darting regions, one at the center of mass origin,
          and one displaced a little way from the center,
          and checks to see if the alainine dipeptide correctly jumps between the two"""
-        orig_pos = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        orig_pos = self.ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         com = self.move.getCenterOfMass(orig_pos[self.move.atom_indices], self.move.masses)
         basis_part = self.move.basis_particles
         com_new_coord = self.move._findNewCoord(orig_pos[basis_part[0]], orig_pos[basis_part[1]], orig_pos[basis_part[2]], com)
@@ -67,7 +71,7 @@ class SmartDartTester(unittest.TestCase):
         for i in range(20):
             #set the new darts using the original settings
             self.move.n_dartboard = [com_new_coord, move_coord]
-            nc_context = self.move.move(self.nc_sim.context)
+            nc_context = self.move.move(self.ncmc_sim.context)
             pos_new = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
             for x in range(3):
                 #postions of the coordinates either should be the same, or displaced by the standard_dart value
@@ -85,7 +89,7 @@ class SmartDartTester(unittest.TestCase):
         """same as test_smart_dart, but with self.self_dart=False, which should always cause
         the com to jump to a different dart, as opposed to having a chance to stay where it is"""
         self.move.self_dart=False
-        orig_pos = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        orig_pos = self.ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         com = self.move.getCenterOfMass(orig_pos[self.move.atom_indices], self.move.masses)
         basis_part = self.move.basis_particles
         com_new_coord = self.move._findNewCoord(orig_pos[basis_part[0]], orig_pos[basis_part[1]], orig_pos[basis_part[2]], com)
@@ -98,7 +102,7 @@ class SmartDartTester(unittest.TestCase):
         for i in range(20):
             #set the new darts using the original settings
             self.move.n_dartboard = [com_new_coord, move_coord]
-            nc_context = self.move.move(self.nc_sim.context)
+            nc_context = self.move.move(self.ncmc_sim.context)
             pos_new = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
             for x in range(3):
                 #postions of the coordinates either should be the same, or displaced by the standard_dart value
@@ -126,15 +130,6 @@ class DartLoaderTester(unittest.TestCase):
         structure = parmed.load_file(prmtop, xyz=inpcrd)
 
         self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
-        self.functions = { 'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
-                           'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
-        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
-                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 1, 'constraints': 'HBonds',
-                'trajectory_interval' : 10, 'reporter_interval' : 10,
-                'platform' : None, 'outfname' : 'smartdart-test',
-                'verbose' : False }
-
 
         #Initialize the SmartDartMove object
         self.move = SmartDartMove(structure,
@@ -143,11 +138,25 @@ class DartLoaderTester(unittest.TestCase):
             self_dart=False, resname='LIG', )
         self.engine = MoveEngine(self.move)
         self.engine.selectMove()
-        #Initialize the SimulationFactory object
-        sims = SimulationFactory(structure, self.engine, **self.opt)
-        self.nc_sim = sims.nc
 
-        self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
+        systems = SystemFactory(structure, self.move.atom_indices, self.system_cfg)
+
+        #Initialize the SimulationFactory object
+        self.cfg = { 'dt' : 0.002 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 300 * unit.kelvin,
+                'nIter': 10,
+                'nstepsMD': 50,
+                'nstepsNC': 10,
+                'alchemical_functions' : {
+                    'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
+                    'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+            }
+        sims = SimulationFactory(systems, self.engine, self.cfg)
+        self.ncmc_sim = sims.ncmc
+
+        self.initial_positions = self.ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
     def test_dartsFromParmEd(self):
         #load files to see if there are any errors

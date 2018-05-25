@@ -3,7 +3,7 @@ from blues import utils
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.integrators import AlchemicalExternalLangevinIntegrator
-from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation, MonteCarloSimulation
+from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
 from blues.reporters import ReporterConfig
 from blues.config import Settings
 from simtk import openmm, unit
@@ -11,9 +11,9 @@ from simtk.openmm import app
 from openmmtools import testsystems
 import numpy as np
 
-class SimulationTester(unittest.TestCase):
+class BLUESSimulationTester(unittest.TestCase):
     """
-    Test the Simulation class.
+    Test the BLUESSimulation class.
     """
     def setUp(self):
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)

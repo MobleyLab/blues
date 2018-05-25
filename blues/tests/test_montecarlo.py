@@ -3,7 +3,7 @@ from blues import utils
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.integrators import AlchemicalExternalLangevinIntegrator
-from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation, MonteCarloSimulation
+from blues.simulation import SystemFactory, SimulationFactory, MonteCarloSimulation
 from blues.reporters import ReporterConfig
 from blues.config import Settings
 from simtk import openmm, unit
@@ -12,9 +12,9 @@ from openmmtools import testsystems
 import numpy as np
 import types, math
 
-class SimulationTester(unittest.TestCase):
+class MonteCarloSimulationTester(unittest.TestCase):
     """
-    Test the Simulation class.
+    Test the MonteCarloSimulation class.
     """
     def setUp(self):
 
