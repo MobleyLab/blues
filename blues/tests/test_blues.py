@@ -5,7 +5,7 @@ from blues.engine import MoveEngine
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
 from blues.reporters import ReporterConfig
-from blues.config import Settings
+from blues.settings import Settings
 from simtk import openmm, unit
 from simtk.openmm import app
 from openmmtools import testsystems

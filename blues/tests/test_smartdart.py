@@ -3,7 +3,6 @@ from blues import utils
 from blues.simulation import SimulationFactory, SystemFactory
 from blues.moves import SmartDartMove
 from blues.engine import MoveEngine
-from blues.config import Settings
 from openmmtools import testsystems
 import simtk.unit as unit
 import numpy as np
