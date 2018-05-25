@@ -176,11 +176,11 @@ class Settings(object):
             for sel in freeze_keys:
                 if sel in config['freeze']:
                     utils.check_amber_selection(config['Structure'],
-                                          config['freeze'][sel], config['Logger'])
+                                          config['freeze'][sel])
 
         if 'restraints' in config.keys():
             utils.check_amber_selection(config['Structure'],
-                                  config['restraints']['selection'], config['Logger'])
+                                  config['restraints']['selection'])
 
     @staticmethod
     def set_Apps(config):
