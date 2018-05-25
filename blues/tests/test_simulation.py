@@ -3,7 +3,7 @@ from blues import utils
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.integrators import AlchemicalExternalLangevinIntegrator
-from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
+from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation, MonteCarloSimulation
 from blues.reporters import ReporterConfig
 from blues.config import Settings
 from simtk import openmm, unit
@@ -11,9 +11,9 @@ from simtk.openmm import app
 from openmmtools import testsystems
 import numpy as np
 
-class BLUESSimulationTester(unittest.TestCase):
+class SimulationTester(unittest.TestCase):
     """
-    Test the BLUESSimulation class.
+    Test the Simulation class.
     """
     def setUp(self):
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
@@ -25,7 +25,7 @@ class BLUESSimulationTester(unittest.TestCase):
         system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
         self.systems = SystemFactory(self.structure, self.move.atom_indices, system_cfg)
 
-    def test_simulationRunYAML(self):
+    def test_blues_simulationRunYAML(self):
         yaml_cfg = """
             output_dir: .
             outfname: ala-dipep-vac
@@ -80,11 +80,10 @@ class BLUESSimulationTester(unittest.TestCase):
         #Check that our system has run dynamics
         pos_compare = np.not_equal(before_iter, after_iter).all()
         self.assertTrue(pos_compare)
-
         os.remove('ala-dipep-vac.log')
 
-    def test_simulationRunPure(self):
-        print('Testing Simulation.run() from pure python')
+    def test_blues_simulationRunPure(self):
+        print('Testing BLUESSimulation.run() from pure python')
         md_rep_cfg = { 'stream': { 'title': 'md',
                                 'reportInterval': 1,
                                 'totalSteps': 4,
@@ -124,6 +123,7 @@ class BLUESSimulationTester(unittest.TestCase):
         #Check that our system has run dynamics
         pos_compare = np.not_equal(before_iter, after_iter).all()
         self.assertTrue(pos_compare)
+
 
 if __name__ == '__main__':
         unittest.main()

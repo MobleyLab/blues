@@ -674,7 +674,7 @@ class BLUESSimulation(object):
             OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
 
         """
-        self._mover = simulations._move_engine
+        self._move_engine = simulations._move_engine
         self._md_sim = simulations.md
         self._alch_sim = simulations.alch
         self._ncmc_sim = simulations.ncmc
@@ -844,8 +844,8 @@ class BLUESSimulation(object):
 
         #TODO: CHECK SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD?
         # IMPACTS ALCHEMICAL CORRECTION CALCULATION?
-        nc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
-        self._set_stateTable_('ncmc', 'state0', nc_state0)
+        ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
+        self._set_stateTable_('ncmc', 'state0', ncmc_state0)
         self._ncmc_sim.currentIter = currentIter
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
@@ -856,14 +856,14 @@ class BLUESSimulation(object):
 
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch region
-        if not move_engine: mover = self._mover
-        mover.selectMove()
+        if not move_engine: move_engine = self._move_engine
+        move_engine.selectMove()
 
         for step in range(int(nstepsNC)):
             try:
                 #Attempt anything related to the move before protocol is performed
                 if step == 0:
-                    self._ncmc_sim.context = mover.selected_move.beforeMove(self._ncmc_sim.context)
+                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
                     #self._ncmc_sim.context = self._move_engine.moves[move_idx].beforeMove(self._ncmc_sim.context)
 
                 # Attempt selected MoveEngine Move at the halfway point
@@ -872,8 +872,8 @@ class BLUESSimulation(object):
                     if hasattr(logger, 'report'):
                         logger.info = logger.report
                     #Do move
-                    logger.info('Performing %s...' % mover.move_name)
-                    self._ncmc_sim.context = mover.runEngine(self._ncmc_sim.context)
+                    logger.info('Performing %s...' % move_engine.move_name)
+                    self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
 
                 # Do 1 NCMC step with the integrator
                 self._ncmc_sim.step(1)
@@ -883,11 +883,11 @@ class BLUESSimulation(object):
 
                 #Attempt anything related to the move after protocol is performed
                 if step == nstepsNC-1:
-                    self._ncmc_sim.context = mover.selected_move.afterMove(self._ncmc_sim.context)
+                    self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
 
             except Exception as e:
                 logger.error(e)
-                mover.selected_move._error(self._ncmc_sim.context)
+                move_engine.selected_move._error(self._ncmc_sim.context)
                 break
 
         # ncmc_state1 stores the state AFTER a proposed move.
@@ -920,7 +920,6 @@ class BLUESSimulation(object):
         """Function that chooses to accept or reject the proposed move based
         on the acceptance criterion.
         """
-
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
         randnum =  math.log(np.random.random())
 
@@ -1024,9 +1023,8 @@ class BLUESSimulation(object):
         logger.info('nIter: %s ' % nIter)
 
 class MonteCarloSimulation(BLUESSimulation):
-
     def __init__(self, simulations, config=None):
-        super(BLUESSimulation, self).__init__(simulations, config)
+        super(MonteCarloSimulation, self).__init__(simulations, config)
 
     def _stepMC_(self):
         """Function that performs the MC simulation."""
@@ -1038,12 +1036,12 @@ class MonteCarloSimulation(BLUESSimulation):
         md_state1 = self.getStateFromContext(new_context, self._state_keys_, self.currentIter)
         self._set_stateTable_('md', 'state1', md_state1)
 
-    def _accept_reject_move_(self, temperature=300, **config):
+    def _accept_reject_move_(self):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.stateTable['md']['state0']
         md_state1 = self.stateTable['md']['state1']
-        work_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self.integrator.kT)
+        work_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
         randnum =  math.log(np.random.random())
 
         if log_mc > randnum:
@@ -1056,7 +1054,7 @@ class MonteCarloSimulation(BLUESSimulation):
             self._md_sim.context.setPositions(md_state0['positions'])
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def run(self, nIter, nstepsMC=None, write_move=False,):
+    def run(self, nIter, mc_per_iter=1, nstepsMD=None, write_move=False,):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
@@ -1068,17 +1066,15 @@ class MonteCarloSimulation(BLUESSimulation):
             uses the nIter specified in the opt dictionary when
             the Simulation class was created.
         """
-
+        if not nIter: nIter = self._config['nIter']
+        if not nstepsMD: nstepsMD = self._config['nstepsMD']
         #controls how many mc moves are performed during each iteration
-        try:
-            self.mc_per_iter = self._config['nstepsMC']
-        except:
-            self.mc_per_iter = 1
+        if not mc_per_iter: mc_per_iter = self._config['mc_per_iter']
 
         self._sync_states_md_to_ncmc_(currentIter=0)
         for n in range(nIter):
-            for i in range(self.mc_per_iter):
+            for i in range(mc_per_iter):
                 self._sync_states_md_to_ncmc_(currentIter=n)
                 self._stepMC_()
                 self._accept_reject_move_(write_move)
-            self._stepMD_(**self._config)
+            self._stepMD_(nstepsMD)
