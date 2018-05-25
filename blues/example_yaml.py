@@ -2,7 +2,7 @@ from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
 from blues.simulation import *
 import json
-from blues.config import *
+from blues.settings import *
 
 opt = Settings('blues_cuda.yaml').asDict()
 structure = opt['Structure']
