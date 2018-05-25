@@ -277,13 +277,15 @@ class SideChainMove(Move):
         The class contains functions to randomly select a bond and angle to be rotated
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
-    def __init__(self, structure, residue_list):
+    def __init__(self, structure, residue_list, verbose=False, write_move=False):
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
         self.all_atoms = [atom.index for atom in self.structure.topology.atoms()]
         self.rot_atoms, self.rot_bonds, self.qry_atoms = self.getRotBondAtoms()
         self.atom_indices = self.rot_atoms
+        self.verbose = verbose
+        self.write_move = write_move
 
     def _pmdStructureToOEMol(self):
 
@@ -477,7 +479,7 @@ class SideChainMove(Move):
 
         # set the parmed model to the same coordinates as the context
         for idx, atom in enumerate(self.all_atoms):
-            if verbose:
+            if self.verbose:
                 print('Before:')
                 print(atom, idx)
                 print(nc_positions[atom], model.positions[atom])
@@ -486,7 +488,7 @@ class SideChainMove(Move):
             model.atoms[atom].xy = nc_positions[atom][1].value_in_unit(unit.angstroms)
             model.atoms[atom].xz = nc_positions[atom][2].value_in_unit(unit.angstroms)
 
-            if verbose:
+            if self.verbose:
                 print('After:')
                 print(nc_positions[atom], model.positions[atom])
 
@@ -505,14 +507,14 @@ class SideChainMove(Move):
 
             my_position = positions[atom]
 
-            if verbose: print('The current position for %i is: %s'%(atom, my_position))
+            if self.verbose: print('The current position for %i is: %s'%(atom, my_position))
 
             # find the reduced position (substract out axis)
             red_position = (my_position - model.positions[axis2])._value
             # find the new positions by multiplying by rot matrix
             new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
 
-            if verbose: print("The new position should be:",new_position)
+            if self.verbose: print("The new position should be:",new_position)
 
             positions[atom] = new_position
             # Update the parmed model with the new positions
@@ -525,7 +527,7 @@ class SideChainMove(Move):
             nc_positions[atom][1] = model.atoms[atom].xy*nc_positions.unit/10
             nc_positions[atom][2] = model.atoms[atom].xz*nc_positions.unit/10
 
-            if verbose: print('The updated position for this atom is:', model.positions[atom])
+            if self.verbose: print('The updated position for this atom is:', model.positions[atom])
 
         # update the actual ncmc context object with the new positions
         nc_context.setPositions(nc_positions)
@@ -533,7 +535,7 @@ class SideChainMove(Move):
         # update the class structure positions
         self.structure.positions = model.positions
 
-        if verbose:
+        if self.write_move:
             filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
             mod_prot = model.save(filename, overwrite = True)
         return nc_context
