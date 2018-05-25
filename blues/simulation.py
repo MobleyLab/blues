@@ -681,8 +681,9 @@ class BLUESSimulation(object):
         self.temperature = simulations.md.integrator.getTemperature()
 
         # Check if configuration has been specified in `SimulationFactory` object
-        if hasattr(simulations, 'config'):
-            self._config = simulations.config
+        if not config:
+            if hasattr(simulations, 'config'):
+                self._config = simulations.config
         else:
             #Otherwise take specified config
             self._config = config
@@ -931,8 +932,8 @@ class BLUESSimulation(object):
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum) )
 
             # If accept move, sync MD context from NCMC after move.
-            state_keys = ['box_vectors', 'positions', 'velocities']
-            self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, state_keys)
+            ncmc_state1 = self.stateTable['ncmc']['state1']
+            self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1)
 
             if write_move:
             	utils.saveSimulationFrame(self._md_sim, '{}acc-it{}.pdb'.format(self._config['outfname'], self.currentIter))
@@ -1009,7 +1010,7 @@ class BLUESSimulation(object):
         self._sync_states_md_to_ncmc_(currentIter=0)
         for N in range(int(nIter)):
             self.currentIter = N
-            logger.info('BLUES ITERATION %s' % N)
+            logger.info('BLUES Iteration: %s' % N)
             self._sync_states_md_to_ncmc_(N)
             self._stepNCMC_(nstepsNC, moveStep)
             self._accept_reject_move_(write_move)
@@ -1032,7 +1033,7 @@ class MonteCarloSimulation(BLUESSimulation):
         self._move_engine.selectMove()
         #change coordinates according to Moves in MoveEngine
         new_context = self._move_engine.runEngine(self._md_sim.context)
-        md_state1 = self.getStateFromContext(new_context, self._state_keys_, self.currentIter)
+        md_state1 = self.getStateFromContext(new_context, self._state_keys_)
         self._set_stateTable_('md', 'state1', md_state1)
 
     def _accept_reject_move_(self):
@@ -1053,7 +1054,7 @@ class MonteCarloSimulation(BLUESSimulation):
             self._md_sim.context.setPositions(md_state0['positions'])
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def run(self, nIter, mc_per_iter=1, nstepsMD=None, write_move=False,):
+    def run(self, nIter, mc_per_iter=1, nstepsMD=None, write_move=False):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
@@ -1071,9 +1072,10 @@ class MonteCarloSimulation(BLUESSimulation):
         if not mc_per_iter: mc_per_iter = self._config['mc_per_iter']
 
         self._sync_states_md_to_ncmc_(currentIter=0)
-        for n in range(nIter):
+        for N in range(nIter):
+            logger.info('MonteCarlo Iteration: %s' % N)
             for i in range(mc_per_iter):
-                self._sync_states_md_to_ncmc_(currentIter=n)
+                self._sync_states_md_to_ncmc_(currentIter=N)
                 self._stepMC_()
                 self._accept_reject_move_(write_move)
             self._stepMD_(nstepsMD)

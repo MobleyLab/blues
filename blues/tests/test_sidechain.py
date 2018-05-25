@@ -29,7 +29,7 @@ class SideChainTester(unittest.TestCase):
                 'temperature' : 300 * unit.kelvin,
                 'nIter': 1,
                 'nstepsMD': 1,
-                'nstepsNC': 10,
+                'nstepsNC': 4,
                 'alchemical_functions' : {
                     'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                     'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
@@ -45,9 +45,8 @@ class SideChainTester(unittest.TestCase):
 
     def test_sidechain_move(self):
         before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)
-
         blues = BLUESSimulation(self.simulations)
-        blues._stepNCMC_(nstepsNC=4, moveStep=2)
+        blues.run()
         after_move = blues._ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
         #Check that our system has run dynamics
