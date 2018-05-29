@@ -46,7 +46,7 @@ class SideChainTester(unittest.TestCase):
     def test_sidechain_move(self):
         before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)
         blues = BLUESSimulation(self.simulations)
-        blues.run()
+        blues._stepNCMC_(nstepsNC=4, moveStep=2)
         after_move = blues._ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
         #Check that our system has run dynamics

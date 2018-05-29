@@ -33,7 +33,7 @@ class RandomRotationTester(unittest.TestCase):
                 'nprop' : 1,
                 'nIter': 1,
                 'nstepsMD': 1,
-                'nstepsNC': 4,
+                'nstepsNC': 10,
                 'alchemical_functions' : {
                     'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
                     'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
@@ -45,7 +45,7 @@ class RandomRotationTester(unittest.TestCase):
     def test_random_rotation(self):
         before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)
         blues = BLUESSimulation(self.simulations)
-        blues.run()
+        blues._stepNCMC_(nstepsNC=10, moveStep=5)
         after_move = blues._ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
         #Check that our system has run dynamics
