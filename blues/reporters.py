@@ -381,7 +381,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
     data to write is configurable using boolean flags passed to the constructor.  By default the data is
     written in comma-separated-value (CSV) format, but you can specify a different separator to use.
     """
-    def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False,    totalEnergy=False, temperature=False, volume=False, density=False, progress=False, remainingTime=False, speed=False, elapsedTime=False,    separator='\t', systemMass=None, totalSteps=None, protocolWork=False, alchemicalLambda=False, currentIter=True):
+    def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False,    totalEnergy=False, temperature=False, volume=False, density=False, progress=False, remainingTime=False, speed=False, elapsedTime=False,    separator='\t', systemMass=None, totalSteps=None, protocolWork=False, alchemicalLambda=False, currentIter=False):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
             potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
             progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
@@ -539,6 +539,8 @@ class BLUESStateDataReporter(app.StateDataReporter):
         volume = box[0][0]*box[1][1]*box[2][2]
         clockTime = time.time()
         if self._currentIter:
+            if not hasattr(simulation, 'currentIter'):
+                simulation.currentIter = 0
             values.append(simulation.currentIter)
         if self._progress:
             values.append('%.1f%%' % (100.0*simulation.currentStep/self._totalSteps))
