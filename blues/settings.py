@@ -86,10 +86,11 @@ class Settings(object):
         """
         # Set file paths
         if 'output_dir' in config.keys():
-            output_dir = config['output_dir']
+            os.makedirs(config['output_dir'], exist_ok=True)
         else:
             output_dir = '.'
-        outfname = os.path.join(output_dir, config['outfname'])
+        outfname = os.path.join(config['output_dir'], config['outfname'])
+        print(outfname)
         config['outfname'] = outfname
         config['simulation']['outfname'] = outfname
         return config

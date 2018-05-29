@@ -1,26 +1,26 @@
-output_dir: .
+# YAML configuration for simulating toluene bound to T4 lysozyme
+# Atoms 5 angstroms away from the ligand are frozen
+# Simulation on a CUDA device with index 0
+# NVT simulation with Hydrogen Mass Repartioning + 4fs timesteps
+# 5 BLUES iterations (move proposals), 1000 steps of NCMC and MD per iteration
+# MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
+# NCMC Reporters: NetCDF (stores protocol work at 1st, mid, and last frame) and speed for benchmarking
+
+output_dir: t4-toluene-test
 outfname: t4-toluene
-logger_level: info #critical, error, warning, info, debug
+logger_level: info 
 
 structure:
   filename: tests/data/eqToluene.prmtop
   xyz: tests/data/eqToluene.inpcrd
-  #restart: t4-toluene_2.rst7
 
 system:
   nonbondedMethod: PME
   nonbondedCutoff: 10 * angstroms
-  #switchDistance: 0 * angstroms
   constraints: HBonds
   rigidWater: True
-  #implicitSolvent: None
-  #implicitSolventKappa: None
-  #implicitSolventSaltConc: 0 * 1/angstroms
-  #soluteDielectric: 1.0
-  #solventDielectric: 78.5
-  #useSASA: False
   removeCMMotion: True
-  #hydrogenMass: 3.024 * daltons
+  hydrogenMass: 3.024 * daltons
   ewaldErrorTolerance: 0.005
   flexibleConstraints: True
   splitDihedrals: False
@@ -37,34 +37,22 @@ system:
     annihilate_electrostatics : True
     annihilate_sterics : False
 
-#restraints:
-#  selection: '@CA,C,N' #:LIG
-  #  weight: 5
-
-#freeze:
-#  freeze_selection: ':WAT'
-#   freeze_center: ':LIG'
-#   freeze_solvent: ':WAT,Cl-'
-#   #freeze_solvent: ':HOH,NA,CL'
-#   freeze_distance: 5 * angstroms
+freeze:
+  freeze_center: ':LIG'
+  freeze_solvent: ':WAT,Cl-'
+  freeze_distance: 5 * angstroms
 
 simulation:
   platform: CUDA
-  #platform: OpenCL
   properties:
     CudaPrecision: single
     CudaDeviceIndex: 0
-    #OpenCLPrecision: single
-    #OpenCLDeviceIndex: 2
   dt: 0.004 * picoseconds
   friction: 1 * 1/picoseconds
-  pressure: 1 * atmospheres
   temperature: 300 * kelvin
   nIter: 5
   nstepsMD: 1000
   nstepsNC: 1000
-  nprop: 1
-  prop_lambda: 0.3
 
 md_reporters:
   state:
@@ -73,9 +61,6 @@ md_reporters:
     reportInterval: 250
   restart:
     reportInterval: 1000
-#  progress:
-#    totalSteps: 100
-#    reportInterval: 10
   stream:
     title: md
     reportInterval: 250

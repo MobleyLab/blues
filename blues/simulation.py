@@ -378,12 +378,13 @@ class SystemFactory(object):
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
-        selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance._value,freeze_solvent)
+        if hasattr(freeze_distance, '_value'): freeze_distance = freeze_distance._value
+        selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance,freeze_solvent)
         site_idx = cls._amber_selection_to_atom_indices_(structure, selection)
         #Invert that selection to freeze everything but the binding site.
         freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
 
-        logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance._value, freeze_center, system))
+        logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance, freeze_center, system))
 
         cls._print_atomlist_from_atom_indices_(structure, freeze_idx)
         system = utils.zero_masses(system, freeze_idx)
