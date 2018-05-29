@@ -1,18 +1,17 @@
-# YAML configuration for simulating toluene bound to T4 lysozyme
-# Atoms 5 angstroms away from the ligand are frozen
+# YAML configuration for simulating divaline in vacuum
 # Simulation on a CUDA device with index 0
 # NVT simulation with Hydrogen Mass Repartioning + 4fs timesteps
-# 5 BLUES iterations (move proposals), 1000 steps of NCMC and MD per iteration
+# 5 BLUES iterations (sidechain move proposals), 1000 steps of NCMC and MD per iteration
 # MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
 # NCMC Reporters: NetCDF (stores protocol work at 1st, mid, and last frame) and speed for benchmarking
 
-output_dir: t4-toluene-test
-outfname: t4-toluene
+output_dir: vacDivaline-test
+outfname: vacDivaline
 logger_level: info 
 
 structure:
-  filename: tests/data/eqToluene.prmtop
-  xyz: tests/data/eqToluene.inpcrd
+  filename: tests/data/vacDivaline.prmtop
+  xyz: tests/data/vacDivaline.inpcrd
 
 system:
   nonbondedMethod: PME
@@ -36,11 +35,6 @@ system:
     softcore_f : 2
     annihilate_electrostatics : True
     annihilate_sterics : False
-
-freeze:
-  freeze_center: ':LIG'
-  freeze_solvent: ':WAT,Cl-'
-  freeze_distance: 5 * angstroms
 
 simulation:
   platform: CUDA

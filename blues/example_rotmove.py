@@ -5,7 +5,7 @@ import json
 from blues.settings import *
 
 # Parse a YAML configuration, return as Dict
-cfg = Settings('blues_cuda.yaml').asDict()
+cfg = Settings('rotmove_cuda.yaml').asDict()
 structure = cfg['Structure']
 
 #Select move type
