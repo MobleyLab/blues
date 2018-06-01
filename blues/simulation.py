@@ -180,18 +180,13 @@ class SimulationFactory(object):
             #During NCMC simulation, lambda parameters are controlled by function dict below
             # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
             # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
-            #functions = { 'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-            #              'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)',
-            functions = { 'lambda_sterics' : 'min(1, (1/0.2)*abs(lambda-0.5))',
+            functions = { #'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
+                          #'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)',
+                          'lambda_sterics' : 'min(1, (1/0.2)*abs(lambda-0.5))',
                           'lambda_electrostatics' : 'step(0.1-lambda) - 1/0.1*lambda*step(0.1-lambda) + 1/0.1*(lambda-0.9)*step(lambda-0.9)',
-
-            #functions = { 'lambda_sterics' : '0',
-            #              'lambda_electrostatics' : '0',
-
-                        #'lambda_restraints' : 'max(0, 1-(1/0.3)*abs(lambda-0.5))'
-                        #'lambda_restraints' : '0'
-
+                          #'lambda_restraints' : 'max(0, 1-(1/0.3)*abs(lambda-0.5))'
                           }
+
             integrator = AlchemicalExternalLangevinIntegrator(alchemical_functions=functions,
                                    splitting= "H V R O R V H",
                                    temperature=temperature*unit.kelvin,
@@ -355,8 +350,8 @@ class Simulation(object):
             self.mc_per_iter = 1
 
         #specify nc integrator variables to report in verbose output
-        self.work_keys = [ 'lambda', 'shadow_work',
-                          'protocol_work', 'Eold', 'Enew', 'unperturbed_pe', 'perturbed_pe']
+        self.work_keys = [ 'lambda',
+                          'protocol_work', 'unperturbed_pe', 'perturbed_pe']
 
         self.state_keys = { 'getPositions' : True,
                        'getVelocities' : True,
@@ -560,6 +555,8 @@ class Simulation(object):
         self.move_engine.selectMove()
         move_idx = self.move_engine.selected_move
         move_name = self.move_engine.moves[move_idx].__class__.__name__
+        ene_array = np.zeros((nstepsNC,len(self.work_keys)))
+
         for nc_step in range(int(nstepsNC)):
             start = time.time()
             self._initialSimulationTime = self.nc_sim.context.getState().getTime()
@@ -588,20 +585,30 @@ class Simulation(object):
                 if verbose:
                     # Print energies at every step
                     work = self.getWorkInfo(self.nc_integrator, self.work_keys)
+                    import collections
+                    work = collections.OrderedDict(sorted(work.items(), key=lambda t: t[0]))
+
                     self.log.debug('%s' % work)
+                    data = np.array(list(work.values()))
+                    #print(data)
+                    ene_array[nc_step,:] = data
+
 
 
                 if self.movestep +1 == nc_step:
                     work = self.nc_context.getIntegrator().getGlobalVariableByName('protocol_work')
                     print('work after move', work)
 
-                self.nc_integrator.step(1)
+                #self.nc_integrator.step(1)
+                self.nc_sim.step(1)
+
+
 
                 ###DEBUG options at every NCMC step
-                if verbose:
+                #if verbose:
                     # Print energies at every step
-                    work = self.getWorkInfo(self.nc_integrator, self.work_keys)
-                    self.log.debug('%s' % work)
+                #    work = self.getWorkInfo(self.nc_integrator, self.work_keys)
+                #    self.log.debug('%s' % work)
                 if ncmc_traj and (nc_step % 5 == 0):
                     self.ncmc_reporter.report(self.nc_sim, self.nc_context.getState(getPositions=True, getVelocities=True))
 
@@ -617,8 +624,8 @@ class Simulation(object):
                 self.move_engine.moves[self.move_engine.selected_move]._error(self.nc_context)
                 break
 
-            self._report(start, nc_step)
-
+            #self._report(start, nc_step)
+        np.savetxt(fname='energies.txt',X=ene_array,fmt='%.6f', header=' '.join(work.keys()))
         nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
 

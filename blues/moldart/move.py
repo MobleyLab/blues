@@ -835,8 +835,9 @@ class MolDartMove(RandomLigandRotationMove):
             #the acceptance depends on the instantaenous move
             #therefore find the ratio of number of poses before and after
             #TODO: Check if probability order is right
-            self.num_poses_end = len(overlap_after)
-            self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/self.num_poses_begin)
+            #self.num_poses_end = len(overlap_after)
+            #self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/self.num_poses_begin)
+            #self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end_restraints)/self.num_poses_begin_restraints)
 
             # to maintain detailed balance, check to see the overlap of the start and end darting regions
             # if there is no overlap after the move, acceptance ratio will be 0
@@ -982,5 +983,3 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
             self.addComputeGlobal("prop", "1")
 
             self.endBlock()#
-
-
