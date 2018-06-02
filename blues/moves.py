@@ -6,7 +6,7 @@ Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley 
+Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
 import parmed
@@ -79,7 +79,7 @@ class Move(object):
 
         """
         return context
-        
+
     def afterMove(self, context):
         """This method is called at the end of the NCMC portion if the
         context needs to be checked or modified before performing the move
@@ -98,7 +98,7 @@ class Move(object):
         """
 
         return context
-        
+
     def _error(self, context):
         """This method is called if running during NCMC portion results
         in an error. This allows portions of the context, such as the
@@ -155,7 +155,7 @@ class RandomLigandRotationMove(Move):
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
         """
-
+        self.structure = structure
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
@@ -164,6 +164,7 @@ class RandomLigandRotationMove(Move):
 
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
+        self.calculateProperties()
 
     def getAtomIndices(self, structure, resname):
         """
@@ -190,12 +191,10 @@ class RandomLigandRotationMove(Move):
     def getMasses(self, topology):
         """
         Returns a list of masses of the specified ligand atoms.
-
         Parameters
         ----------
         topology: parmed.Topology
             ParmEd topology object containing atoms of the system.
-
         Returns
         -------
         masses: 1xn numpy.array * simtk.unit.dalton
@@ -203,7 +202,6 @@ class RandomLigandRotationMove(Move):
             the masses of the atoms in self.atom_indices
         totalmass: float* simtk.unit.dalton
             The sum of the mass found in masses
-
         """
         masses = unit.Quantity(np.zeros([int(topology.getNumAtoms()),1],np.float32), unit.dalton)
         for idx,atom in enumerate(topology.atoms()):
@@ -219,12 +217,10 @@ class RandomLigandRotationMove(Move):
             ParmEd positions of the atoms to be moved.
         masses : numpy.array
             np.array of particle masses
-
         Returns
         -------
         center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
             1x3 np.array of the center of mass of the given positions
-
         """
         coordinates = np.asarray(positions._value, np.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
@@ -238,7 +234,6 @@ class RandomLigandRotationMove(Move):
     def move(self, context):
         """Function that performs a random rotation about the
         center of mass of the ligand.
-
         Parameters
         ----------
         context: simtk.openmm.Context object
@@ -247,7 +242,6 @@ class RandomLigandRotationMove(Move):
         -------
         context: simtk.openmm.Context object
             The same input context, but whose positions were changed by this function.
-
         """
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
 
@@ -283,13 +277,15 @@ class SideChainMove(Move):
         The class contains functions to randomly select a bond and angle to be rotated
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
-    def __init__(self, structure, residue_list):
+    def __init__(self, structure, residue_list, verbose=False, write_move=False):
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
         self.all_atoms = [atom.index for atom in self.structure.topology.atoms()]
         self.rot_atoms, self.rot_bonds, self.qry_atoms = self.getRotBondAtoms()
         self.atom_indices = self.rot_atoms
+        self.verbose = verbose
+        self.write_move = write_move
 
     def _pmdStructureToOEMol(self):
 
@@ -483,7 +479,7 @@ class SideChainMove(Move):
 
         # set the parmed model to the same coordinates as the context
         for idx, atom in enumerate(self.all_atoms):
-            if verbose:
+            if self.verbose:
                 print('Before:')
                 print(atom, idx)
                 print(nc_positions[atom], model.positions[atom])
@@ -492,7 +488,7 @@ class SideChainMove(Move):
             model.atoms[atom].xy = nc_positions[atom][1].value_in_unit(unit.angstroms)
             model.atoms[atom].xz = nc_positions[atom][2].value_in_unit(unit.angstroms)
 
-            if verbose:
+            if self.verbose:
                 print('After:')
                 print(nc_positions[atom], model.positions[atom])
 
@@ -511,14 +507,14 @@ class SideChainMove(Move):
 
             my_position = positions[atom]
 
-            if verbose: print('The current position for %i is: %s'%(atom, my_position))
+            if self.verbose: print('The current position for %i is: %s'%(atom, my_position))
 
             # find the reduced position (substract out axis)
             red_position = (my_position - model.positions[axis2])._value
             # find the new positions by multiplying by rot matrix
             new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
 
-            if verbose: print("The new position should be:",new_position)
+            if self.verbose: print("The new position should be:",new_position)
 
             positions[atom] = new_position
             # Update the parmed model with the new positions
@@ -531,7 +527,7 @@ class SideChainMove(Move):
             nc_positions[atom][1] = model.atoms[atom].xy*nc_positions.unit/10
             nc_positions[atom][2] = model.atoms[atom].xz*nc_positions.unit/10
 
-            if verbose: print('The updated position for this atom is:', model.positions[atom])
+            if self.verbose: print('The updated position for this atom is:', model.positions[atom])
 
         # update the actual ncmc context object with the new positions
         nc_context.setPositions(nc_positions)
@@ -539,7 +535,7 @@ class SideChainMove(Move):
         # update the class structure positions
         self.structure.positions = model.positions
 
-        if verbose:
+        if self.write_move:
             filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
             mod_prot = model.save(filename, overwrite = True)
         return nc_context

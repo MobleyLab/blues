@@ -1,99 +1,129 @@
-
-import unittest, parmed
+import os, unittest, parmed, yaml
 from blues import utils
 from blues.moves import RandomLigandRotationMove
 from blues.engine import MoveEngine
-from blues.reporters import init_logger
-from blues.simulation import Simulation, SimulationFactory
-from simtk import openmm
+from blues.integrators import AlchemicalExternalLangevinIntegrator
+from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
+from blues.reporters import ReporterConfig
+from blues.settings import Settings
+from simtk import openmm, unit
+from simtk.openmm import app
 from openmmtools import testsystems
+import numpy as np
 
-
-class BLUESTester(unittest.TestCase):
+class BLUESSimulationTester(unittest.TestCase):
     """
-    Test the Simulation class.
+    Test the BLUESSimulation class.
     """
     def setUp(self):
-        # Load the waterbox with toluene into a structure.
-        self.prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
-        self.inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
-        self.full_struct = parmed.load_file(self.prmtop, xyz=self.inpcrd)
-        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 2, 'nstepsNC' : 4, 'nstepsMD' : 2, 'nprop' : 1,
-                'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
-                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
-                'platform' : None}
-
-
-    def test_moveproperties(self):
-        # RandomLigandRotationMove.structure must be residue selection.
-        move = RandomLigandRotationMove(self.full_struct, 'LIG')
-        self.assertNotEqual(move.topology.getNumAtoms(), len(self.full_struct.atoms))
-
-        # Test each function separately
-        masses, totalmass = move.getMasses(move.topology)
-        self.assertNotEqual(len(masses), 0)
-        self.assertEqual(totalmass, masses.sum())
-
-        center_of_mass = move.getCenterOfMass(move.positions, masses)
-        self.assertNotEqual(center_of_mass, [0, 0, 0])
-
-        # Test function that calcs all properties
-        # Ensure properties are same as returned values
-        move.calculateProperties()
-        self.assertEqual(masses.tolist(), move.masses.tolist())
-        self.assertEqual(totalmass, move.totalmass)
-        self.assertEqual(center_of_mass.tolist(), move.center_of_mass.tolist())
-
-    def test_simulationfactory(self):
-        #Initialize the SimulationFactory object
-        move = RandomLigandRotationMove(self.full_struct, 'LIG')
-        engine = MoveEngine(move)
-        sims = SimulationFactory(self.full_struct, engine, **self.opt)
-
-        system = sims.generateSystem(self.full_struct, **self.opt)
-        self.assertIsInstance(system, openmm.System)
-
-        alch_system = sims.generateAlchSystem(system, move.atom_indices)
-        self.assertIsInstance(alch_system, openmm.System)
-
-        md_sim = sims.generateSimFromStruct(self.full_struct, engine, system, **self.opt)
-        self.assertIsInstance(md_sim, openmm.app.simulation.Simulation)
-
-        nc_sim = sims.generateSimFromStruct(self.full_struct, engine, alch_system, ncmc=True, **self.opt)
-        self.assertIsInstance(nc_sim, openmm.app.simulation.Simulation)
-
-    def test_simulationRun(self):
-        """Tests the Simulation.runNCMC() function"""
-        self.opt = { 'temperature' : 300.0, 'friction' : 1, 'dt' : 0.002,
-                'nIter' : 2, 'nstepsNC' : 100, 'nstepsMD' : 2, 'nprop' : 1,
-                'nonbondedMethod' : 'NoCutoff', 'constraints': 'HBonds',
-                'trajectory_interval' : 1, 'reporter_interval' : 1, 'outfname' : 'blues-test',
-                'platform' : None, 'write_move' : False}
-
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
-        structure = parmed.openmm.topsystem.load_topology(topology=testsystem.topology,
+        self.structure = parmed.openmm.topsystem.load_topology(topology=testsystem.topology,
                                             system=testsystem.system,
-                                            xyz=testsystem.positions,
-                                            )
+                                            xyz=testsystem.positions)
+        self.move = RandomLigandRotationMove(self.structure, 'ALA')
+        self.engine = MoveEngine(self.move)
+        system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
+        self.systems = SystemFactory(self.structure, self.move.atom_indices, system_cfg)
 
-        self.model = RandomLigandRotationMove(structure, resname='ALA')
-        self.model.atom_indices = range(22)
-        self.model.topology = structure.topology
-        self.model.positions = structure.positions
-        self.model.calculateProperties()
-        self.mover = MoveEngine(self.model)
-        #Initialize the SimulationFactory object
-        sims = SimulationFactory(structure, self.mover, **self.opt)
-        #print(sims)
-        system = sims.generateSystem(structure, **self.opt)
-        simdict = sims.createSimulationSet()
-        alch_system = sims.generateAlchSystem(system, self.model.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, self.mover, alch_system, ncmc=True, **self.opt)
-        self.model.calculateProperties()
-        self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-        asim = Simulation(sims, self.mover, **self.opt)
-        asim.run(self.opt['nIter'])
+    def test_blues_simulationRunYAML(self):
+        yaml_cfg = """
+            output_dir: .
+            outfname: ala-dipep-vac
+            logger_level: info
 
-if __name__ == "__main__":
+            system:
+              nonbonded: NoCutoff
+              constraints: HBonds
+
+            simulation:
+              dt: 0.002 * picoseconds
+              friction: 1 * 1/picoseconds
+              temperature: 400 * kelvin
+              nIter: 1
+              nstepsMD: 4
+              nstepsNC: 4
+
+            md_reporters:
+              stream:
+                title: md
+                reportInterval: 1
+                totalSteps: 4 # nIter * nstepsMD
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                currentIter : True
+            ncmc_reporters:
+              stream:
+                title: ncmc
+                reportInterval: 1
+                totalSteps: 4 # Use nstepsNC
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                protocolWork : True
+                alchemicalLambda : True
+                currentIter : True
+        """
+        print('Testing Simulation.run() from YAML')
+        yaml_cfg = Settings(yaml_cfg)
+        cfg = yaml_cfg.asDict()
+
+        simulations = SimulationFactory(self.systems, self.engine, cfg['simulation'],
+                                    cfg['md_reporters'], cfg['ncmc_reporters'])
+
+        blues = BLUESSimulation(simulations)
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        blues.run()
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        #Check that our system has run dynamics
+        pos_compare = np.not_equal(before_iter, after_iter).all()
+        self.assertTrue(pos_compare)
+        os.remove('ala-dipep-vac.log')
+
+    def test_blues_simulationRunPure(self):
+        print('Testing BLUESSimulation.run() from pure python')
+        md_rep_cfg = { 'stream': { 'title': 'md',
+                                'reportInterval': 1,
+                                'totalSteps': 4,
+                                'step': True,
+                                'speed': True,
+                                'progress': True,
+                                'remainingTime': True,
+                                'currentIter' : True} }
+        ncmc_rep_cfg = { 'stream': { 'title': 'ncmc',
+                                'reportInterval': 1,
+                                'totalSteps': 4,
+                                'step': True,
+                                'speed': True,
+                                'progress': True,
+                                'remainingTime': True,
+                                'currentIter' : True} }
+
+        md_reporters = ReporterConfig('ala-dipep-vac', md_rep_cfg).makeReporters()
+        ncmc_reporters = ReporterConfig('ala-dipep-vac-ncmc', ncmc_rep_cfg).makeReporters()
+
+        cfg = { 'nprop' : 1,
+                'prop_lambda' : 0.3,
+                'dt' : 0.001 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 100 * unit.kelvin,
+                'nIter': 1,
+                'nstepsMD': 4,
+                'nstepsNC': 4,}
+        simulations = SimulationFactory(self.systems, self.engine, cfg,
+                                    md_reporters=md_reporters,
+                                    ncmc_reporters=ncmc_reporters)
+
+        blues = BLUESSimulation(simulations)
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        blues.run()
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        #Check that our system has run dynamics
+        pos_compare = np.not_equal(before_iter, after_iter).all()
+        self.assertTrue(pos_compare)
+
+
+if __name__ == '__main__':
         unittest.main()

@@ -1,7 +1,7 @@
 from mdtraj.formats.hdf5 import HDF5TrajectoryFile
 from mdtraj.reporters import HDF5Reporter
-from simtk.openmm.app import StateDataReporter
-import simtk.unit as units
+from simtk.openmm import app
+import simtk.unit as unit
 import json, yaml
 import subprocess
 import numpy as np
@@ -13,8 +13,18 @@ import simtk.openmm.version
 import blues.version
 import logging
 import sys, time
+import parmed
+from blues.formats import *
+import blues.reporters
+from parmed import unit as u
+from parmed.amber.netcdffiles import NetCDFTraj, NetCDFRestart
+from parmed.geometry import box_vectors_to_lengths_and_angles
+import netCDF4 as nc
 
 def _check_mode(m, modes):
+    """
+    Check if the file has a read or write mode, otherwise throw an error.
+    """
     if m not in modes:
         raise ValueError('This operation is only available when a file '
                          'is open in mode="%s".' % m)
@@ -68,7 +78,9 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
-def init_logger(logger, level=logging.INFO, outfname=None):
+def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
+    """Initialize the Logger module with the given logger_level and outfname.
+    """
     fmt = LoggerFormatter()
 
     # Stream to terminal
@@ -87,290 +99,178 @@ def init_logger(logger, level=logging.INFO, outfname=None):
 
     return logger
 
-class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
-    #This is a subclass of the HDF5TrajectoryFile class from mdtraj that handles the writing of
-    #the trajectory information to the HDF5 file format.
-    def __init__(self, filename, mode='r', force_overwrite=True, compression='zlib'):
-        super(BLUESHDF5TrajectoryFile, self).__init__(filename, mode, force_overwrite, compression)
+class ReporterConfig:
+    """
+    Generates a set of custom/recommended reporters for
+    BLUES simulations from YAML configuration.
 
+    This class is intended to be called internally from `blues.config.set_Reporters`.
+    Below is an example to call this externally.
 
-    def write(self, coordinates, parameters=None, environment=None,
-                    time=None, cell_lengths=None, cell_angles=None,
-                    velocities=None, kineticEnergy=None, potentialEnergy=None,
-                    temperature=None, alchemicalLambda=None,
-                    protocolWork=None, title=None):
-        """Write one or more frames of data to the file
-        This method saves data that is associated with one or more simulation
-        frames. Note that all of the arguments can either be raw numpy arrays
-        or unitted arrays (with simtk.unit.Quantity). If the arrays are unittted,
-        a unit conversion will be automatically done from the supplied units
-        into the proper units for saving on disk. You won't have to worry about
-        it.
-        Furthermore, if you wish to save a single frame of simulation data, you
-        can do so naturally, for instance by supplying a 2d array for the
-        coordinates and a single float for the time. This "shape deficiency"
-        will be recognized, and handled appropriately.
+    from blues.reporters import ReporterConfig
+    import logging
+
+    outfname = 'blues-test'
+    logger = logging.getLogger(__name__)
+    md_reporters = { "restart": { "reportInterval": 1000 },
+                      "state" : { "reportInterval": 250  },
+                      "stream": { "progress": true,
+                                  "remainingTime": true,
+                                  "reportInterval": 250,
+                                  "speed": true,
+                                  "step": true,
+                                  "title": "md",
+                                  "totalSteps": 10000},
+                     "traj_netcdf": { "reportInterval": 250 }
+                    }
+
+    md_reporter_cfg = ReporterConfig(outfname, md_reporters, logger)
+    md_reporters_list = md_reporter_cfg.makeReporters()
+
+    """
+    def __init__(self, outfname, reporter_config, logger=None):
+        """
+
         Parameters
         ----------
-        coordinates : np.ndarray, shape=(n_frames, n_atoms, 3)
-            The cartesian coordinates of the atoms to write. By convention, the
-            lengths should be in units of nanometers.
-        time : np.ndarray, shape=(n_frames,), optional
-            You may optionally specify the simulation time, in picoseconds
-            corresponding to each frame.
-        cell_lengths : np.ndarray, shape=(n_frames, 3), dtype=float32, optional
-            You may optionally specify the unitcell lengths.
-            The length of the periodic box in each frame, in each direction,
-            `a`, `b`, `c`. By convention the lengths should be in units
-            of angstroms.
-        cell_angles : np.ndarray, shape=(n_frames, 3), dtype=float32, optional
-            You may optionally specify the unitcell angles in each frame.
-            Organized analogously to cell_lengths. Gives the alpha, beta and
-            gamma angles respectively. By convention, the angles should be
-            in units of degrees.
-        velocities :  np.ndarray, shape=(n_frames, n_atoms, 3), optional
-            You may optionally specify the cartesian components of the velocity
-            for each atom in each frame. By convention, the velocities
-            should be in units of nanometers / picosecond.
-        kineticEnergy : np.ndarray, shape=(n_frames,), optional
-            You may optionally specify the kinetic energy in each frame. By
-            convention the kinetic energies should b in units of kilojoules per
-            mole.
-        potentialEnergy : np.ndarray, shape=(n_frames,), optional
-            You may optionally specify the potential energy in each frame. By
-            convention the kinetic energies should b in units of kilojoules per
-            mole.
-        temperature : np.ndarray, shape=(n_frames,), optional
-            You may optionally specify the temperature in each frame. By
-            convention the temperatures should b in units of Kelvin.
-        alchemicalLambda : np.ndarray, shape=(n_frames,), optional
-            You may optionally specify the alchemical lambda in each frame. These
-            have no units, but are generally between zero and one.
+        outfname : str,
+            Output filename prefix for files generated by the reporters.
+        reporter_config : dict
+            Dict of parameters for the md_reporters or ncmc_reporters
+        logger : logging.Logger object
+            Provide the root logger for printing information.
         """
-        _check_mode(self.mode, ('w', 'a'))
+        self._outfname = outfname
+        self._cfg = reporter_config
+        self._logger = logger
+        self.trajectory_interval = 0
 
-        # these must be either both present or both absent. since
-        # we're going to throw an error if one is present w/o the other,
-        # lets do it now.
-        if cell_lengths is None and cell_angles is not None:
-            raise ValueError('cell_lengths were given, but no cell_angles')
-        if cell_lengths is not None and cell_angles is None:
-            raise ValueError('cell_angles were given, but no cell_lengths')
+    def makeReporters(self):
+        """
+        Returns a list of openmm Reporters based on the configuration at
+        initialization of the class.
+        """
+        Reporters = []
+        if 'state' in self._cfg.keys():
 
-        # if the input arrays are simtk.unit.Quantities, convert them
-        # into md units. Note that this acts as a no-op if the user doesn't
-        # have simtk.unit installed (e.g. they didn't install OpenMM)
-        coordinates = in_units_of(coordinates, None, 'nanometers')
-        time = in_units_of(time, None, 'picoseconds')
-        cell_lengths = in_units_of(cell_lengths, None, 'nanometers')
-        cell_angles = in_units_of(cell_angles, None, 'degrees')
-        velocities = in_units_of(velocities, None, 'nanometers/picosecond')
-        kineticEnergy = in_units_of(kineticEnergy, None, 'kilojoules_per_mole')
-        potentialEnergy = in_units_of(potentialEnergy, None, 'kilojoules_per_mole')
-        temperature = in_units_of(temperature, None, 'kelvin')
-        alchemicalLambda = in_units_of(alchemicalLambda, None, 'dimensionless')
-        protocolWork = in_units_of(protocolWork, None, 'kT')
+            #Use outfname specified for reporter
+            if 'outfname' in self._cfg['state']:
+                outfname = self._cfg['state']['outfname']
+            else: #Default to top level outfname
+                outfname = self._outfname
 
-        # do typechecking and shapechecking on the arrays
-        # this ensure_type method has a lot of options, but basically it lets
-        # us validate most aspects of the array. Also, we can upconvert
-        # on defficent ndim, which means that if the user sends in a single
-        # frame of data (i.e. coordinates is shape=(n_atoms, 3)), we can
-        # realize that. obviously the default mode is that they want to
-        # write multiple frames at a time, so the coordinate shape is
-        # (n_frames, n_atoms, 3)
-        coordinates = ensure_type(coordinates, dtype=np.float32, ndim=3,
-            name='coordinates', shape=(None, None, 3), can_be_none=False,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        n_frames, n_atoms, = coordinates.shape[0:2]
-        time = ensure_type(time, dtype=np.float32, ndim=1,
-            name='time', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        cell_lengths = ensure_type(cell_lengths, dtype=np.float32, ndim=2,
-            name='cell_lengths', shape=(n_frames, 3), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        cell_angles = ensure_type(cell_angles, dtype=np.float32, ndim=2,
-            name='cell_angles', shape=(n_frames, 3), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        velocities = ensure_type(velocities, dtype=np.float32, ndim=3,
-            name='velocoties', shape=(n_frames, n_atoms, 3), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        kineticEnergy = ensure_type(kineticEnergy, dtype=np.float32, ndim=1,
-            name='kineticEnergy', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        potentialEnergy = ensure_type(potentialEnergy, dtype=np.float32, ndim=1,
-            name='potentialEnergy', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        temperature = ensure_type(temperature, dtype=np.float32, ndim=1,
-            name='temperature', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        alchemicalLambda = ensure_type(alchemicalLambda, dtype=np.float32, ndim=1,
-            name='alchemicalLambda', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        protocolWork = ensure_type(protocolWork, dtype=np.float32, ndim=1,
-            name='protocolWork', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
+            state = parmed.openmm.reporters.StateDataReporter(outfname+'.ene', **self._cfg['state'])
+            Reporters.append(state)
 
-        # if this is our first call to write(), we need to create the headers
-        # and the arrays in the underlying HDF5 file
-        if self._needs_initialization:
-            self._initialize_headers(
-                n_atoms=n_atoms,
-                title=title,
-                parameters=parameters,
-                set_environment=(environment is not None),
-                set_coordinates=True,
-                set_time=(time is not None),
-                set_cell=(cell_lengths is not None or cell_angles is not None),
-                set_velocities=(velocities is not None),
-                set_kineticEnergy=(kineticEnergy is not None),
-                set_potentialEnergy=(potentialEnergy is not None),
-                set_temperature=(temperature is not None),
-                set_alchemicalLambda=(alchemicalLambda is not None),
-                set_protocolWork=(protocolWork is not None))
-            self._needs_initialization = False
+        if 'traj_netcdf' in self._cfg.keys():
 
-            # we need to check that that the entries that the user is trying
-            # to save are actually fields in OUR file
+            if 'outfname' in self._cfg['traj_netcdf']:
+                outfname = self._cfg['traj_netcdf']['outfname']
+            else:
+                outfname = self._outfname
 
-        try:
-            # try to get the nodes for all of the fields that we have
-            # which are not None
-            for name in ['coordinates', 'time', 'cell_angles', 'cell_lengths',
-                         'velocities', 'kineticEnergy', 'potentialEnergy', 'temperature', 'protocolWork', 'alchemicalLambda']:
-                contents = locals()[name]
-                if contents is not None:
-                    self._get_node(where='/', name=name).append(contents)
-                if contents is None:
-                    # for each attribute that they're not saving, we want
-                    # to make sure the file doesn't explect it
-                    try:
-                        self._get_node(where='/', name=name)
-                        raise AssertionError()
-                    except self.tables.NoSuchNodeError:
-                        pass
+            #Store as an attribute for calculating time/frame
+            if 'reportInterval' in self._cfg['traj_netcdf'].keys():
+                self.trajectory_interval = self._cfg['traj_netcdf']['reportInterval']
 
-        except self.tables.NoSuchNodeError:
-            raise ValueError("The file that you're trying to save to doesn't "
-                "contain the field %s. You can always save a new trajectory "
-                "and have it contain this information, but I don't allow 'ragged' "
-                "arrays. If one frame is going to have %s information, then I expect "
-                "all of them to. So I can't save it for just these frames. Sorry "
-                "about that :)" % (name, name))
-        except AssertionError:
-            raise ValueError("The file that you're saving to expects each frame "
-                            "to contain %s information, but you did not supply it."
-                            "I don't allow 'ragged' arrays. If one frame is going "
-                            "to have %s information, then I expect all of them to. "
-                            % (name, name))
+            traj_netcdf = NetCDF4Reporter(outfname+'.nc', **self._cfg['traj_netcdf'])
+            Reporters.append(traj_netcdf)
 
-        self._frame_index += n_frames
-        self.flush()
+        if 'restart' in self._cfg.keys():
 
-    def _encodeStringForPyTables(self, string, name, where='/', complevel=1, complib='zlib', shuffle=True):
-        bytestring = np.fromstring(string.encode('utf-8'),np.uint8)
-        atom = self.tables.UInt8Atom()
-        filters = self.tables.Filters(complevel,complib, shuffle)
-        if self.tables.__version__ >= '3.0.0':
-            self._handle.create_carray(where=where, name=name, obj=bytestring,
-                                       atom=atom, filters=filters)
-        else:
-            self._handle.createCArray(where=where, name=name, obj=bytestring,
-                                       atom=atom, filters=filters)
+            if 'outfname' in self._cfg['restart']:
+                outfname = self._cfg['restart']['outfname']
+            else:
+                outfname = self._outfname
 
-    def _initialize_headers(self, n_atoms, title, parameters, set_environment,
-                            set_coordinates, set_time, set_cell,
-                            set_velocities, set_kineticEnergy, set_potentialEnergy,
-                            set_temperature, set_alchemicalLambda, set_protocolWork):
-        self._n_atoms = n_atoms
-        self._parameters = parameters
-        self._handle.root._v_attrs.title = str(title)
-        self._handle.root._v_attrs.conventions = str('Pande')
-        self._handle.root._v_attrs.conventionVersion = str('1.1')
-        self._handle.root._v_attrs.program = str('MDTraj')
-        self._handle.root._v_attrs.programVersion = str(mdtraj.version.full_version)
-        self._handle.root._v_attrs.method = str('BLUES')
-        self._handle.root._v_attrs.methodVersion = str(blues.version.full_version)
-        self._handle.root._v_attrs.reference = str('DOI: 10.1021/acs.jpcb.7b11820')
+            restart =  parmed.openmm.reporters.RestartReporter(outfname+'.rst7', netcdf=True, **self._cfg['restart'])
+            Reporters.append(restart)
 
-        if not hasattr(self._handle.root._v_attrs, 'application'):
-            self._handle.root._v_attrs.application = str('OpenMM')
-            self._handle.root._v_attrs.applicationVersion = str(simtk.openmm.version.full_version)
+        if 'progress' in self._cfg.keys():
 
-        # create arrays that store frame level informat
-        if set_coordinates:
-            self._create_earray(where='/', name='coordinates',
-                atom=self.tables.Float32Atom(), shape=(0, self._n_atoms, 3))
-            self._handle.root.coordinates.attrs['units'] = str('nanometers')
+            if 'outfname' in self._cfg['progress']:
+                outfname = self._cfg['progress']['outfname']
+            else:
+                outfname = self._outfname
 
-        if set_time:
-            self._create_earray(where='/', name='time',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.time.attrs['units'] = str('picoseconds')
+            progress = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', **self._cfg['progress'])
+            Reporters.append(progress)
 
-        if set_cell:
-            self._create_earray(where='/', name='cell_lengths',
-                atom=self.tables.Float32Atom(), shape=(0, 3))
-            self._create_earray(where='/', name='cell_angles',
-                atom=self.tables.Float32Atom(), shape=(0, 3))
-            self._handle.root.cell_lengths.attrs['units'] = str('nanometers')
-            self._handle.root.cell_angles.attrs['units'] = str('degrees')
+        if 'stream' in self._cfg.keys():
+            if not self._logger: self._logger = logging.getLogger(__name__)
+            stream = blues.reporters.BLUESStateDataReporter(self._logger, **self._cfg['stream'])
+            Reporters.append(stream)
 
-        if set_velocities:
-            self._create_earray(where='/', name='velocities',
-                atom=self.tables.Float32Atom(), shape=(0, self._n_atoms, 3))
-            self._handle.root.velocities.attrs['units'] = str('nanometers/picosecond')
+        return Reporters
 
-        if set_kineticEnergy:
-            self._create_earray(where='/', name='kineticEnergy',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.kineticEnergy.attrs['units'] = str('kilojoules_per_mole')
-
-        if set_potentialEnergy:
-            self._create_earray(where='/', name='potentialEnergy',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.potentialEnergy.attrs['units'] = str('kilojoules_per_mole')
-
-        if set_temperature:
-            self._create_earray(where='/', name='temperature',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.temperature.attrs['units'] = str('kelvin')
-
-        #Add another portion akin to this if you want to store more data in the h5 file
-        if set_alchemicalLambda:
-            self._create_earray(where='/', name='alchemicalLambda',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.alchemicalLambda.attrs['units'] = str('dimensionless')
-
-        if set_protocolWork:
-            self._create_earray(where='/', name='protocolWork',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.protocolWork.attrs['units'] = str('kT')
-
-        if parameters:
-            if 'Logger' in self._parameters: self._parameters.pop('Logger')
-            paramjson = json.dumps(self._parameters)
-            self._encodeStringForPyTables(string=paramjson, name='parameters')
-
-        if set_environment:
-            try:
-                envout = subprocess.check_output('conda env export --no-builds', shell=True, stderr=subprocess.STDOUT)
-                envjson = json.dumps(yaml.load(envout), sort_keys=True, indent=2)
-                self._encodeStringForPyTables(envjson, name='environment')
-            except Exception as e:
-                print(e)
-                pass
+######################
+#     REPORTERS      #
+######################
 
 class BLUESHDF5Reporter(HDF5Reporter):
-    #This is a subclass of the HDF5 class from mdtraj that handles the reporting of
-    #the trajectory.
+    """This is a subclass of the HDF5 class from mdtraj that handles
+    reporting of the trajectory.
+
+    HDF5Reporter stores a molecular dynamics trajectory in the HDF5 format.
+    This object supports saving all kinds of information from the simulation --
+    more than any other trajectory format. In addition to all of the options,
+    the topology of the system will also (of course) be stored in the file. All
+    of the information is compressed, so the size of the file is not much
+    different than DCD, despite the added flexibility.
+    Parameters
+    ----------
+    file : str, or HDF5TrajectoryFile
+        Either an open HDF5TrajecoryFile object to write to, or a string
+        specifying the filename of a new HDF5 file to save the trajectory to.
+    title : str,
+        String to specify the title of the HDF5 tables
+    frame_indices : list, frame numbers for writing the trajectory
+    reportInterval : int
+        The interval (in time steps) at which to write frames.
+    coordinates : bool
+        Whether to write the coordinates to the file.
+    time : bool
+        Whether to write the current time to the file.
+    cell : bool
+        Whether to write the current unit cell dimensions to the file.
+    potentialEnergy : bool
+        Whether to write the potential energy to the file.
+    kineticEnergy : bool
+        Whether to write the kinetic energy to the file.
+    temperature : bool
+        Whether to write the instantaneous temperature to the file.
+    velocities : bool
+        Whether to write the velocities to the file.
+    atomSubset : array_like, default=None
+        Only write a subset of the atoms, with these (zero based) indices
+        to the file. If None, *all* of the atoms will be written to disk.
+    protocolWork : bool=False,
+        Write the protocolWork for the alchemical process in the NCMC simulation
+    alchemicalLambda : bool=False,
+        Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
+    parameters : dict
+        Dict of the simulation parameters. Useful for record keeping.
+    environment : bool
+        True will attempt to export your conda environment to JSON and
+        store the information in the HDF5 file. Useful for record keeping.
+
+    Notes
+    -----
+    If you use the ``atomSubset`` option to write only a subset of the atoms
+    to disk, the ``kineticEnergy``, ``potentialEnergy``, and ``temperature``
+    fields will not change. They will still refer to the energy and temperature
+    of the *whole* system, and are not "subsetted" to only include the energy
+    of your subsystem.
+
+    """
+
     @property
     def backend(self):
         return BLUESHDF5TrajectoryFile
 
-    def __init__(self, file, reportInterval,
+    def __init__(self, file, reportInterval=1,
                  title='NCMC Trajectory',
-                 coordinates=True, frame_indices=None,
+                 coordinates=True, frame_indices=[],
                  time=False, cell=True, temperature=False,
                  potentialEnergy=False, kineticEnergy=False,
                  velocities=False, atomSubset=None,
@@ -382,10 +282,41 @@ class BLUESHDF5Reporter(HDF5Reporter):
             temperature, velocities, atomSubset)
         self._protocolWork = bool(protocolWork)
         self._alchemicalLambda = bool(alchemicalLambda)
-        self._frame_indices = frame_indices
+
         self._environment = bool(environment)
         self._title = title
         self._parameters = parameters
+
+        self.frame_indices = frame_indices
+        if self.frame_indices:
+            #If simulation.currentStep = 1, store the frame from the previous step.
+            # i.e. frame_indices=[1,100] will store the first and frame 100
+            self.frame_indices = [x-1 for x in frame_indices]
+
+    def describeNextReport(self, simulation):
+        """
+        Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The simulation to generate a report for
+        Returns
+        -------
+        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
+            nsteps is the number of steps until the next report
+            pos, vel, frc, and ene are flags indicating whether positions,
+            velocities, forces, and/or energies are needed from the Context
+        """
+        #Monkeypatch to report at certain frame indices
+        if self.frame_indices:
+            if simulation.currentStep in self.frame_indices:
+                steps = 1
+            else:
+                steps = -1
+        if not self.frame_indices:
+            steps_left = simulation.currentStep % self._reportInterval
+            steps = self._reportInterval - steps_left
+        return (steps, self._coordinates, self._velocities, False, self._needEnergy)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -406,16 +337,13 @@ class BLUESHDF5Reporter(HDF5Reporter):
         kwargs = {}
         if self._coordinates:
             coordinates = state.getPositions(asNumpy=True)[self._atomSlice]
-            coordinates = coordinates.value_in_unit(getattr(units, self._traj_file.distance_unit))
-            if self._frame_indices:
-                if simulation.currentStep not in self._frame_indices:
-                    coordinates = np.zeros(coordinates.shape)
+            coordinates = coordinates.value_in_unit(getattr(unit, self._traj_file.distance_unit))
             args = (coordinates,)
         if self._time:
             kwargs['time'] = state.getTime()
         if self._cell:
             vectors = state.getPeriodicBoxVectors(asNumpy=True)
-            vectors = vectors.value_in_unit(getattr(units, self._traj_file.distance_unit))
+            vectors = vectors.value_in_unit(getattr(unit, self._traj_file.distance_unit))
             a, b, c, alpha, beta, gamma = unitcell.box_vectors_to_lengths_and_angles(*vectors)
             kwargs['cell_lengths'] = np.array([a, b, c])
             kwargs['cell_angles'] = np.array([alpha, beta, gamma])
@@ -424,7 +352,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if self._kineticEnergy:
             kwargs['kineticEnergy'] = state.getKineticEnergy()
         if self._temperature:
-            kwargs['temperature'] = 2*state.getKineticEnergy()/(self._dof*units.MOLAR_GAS_CONSTANT_R)
+            kwargs['temperature'] = 2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)
         if self._velocities:
             kwargs['velocities'] = state.getVelocities(asNumpy=True)[self._atomSlice, :]
 
@@ -450,57 +378,112 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if hasattr(self._traj_file, 'flush'):
             self._traj_file.flush()
 
-# Custom formatter
-class LoggerFormatter(logging.Formatter):
-
-    err_fmt  = "(%(asctime)s) %(levelname)s: [%(module)s.%(funcName)s] %(message)s"
-    dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
-    info_fmt = "%(levelname)s: %(message)s"
-    rep_fmt = "%(message)s"
-
-    def __init__(self):
-        super().__init__(fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
-        addLoggingLevel('REPORT', logging.WARNING - 5)
-
-    def format(self, record):
-
-        # Save the original format configured by the user
-        # when the logger formatter was instantiated
-        format_orig = self._style._fmt
-
-        # Replace the original format with one customized by logging level
-        if record.levelno == logging.DEBUG:
-            self._style._fmt = LoggerFormatter.dbg_fmt
-
-        elif record.levelno == logging.INFO:
-            self._style._fmt = LoggerFormatter.info_fmt
-
-        elif record.levelno == logging.WARNING:
-            self._style._fmt = LoggerFormatter.info_fmt
-
-        elif record.levelno == logging.ERROR:
-            self._style._fmt = LoggerFormatter.err_fmt
-
-        elif record.levelno == logging.REPORT:
-            self._style._fmt = LoggerFormatter.rep_fmt
-
-        # Call the original formatter class to do the grunt work
-        result = logging.Formatter.format(self, record)
-
-        # Restore the original format configured by the user
-        self._style._fmt = format_orig
-
-        return result
-
-class BLUESStateDataReporter(StateDataReporter):
-    def __init__(self, file,  reportInterval, title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False,   temperature=False, volume=False, density=False,
-    progress=False, remainingTime=False, speed=False, elapsedTime=False, separator=',', systemMass=None, totalSteps=None):
+class BLUESStateDataReporter(app.StateDataReporter):
+    """StateDataReporter outputs information about a simulation, such as energy and temperature, to a file.
+    To use it, create a StateDataReporter, then add it to the Simulation's list of reporters.  The set of
+    data to write is configurable using boolean flags passed to the constructor.  By default the data is
+    written in comma-separated-value (CSV) format, but you can specify a different separator to use.
+    """
+    def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False,    totalEnergy=False, temperature=False, volume=False, density=False, progress=False, remainingTime=False, speed=False, elapsedTime=False,    separator='\t', systemMass=None, totalSteps=None, protocolWork=False, alchemicalLambda=False, currentIter=False):
         super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
             potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
             progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
+        """Create a StateDataReporter.
+        Inherited from `openmm.app.StateDataReporter`
 
+        Parameters
+        ----------
+        file : string or file
+            The file to write to, specified as a file name or file-like object (Logger)
+        reportInterval : int
+            The interval (in time steps) at which to write frames
+        frame_indices : list, frame numbers for writing the trajectory
+        title : str,
+            Text prefix for each line of the report. Used to distinguish
+            between the NCMC and MD simulation reports.
+        step : bool=False
+            Whether to write the current step index to the file
+        time : bool=False
+            Whether to write the current time to the file
+        potentialEnergy : bool=False
+            Whether to write the potential energy to the file
+        kineticEnergy : bool=False
+            Whether to write the kinetic energy to the file
+        totalEnergy : bool=False
+            Whether to write the total energy to the file
+        temperature : bool=False
+            Whether to write the instantaneous temperature to the file
+        volume : bool=False
+            Whether to write the periodic box volume to the file
+        density : bool=False
+            Whether to write the system density to the file
+        progress : bool=False
+            Whether to write current progress (percent completion) to the file.
+            If this is True, you must also specify totalSteps.
+        remainingTime : bool=False
+            Whether to write an estimate of the remaining clock time until
+            completion to the file.  If this is True, you must also specify
+            totalSteps.
+        speed : bool=False
+            Whether to write an estimate of the simulation speed in ns/day to
+            the file
+        elapsedTime : bool=False
+            Whether to write the elapsed time of the simulation in seconds to
+            the file.
+        separator : string=','
+            The separator to use between columns in the file
+        systemMass : mass=None
+            The total mass to use for the system when reporting density.  If
+            this is None (the default), the system mass is computed by summing
+            the masses of all particles.  This parameter is useful when the
+            particle masses do not reflect their actual physical mass, such as
+            when some particles have had their masses set to 0 to immobilize
+            them.
+        totalSteps : int=None
+            The total number of steps that will be included in the simulation.
+            This is required if either progress or remainingTime is set to True,
+            and defines how many steps will indicate 100% completion.
+        protocolWork : bool=False,
+            Write the protocolWork for the alchemical process in the NCMC simulation
+        alchemicalLambda : bool=False,
+            Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
+        """
         self.log = self._out
         self.title = title
+
+        self.frame_indices = frame_indices
+        self._protocolWork, self._alchemicalLambda, self._currentIter = protocolWork, alchemicalLambda, currentIter
+        if self.frame_indices:
+            #If simulation.currentStep = 1, store the frame from the previous step.
+            # i.e. frame_indices=[1,100] will store the first and frame 100
+            self.frame_indices = [x-1 for x in frame_indices]
+
+    def describeNextReport(self, simulation):
+        """
+        Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The simulation to generate a report for
+        Returns
+        -------
+        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
+            nsteps is the number of steps until the next report
+            pos, vel, frc, and ene are flags indicating whether positions,
+            velocities, forces, and/or energies are needed from the Context
+        """
+        #Monkeypatch to report at certain frame indices
+        if self.frame_indices:
+            if simulation.currentStep in self.frame_indices:
+                steps = 1
+            else:
+                steps = -1
+        if not self.frame_indices:
+            steps_left = simulation.currentStep % self._reportInterval
+            steps = self._reportInterval - steps_left
+
+        return (steps, self._needsPositions, self._needsVelocities,
+                self._needsForces, self._needEnergy)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -514,7 +497,9 @@ class BLUESStateDataReporter(StateDataReporter):
         if not self._hasInitialized:
             self._initializeConstants(simulation)
             headers = self._constructHeaders()
-            self.log.report('#"%s"' % ('"'+self._separator+'"').join(headers))
+            if hasattr(self.log, 'report'):
+                self.log.info = self.log.report
+            self.log.info('#"%s"' % ('"'+self._separator+'"').join(headers))
             try:
                 self._out.flush()
             except AttributeError:
@@ -526,13 +511,253 @@ class BLUESStateDataReporter(StateDataReporter):
 
         # Check for errors.
         self._checkForErrors(simulation, state)
-
         # Query for the values
         values = self._constructReportValues(simulation, state)
 
         # Write the values.
-        self.log.report('%s: %s' % (self.title, self._separator.join(str(v) for v in values)))
+        if hasattr(self.log, 'report'):
+            self.log.info = self.log.report
+        self.log.info('%s: %s' % (self.title, self._separator.join(str(v) for v in values)))
         try:
             self._out.flush()
         except AttributeError:
             pass
+
+    def _constructReportValues(self, simulation, state):
+        """Query the simulation for the current state of our observables of interest.
+        Parameters
+        ----------
+        simulation : Simulation
+            The Simulation to generate a report for
+        state : State
+            The current state of the simulation
+        Returns
+        -------
+        A list of values summarizing the current state of
+        the simulation, to be printed or saved. Each element in the list
+        corresponds to one of the columns in the resulting CSV file.
+        """
+        values = []
+        box = state.getPeriodicBoxVectors()
+        volume = box[0][0]*box[1][1]*box[2][2]
+        clockTime = time.time()
+        if self._currentIter:
+            if not hasattr(simulation, 'currentIter'):
+                simulation.currentIter = 0
+            values.append(simulation.currentIter)
+        if self._progress:
+            values.append('%.1f%%' % (100.0*simulation.currentStep/self._totalSteps))
+        if self._step:
+            values.append(simulation.currentStep)
+        if self._time:
+            values.append(state.getTime().value_in_unit(unit.picosecond))
+        #add a portion like this to store things other than the protocol work
+        if self._alchemicalLambda:
+            alchemicalLambda = simulation.integrator.getGlobalVariableByName('lambda')
+            values.append(alchemicalLambda)
+        if self._protocolWork:
+            protocolWork = simulation.integrator.get_protocol_work(dimensionless=True)
+            values.append(protocolWork)
+        if self._potentialEnergy:
+            values.append(state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
+        if self._kineticEnergy:
+            values.append(state.getKineticEnergy().value_in_unit(unit.kilojoules_per_mole))
+        if self._totalEnergy:
+            values.append((state.getKineticEnergy()+state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole))
+        if self._temperature:
+            values.append((2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin))
+        if self._volume:
+            values.append(volume.value_in_unit(unit.nanometer**3))
+        if self._density:
+            values.append((self._totalMass/volume).value_in_unit(unit.gram/unit.item/unit.milliliter))
+
+        if self._speed:
+            elapsedDays = (clockTime-self._initialClockTime)/86400.0
+            elapsedNs = (state.getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
+            if elapsedDays > 0.0:
+                values.append('%.3g' % (elapsedNs/elapsedDays))
+            else:
+                values.append('--')
+        if self._elapsedTime:
+            values.append(time.time() - self._initialClockTime)
+        if self._remainingTime:
+            elapsedSeconds = clockTime-self._initialClockTime
+            elapsedSteps = simulation.currentStep-self._initialSteps
+            if elapsedSteps == 0:
+                value = '--'
+            else:
+                estimatedTotalSeconds = (self._totalSteps-self._initialSteps)*elapsedSeconds/elapsedSteps
+                remainingSeconds = int(estimatedTotalSeconds-elapsedSeconds)
+                remainingDays = remainingSeconds//86400
+                remainingSeconds -= remainingDays*86400
+                remainingHours = remainingSeconds//3600
+                remainingSeconds -= remainingHours*3600
+                remainingMinutes = remainingSeconds//60
+                remainingSeconds -= remainingMinutes*60
+                if remainingDays > 0:
+                    value = "%d:%d:%02d:%02d" % (remainingDays, remainingHours, remainingMinutes, remainingSeconds)
+                elif remainingHours > 0:
+                    value = "%d:%02d:%02d" % (remainingHours, remainingMinutes, remainingSeconds)
+                elif remainingMinutes > 0:
+                    value = "%d:%02d" % (remainingMinutes, remainingSeconds)
+                else:
+                    value = "0:%02d" % remainingSeconds
+            values.append(value)
+        return values
+
+    def _constructHeaders(self):
+        """Construct the headers for the CSV output
+        Returns: a list of strings giving the title of each observable being reported on.
+        """
+        headers = []
+        if self._currentIter:
+            headers.append('Iter')
+        if self._progress:
+            headers.append('Progress (%)')
+        if self._step:
+            headers.append('Step')
+        if self._time:
+            headers.append('Time (ps)')
+        if self._alchemicalLambda:
+            headers.append('alchemicalLambda')
+        if self._protocolWork:
+            headers.append('protocolWork')
+        if self._potentialEnergy:
+            headers.append('Potential Energy (kJ/mole)')
+        if self._kineticEnergy:
+            headers.append('Kinetic Energy (kJ/mole)')
+        if self._totalEnergy:
+            headers.append('Total Energy (kJ/mole)')
+        if self._temperature:
+            headers.append('Temperature (K)')
+        if self._volume:
+            headers.append('Box Volume (nm^3)')
+        if self._density:
+            headers.append('Density (g/mL)')
+        if self._speed:
+            headers.append('Speed (ns/day)')
+        if self._elapsedTime:
+            headers.append('Elapsed Time (s)')
+        if self._remainingTime:
+            headers.append('Time Remaining')
+        return headers
+
+class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
+    """
+    Class to read or write NetCDF trajectory files
+    """
+
+    def __init__(self, file, reportInterval=1, frame_indices=[], crds=True, vels=False, frcs=False,
+                protocolWork=False, alchemicalLambda=False):
+        """
+        Create a NetCDFReporter instance.
+        Inherited from `parmed.openmm.reporters.NetCDFReporter`
+
+        Parameters
+        ----------
+        file : str
+            Name of the file to write the trajectory to
+        reportInterval : int
+            How frequently to write a frame to the trajectory
+        frame_indices : list, frame numbers for writing the trajectory
+            If this reporter is used for the NCMC simulation,
+            0.5 will report at the moveStep and -1 will record at the last frame.
+        crds : bool=True
+            Should we write coordinates to this trajectory? (Default True)
+        vels : bool=False
+            Should we write velocities to this trajectory? (Default False)
+        frcs : bool=False
+            Should we write forces to this trajectory? (Default False)
+        protocolWork : bool=False,
+            Write the protocolWork for the alchemical process in the NCMC simulation
+        alchemicalLambda : bool=False,
+            Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
+        """
+        super(NetCDF4Reporter,self).__init__(file, reportInterval, crds, vels, frcs)
+        self.crds, self.vels, self.frcs, self.protocolWork, self.alchemicalLambda = crds, vels, frcs, protocolWork, alchemicalLambda
+        self.frame_indices = frame_indices
+        if self.frame_indices:
+            #If simulation.currentStep = 1, store the frame from the previous step.
+            # i.e. frame_indices=[1,100] will store the first and frame 100
+            self.frame_indices = [x-1 for x in frame_indices]
+
+    def describeNextReport(self, simulation):
+        """
+        Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The simulation to generate a report for
+        Returns
+        -------
+        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
+            nsteps is the number of steps until the next report
+            pos, vel, frc, and ene are flags indicating whether positions,
+            velocities, forces, and/or energies are needed from the Context
+        """
+        #Monkeypatch to report at certain frame indices
+        if self.frame_indices:
+            if simulation.currentStep in self.frame_indices:
+                steps = 1
+            else:
+                steps = -1
+        if not self.frame_indices:
+            steps_left = simulation.currentStep % self._reportInterval
+            steps = self._reportInterval - steps_left
+        return (steps, self.crds, self.vels, self.frcs, False)
+
+    def report(self, simulation, state):
+        """Generate a report.
+        Parameters
+        ----------
+        simulation : :class:`app.Simulation`
+            The Simulation to generate a report for
+        state : :class:`mm.State`
+            The current state of the simulation
+        """
+        global VELUNIT, FRCUNIT
+        if self.crds:
+            crds = state.getPositions().value_in_unit(u.angstrom)
+        if self.vels:
+            vels = state.getVelocities().value_in_unit(VELUNIT)
+        if self.frcs:
+            frcs = state.getForces().value_in_unit(FRCUNIT)
+        if self.protocolWork:
+            protocolWork = simulation.integrator.get_protocol_work(dimensionless=True)
+        if self.alchemicalLambda:
+            alchemicalLambda = simulation.integrator.getGlobalVariableByName('lambda')
+        if self._out is None:
+            # This must be the first frame, so set up the trajectory now
+            if self.crds:
+                atom = len(crds)
+            elif self.vels:
+                atom = len(vels)
+            elif self.frcs:
+                atom = len(frcs)
+            self.uses_pbc = simulation.topology.getUnitCellDimensions() is not None
+            self._out = NetCDF4Traj.open_new(
+                    self.fname, atom, self.uses_pbc, self.crds, self.vels,
+                    self.frcs, title="ParmEd-created trajectory using OpenMM",
+                    protocolWork=self.protocolWork, alchemicalLambda=self.alchemicalLambda,
+            )
+
+        if self.uses_pbc:
+            vecs = state.getPeriodicBoxVectors()
+            lengths, angles = box_vectors_to_lengths_and_angles(*vecs)
+            self._out.add_cell_lengths_angles(lengths.value_in_unit(u.angstrom),
+                                              angles.value_in_unit(u.degree))
+
+        # Add the coordinates, velocities, and/or forces as needed
+        if self.crds:
+            self._out.add_coordinates(crds)
+        if self.vels:
+            # The velocities get scaled right before writing
+            self._out.add_velocities(vels)
+        if self.frcs:
+            self._out.add_forces(frcs)
+        if self.protocolWork:
+            self._out.add_protocolWork(protocolWork)
+        if self.alchemicalLambda:
+            self._out.add_alchemicalLambda(alchemicalLambda)
+        # Now it's time to add the time.
+        self._out.add_time(state.getTime().value_in_unit(u.picosecond))

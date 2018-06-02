@@ -5,24 +5,41 @@ language: python
 branches:
     only:
         - master
-install:
-    - source devtools/travis-ci/install.sh
+
+before_install:
+    - bash -x devtools/travis-ci/install.sh
     - export PYTHONUNBUFFERED=true
+    - export PATH=$HOME/miniconda/bin:$PATH
     # Unpack encrypted OpenEye license file
     - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
     - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
-script:
+    # Turn on always yes
     - conda config --set always_yes true --set changeps1 no
-    - conda config --add channels ${ORGNAME}
+    - conda update --yes -q conda
+    - conda install conda-build
+    - conda install anaconda-client
+    - conda info -a
+
+install:
+    # Create a test environment
     - conda create -q -n testenv python=$python
+    # Activate the test environment
     - source activate testenv
+    # Add org channel
+    - conda config --add channels ${ORGNAME}
+    # Add conda-forge channel to top priority
+    - conda config --add channels conda-forge
+    # Install OpenEye dependencies
+    #  Use beta version for partial bond orders
+    - pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+    #- conda install --yes -c openeye/label/beta openeye-toolkits
     - conda install --yes -c openeye/label/Orion oeommtools
-    - conda install -c omnia mdtraj=1.9.1 parmed=2.7.1 openmmtools=0.13.0
-    # Use beta version for partial bond orders
-    - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+    # Build the recipe
     - conda build --python $python devtools/conda-recipe
-    - conda install --yes blues --use-local
+    - conda install --yes --use-local ${PACKAGENAME}
     - conda list
+
+script:
     - py.test -v blues
 
 env:
@@ -34,3 +51,4 @@ env:
     - PACKAGENAME="blues"
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
+    - OPENEYE_BETA="https://pypi.anaconda.org/openeye/label/beta/simple"
