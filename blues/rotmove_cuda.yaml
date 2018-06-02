@@ -8,7 +8,7 @@
 
 output_dir: t4-toluene-test
 outfname: t4-toluene
-logger_level: info 
+logger_level: info
 
 structure:
   filename: tests/data/eqToluene.prmtop
@@ -39,7 +39,7 @@ system:
 
 freeze:
   freeze_center: ':LIG'
-  freeze_solvent: ':WAT,Cl-'
+  freeze_solvent: ':WAT, NA, Cl-'
   freeze_distance: 5 * angstroms
 
 simulation:

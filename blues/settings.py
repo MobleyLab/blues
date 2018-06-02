@@ -171,6 +171,10 @@ class Settings(object):
 
     @staticmethod
     def check_SystemModifications(config):
+        """
+        Given a dict (config), check the parameters relate dto freezing or
+        restraining the system.
+        """
         # Check Amber Selections
         if 'freeze' in config.keys():
             freeze_keys = ['freeze_center', 'freeze_solvent', 'freeze_selection']

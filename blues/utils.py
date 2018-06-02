@@ -131,11 +131,6 @@ def parse_unit_quantity(unit_quantity_str):
         return unit.Quantity(float(value), eval('%s/unit.%s' % (u[0], u[1])))
     return unit.Quantity(float(value), eval('unit.%s' % u))
 
-def ranges(i):
-    for a, b in itertools.groupby(enumerate(i), lambda x, y: y - x ):
-        b = list(b)
-        yield b[0][1], b[-1][1]
-
 def zero_masses(system, atomList=None):
     """
     Zeroes the masses of specified atoms to constrain certain degrees of freedom.
