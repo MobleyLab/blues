@@ -8,6 +8,7 @@ Latest release: [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.o
 ## Citations
 #### Publication
 - [Gill, S; Lim, N. M.; Grinaway, P.; Rustenburg, A. S.; Fass, J.; Ross, G.; Chodera, J. D.; Mobley, D. L. “Binding Modes of Ligands Using Enhanced Sampling (BLUES): Rapid Decorrelation of Ligand Binding Modes Using Nonequilibrium Candidate Monte Carlo”](https://pubs.acs.org/doi/abs/10.1021/acs.jpcb.7b11820) - Journal of Physical Chemistry B. February 27, 2018
+
 #### Preprints
 - [BLUES v1](https://chemrxiv.org/articles/Binding_Modes_of_Ligands_Using_Enhanced_Sampling_BLUES_Rapid_Decorrelation_of_Ligand_Binding_Modes_Using_Nonequilibrium_Candidate_Monte_Carlo/5406907) - ChemRxiv September 19, 2017
 - [BLUES v2](https://doi.org/10.26434/chemrxiv.5406907.v2) - ChemRxiv September 25, 2017
