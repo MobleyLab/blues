@@ -350,8 +350,7 @@ class Simulation(object):
             self.mc_per_iter = 1
 
         #specify nc integrator variables to report in verbose output
-        self.work_keys = [ 'lambda',
-                          'protocol_work', 'unperturbed_pe', 'perturbed_pe']
+        self.work_keys = [ 'lambda', 'protocol_work', 'unperturbed_pe', 'perturbed_pe']
 
         self.state_keys = { 'getPositions' : True,
                        'getVelocities' : True,
@@ -602,8 +601,6 @@ class Simulation(object):
                 #self.nc_integrator.step(1)
                 self.nc_sim.step(1)
 
-
-
                 ###DEBUG options at every NCMC step
                 #if verbose:
                     # Print energies at every step
@@ -625,7 +622,7 @@ class Simulation(object):
                 break
 
             #self._report(start, nc_step)
-        np.savetxt(fname='energies.txt',X=ene_array,fmt='%.6f', header=' '.join(work.keys()))
+        np.savetxt(fname='energies.txt',X=ene_array,fmt='%.6f', header=' '.join(self.work_keys))
         nc_state1 = self.getStateInfo(self.nc_context, self.state_keys)
         self.setSimState('nc', 'state1', nc_state1)
 
