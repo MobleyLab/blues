@@ -165,23 +165,13 @@ class RandomLigandRotationMove(Move):
         Parameters
         ----------
         resname : str
-            String specifying the resiue name of the ligand, or list of indices denoting the ligand.
+            String specifying the resiue name of the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
         """
-<<<<<<< HEAD
-        Move.__init__(self)
-        self.structure = structure
-        if isinstance(resname, str):
-            self.resname = resname
-            self.atom_indices = self.getAtomIndices(structure, self.resname)
-        else:
-            self.atom_indices = resname
-=======
         self.structure = structure
         self.resname = resname
         self.atom_indices = self.getAtomIndices(structure, self.resname)
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
         self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
         self.masses = []
@@ -189,10 +179,6 @@ class RandomLigandRotationMove(Move):
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
         self.calculateProperties()
-<<<<<<< HEAD
-
-=======
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
 
     def getAtomIndices(self, structure, resname):
         """
@@ -596,15 +582,8 @@ class SideChainMove(Move):
         # update the class structure positions
             self.structure.positions = model.positions
 
-
-
-<<<<<<< HEAD
-        if verbose:
-            filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
-=======
         if self.write_move:
             filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
             mod_prot = model.save(filename, overwrite = True)
 
         return nc_context
@@ -1081,4 +1060,3 @@ class SmartDartMove(RandomLigandRotationMove):
         return adjusted_center
 
 from blues.moldart.move import MolDartMove
-

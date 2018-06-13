@@ -6,10 +6,6 @@ Contributors: Nathan M. Lim, David L. Mobley
 """
 
 from __future__ import print_function
-<<<<<<< HEAD
-import os
-import mdtraj
-=======
 import os, copy, yaml, logging, sys, itertools
 import mdtraj, parmed
 from simtk import unit, openmm
@@ -18,8 +14,6 @@ from blues import reporters
 from math import floor, ceil
 from platform import uname
 logger = logging.getLogger(__name__)
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
-
 
 def saveSimulationFrame(simulation, outfname):
     """Extracts a ParmEd structure and writes the frame given
@@ -110,8 +104,6 @@ def check_amber_selection(structure, selection):
     logger: logging.Logger object, records information
     """
 
-<<<<<<< HEAD
-=======
     mask_idx = []
     mask = parmed.amber.AmberMask(structure, str(selection))
     mask_idx = [i for i in mask.Selected()]
@@ -151,8 +143,6 @@ def zero_masses(system, atomList=None):
     for index in (atomList):
         system.setParticleMass(index, 0*unit.daltons)
     return system
-
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
 
 def atomIndexfromTop(resname, topology):
     """
