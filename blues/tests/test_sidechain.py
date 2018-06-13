@@ -44,15 +44,6 @@ class SideChainTester(unittest.TestCase):
         self.assertEqual(len(self.sidechain.rot_bonds), 1)
 
     def test_sidechain_move(self):
-<<<<<<< HEAD
-        simulations = SimulationFactory(self.struct, self.mover, **self.opt)
-        simulations.createSimulationSet()
-
-
-        nc_context = simulations.nc.context
-        self.sidechain.beforeMove(simulations.nc.context)
-        self.sidechain.move(nc_context, verbose=False)
-=======
         before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)
         blues = BLUESSimulation(self.simulations)
         blues._stepNCMC_(nstepsNC=4, moveStep=2)
@@ -62,7 +53,6 @@ class SideChainTester(unittest.TestCase):
         # Integrator must step for context to update positions
         pos_compare = np.not_equal(before_move, after_move).all()
         self.assertTrue(pos_compare)
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
 
 if __name__ == "__main__":
         unittest.main()

@@ -17,17 +17,10 @@ requirements:
     - setuptools
     - openmmtools <=0.14.0
     - mdtraj <=1.9.1
-<<<<<<< HEAD
-    - openmm >=7.1.1
-    - parmed >=2.7.3
-    - future
-    - yank
-=======
     - openmm <=7.1.1
     - parmed <=3.0.1
     - netcdf4 <=1.3.1
     - pyyaml
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
 
   run:
     - python
@@ -35,18 +28,13 @@ requirements:
     - setuptools
     - openmmtools <=0.14.0
     - mdtraj <=1.9.1
-<<<<<<< HEAD
-    - openmm >=7.1.1
-    - parmed >=2.7.3
     - future
     - chemcoord
     - yank
-=======
     - openmm <=7.1.1
     - parmed <=3.0.1
     - netcdf4 <=1.3.1
     - pyyaml
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
 
 test:
   requires:

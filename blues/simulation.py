@@ -836,19 +836,12 @@ class BLUESSimulation(object):
         self._set_stateTable_('md', 'state0', md_state0)
         self._md_sim.currentIter = currentIter
 
-        #TODO: CHECK SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD?
-        #ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
-        #self._set_stateTable_('ncmc', 'state0', ncmc_state0)
-        #self._ncmc_sim.currentIter = currentIter
-
-        # Replace ncmc context data from the md context
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
-
-        #TODO: CHECK SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD?
-        # IMPACTS ALCHEMICAL CORRECTION CALCULATION?
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
         self._set_stateTable_('ncmc', 'state0', ncmc_state0)
         self._ncmc_sim.currentIter = currentIter
+
+        # Replace ncmc context data from the md context
+        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None, energies=False):
         """Function that advances the NCMC simulation."""
@@ -858,15 +851,12 @@ class BLUESSimulation(object):
         #TODO: will have to change to work with multiple alch region
         if not move_engine: move_engine = self._move_engine
         move_engine.selectMove()
-
-        ene_array = np.zeros((nstepsNC,len(self.work_keys)))
-
+        ene_array = np.zeros((nstepsNC,len(self._integrator_keys_)))
         for step in range(int(nstepsNC)):
             try:
                 #Attempt anything related to the move before protocol is performed
                 if step == 0:
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
-                    #self._ncmc_sim.context = self._move_engine.moves[move_idx].beforeMove(self._ncmc_sim.context)
 
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
@@ -901,7 +891,7 @@ class BLUESSimulation(object):
 
         # ncmc_state1 stores the state AFTER a proposed move.
         if energies:
-            np.savetxt(fname='energies.txt',X=ene_array,fmt='%.6f', header=' '.join(self.work_keys))
+            np.savetxt(fname='ncmc-energies.txt',X=ene_array,fmt='%.6f', header=' '.join(self._integrator_keys_))
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
         self._set_stateTable_('ncmc', 'state1', ncmc_state1)
 
@@ -920,10 +910,7 @@ class BLUESSimulation(object):
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
 
         correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
-
-        #print('Alchemical Correction', correction_factor)
-        #print(ncmc_state0_PE, md_state0_PE)
-        #print(ncmc_state0_PE - md_state0_PE)
+        logger.debug('Alchemical Correction = %.6f' % correction_factor)
 
         return correction_factor
 

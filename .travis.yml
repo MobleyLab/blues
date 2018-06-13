@@ -34,15 +34,7 @@ install:
     - pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
     #- conda install --yes -c openeye/label/beta openeye-toolkits
     - conda install --yes -c openeye/label/Orion oeommtools
-<<<<<<< HEAD
-    - conda install -c omnia mdtraj=1.9.1 parmed=2.7.1 openmmtools=0.13.0 yank
-    - conda install --yes -c sgill2 chemcoord
-    - conda install --yes -c conda-forge future
-    # Use beta version for partial bond orders
-    - pip install --pre -i https://pypi.anaconda.org/openeye/label/beta/simple openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-=======
     # Build the recipe
->>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
     - conda build --python $python devtools/conda-recipe
     - conda install --yes --use-local ${PACKAGENAME}
     - conda list
