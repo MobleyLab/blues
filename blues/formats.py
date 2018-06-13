@@ -245,6 +245,24 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         self.flush()
 
     def _encodeStringForPyTables(self, string, name, where='/', complevel=1, complib='zlib', shuffle=True):
+<<<<<<< HEAD
+=======
+        """
+        Encode a given string into a character array (PyTables)
+
+        Parameters:
+        -----------
+        string : str, input string to be encoded
+        name : str, title or name of table for character array
+        where : str, filepath where character array will be stored
+            By default ('/') the character array will be stored at the root level.
+        complevel : int, compression level
+        complib : str, default='zlib'
+            Valid choices are ['zlib', 'lzo', 'bzip2', 'blosc']
+        shuffle : bool, default=True
+            Whether or not to use the Shuffle filter in the HDF5 library. This is normally used to improve the compression ratio. A false value disables shuffling and a true one enables it. The default value depends on whether compression is enabled or not; if compression is enabled, shuffling defaults to be enabled, else shuffling is disabled. Shuffling can only be used when compression is enabled.
+        """
+>>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
         bytestring = np.fromstring(string.encode('utf-8'),np.uint8)
         atom = self.tables.UInt8Atom()
         filters = self.tables.Filters(complevel,complib, shuffle)
@@ -259,6 +277,20 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
                             set_coordinates, set_time, set_cell,
                             set_velocities, set_kineticEnergy, set_potentialEnergy,
                             set_temperature, set_alchemicalLambda, set_protocolWork):
+<<<<<<< HEAD
+=======
+        """
+        Function that initializes the tables for storing data from the simulation
+        and writes metadata at the root level of the HDF5 file.
+
+        n_atoms : int, number of atoms in system
+        title : str, title for the root level data table
+        parameters : dict, arguments/parameters used for the simulation.
+        set_* : bool
+            parameters that begin with set_*. If True, the corresponding data
+            will be written to the HDF5 file.
+        """
+>>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
         self._n_atoms = n_atoms
         self._parameters = parameters
         self._handle.root._v_attrs.title = str(title)
@@ -347,6 +379,12 @@ class NetCDF4Traj(NetCDFTraj):
         super(NetCDF4Traj,self).__init__(fname, mode)
 
     def flush(self):
+<<<<<<< HEAD
+=======
+        """
+        Flush buffered data to disc.
+        """
+>>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
         if nc is None:
             # netCDF4.Dataset does not have a flush method
             self._ncfile.flush()
@@ -495,6 +533,12 @@ class NetCDF4Traj(NetCDFTraj):
 
     @property
     def protocolWork(self):
+<<<<<<< HEAD
+=======
+        """
+        Store the accumulated protocolWork from the NCMC simulation as property.
+        """
+>>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
         return self._ncfile.variables['protocolWork'][:]
 
     def add_protocolWork(self, stuff):
@@ -511,6 +555,12 @@ class NetCDF4Traj(NetCDFTraj):
 
     @property
     def alchemicalLambda(self):
+<<<<<<< HEAD
+=======
+        """
+        Store the current alchemicalLambda (0->1.0) from the NCMC simulation as property.
+        """
+>>>>>>> ee8d9b2c31e34c090808f7dbc5c0ca97b6ade195
         return self._ncfile.variables['alchemicalLambda'][:]
 
     def add_alchemicalLambda(self, stuff):

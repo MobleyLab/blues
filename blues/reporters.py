@@ -22,6 +22,9 @@ from parmed.geometry import box_vectors_to_lengths_and_angles
 import netCDF4 as nc
 
 def _check_mode(m, modes):
+    """
+    Check if the file has a read or write mode, otherwise throw an error.
+    """
     if m not in modes:
         raise ValueError('This operation is only available when a file '
                          'is open in mode="%s".' % m)
