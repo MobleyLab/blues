@@ -97,6 +97,8 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.1.2](https://doi.org/10.5281/zenodo.1040364): Incorporation of SideChainMove functionality (Contributor: Kalistyn Burley)
 - [Version 0.1.3](https://doi.org/10.5281/zenodo.1048250): Improvements to simulation logging functionality and parameters for extra propagation.
 - [Version 0.2.0](https://doi.org/10.5281/zenodo.1284568): YAML support, API changes, custom reporters.
+- [Version 0.2.1](https://zenodo.org/badge/latestdoi/62096511): Bug fix in alchemical correction term
+
 
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.

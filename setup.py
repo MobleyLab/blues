@@ -16,7 +16,7 @@ import subprocess
 DOCLINES = __doc__.split("\n")
 
 ########################
-VERSION = "0.2.0"  # Primary base version of the build
+VERSION = "0.2.1"  # Primary base version of the build
 DEVBUILD = "1"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
