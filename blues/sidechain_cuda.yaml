@@ -7,7 +7,7 @@
 
 output_dir: vacDivaline-test
 outfname: vacDivaline
-logger_level: info 
+logger_level: info
 
 structure:
   filename: tests/data/vacDivaline.prmtop
@@ -25,10 +25,10 @@ system:
   splitDihedrals: False
 
   alchemical:
-    softcore_alpha: 0.0001 #Default: 0.5
+    softcore_alpha: 0.5
     softcore_a : 1
     softcore_b : 1
-    softcore_c : 48 #Default: 6
+    softcore_c : 6
     softcore_beta : 0.0
     softcore_d : 1
     softcore_e : 1
