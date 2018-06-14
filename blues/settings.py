@@ -172,8 +172,8 @@ class Settings(object):
     @staticmethod
     def check_SystemModifications(config):
         """
-        Given a dict (config), check the parameters relate dto freezing or
-        restraining the system.
+        Given a dict (config), check the parameters related to freezing or
+        restraining the system. Requires loading parmed.Structure from YAML.
         """
         # Check Amber Selections
         if 'freeze' in config.keys():
@@ -278,9 +278,10 @@ class Settings(object):
             # Set top level configuration parameters
             config = Settings.set_Output(config)
             config = Settings.set_Logger(config)
-            if 'structure' in config: config = Settings.set_Structure(config)
+            if 'structure' in config:
+                config = Settings.set_Structure(config)
+                Settings.check_SystemModifications(config)
             config = Settings.set_Units(config)
-            Settings.check_SystemModifications(config)
             config = Settings.set_Apps(config)
             config = Settings.set_ncmcSteps(config)
             config = Settings.set_Reporters(config)

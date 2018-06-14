@@ -836,19 +836,12 @@ class BLUESSimulation(object):
         self._set_stateTable_('md', 'state0', md_state0)
         self._md_sim.currentIter = currentIter
 
-        #TODO: CHECK SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD?
-        #ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_, currentIter)
-        #self._set_stateTable_('ncmc', 'state0', ncmc_state0)
-        #self._ncmc_sim.currentIter = currentIter
-
-        # Replace ncmc context data from the md context
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
-
-        #TODO: CHECK SHOULD THIS BE BEFORE OR AFTER SYNCING FROM MD?
-        # IMPACTS ALCHEMICAL CORRECTION CALCULATION?
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
         self._set_stateTable_('ncmc', 'state0', ncmc_state0)
         self._ncmc_sim.currentIter = currentIter
+
+        # Replace ncmc context data from the md context
+        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
         """Function that advances the NCMC simulation."""
@@ -878,7 +871,7 @@ class BLUESSimulation(object):
                 # Do 1 NCMC step with the integrator
                 self._ncmc_sim.step(1)
 
-                ###DEBUG options at every NCMC step
+                #DEBUG options at every NCMC step
                 logger.debug('%s' % self.getIntegratorInfo(self._ncmc_sim.context._integrator, self._integrator_keys_))
 
                 #Attempt anything related to the move after protocol is performed
@@ -909,10 +902,7 @@ class BLUESSimulation(object):
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
 
         correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
-
-        #print('Alchemical Correction', correction_factor)
-        #print(ncmc_state0_PE, md_state0_PE)
-        #print(ncmc_state0_PE - md_state0_PE)
+        logger.debug('Alchemical Correction = %.6f' % correction_factor)
 
         return correction_factor
 
