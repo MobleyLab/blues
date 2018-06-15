@@ -20,7 +20,7 @@ class RandomRotationTester(unittest.TestCase):
         self.atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
 
         #Initialize the Move object
-        self.move = RandomLigandRotationMove(structure, 'LIG')
+        self.move = RandomLigandRotationMove(structure, 'LIG', 3134)
         self.engine = MoveEngine(self.move)
         self.engine.selectMove()
 
