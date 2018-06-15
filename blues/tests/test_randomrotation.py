@@ -22,6 +22,7 @@ class RandomRotationTester(unittest.TestCase):
         #Initialize the Move object
         self.move = RandomLigandRotationMove(structure, 'LIG')
         self.engine = MoveEngine(self.move)
+        self.engine.selectMove()
 
         self.system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
         systems = SystemFactory(structure, self.move.atom_indices, self.system_cfg)
@@ -43,13 +44,11 @@ class RandomRotationTester(unittest.TestCase):
         self.initial_positions = self.ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
     def test_random_rotation(self):
-        before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)
-        blues = BLUESSimulation(self.simulations)
-        blues._stepNCMC_(nstepsNC=10, moveStep=5)
-        after_move = blues._ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)[self.atom_indices,:]
+        self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)
+        after_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)[self.atom_indices,:]
 
-        #Check that our system has run dynamics
-        # Integrator must step for context to update positions
+        #Check that the ligand has been rotated
         pos_compare = np.not_equal(before_move, after_move).all()
         self.assertTrue(pos_compare)
 

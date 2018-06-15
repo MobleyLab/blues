@@ -20,6 +20,7 @@ class SideChainTester(unittest.TestCase):
 
         self.sidechain = SideChainMove(self.struct, [1])
         self.engine = MoveEngine(self.sidechain)
+        self.engine.selectMove()
 
         self.system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
         self.systems = SystemFactory(self.struct, self.sidechain.atom_indices, self.system_cfg)
@@ -44,14 +45,15 @@ class SideChainTester(unittest.TestCase):
         self.assertEqual(len(self.sidechain.rot_bonds), 1)
 
     def test_sidechain_move(self):
-        before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)
-        blues = BLUESSimulation(self.simulations)
-        blues._stepNCMC_(nstepsNC=4, moveStep=2)
-        after_move = blues._ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        atom_indices = [v for v in self.sidechain.rot_atoms[1].values()][0]
+        before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)[atom_indices,:]
+        self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)
+        after_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)[atom_indices,:]
 
         #Check that our system has run dynamics
         # Integrator must step for context to update positions
-        pos_compare = np.not_equal(before_move, after_move).all()
+        # Remove the first two atoms in check as these are the anchor atoms and are not rotated.
+        pos_compare = np.not_equal(before_move, after_move)[2:,:].all()
         self.assertTrue(pos_compare)
 
 if __name__ == "__main__":
