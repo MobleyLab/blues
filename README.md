@@ -31,7 +31,7 @@ Install [miniconda](http://conda.pydata.org/miniconda.html) according to your sy
 ## Requirements
 Starting from v1.2, you will need the OpenEye toolkits and related tools:
 ```bash
-conda install -c openeye/label/Orion oeommtools
+conda install -c openeye/label/Orion -c omnia oeommtools packmol
 
 # Requires OpenEye License
 conda install -c openeye openeye-toolkits
