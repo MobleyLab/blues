@@ -250,7 +250,7 @@ class RandomLigandRotationMove(Move):
         reduced_pos = self.positions - self.center_of_mass
 
         # Define random rotational move on the ligand
-        rand_quat = mdtraj.utils.uniform_quaternion(size=None, random_state=3134)
+        rand_quat = mdtraj.utils.uniform_quaternion(size=None, random_state=None)
         rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
         rot_move = np.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
