@@ -35,7 +35,7 @@ install:
     #- conda install --yes -c openeye/label/beta openeye-toolkits
     #- conda install --yes -c openeye/label/Orion oeommtools
     # Build the recipe
-    - conda build --python $python devtools/conda-recipe
+    #- conda build --python $python devtools/conda-recipe
     - conda install --yes --use-local ${PACKAGENAME}
     - conda list
 
