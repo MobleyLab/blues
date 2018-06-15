@@ -10,8 +10,6 @@ before_install:
     - bash -x devtools/travis-ci/install.sh
     - export PYTHONUNBUFFERED=true
     - export PATH=$HOME/miniconda/bin:$PATH
-    - export CONDA_BLD_PATH=~/conda-bld
-    - export VERSION=`date +%Y.%m.%d`
     # Unpack encrypted OpenEye license file
     #- if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
     #- if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
@@ -54,6 +52,8 @@ env:
   global:
     - ORGNAME="omnia"
     - PACKAGENAME="blues"
+    - VERSION="0.2.1"
+    - CONDA_BLD_PATH="~/conda-bld"
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
     - OPENEYE_BETA="https://pypi.anaconda.org/openeye/label/beta/simple"
