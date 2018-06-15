@@ -39,6 +39,9 @@ install:
     - conda install --yes --use-local ${PACKAGENAME}
     - conda list
 
+after_success:
+  - test $TRAVIS_BRANCH = "master" && conda install conda-build && conda install anaconda-client && bash conda/conda_upload.sh
+  
 script:
     - py.test -v blues
 
