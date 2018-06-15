@@ -8,7 +8,7 @@ from openmmtools import testsystems
 import simtk.unit as unit
 import numpy as np
 
-@untitest.skip("NO OE LICENSE")
+@unittest.skip("NO OE LICENSE")
 class SideChainTester(unittest.TestCase):
     """
     Test the SmartDartMove.move() function.
