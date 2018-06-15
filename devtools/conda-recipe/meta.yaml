@@ -8,7 +8,7 @@ source:
 build:
   preserve_egg_dir: True
   number: 0
-  script: conda install --yes -c openeye/label/beta openeye-toolkits && python setup.py install
+  script: python setup.py install
   script_env:
    - VERSION
    - CONDA_BLD_PATH
