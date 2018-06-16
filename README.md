@@ -6,7 +6,6 @@ This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCM
 Latest release:
 [![Build Status](https://travis-ci.org/MobleyLab/blues.svg?branch=master)](https://travis-ci.org/MobleyLab/blues)
 [![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
-[![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/latest_release_date.svg)](https://anaconda.org/mobleylab/blues)
  [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
 
 ## Citations
