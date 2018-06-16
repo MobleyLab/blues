@@ -17,10 +17,8 @@ import subprocess
 DOCLINES = __doc__.split("\n")
 
 ########################
-VERSION = os.getenv('PKG_VERSION')
-#VERSION = "0.2.2"  # Primary base version of the build
-DEVBUILD = os.getenv('PKG_BUILDNUM')
-#DEVBUILD = "1"      # Dev build status, Either None or Integer as string
+VERSION = "0.2.3"  # Primary base version of the build
+DEVBUILD = "1"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
@@ -128,6 +126,7 @@ setup(
     description = ("NCMC moves in OpenMM to enhance ligand sampling"),
     long_description=read('README.md'),
     version=__version__,
+    buildnum=DEVBUILD,
     license='MIT',
     url='https://github.com/MobleyLab/blues',
     platforms = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
