@@ -52,7 +52,7 @@ env:
   global:
     - ORGNAME="omnia"
     - PACKAGENAME="blues"
-    - VERSION="0.2.1"
+    - VERSION="0.2.2"
     - CONDA_BLD_PATH="$HOME/conda-bld"
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
