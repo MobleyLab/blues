@@ -8,7 +8,8 @@ package:
 
 source:
   git_url: ../../
-  git_rev: {{ data.get('full_version') }}
+  git_rev: {{ GIT_FULL_HASH }}
+  #git_rev: {{ data.get('full_version') }}
   #git_url: https://github.com/nathanmlim/blues.git
   #path: ../..
 
