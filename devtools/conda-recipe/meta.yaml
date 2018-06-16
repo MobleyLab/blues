@@ -3,12 +3,12 @@ package:
   version: {{ environ['VERSION'] }}
 
 source:
-  path: ../../
+  path: ../..
 
 build:
   preserve_egg_dir: True
   number: 0
-  #script: python setup.py install
+  script: python setup.py install
   script_env:
    - VERSION
    - CONDA_BLD_PATH
