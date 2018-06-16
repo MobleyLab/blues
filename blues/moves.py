@@ -296,7 +296,7 @@ class SideChainMove(Move):
         top = self.structure.topology
         pos = self.structure.positions
         molecule = openmmTop_to_oemol(top, pos, verbose=False)
-        OEPerceiveResidues(molecule, OEPreserveResInfo_All)
+        OEPerceiveResidues(molecule)
         OEFindRingAtomsAndBonds(molecule)
 
         return molecule
