@@ -23,6 +23,22 @@ DEVBUILD = "0"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
+
+requirements = [
+    'python',
+    'pytest',
+    'setuptools',
+    'pyyaml',
+    'numpy',
+    'openmmtools <=0.14.0',
+    'mdtraj <=1.9.1',
+    'openmm <=7.1.1',
+    'parmed <=3.0.1',
+    'netcdf4 <=1.3.1',
+
+]
+
+
 CLASSIFIERS = """\
 Development Status :: 1 - Alpha
 Intended Audience :: Science/Research
@@ -135,5 +151,6 @@ setup(
     packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
     package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
+    install_requires=requirements,
     zip_safe=False,
     include_package_data=True)
