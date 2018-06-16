@@ -33,7 +33,7 @@ install:
     #- conda install --yes -c openeye/label/beta openeye-toolkits
     #- conda install --yes -c openeye/label/Orion oeommtools
     # Build the recipe
-    - conda build devtools/conda-recipe
+    - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
     - conda list
 

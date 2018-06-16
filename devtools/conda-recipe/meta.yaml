@@ -41,8 +41,6 @@ requirements:
 test:
   requires:
     - pytest
-  imports:
-    - blues
 
 about:
   home: https://github.com/mobleylab/blues
