@@ -18,8 +18,16 @@ import math
 import copy
 import random
 import os
-from openeye.oechem import *
 
+from mdtraj.utils.delay_import import import_
+try:
+    oechem = import_("openeye.oechem")
+    if not oechem.OEChemIsLicensed():
+        raise(ImportError("Need License for OEChem!"))
+    else:
+        from openeye.oechem import *
+except Exception as e:
+    openeye_exception_message = str(e)
 
 class Move(object):
 
