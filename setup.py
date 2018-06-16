@@ -12,8 +12,6 @@ import glob
 import os
 from os.path import relpath, join
 import subprocess
-from distutils.core import setup, Extension
-import distutils.command.bdist_conda
 
 #from Cython.Build import cythonize
 DOCLINES = __doc__.split("\n")
@@ -139,7 +137,4 @@ setup(
     package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
     zip_safe=False,
-    include_package_data=True,
-    distclass=distutils.command.bdist_conda.CondaDistribution,
-    conda_buildnum=DEVBUILD,
-)
+    include_package_data=True)
