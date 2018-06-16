@@ -7,11 +7,11 @@ package:
   #version: {{ environ['VERSION'] }}
 
 source:
-  git_url: ../../
-  git_rev: {{ GIT_FULL_HASH }}
+  #git_url: git@github.com/nathanmlim/blues.git
+  #git_rev: {{ GIT_FULL_HASH }}
   #git_rev: {{ data.get('full_version') }}
   #git_url: https://github.com/nathanmlim/blues.git
-  #path: ../..
+  path: ../..
 
 build:
   numbers: {{ GIT_DESCRIBE_NUMBER }}
