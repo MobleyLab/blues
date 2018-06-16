@@ -1,13 +1,15 @@
 package:
   name: blues
-  version: {{ environ['VERSION'] }}
+  version: 0.2.2
+  #version: {{ environ['VERSION'] }}
 
 source:
-  path: ../../
+  path: ../..
 
 build:
-  preserve_egg_dir: True
   number: 0
+  noarch: generic
+  preserve_egg_dir: True
   script: python setup.py install
   script_env:
    - VERSION
@@ -39,8 +41,6 @@ requirements:
 test:
   requires:
     - pytest
-  imports:
-    - blues
 
 about:
   home: https://github.com/mobleylab/blues
