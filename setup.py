@@ -5,6 +5,7 @@ https://github.com/choderalab/yank/blob/master/setup.py
 from __future__ import print_function
 import os
 import sys
+import ast
 import distutils.extension
 from setuptools import setup, Extension, find_packages
 import numpy
@@ -18,7 +19,7 @@ DOCLINES = __doc__.split("\n")
 
 ########################
 VERSION = "0.2.3"  # Primary base version of the build
-DEVBUILD = "1"      # Dev build status, Either None or Integer as string
+DEVBUILD = "0"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
@@ -101,6 +102,23 @@ release = {isrelease:s}
     finally:
         a.close()
 
+def get_version(module='blues'):
+    """Get version."""
+    HERE = os.path.abspath(os.path.dirname(__file__))
+    ROOT = os.path.dirname(HERE)
+    with open(os.path.join(ROOT, module, 'blues/version.py'), 'r') as f:
+        data = f.read()
+    lines = data.split('\n')
+    for line in lines:
+        if line.startswith('full_version'):
+            version_tuple = ast.literal_eval(line.split('=')[-1].strip())
+            version = '.'.join(map(str, version_tuple))
+            break
+    return version
+
+
+FULL_VERSION = get_version()
+
 ################################################################################
 # USEFUL SUBROUTINES
 ################################################################################
@@ -126,6 +144,7 @@ setup(
     description = ("NCMC moves in OpenMM to enhance ligand sampling"),
     long_description=read('README.md'),
     version=__version__,
+    full_version=FULL_VERSION,
     buildnum=DEVBUILD,
     license='MIT',
     url='https://github.com/MobleyLab/blues',

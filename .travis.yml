@@ -47,8 +47,8 @@ deploy:
   #Deploy to Anaconda.org
   - provider: script
     script: ./devtools/conda-recipe/conda_upload.sh
-    on:
-      tags: true
+    #on:
+    #  tags: true
     skip_cleanup: true
 
 env:

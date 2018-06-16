@@ -8,11 +8,13 @@ package:
 
 source:
   git_url: ../../
+  git_rev: {{ data.get('full_version') }}
   #git_url: https://github.com/nathanmlim/blues.git
   #path: ../..
 
 build:
-  number: {{ data.get('buildnum') }}
+  numbers: {{ GIT_DESCRIBE_NUMBER }}
+  #number: {{ data.get('buildnum') }}
   noarch: generic
   preserve_egg_dir: True
   script: python setup.py install
