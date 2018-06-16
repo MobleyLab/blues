@@ -27,7 +27,6 @@ try:
     else:
         from openeye.oechem import *
 except Exception as e:
-    HAVE_OE = False
     openeye_exception_message = str(e)
 
 class Move(object):
