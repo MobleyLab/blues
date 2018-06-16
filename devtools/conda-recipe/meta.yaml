@@ -26,11 +26,15 @@ build:
 
 requirements:
   build:
-    # dependencies are defined in setup.py
-    {% for dep in data['install_requires'] %}
-    - {{ dep.lower() }}
-    {% endfor %}
-
+    - python
+    - pytest
+    - setuptools
+    - openmmtools <=0.14.0
+    - mdtraj <=1.9.1
+    - openmm <=7.1.1
+    - parmed <=3.0.1
+    - netcdf4 <=1.3.1
+    - pyyaml
   run:
     # dependencies are defined in setup.py
     {% for dep in data['install_requires'] %}

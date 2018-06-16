@@ -35,7 +35,6 @@ requirements = [
     'openmm <=7.1.1',
     'parmed <=3.0.1',
     'netcdf4 <=1.3.1',
-
 ]
 
 
