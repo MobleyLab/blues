@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 export CONDA_BLD_FILE="$CONDA_BLD_PATH/noarch/blues-0.2.3-py35_0.tar.bz2"
-echo "Converting conda package..."
-conda convert --platform all ${CONDA_BLD_FILE} --output-dir conda-bld/
+#echo "Converting conda package..."
+#conda convert --platform all ${CONDA_BLD_FILE} --output-dir conda-bld/
 
 echo "Deploying to Anaconda.org..."
 anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USER -l dev ${CONDA_BLD_FILE} --force
