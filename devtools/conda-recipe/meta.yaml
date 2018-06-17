@@ -1,12 +1,12 @@
-{% set short_version = 0.2.3 %}
-{% set version = 0.2.3.dev0 %}
-{% set full_version = 0.2.3.dev0-b81dfc9 %}
-{% set git_revision = b81dfc991358a244879587e833f08e04811879b6 %}
-{% set release = False %}
+{% set short_version = '0.2.3' %}
+{% set version = '0.2.3.dev0' %}
+{% set full_version = '0.2.3.dev0-b81dfc9' %}
+{% set git_revision = 'b81dfc991358a244879587e833f08e04811879b6' %}
+{% set release = 'False' %}
 
 package:
   name: blues
-  version: {{ version }}
+  version: {{ short_version }}
 
 source:
   git_url: git@github.com/nathanmlim/blues.git
