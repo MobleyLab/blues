@@ -1,27 +1,27 @@
-# {% set data = load_setup_py_data() %}
+{% set short_version = 0.2.3 %}
+{% set version = 0.2.3.dev0 %}
+{% set full_version = 0.2.3.dev0-b81dfc9 %}
+{% set git_revision = b81dfc991358a244879587e833f08e04811879b6 %}
+{% set release = False %}
 
 package:
   name: blues
-  #version: {{ data.get('version') }}
-  #version: "{{ load_setup_py_data().version }}"
-  #version: 0.2.2
-  version: {{ environ['VERSION'] }}
+  version: {{ version }}
 
 source:
-  #git_url: git@github.com/nathanmlim/blues.git
-  #git_rev: {{ GIT_FULL_HASH }}
+  git_url: git@github.com/nathanmlim/blues.git
+  git_rev: {{ git_revision }}
   #git_rev: {{ data.get('full_version') }}
   #git_url: https://github.com/nathanmlim/blues.git
-  path: ../..
+  #path: ../..
 
 build:
-  numbers: {{ GIT_DESCRIBE_NUMBER }}
+  number: {{ GIT_DESCRIBE_NUMBER }}
   #number: {{ data.get('buildnum') }}
   noarch: generic
   preserve_egg_dir: True
-  script: python setup.py install --single-version-externally-managed
+  script: python setup.py install
   script_env:
-   - VERSION
    - CONDA_BLD_PATH
 
 requirements:

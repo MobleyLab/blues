@@ -53,7 +53,6 @@ Operating System :: Unix
 # Writing version control information to the module
 ################################################################################
 
-
 def git_version():
     # Return the git revision as a string
     # copied from numpy setup.py
@@ -106,7 +105,7 @@ release = {isrelease:s}
 
     if not ISRELEASED:
         full_version += '-' + git_revision[:7]
-    os.environ["VERSION"] = full_version
+
     a = open(filename, 'w')
     try:
         a.write(cnt.format(base_version=base_version,   # Base version e.g. X.Y.Z
@@ -116,7 +115,6 @@ release = {isrelease:s}
                            isrelease=str(ISRELEASED)))  # Released flag
     finally:
         a.close()
-
 ################################################################################
 # USEFUL SUBROUTINES
 ################################################################################
