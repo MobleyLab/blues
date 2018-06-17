@@ -148,6 +148,6 @@ setup(
     packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
     package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
-    install_requires=requirements,
+    #install_requires=requirements,
     zip_safe=False,
     include_package_data=True)

@@ -9,9 +9,9 @@ package:
   version: {{ short_version }}
 
 source:
-  #git_rev: {{ git_revision }}
-  #git_url: https://github.com/nathanmlim/blues.git
-  path: ../..
+  git_rev: {{ git_revision }}
+  git_url: https://github.com/nathanmlim/blues.git
+  #path: ../..
 
 build:
   number: 0
