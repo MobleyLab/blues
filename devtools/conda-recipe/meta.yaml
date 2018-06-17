@@ -9,14 +9,13 @@ package:
   version: {{ short_version }}
 
 source:
-  #git_url: git@github.com:nathanmlim/blues.git
-  git_rev: {{ git_revision }}
-  #git_rev: {{ data.get('full_version') }}
-  git_url: https://github.com/nathanmlim/blues.git
-  #path: ../..
+  #git_rev: {{ git_revision }}
+  #git_url: https://github.com/nathanmlim/blues.git
+  path: ../..
 
 build:
-  number: {{ GIT_DESCRIBE_NUMBER }}
+  number: 0
+  #number: {{ GIT_DESCRIBE_NUMBER }}
   #number: {{ data.get('buildnum') }}
   noarch: generic
   preserve_egg_dir: True
