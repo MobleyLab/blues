@@ -26,7 +26,7 @@ before_install:
 
 install:
     - conda install conda-build anaconda-client
-    - python devtools/conda-recipie/metaheader.py
+    - python devtools/conda-recipe/metaheader.py
     # Install OpenEye dependencies
     #  Use beta version for partial bond orders
     #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
