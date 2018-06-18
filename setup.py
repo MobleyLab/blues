@@ -5,6 +5,7 @@ https://github.com/choderalab/yank/blob/master/setup.py
 from __future__ import print_function
 import os
 import sys
+import ast
 import distutils.extension
 from setuptools import setup, Extension, find_packages
 import numpy
@@ -12,15 +13,31 @@ import glob
 import os
 from os.path import relpath, join
 import subprocess
+
 #from Cython.Build import cythonize
 DOCLINES = __doc__.split("\n")
 
 ########################
-VERSION = "0.2.1"  # Primary base version of the build
-DEVBUILD = "1"      # Dev build status, Either None or Integer as string
+VERSION = "0.2.3"  # Primary base version of the build
+DEVBUILD = "0"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
+
+requirements = [
+    'python',
+    'pytest',
+    'setuptools',
+    'pyyaml',
+    'numpy',
+    'openmmtools <=0.14.0',
+    'mdtraj <=1.9.1',
+    'openmm <=7.1.1',
+    'parmed <=3.0.1',
+    'netcdf4 <=1.3.1',
+]
+
+
 CLASSIFIERS = """\
 Development Status :: 1 - Alpha
 Intended Audience :: Science/Research
@@ -35,7 +52,6 @@ Operating System :: Unix
 ################################################################################
 # Writing version control information to the module
 ################################################################################
-
 
 def git_version():
     # Return the git revision as a string
@@ -99,7 +115,6 @@ release = {isrelease:s}
                            isrelease=str(ISRELEASED)))  # Released flag
     finally:
         a.close()
-
 ################################################################################
 # USEFUL SUBROUTINES
 ################################################################################
@@ -133,6 +148,6 @@ setup(
     packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
     package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
+    #install_requires=requirements,
     zip_safe=False,
-    include_package_data=True
-)
+    include_package_data=True)
