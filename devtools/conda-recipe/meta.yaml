@@ -1,7 +1,8 @@
 {% set short_version = '0.2.3' %}
+{% set build_number = '0' %}
 {% set version = '0.2.3.dev0' %}
-{% set full_version = '0.2.3.dev0-b81dfc9' %}
-{% set git_revision = 'b81dfc991358a244879587e833f08e04811879b6' %}
+{% set full_version = '0.2.3.dev0-47db981' %}
+{% set git_revision = '47db9810a12718b29c5896dda38a8c4a1c99748e' %}
 {% set release = 'False' %}
 
 package:
@@ -11,12 +12,9 @@ package:
 source:
   git_rev: {{ git_revision }}
   git_url: https://github.com/nathanmlim/blues.git
-  #path: ../..
 
 build:
-  number: 0
-  #number: {{ GIT_DESCRIBE_NUMBER }}
-  #number: {{ data.get('buildnum') }}
+  number: {{ build_number }}
   noarch: generic
   preserve_egg_dir: True
   script: python setup.py install
