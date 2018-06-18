@@ -26,7 +26,7 @@ before_install:
     #- conda info -a
 
 install:
-    - conda install -q conda-build anaconda-client
+    - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
     # Install OpenEye dependencies
     #  Use beta version for partial bond orders
     - conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
