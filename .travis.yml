@@ -40,10 +40,8 @@ script:
     - py.test -v blues
 
 after_success:
-  - pwd
-  - ls
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
-  
+
 deploy:
   #Deploy to Anaconda.org
   - provider: script
