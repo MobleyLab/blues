@@ -6,7 +6,6 @@ This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCM
 Latest release:
 [![Build Status](https://travis-ci.org/MobleyLab/blues.svg?branch=master)](https://travis-ci.org/MobleyLab/blues)
 [![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
-[![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/latest_release_date.svg)](https://anaconda.org/mobleylab/blues)
  [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
 
 ## Citations
@@ -31,16 +30,21 @@ Install [miniconda](http://conda.pydata.org/miniconda.html) according to your sy
 ## Requirements
 Starting from v1.2, you will need the OpenEye toolkits and related tools:
 ```bash
-conda install -c openeye/label/Orion oeommtools
+conda install -c openeye/label/Orion -c omnia oeommtools packmol
 
 # Requires OpenEye License
 conda install -c openeye openeye-toolkits
 ```
 
 ## Installation
-Recommended: Install from conda
+Recommended: Install releases from conda
 ```bash
 conda install -c mobleylab blues
+```
+
+Develoment builds: contains latest commits/PRs not yet issued in a point release
+```bash
+conda install -c mobleylab/label/dev blues
 ```
 
 Install from source

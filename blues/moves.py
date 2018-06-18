@@ -154,7 +154,7 @@ class RandomLigandRotationMove(Move):
     ligand.positions : np.array of ligands positions
     """
 
-    def __init__(self, structure, resname='LIG'):
+    def __init__(self, structure, resname='LIG', random_state=None):
         """Initialize the model.
         Parameters
         ----------
@@ -162,9 +162,12 @@ class RandomLigandRotationMove(Move):
             String specifying the resiue name of the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the relevant system to be moved.
+        random_state : integer or numpy.RandomState, optional
+            The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
         """
         self.structure = structure
         self.resname = resname
+        self.random_state = random_state
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
@@ -258,7 +261,7 @@ class RandomLigandRotationMove(Move):
         reduced_pos = self.positions - self.center_of_mass
 
         # Define random rotational move on the ligand
-        rand_quat = mdtraj.utils.uniform_quaternion()
+        rand_quat = mdtraj.utils.uniform_quaternion(size=None, random_state=self.random_state)
         rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
         rot_move = np.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
@@ -301,7 +304,6 @@ class SideChainMove(Move):
         top = self.structure.topology
         pos = self.structure.positions
         molecule = openmmTop_to_oemol(top, pos, verbose=False)
-        OEPerceiveResidues(molecule, OEPreserveResInfo_All)
         OEPerceiveResidues(molecule)
         OEFindRingAtomsAndBonds(molecule)
 
@@ -470,7 +472,7 @@ class SideChainMove(Move):
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
 
-    def move(self, nc_context, verbose=False):
+    def move(self, nc_context):
         """This rotates the target atoms around a selected bond by angle theta and updates
         the atom coordinates in the parmed structure as well as the ncmc context object"""
 

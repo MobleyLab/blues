@@ -18,8 +18,8 @@ import subprocess
 DOCLINES = __doc__.split("\n")
 
 ########################
-VERSION = "0.2.3"  # Primary base version of the build
-DEVBUILD = "1"      # Dev build status, Either None or Integer as string
+VERSION = "0.2.1"  # Primary base version of the build
+DEVBUILD = "3"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
@@ -117,6 +117,33 @@ release = {isrelease:s}
                            isrelease=str(ISRELEASED)))  # Released flag
     finally:
         a.close()
+        
+def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
+    d = {}
+    with open('blues/version.py') as f:
+        data = f.read()
+    lines = data.split('\n')
+
+    keys = ['short_version', 'build_number']
+    for line in lines:
+        for k in keys:
+            if k in line:
+                (key, val) = line.split('=')
+                d[key.strip()] = val.strip().strip("'")
+
+    with open(filename, 'r') as meta:
+        yaml_lines = meta.readlines()
+
+    a = open(filename, 'w')
+    try:
+        for k,v in d.items():
+            a.write("{{% set {} = '{}' %}}\n".format(k,v))
+        #Replace top 2 header lines that contain the package version
+        a.writelines(yaml_lines[2:])
+    finally:
+        a.close()
+write_meta_yaml()
+
 ################################################################################
 # USEFUL SUBROUTINES
 ################################################################################
