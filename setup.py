@@ -122,6 +122,7 @@ def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
     try:
         for k,v in d.items():
             a.write("{{% set {} = '{}' %}}\n".format(k,v))
+        #Replace top 2 header lines that contain the package version
         a.writelines(yaml_lines[2:])
     finally:
         a.close()
