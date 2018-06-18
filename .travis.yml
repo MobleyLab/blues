@@ -40,6 +40,7 @@ script:
     - py.test -v blues
 
 after_success:
+  - export CONDA_BLD_FILE="${CONDA_PREFIX}/noarch/${PACKAGENAME}-${PKG_VERSION}-py${CONDA_PY}_${PKG_BUILDNUM}.tar.bz2"
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
 
 deploy:
@@ -51,14 +52,9 @@ deploy:
     skip_cleanup: true
 
 env:
-  #matrix:
-  #  - python=3.5  CONDA_PY=3.5
-
   global:
     - USERNAME="nathanmlim"
     - PACKAGENAME="blues"
-    - CONDA_BLD_FILE="${CONDA_PREFIX}/noarch/${PACKAGENAME}-${PKG_VERSION}-py${CONDA_PY}_${PKG_BUILDNUM}.tar.bz2"
-    #- CONDA_BLD_PATH="$HOME/conda-bld"
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
     - OPENEYE_BETA="https://pypi.anaconda.org/openeye/label/beta/simple"
