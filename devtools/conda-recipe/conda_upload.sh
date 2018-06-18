@@ -1,22 +1,7 @@
 #!/bin/bash
-#set -e
 
-echo $HOME
-echo $TRAVIS_BRANCH
-echo $TRAVIS_BUILD_DIR
-echo $TRAVIS_PULL_REQUEST_BRANCH
+CONDA_BLD_FILE=${HOME}/miniconda/conda-bld/noarch/blues-*.tar.bz2
 
-
-echo "BUILD DIR IS" && ls $TRAVIS_BUILD_DIR
-ls $TRAVIS_BUILD_DIR/
-
-ls $HOME
-CONDA_BLD_FILE="${HOME}/miniconda/conda-bld/noarch/blues-0.2.3-py35_0.tar.bz2"
-
-#export CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-0.2.3-py35_0.tar.bz2
-ls $HOME/miniconda/conda-bld/noarch/blues-*.tar.bz2
-CONDA_BLD_FILE1=$HOME/miniconda/conda-bld/noarch/blues-*.tar.bz2
-echo $CONDA_BLD_FILE1
 #echo "Converting conda package..."
 #conda convert --platform all ${CONDA_BLD_FILE} --output-dir conda-bld/
 
