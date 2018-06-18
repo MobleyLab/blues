@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo $HOME
+echo $TRAVIS_BRANCH
+
 #export CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-0.2.3-py35_0.tar.bz2
 ls $HOME/conda-bld/
 ls $HOME/conda-bld/noarch/
