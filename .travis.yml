@@ -35,7 +35,7 @@ install:
     - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
     - conda list
-    - CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-*.tar.bz2
+    - export CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-*.tar.bz2
     - echo $CONDA_BLD_FILE
 
 script:
