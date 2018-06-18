@@ -18,8 +18,8 @@ build:
   noarch: generic
   preserve_egg_dir: True
   script: python setup.py install
-  script_env:
-   - CONDA_BLD_PATH
+  #script_env:
+  #  - CONDA_BLD_FILE
 
 requirements:
   build:

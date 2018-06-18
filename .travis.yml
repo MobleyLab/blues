@@ -40,16 +40,15 @@ script:
     - py.test -v blues
 
 after_success:
-  - export CONDA_BLD_FILE="${CONDA_PREFIX}/noarch/${PACKAGENAME}-${PKG_VERSION}-py${CONDA_PY}_${PKG_BUILDNUM}.tar.bz2"
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
 
 deploy:
   #Deploy to Anaconda.org
   - provider: script
+    skip_cleanup: true
     script: ./devtools/conda-recipe/conda_upload.sh
     #on:
     #  tags: true
-    skip_cleanup: true
 
 env:
   global:
