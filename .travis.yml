@@ -38,10 +38,7 @@ install:
     - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
     - conda list
-    - export CONDA_BLD_FILE=${HOME}/miniconda/conda-bld/noarch/
-    - echo $CONDA_BLD_FILE
-    - ls $CONDA_BLD_FILE
-
+    
 script:
     - py.test -v blues
 
