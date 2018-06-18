@@ -10,7 +10,7 @@ package:
   version: {{ short_version }}
 
 source:
-  git_rev: {{ git_revision }}
+  git_rev: master
   git_url: https://github.com/nathanmlim/blues.git
 
 build:
@@ -18,8 +18,6 @@ build:
   noarch: generic
   preserve_egg_dir: True
   script: python setup.py install
-  #script_env:
-  #  - CONDA_BLD_FILE
 
 requirements:
   build:

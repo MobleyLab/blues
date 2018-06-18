@@ -25,7 +25,7 @@ before_install:
     - conda config --add channels conda-forge
 
 install:
-    - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
+    - conda install conda-build anaconda-client
     # Install OpenEye dependencies
     #  Use beta version for partial bond orders
     #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
@@ -48,7 +48,8 @@ deploy:
     skip_cleanup: true
     script: ./devtools/conda-recipe/conda_upload.sh
     #on:
-    #  tags: true
+      #branch: autoconda-0.2.3
+      #tags: true
 
 env:
   global:
