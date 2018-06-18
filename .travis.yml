@@ -1,8 +1,8 @@
 dist: trusty
 sudo: false
 language: python
-python:
-  - 3.5
+#python:
+#  - 3.5
 
 branches:
     only:
@@ -25,7 +25,10 @@ before_install:
     - conda config --add channels conda-forge
 
 install:
-    - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
+    - conda create -n testenv --python=$TRAVIS_PYTHON_VERSION
+    - source activate testenv
+    - conda install conda-build anaconda-client
+    #- conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
     # Install OpenEye dependencies
     #  Use beta version for partial bond orders
     #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
@@ -35,14 +38,18 @@ install:
     - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
     - conda list
-    - export CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-*.tar.bz2
+    - export CONDA_BLD_FILE=${HOME}/miniconda/conda-bld/noarch/
     - echo $CONDA_BLD_FILE
+    - ls $CONDA_BLD_FILE
 
 script:
     - py.test -v blues
 
 after_success:
-  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh && bash ./devtools/conda-recipe/conda_upload.sh
+  - pwd
+  - ls
+  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
+  - bash ./devtools/conda-recipe/conda_upload.sh
 
 deploy:
   #Deploy to Anaconda.org

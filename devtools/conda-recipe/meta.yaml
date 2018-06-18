@@ -10,7 +10,8 @@ package:
   version: {{ short_version }}
 
 source:
-  git_rev: {{ git_revision }}
+  git_rev: autoconda-0.2.3
+  #git_rev: {{ git_revision }}
   git_url: https://github.com/nathanmlim/blues.git
 
 build:
