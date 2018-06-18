@@ -36,8 +36,8 @@ install:
     - conda install --use-local ${PACKAGENAME}
     - conda list
 
-#script:
-#    - py.test -v blues
+script:
+    - py.test -v blues
 
 after_success:
   - export CONDA_BLD_FILE="${CONDA_PREFIX}/noarch/${PACKAGENAME}-${PKG_VERSION}-py${CONDA_PY}_${PKG_BUILDNUM}.tar.bz2"
