@@ -1,10 +1,15 @@
 {% set short_version = '0.2.3' %}
-{% set build_number = '0' %}
-{% set version = '0.2.3.dev0' %}
-{% set full_version = '0.2.3.dev0-47db981' %}
-{% set git_revision = '47db9810a12718b29c5896dda38a8c4a1c99748e' %}
+{% set build_number = '1' %}
+{% set version = '0.2.3.dev1' %}
+{% set full_version = '0.2.3.dev1-c21c839' %}
+{% set git_revision = 'c21c8395aeefda88a3146693d129cc18e2a7eabe' %}
 {% set release = 'False' %}
-
+{% set short_version = '0.2.3' %}
+{% set build_number = '1' %}
+{% set version = '0.2.3.dev1' %}
+{% set full_version = '0.2.3.dev1-c21c839' %}
+{% set git_revision = 'c21c8395aeefda88a3146693d129cc18e2a7eabe' %}
+{% set release = 'False' %}
 package:
   name: blues
   version: {{ short_version }}
