@@ -35,12 +35,15 @@ install:
     - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
     - conda install --use-local ${PACKAGENAME}
     - conda list
+    - export CONDA_BLD_FILE="${CONDA_PREFIX}/noarch/${PACKAGENAME}-${PKG_VERSION}-py${CONDA_PY}_${PKG_BUILDNUM}.tar.bz2"
+    - echo CONDA BUILD FILE IS "$CONDA_BLD_FILE"
 
 script:
     - py.test -v blues
 
 after_success:
   - export CONDA_BLD_FILE="${CONDA_PREFIX}/noarch/${PACKAGENAME}-${PKG_VERSION}-py${CONDA_PY}_${PKG_BUILDNUM}.tar.bz2"
+  - echo CONDA BUILD FILE IS "$CONDA_BLD_FILE"
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
 
 deploy:
@@ -58,3 +61,4 @@ env:
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
     - OPENEYE_BETA="https://pypi.anaconda.org/openeye/label/beta/simple"
+    - CONDA_BLD_FILE="${CONDA_PREFIX}/noarch/${PACKAGENAME}-${PKG_VERSION}-py${CONDA_PY}_${PKG_BUILDNUM}.tar.bz2"
