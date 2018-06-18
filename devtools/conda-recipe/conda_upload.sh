@@ -2,7 +2,7 @@
 set -e
 
 #export CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-0.2.3-py35_0.tar.bz2
-CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-*_0.tar.bz2
+CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-**_0.tar.bz2
 
 #echo "Converting conda package..."
 #conda convert --platform all ${CONDA_BLD_FILE} --output-dir conda-bld/

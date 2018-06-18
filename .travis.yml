@@ -40,15 +40,16 @@ script:
     - py.test -v blues
 
 after_success:
-  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
+  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh && CONDA_BLD_FILE=${HOME}/conda-bld/noarch/blues-**_0.tar.bz2; echo CONDA BUILD FILE IS $CONDA_BLD_FILE
 
 deploy:
   #Deploy to Anaconda.org
   - provider: script
     skip_cleanup: true
     script: ./devtools/conda-recipe/conda_upload.sh
-    #on:
-    #  tags: true
+    on:
+      branch: autoconda-0.2.3
+      #tags: true
 
 env:
   global:
