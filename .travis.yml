@@ -24,7 +24,7 @@ before_install:
     # Add conda-forge channel to top priority
     - conda config --add channels conda-forge
     #DEBUG
-    #- conda info -a
+    - conda info -a
 
 install:
     - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
