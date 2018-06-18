@@ -25,8 +25,8 @@ before_install:
     - conda config --add channels conda-forge
 
 install:
-    - conda create -n testenv --python=$TRAVIS_PYTHON_VERSION
-    - source activate testenv
+    #- conda create -q  -n testenv python=$TRAVIS_PYTHON_VERSION
+    #- source activate testenv
     - conda install conda-build anaconda-client
     #- conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
     # Install OpenEye dependencies
@@ -49,7 +49,7 @@ after_success:
   - pwd
   - ls
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
-  - bash ./devtools/conda-recipe/conda_upload.sh
+  - bash -x ./devtools/conda-recipe/conda_upload.sh
 
 deploy:
   #Deploy to Anaconda.org
