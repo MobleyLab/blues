@@ -17,7 +17,7 @@ DOCLINES = __doc__.split("\n")
 
 ########################
 VERSION = "0.2.1"  # Primary base version of the build
-DEVBUILD = "2"      # Dev build status, Either None or Integer as string
+DEVBUILD = "3"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
@@ -108,22 +108,22 @@ def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
         data = f.read()
     lines = data.split('\n')
 
+    keys = ['short_version', 'build_number']
     for line in lines:
-        keys = ['short_version', 'build_number']
         for k in keys:
             if k in line:
                 (key, val) = line.split('=')
                 d[key.strip()] = val.strip().strip("'")
 
-    b = open(filename, 'r')
-    yaml_lines = b.read()
-    b.close()
+    with open(filename, 'r') as meta:
+        yaml_lines = meta.readlines()
 
     a = open(filename, 'w')
     try:
         for k,v in d.items():
             a.write("{{% set {} = '{}' %}}\n".format(k,v))
-        a.write(yaml_lines)
+        #Replace top 2 header lines that contain the package version
+        a.writelines(yaml_lines[2:])
     finally:
         a.close()
 write_meta_yaml()
