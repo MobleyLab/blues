@@ -5,6 +5,7 @@ https://github.com/choderalab/yank/blob/master/setup.py
 from __future__ import print_function
 import os
 import sys
+import ast
 import distutils.extension
 from setuptools import setup, Extension, find_packages
 import numpy
@@ -12,6 +13,7 @@ import glob
 import os
 from os.path import relpath, join
 import subprocess
+
 #from Cython.Build import cythonize
 DOCLINES = __doc__.split("\n")
 
@@ -21,6 +23,21 @@ DEVBUILD = "3"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
+
+requirements = [
+    'python',
+    'pytest',
+    'setuptools',
+    'pyyaml',
+    'numpy',
+    'openmmtools <=0.14.0',
+    'mdtraj <=1.9.1',
+    'openmm <=7.1.1',
+    'parmed <=3.0.1',
+    'netcdf4 <=1.3.1',
+]
+
+
 CLASSIFIERS = """\
 Development Status :: 1 - Alpha
 Intended Audience :: Science/Research
@@ -35,7 +52,6 @@ Operating System :: Unix
 ################################################################################
 # Writing version control information to the module
 ################################################################################
-
 
 def git_version():
     # Return the git revision as a string
@@ -101,7 +117,7 @@ release = {isrelease:s}
                            isrelease=str(ISRELEASED)))  # Released flag
     finally:
         a.close()
-
+        
 def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
     d = {}
     with open('blues/version.py') as f:
@@ -141,6 +157,38 @@ def find_package_data(data_root, package_root):
             files.append(relpath(join(root, fn), package_root))
     return files
 
+def write_version_py(filename='devtools/conda-recipe/meta.yaml'):
+    cnt = """
+short_version = '{short_version:s}'
+build_number = '{build_number:s}'
+version = '{version:s}'
+full_version = '{full_version:s}'
+git_revision = '{git_revision:s}'
+release = {release:s}
+"""
+    d = {}
+    with open('blues/version.py') as f:
+        data = f.read()
+    lines = data.split('\n')
+
+    for line in lines:
+        keys = ['version', 'build_number', 'git_revision', 'release']
+        for k in keys:
+            if k in line:
+                (key, val) = line.split('=')
+                d[key.strip()] = val.strip().strip("'")
+
+    b = open(filename, 'r')
+    yaml_lines = b.read()
+
+    a = open(filename, 'w')
+    try:
+        for k,v in d.items():
+            a.write("{{% set {} = '{}' %}}\n".format(k,v))
+        a.write(yaml_lines)
+    finally:
+        a.close()
+write_version_py()
 
 ################################################################################
 # SETUP
@@ -161,6 +209,6 @@ setup(
     packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
     package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
+    #install_requires=requirements,
     zip_safe=False,
-    include_package_data=True
-)
+    include_package_data=True)
