@@ -130,8 +130,6 @@ class Move(object):
     def move(self, context):
         return context
 
-
-
 class RandomLigandRotationMove(Move):
     """Move that provides methods for calculating properties on the
     object 'model' (i.e ligand) being perturbed in the NCMC simulation.
@@ -289,6 +287,8 @@ class SideChainMove(Move):
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
     def __init__(self, structure, residue_list, verbose=False, write_move=False):
+        oechem = import_("openeye.oechem")
+        if not oechem.OEChemIsLicensed(): raise(ImportError("Need License for OEChem!"))
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
@@ -299,13 +299,12 @@ class SideChainMove(Move):
         self.write_move = write_move
 
     def _pmdStructureToOEMol(self):
-
-        from oeommtools.utils import openmmTop_to_oemol
+        oeommtools = import_("oeommtools.utils")
         top = self.structure.topology
         pos = self.structure.positions
-        molecule = openmmTop_to_oemol(top, pos, verbose=False)
-        OEPerceiveResidues(molecule)
-        OEFindRingAtomsAndBonds(molecule)
+        molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
+        oechem.OEPerceiveResidues(molecule)
+        oechem.OEFindRingAtomsAndBonds(molecule)
 
         return molecule
 
@@ -313,7 +312,7 @@ class SideChainMove(Move):
         """This function takes a OEGraphMol and returns a list of backbone atoms"""
 
         backbone_atoms = []
-        pred = OEIsBackboneAtom()
+        pred = oechem.OEIsBackboneAtom()
         for atom in molecule.GetAtoms(pred):
             bb_atom_idx = atom.GetIdx()
             backbone_atoms.append(bb_atom_idx)
@@ -338,7 +337,7 @@ class SideChainMove(Move):
             # check if the atom is in backbone
             if atom.GetIdx() not in backbone_atoms:
                 # if heavy, find what residue it is associated with
-                myres = OEAtomGetResidue(atom)
+                myres = oechem.OEAtomGetResidue(atom)
                 # check if the residue number is amongst the list of residues
                 if myres.GetResidueNumber() in residue_list and myres.GetName() != "HOH":
                     # store the atom location in a query atom dict keyed by its atom index
@@ -360,7 +359,7 @@ class SideChainMove(Move):
         rot_bonds.clear()
 
         for atom in qry_atoms.keys():
-            myres = OEAtomGetResidue(atom)
+            myres = oechem.OEAtomGetResidue(atom)
             for bond in atom.GetBonds():
                 # retrieve the begnning and ending atoms
                 begatom = bond.GetBgn()
@@ -472,7 +471,7 @@ class SideChainMove(Move):
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
 
-    def move(self, nc_context):
+    def move(self, nc_context, verbose=False):
         """This rotates the target atoms around a selected bond by angle theta and updates
         the atom coordinates in the parmed structure as well as the ncmc context object"""
 

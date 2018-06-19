@@ -848,6 +848,7 @@ class BLUESSimulation(object):
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch region
         if not move_engine: move_engine = self._move_engine
+        self._ncmc_sim.currentIter = self.currentIter
         move_engine.selectMove()
         lastStep = nstepsNC-1
         for step in range(int(nstepsNC)):
@@ -937,7 +938,7 @@ class BLUESSimulation(object):
     def _stepMD_(self, nstepsMD):
         """Function that advances the MD simulation."""
         logger.info('Advancing %i MD steps...' % (nstepsMD))
-
+        self._md_sim.currentIter = self.currentIter
         #Retrieve MD state before proposed move
         # Helps determine if previous iteration placed ligand poorly
         md_state0 = self.stateTable['md']['state0']

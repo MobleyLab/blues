@@ -7,8 +7,19 @@ from blues.engine import MoveEngine
 from openmmtools import testsystems
 import simtk.unit as unit
 import numpy as np
+from unittest import skipIf
+from mdtraj.utils.delay_import import import_
 
-@unittest.skip("NO OE LICENSE")
+try:
+    oechem = utils.import_("openeye.oechem")
+    if not oechem.OEChemIsLicensed(): raise(ImportError("Need License for OEChem!"))
+    HAVE_OE = True
+except Exception as e:
+    HAVE_OE = False
+    openeye_exception_message = str(e)
+
+
+@skipIf(not HAVE_OE, "Cannot test openeye module without OpenEye tools.\n" + openeye_exception_message)
 class SideChainTester(unittest.TestCase):
     """
     Test the SmartDartMove.move() function.
