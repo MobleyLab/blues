@@ -37,9 +37,14 @@ conda install -c openeye openeye-toolkits
 ```
 
 ## Installation
-Recommended: Install from conda
+Recommended: Install releases from conda
 ```bash
 conda install -c mobleylab blues
+```
+
+Develoment builds: contains latest commits/PRs not yet issued in a point release
+```bash
+conda install -c mobleylab/label/dev blues
 ```
 
 Install from source
