@@ -3,7 +3,10 @@
 
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes.
 
-Latest release: [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
+Latest release:
+[![Build Status](https://travis-ci.org/MobleyLab/blues.svg?branch=master)](https://travis-ci.org/MobleyLab/blues)
+[![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
+ [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
 
 ## Citations
 #### Publication
@@ -25,25 +28,28 @@ BLUES compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still work with Py
 Install [miniconda](http://conda.pydata.org/miniconda.html) according to your systems
 
 ## Requirements
-Starting from v1.2, you will need the OpenEye toolkits and related tools:
+Starting from v1.2, you will need the OpenEye toolkits and related tools to use the `SideChainMove` class:
 ```bash
-conda install -c openeye/label/Orion oeommtools
+conda install -c openeye/label/Orion -c omnia oeommtools packmol
 
 # Requires OpenEye License
 conda install -c openeye openeye-toolkits
+
+# Requirements for the MolDartMove class
+conda install --yes -c sgill2 chemcoord
+conda install -c omnia mdtraj parmed yank openmmtools=0.14.0
+conda install --yes -c conda-forge future
 ```
 
 ## Installation
-Recommended: Install from conda
-First, install dependencies not on main conda channel (since channels)
-```bash
-conda install -c omnia mdtraj parmed yank openmmtools=0.13.0
-conda install --yes -c sgill2 chemcoord
-conda install --yes -c conda-forge future
-```
-Next install the actual BLUES package
+Recommended: Install releases from conda
 ```bash
 conda install -c mobleylab blues
+```
+
+Develoment builds: contains latest commits/PRs not yet issued in a point release
+```bash
+conda install -c mobleylab/label/dev blues
 ```
 
 Install from source
@@ -100,6 +106,8 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.1.2](https://doi.org/10.5281/zenodo.1040364): Incorporation of SideChainMove functionality (Contributor: Kalistyn Burley)
 - [Version 0.1.3](https://doi.org/10.5281/zenodo.1048250): Improvements to simulation logging functionality and parameters for extra propagation.
 - [Version 0.2.0](https://doi.org/10.5281/zenodo.1284568): YAML support, API changes, custom reporters.
+- [Version 0.2.1](https://zenodo.org/badge/latestdoi/62096511): Bug fix in alchemical correction term
+
 
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.

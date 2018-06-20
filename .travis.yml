@@ -1,6 +1,8 @@
 dist: trusty
 sudo: false
 language: python
+python:
+  - 3.5
 
 branches:
     only:
@@ -13,41 +15,48 @@ before_install:
     # Unpack encrypted OpenEye license file
     - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
     - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
+    - conda update --yes -q conda
     # Turn on always yes
     - conda config --set always_yes true --set changeps1 no
-    - conda update --yes -q conda
-    - conda install conda-build
-    - conda install anaconda-client
+    - conda config --set anaconda_upload no
+    # Add org channel
+    - conda config --add channels omnia
+    # Add conda-forge channel to top priority
+    - conda config --add channels conda-forge
+    #DEBUG
     - conda info -a
 
 install:
-    # Create a test environment
-    - conda create -q -n testenv python=$python
-    # Activate the test environment
-    - source activate testenv
-    # Add org channel
-    - conda config --add channels ${ORGNAME}
-    # Add conda-forge channel to top priority
-    - conda config --add channels conda-forge
+    - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
     # Install OpenEye dependencies
     #  Use beta version for partial bond orders
-    - pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-    #- conda install --yes -c openeye/label/beta openeye-toolkits
-    - conda install --yes -c openeye/label/Orion oeommtools
+    #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+    - conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+    - conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
     # Build the recipe
-    - conda build --python $python devtools/conda-recipe
-    - conda install --yes --use-local ${PACKAGENAME}
+    - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
+    - conda install --use-local ${PACKAGENAME}
     - conda list
 
 script:
     - py.test -v blues
 
-env:
-  matrix:
-    - python=3.5  CONDA_PY=3.5
+after_success:
+  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
 
+deploy:
+  #Deploy to Anaconda.org
+  - provider: script
+    skip_cleanup: true
+    script: ./devtools/conda-recipe/conda_upload.sh
+    #on:
+      #branch: master
+      #tags: true
+
+env:
   global:
     - ORGNAME="omnia"
+    - USERNAME="mobleylab"
     - PACKAGENAME="blues"
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
