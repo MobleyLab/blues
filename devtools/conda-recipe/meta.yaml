@@ -7,7 +7,7 @@ package:
 
 source:
   git_rev: master
-  git_url: https://github.com/nathanmlim/blues.git
+  git_url: https://github.com/mobleylab/blues.git
 
 build:
   number: {{ build_number }}

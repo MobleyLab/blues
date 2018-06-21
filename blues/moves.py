@@ -19,16 +19,17 @@ import copy
 import random
 import os
 
-from mdtraj.utils.delay_import import import_
 try:
-    oechem = import_("openeye.oechem")
+    import openeye.oechem as oechem
     if not oechem.OEChemIsLicensed():
-        raise(ImportError("Need License for OEChem!"))
-    else:
-        from openeye.oechem import *
-except Exception as e:
-    openeye_exception_message = str(e)
-
+        print('ImportError: Need License for OEChem! SideChainMove class will be unavailable.')
+    try:
+        import oeommtools.utils as oeommtools
+    except ImportError:
+        print('ImportError: Could not import oeommtools. SideChainMove class will be unavailable.')
+except ImportError:
+    print('ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.')
+    
 class Move(object):
 
     """Move provides methods for calculating properties on the
@@ -287,8 +288,6 @@ class SideChainMove(Move):
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
     def __init__(self, structure, residue_list, verbose=False, write_move=False):
-        oechem = import_("openeye.oechem")
-        if not oechem.OEChemIsLicensed(): raise(ImportError("Need License for OEChem!"))
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
@@ -299,7 +298,6 @@ class SideChainMove(Move):
         self.write_move = write_move
 
     def _pmdStructureToOEMol(self):
-        oeommtools = import_("oeommtools.utils")
         top = self.structure.topology
         pos = self.structure.positions
         molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
