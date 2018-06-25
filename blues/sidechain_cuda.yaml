@@ -7,8 +7,10 @@
 
 output_dir: vacDivaline-test
 outfname: vacDivaline
-logger_level: info
-
+logger:
+  level: info
+  stream: True
+  
 structure:
   filename: tests/data/vacDivaline.prmtop
   xyz: tests/data/vacDivaline.inpcrd
@@ -57,7 +59,7 @@ simulation:
   # nprop: 4 nstepsNC: 1000, 7000, 8000, 14000, 15000, 21000, 22000
   # nprop: 5 nstepsNC: 9000, 13000, 17000
   ##################################################################
-  
+
 md_reporters:
   state:
     reportInterval: 250

@@ -6,9 +6,11 @@
 # MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
 # NCMC Reporters: NetCDF (stores protocol work at 1st, mid, and last frame) and speed for benchmarking
 
-output_dir: t4-toluene-test
+output_dir: .
 outfname: t4-toluene
-logger_level: info
+logger:
+  level: info
+  stream: True
 
 structure:
   filename: tests/data/eqToluene.prmtop
@@ -50,9 +52,9 @@ simulation:
   dt: 0.004 * picoseconds
   friction: 1 * 1/picoseconds
   temperature: 300 * kelvin
-  nIter: 5
-  nstepsMD: 1000
-  nstepsNC: 1000
+  nIter: 5000
+  nstepsMD: 10000
+  nstepsNC: 10000
   #Defauilt
   nprop: 1
   propLambda: 0.3
@@ -67,15 +69,15 @@ simulation:
 
 md_reporters:
   state:
-    reportInterval: 250
+    reportInterval: 2500
   traj_netcdf:
-    reportInterval: 250
+    reportInterval: 2500
   restart:
-    reportInterval: 1000
+    reportInterval: 10000 #nstepsMD
   stream:
     title: md
-    reportInterval: 250
-    totalSteps: 5000
+    reportInterval: 2500
+    totalSteps: 5000000 #nIter * nstepsMD
     step: True
     speed: True
     progress: True
@@ -89,8 +91,8 @@ ncmc_reporters:
     protocolWork: True
   stream:
     title: ncmc
-    reportInterval: 100
-    totalSteps: 5000
+    reportInterval: 2000
+    totalSteps: 5000000 #nIter * nstepsNC
     step: True
     speed: True
     progress: True

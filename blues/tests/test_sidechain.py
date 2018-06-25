@@ -7,8 +7,22 @@ from blues.engine import MoveEngine
 from openmmtools import testsystems
 import simtk.unit as unit
 import numpy as np
+from unittest import skipUnless
 
-@unittest.skip("NO OE LICENSE")
+try:
+    import openeye.oechem as oechem
+    if not oechem.OEChemIsLicensed():
+        raise ImportError("Need License for OEChem! SideChainMove class will be unavailable.")
+    try:
+        import oeommtools.utils as oeommtools
+    except ImportError:
+        raise ImportError('Could not import oeommtools. SideChainMove class will be unavailable.')
+    has_openeye = True
+except ImportError:
+    has_openeye = False
+    print('Could not import openeye-toolkits. SideChainMove class will be unavailable.')
+    
+@skipUnless(has_openeye, 'Cannot test SideChainMove without openeye-toolkits and oeommtools.')
 class SideChainTester(unittest.TestCase):
     """
     Test the SmartDartMove.move() function.
