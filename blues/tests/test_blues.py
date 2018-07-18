@@ -29,7 +29,9 @@ class BLUESSimulationTester(unittest.TestCase):
         yaml_cfg = """
             output_dir: .
             outfname: ala-dipep-vac
-            logger_level: info
+            logger:
+              level: info
+              stream: True
 
             system:
               nonbonded: NoCutoff

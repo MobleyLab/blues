@@ -108,8 +108,15 @@ class Settings(object):
         config (dict) with the logger_level and the file path to store the .log file
         """
         # Initialize root Logger module
-        level = config['logger_level'].upper()
-        outfname = config['outfname']
+        #level = config['logger_level'].upper()
+        level = config['logger']['level'].upper()
+        stream = config['logger']['stream']
+
+        if 'filename' in config['logger'].keys():
+            outfname = config['logger']['filename']
+        else:
+            outfname = config['outfname']
+            
         if level == 'DEBUG':
             # Add verbosity if logging is set to DEBUG
             config['verbose'] = True
@@ -121,7 +128,7 @@ class Settings(object):
             config['simulation']['verbose'] = False
         logger_level = eval("logging.%s" % level)
         logger = reporters.init_logger(
-            logging.getLogger(), logger_level, outfname)
+            logging.getLogger(), logger_level, stream, outfname)
         config['Logger'] = logger
 
         return config

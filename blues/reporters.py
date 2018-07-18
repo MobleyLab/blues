@@ -78,15 +78,16 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
-def init_logger(logger, level=logging.INFO, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
+def init_logger(logger, level=logging.INFO, stream=True, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
     """Initialize the Logger module with the given logger_level and outfname.
     """
     fmt = LoggerFormatter()
 
-    # Stream to terminal
-    stdout_handler = logging.StreamHandler(stream=sys.stdout)
-    stdout_handler.setFormatter(fmt)
-    logger.addHandler(stdout_handler)
+    if stream:
+        # Stream to terminal
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        stdout_handler.setFormatter(fmt)
+        logger.addHandler(stdout_handler)
 
     # Write to File
     if outfname:
