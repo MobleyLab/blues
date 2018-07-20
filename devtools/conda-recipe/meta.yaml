@@ -13,7 +13,7 @@ build:
   number: {{ build_number }}
   noarch: generic
   preserve_egg_dir: True
-  script: python setup.py install
+  script: python setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
   build:
