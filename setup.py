@@ -3,23 +3,23 @@ This setup.py script and other related installation scripts are adapted from
 https://github.com/choderalab/yank/blob/master/setup.py
 """
 from __future__ import print_function
-import os
-import sys
-import ast
 import distutils.extension
 from setuptools import setup, Extension, find_packages
-import numpy
-import glob
-import os
 from os.path import relpath, join
-import subprocess
+import os, sys, ast, pip, subprocess
+
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst')
+except (IOError, ImportError):
+    long_description = "Error reading README"
 
 #from Cython.Build import cythonize
 DOCLINES = __doc__.split("\n")
 
 ########################
 VERSION = "0.2.1"  # Primary base version of the build
-DEVBUILD = "5"      # Dev build status, Either None or Integer as string
+DEVBUILD = "6"      # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
@@ -128,13 +128,13 @@ def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
         a.writelines(yaml_lines[2:])
     finally:
         a.close()
-write_meta_yaml()
+
 
 ################################################################################
 # USEFUL SUBROUTINES
 ################################################################################
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+#def read(fname):
+#    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 def find_package_data(data_root, package_root):
     files = []
@@ -143,16 +143,62 @@ def find_package_data(data_root, package_root):
             files.append(relpath(join(root, fn), package_root))
     return files
 
+def check_dependencies():
+    from distutils.version import StrictVersion
+    found_openmm = True
+    found_openmmtools = True
+    found_openmm_711_or_earlier = True
+    found_numpy = True
+
+    try:
+        from simtk import openmm
+        openmm_version = StrictVersion(openmm.Platform.getOpenMMVersion())
+        if openmm_version < StrictVersion('7.1.1'):
+            found_openmm_711_or_earlier = False
+    except ImportError as err:
+        found_openmm = False
+
+    try:
+        import numpy
+    except:
+        found_numpy = False
+
+    try:
+        import openmmtools
+    except:
+        found_openmmtools = False
+
+    msg = None
+    bar = ('-' * 70) + "\n" + ('-' * 70)
+    if found_openmm:
+        if not found_openmm_711_or_earlier:
+            msg = [bar, '[Unmet Dependency] BLUES requires OpenMM version 7.1.1. You have version %s.' % openmm_version, bar]
+    else:
+        msg = [bar, '[Unmet Dependency] BLUES requires the OpenMM python package. Please install with `conda install -c omnia openmm=7.1.1` ', bar]
+
+    if not found_numpy:
+        msg = [bar, '[Unmet Dependency] BLUES requires the numpy python package. Refer to <http://www.scipy.org/scipylib/download.html> for numpy installation instructions.', bar]
+
+    if not found_openmmtools:
+        msg = [bar, '[Unmet Dependency] BLUES requires the openmmtools python package. Please install with `conda install -c omnia openmmtools=0.14.0`', bar]
+
+    if msg is not None:
+        import textwrap
+        print()
+        print(os.linesep.join([line for e in msg for line in textwrap.wrap(e)]), file=sys.stderr)
+        #print('\n'.join(list(textwrap.wrap(e) for e in msg)))
+
 ################################################################################
 # SETUP
 ################################################################################
-write_version_py()
+write_version_py('blues/version.py')
+write_meta_yaml('devtools/conda-recipe/meta.yaml')
 setup(
     name='blues',
     author = "Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley, and others",
     author_email='dmobley@uci.edu',
     description = ("NCMC moves in OpenMM to enhance ligand sampling"),
-    long_description=read('README.md'),
+    long_description=long_description,
     version=__version__,
     license='MIT',
     url='https://github.com/MobleyLab/blues',
@@ -162,6 +208,7 @@ setup(
     packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
     package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
                   },
-    #install_requires=requirements,
+    install_requires=['numpy', 'cython', 'scipy', 'openmm', 'parmed', 'mdtraj', 'pandas', 'netCDF4', 'pyyaml', 'pytest'],
     zip_safe=False,
     include_package_data=True)
+check_dependencies()
