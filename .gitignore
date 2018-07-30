@@ -17,3 +17,7 @@ lib
 lib64
 __pycache__
 .ipynb_checkpoints
+*.nc
+*.ene
+*.rst7
+*.prog

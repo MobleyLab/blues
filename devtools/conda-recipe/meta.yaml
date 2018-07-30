@@ -1,5 +1,5 @@
-{% set build_number = '5' %}
-{% set short_version = '0.2.1' %}
+{% set build_number = '0' %}
+{% set short_version = '0.2.2' %}
 
 package:
   name: blues
@@ -13,7 +13,7 @@ build:
   number: {{ build_number }}
   noarch: generic
   preserve_egg_dir: True
-  script: python setup.py install
+  script: python setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
   build:

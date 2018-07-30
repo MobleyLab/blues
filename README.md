@@ -42,14 +42,20 @@ Recommended: Install releases from conda
 conda install -c mobleylab blues
 ```
 
-Develoment builds: contains latest commits/PRs not yet issued in a point release
+Development builds: contains latest commits/PRs not yet issued in a point release
 ```bash
 conda install -c mobleylab/label/dev blues
 ```
 
-Install from source
+Install from source (NOT RECOMMENDED)
 ```bash
+# Clone the BLUES repository
 git clone git@github.com:MobleyLab/blues.git
+
+# Install some dependencies
+conda install -c omnia -c conda-forge openmmtool=0.14.0 numpy cython
+
+# Install BLUES package
 python setup.py install
 ```
 
@@ -101,7 +107,8 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.1.2](https://doi.org/10.5281/zenodo.1040364): Incorporation of SideChainMove functionality (Contributor: Kalistyn Burley)
 - [Version 0.1.3](https://doi.org/10.5281/zenodo.1048250): Improvements to simulation logging functionality and parameters for extra propagation.
 - [Version 0.2.0](https://doi.org/10.5281/zenodo.1284568): YAML support, API changes, custom reporters.
-- [Version 0.2.1](https://zenodo.org/badge/latestdoi/62096511): Bug fix in alchemical correction term
+- [Version 0.2.1](https://doi.org/10.5281/zenodo.1288925): Bug fix in alchemical correction term
+- [Version 0.2.2](https://zenodo.org/badge/latestdoi/62096511): Bug fixes for OpenEye tests and restarting from the YAML; enhancements to the Logger and package installation.
 
 
 ## Acknowledgements

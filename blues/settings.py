@@ -69,13 +69,19 @@ class Settings(object):
         Reference for parmed.load_Structure *args and **kwargs
         https://parmed.github.io/ParmEd/html/structobj/parmed.formats.registry.load_file.html#parmed.formats.registry.load_file
         """
-        structure = parmed.load_file(**config['structure'])
         if 'restart' in config['structure'].keys():
-            config['Logger'].info('Restarting simulation from {}'.format(restart))
-            restart = parmed.amber.Rst7(restart)
+            rst7 = config['structure']['restart']
+            config['Logger'].info('Restarting simulation from {}'.format(rst7))
+            restart = parmed.amber.Rst7(rst7)
+            config['structure'].pop('restart')
+
+            structure = parmed.load_file(**config['structure'])
             structure.positions = restart.positions
             structure.velocities = restart.velocities
             structure.box = restart.box
+        else:
+            structure = parmed.load_file(**config['structure'])
+
         config['Structure'] = structure
         return config
 
