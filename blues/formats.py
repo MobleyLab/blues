@@ -21,17 +21,19 @@ from parmed.geometry import box_vectors_to_lengths_and_angles
 import netCDF4 as nc
 from blues import reporters
 
+
 ######################
 #  REPORTER FORMATS  #
 ######################
 class LoggerFormatter(logging.Formatter):
 
-    dbg_fmt  = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
+    dbg_fmt = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
     info_fmt = "%(levelname)s: %(message)s"
     rep_fmt = "%(message)s"
 
     def __init__(self):
-        super().__init__(fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
+        super().__init__(
+            fmt="%(levelname)s: %(msg)s", datefmt="%H:%M:%S", style='%')
         reporters.addLoggingLevel('REPORT', logging.WARNING - 5)
 
     def format(self, record):
@@ -64,18 +66,32 @@ class LoggerFormatter(logging.Formatter):
 
         return result
 
+
 class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
     #This is a subclass of the HDF5TrajectoryFile class from mdtraj that handles the writing of
     #the trajectory information to the HDF5 file format.
-    def __init__(self, filename, mode='r', force_overwrite=True, compression='zlib'):
-        super(BLUESHDF5TrajectoryFile, self).__init__(filename, mode, force_overwrite, compression)
+    def __init__(self,
+                 filename,
+                 mode='r',
+                 force_overwrite=True,
+                 compression='zlib'):
+        super(BLUESHDF5TrajectoryFile,
+              self).__init__(filename, mode, force_overwrite, compression)
 
-
-    def write(self, coordinates, parameters=None, environment=None,
-                    time=None, cell_lengths=None, cell_angles=None,
-                    velocities=None, kineticEnergy=None, potentialEnergy=None,
-                    temperature=None, alchemicalLambda=None,
-                    protocolWork=None, title=None):
+    def write(self,
+              coordinates,
+              parameters=None,
+              environment=None,
+              time=None,
+              cell_lengths=None,
+              cell_angles=None,
+              velocities=None,
+              kineticEnergy=None,
+              potentialEnergy=None,
+              temperature=None,
+              alchemicalLambda=None,
+              protocolWork=None,
+              title=None):
         """Write one or more frames of data to the file
         This method saves data that is associated with one or more simulation
         frames. Note that all of the arguments can either be raw numpy arrays
@@ -143,7 +159,8 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         cell_angles = in_units_of(cell_angles, None, 'degrees')
         velocities = in_units_of(velocities, None, 'nanometers/picosecond')
         kineticEnergy = in_units_of(kineticEnergy, None, 'kilojoules_per_mole')
-        potentialEnergy = in_units_of(potentialEnergy, None, 'kilojoules_per_mole')
+        potentialEnergy = in_units_of(potentialEnergy, None,
+                                      'kilojoules_per_mole')
         temperature = in_units_of(temperature, None, 'kelvin')
         alchemicalLambda = in_units_of(alchemicalLambda, None, 'dimensionless')
         protocolWork = in_units_of(protocolWork, None, 'kT')
@@ -156,37 +173,97 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         # realize that. obviously the default mode is that they want to
         # write multiple frames at a time, so the coordinate shape is
         # (n_frames, n_atoms, 3)
-        coordinates = ensure_type(coordinates, dtype=np.float32, ndim=3,
-            name='coordinates', shape=(None, None, 3), can_be_none=False,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
+        coordinates = ensure_type(
+            coordinates,
+            dtype=np.float32,
+            ndim=3,
+            name='coordinates',
+            shape=(None, None, 3),
+            can_be_none=False,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
         n_frames, n_atoms, = coordinates.shape[0:2]
-        time = ensure_type(time, dtype=np.float32, ndim=1,
-            name='time', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        cell_lengths = ensure_type(cell_lengths, dtype=np.float32, ndim=2,
-            name='cell_lengths', shape=(n_frames, 3), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        cell_angles = ensure_type(cell_angles, dtype=np.float32, ndim=2,
-            name='cell_angles', shape=(n_frames, 3), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        velocities = ensure_type(velocities, dtype=np.float32, ndim=3,
-            name='velocoties', shape=(n_frames, n_atoms, 3), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        kineticEnergy = ensure_type(kineticEnergy, dtype=np.float32, ndim=1,
-            name='kineticEnergy', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        potentialEnergy = ensure_type(potentialEnergy, dtype=np.float32, ndim=1,
-            name='potentialEnergy', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        temperature = ensure_type(temperature, dtype=np.float32, ndim=1,
-            name='temperature', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        alchemicalLambda = ensure_type(alchemicalLambda, dtype=np.float32, ndim=1,
-            name='alchemicalLambda', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
-        protocolWork = ensure_type(protocolWork, dtype=np.float32, ndim=1,
-            name='protocolWork', shape=(n_frames,), can_be_none=True,
-            warn_on_cast=False, add_newaxis_on_deficient_ndim=True)
+        time = ensure_type(
+            time,
+            dtype=np.float32,
+            ndim=1,
+            name='time',
+            shape=(n_frames, ),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        cell_lengths = ensure_type(
+            cell_lengths,
+            dtype=np.float32,
+            ndim=2,
+            name='cell_lengths',
+            shape=(n_frames, 3),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        cell_angles = ensure_type(
+            cell_angles,
+            dtype=np.float32,
+            ndim=2,
+            name='cell_angles',
+            shape=(n_frames, 3),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        velocities = ensure_type(
+            velocities,
+            dtype=np.float32,
+            ndim=3,
+            name='velocoties',
+            shape=(n_frames, n_atoms, 3),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        kineticEnergy = ensure_type(
+            kineticEnergy,
+            dtype=np.float32,
+            ndim=1,
+            name='kineticEnergy',
+            shape=(n_frames, ),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        potentialEnergy = ensure_type(
+            potentialEnergy,
+            dtype=np.float32,
+            ndim=1,
+            name='potentialEnergy',
+            shape=(n_frames, ),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        temperature = ensure_type(
+            temperature,
+            dtype=np.float32,
+            ndim=1,
+            name='temperature',
+            shape=(n_frames, ),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        alchemicalLambda = ensure_type(
+            alchemicalLambda,
+            dtype=np.float32,
+            ndim=1,
+            name='alchemicalLambda',
+            shape=(n_frames, ),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
+        protocolWork = ensure_type(
+            protocolWork,
+            dtype=np.float32,
+            ndim=1,
+            name='protocolWork',
+            shape=(n_frames, ),
+            can_be_none=True,
+            warn_on_cast=False,
+            add_newaxis_on_deficient_ndim=True)
 
         # if this is our first call to write(), we need to create the headers
         # and the arrays in the underlying HDF5 file
@@ -213,8 +290,11 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         try:
             # try to get the nodes for all of the fields that we have
             # which are not None
-            for name in ['coordinates', 'time', 'cell_angles', 'cell_lengths',
-                         'velocities', 'kineticEnergy', 'potentialEnergy', 'temperature', 'protocolWork', 'alchemicalLambda']:
+            for name in [
+                    'coordinates', 'time', 'cell_angles', 'cell_lengths',
+                    'velocities', 'kineticEnergy', 'potentialEnergy',
+                    'temperature', 'protocolWork', 'alchemicalLambda'
+            ]:
                 contents = locals()[name]
                 if contents is not None:
                     self._get_node(where='/', name=name).append(contents)
@@ -228,23 +308,31 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
                         pass
 
         except self.tables.NoSuchNodeError:
-            raise ValueError("The file that you're trying to save to doesn't "
+            raise ValueError(
+                "The file that you're trying to save to doesn't "
                 "contain the field %s. You can always save a new trajectory "
                 "and have it contain this information, but I don't allow 'ragged' "
                 "arrays. If one frame is going to have %s information, then I expect "
                 "all of them to. So I can't save it for just these frames. Sorry "
                 "about that :)" % (name, name))
         except AssertionError:
-            raise ValueError("The file that you're saving to expects each frame "
-                            "to contain %s information, but you did not supply it."
-                            "I don't allow 'ragged' arrays. If one frame is going "
-                            "to have %s information, then I expect all of them to. "
-                            % (name, name))
+            raise ValueError(
+                "The file that you're saving to expects each frame "
+                "to contain %s information, but you did not supply it."
+                "I don't allow 'ragged' arrays. If one frame is going "
+                "to have %s information, then I expect all of them to. " %
+                (name, name))
 
         self._frame_index += n_frames
         self.flush()
 
-    def _encodeStringForPyTables(self, string, name, where='/', complevel=1, complib='zlib', shuffle=True):
+    def _encodeStringForPyTables(self,
+                                 string,
+                                 name,
+                                 where='/',
+                                 complevel=1,
+                                 complib='zlib',
+                                 shuffle=True):
         """
         Encode a given string into a character array (PyTables)
 
@@ -260,20 +348,29 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         shuffle : bool, default=True
             Whether or not to use the Shuffle filter in the HDF5 library. This is normally used to improve the compression ratio. A false value disables shuffling and a true one enables it. The default value depends on whether compression is enabled or not; if compression is enabled, shuffling defaults to be enabled, else shuffling is disabled. Shuffling can only be used when compression is enabled.
         """
-        bytestring = np.fromstring(string.encode('utf-8'),np.uint8)
+        bytestring = np.fromstring(string.encode('utf-8'), np.uint8)
         atom = self.tables.UInt8Atom()
-        filters = self.tables.Filters(complevel,complib, shuffle)
+        filters = self.tables.Filters(complevel, complib, shuffle)
         if self.tables.__version__ >= '3.0.0':
-            self._handle.create_carray(where=where, name=name, obj=bytestring,
-                                       atom=atom, filters=filters)
+            self._handle.create_carray(
+                where=where,
+                name=name,
+                obj=bytestring,
+                atom=atom,
+                filters=filters)
         else:
-            self._handle.createCArray(where=where, name=name, obj=bytestring,
-                                       atom=atom, filters=filters)
+            self._handle.createCArray(
+                where=where,
+                name=name,
+                obj=bytestring,
+                atom=atom,
+                filters=filters)
 
     def _initialize_headers(self, n_atoms, title, parameters, set_environment,
                             set_coordinates, set_time, set_cell,
-                            set_velocities, set_kineticEnergy, set_potentialEnergy,
-                            set_temperature, set_alchemicalLambda, set_protocolWork):
+                            set_velocities, set_kineticEnergy,
+                            set_potentialEnergy, set_temperature,
+                            set_alchemicalLambda, set_protocolWork):
         """
         Function that initializes the tables for storing data from the simulation
         and writes metadata at the root level of the HDF5 file.
@@ -291,63 +388,101 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         self._handle.root._v_attrs.conventions = str('Pande')
         self._handle.root._v_attrs.conventionVersion = str('1.1')
         self._handle.root._v_attrs.program = str('MDTraj')
-        self._handle.root._v_attrs.programVersion = str(mdtraj.version.full_version)
+        self._handle.root._v_attrs.programVersion = str(
+            mdtraj.version.full_version)
         self._handle.root._v_attrs.method = str('BLUES')
-        self._handle.root._v_attrs.methodVersion = str(blues.version.full_version)
-        self._handle.root._v_attrs.reference = str('DOI: 10.1021/acs.jpcb.7b11820')
+        self._handle.root._v_attrs.methodVersion = str(
+            blues.version.full_version)
+        self._handle.root._v_attrs.reference = str(
+            'DOI: 10.1021/acs.jpcb.7b11820')
 
         if not hasattr(self._handle.root._v_attrs, 'application'):
             self._handle.root._v_attrs.application = str('OpenMM')
-            self._handle.root._v_attrs.applicationVersion = str(simtk.openmm.version.full_version)
+            self._handle.root._v_attrs.applicationVersion = str(
+                simtk.openmm.version.full_version)
 
         # create arrays that store frame level informat
         if set_coordinates:
-            self._create_earray(where='/', name='coordinates',
-                atom=self.tables.Float32Atom(), shape=(0, self._n_atoms, 3))
+            self._create_earray(
+                where='/',
+                name='coordinates',
+                atom=self.tables.Float32Atom(),
+                shape=(0, self._n_atoms, 3))
             self._handle.root.coordinates.attrs['units'] = str('nanometers')
 
         if set_time:
-            self._create_earray(where='/', name='time',
-                atom=self.tables.Float32Atom(), shape=(0,))
+            self._create_earray(
+                where='/',
+                name='time',
+                atom=self.tables.Float32Atom(),
+                shape=(0, ))
             self._handle.root.time.attrs['units'] = str('picoseconds')
 
         if set_cell:
-            self._create_earray(where='/', name='cell_lengths',
-                atom=self.tables.Float32Atom(), shape=(0, 3))
-            self._create_earray(where='/', name='cell_angles',
-                atom=self.tables.Float32Atom(), shape=(0, 3))
+            self._create_earray(
+                where='/',
+                name='cell_lengths',
+                atom=self.tables.Float32Atom(),
+                shape=(0, 3))
+            self._create_earray(
+                where='/',
+                name='cell_angles',
+                atom=self.tables.Float32Atom(),
+                shape=(0, 3))
             self._handle.root.cell_lengths.attrs['units'] = str('nanometers')
             self._handle.root.cell_angles.attrs['units'] = str('degrees')
 
         if set_velocities:
-            self._create_earray(where='/', name='velocities',
-                atom=self.tables.Float32Atom(), shape=(0, self._n_atoms, 3))
-            self._handle.root.velocities.attrs['units'] = str('nanometers/picosecond')
+            self._create_earray(
+                where='/',
+                name='velocities',
+                atom=self.tables.Float32Atom(),
+                shape=(0, self._n_atoms, 3))
+            self._handle.root.velocities.attrs['units'] = str(
+                'nanometers/picosecond')
 
         if set_kineticEnergy:
-            self._create_earray(where='/', name='kineticEnergy',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.kineticEnergy.attrs['units'] = str('kilojoules_per_mole')
+            self._create_earray(
+                where='/',
+                name='kineticEnergy',
+                atom=self.tables.Float32Atom(),
+                shape=(0, ))
+            self._handle.root.kineticEnergy.attrs['units'] = str(
+                'kilojoules_per_mole')
 
         if set_potentialEnergy:
-            self._create_earray(where='/', name='potentialEnergy',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.potentialEnergy.attrs['units'] = str('kilojoules_per_mole')
+            self._create_earray(
+                where='/',
+                name='potentialEnergy',
+                atom=self.tables.Float32Atom(),
+                shape=(0, ))
+            self._handle.root.potentialEnergy.attrs['units'] = str(
+                'kilojoules_per_mole')
 
         if set_temperature:
-            self._create_earray(where='/', name='temperature',
-                atom=self.tables.Float32Atom(), shape=(0,))
+            self._create_earray(
+                where='/',
+                name='temperature',
+                atom=self.tables.Float32Atom(),
+                shape=(0, ))
             self._handle.root.temperature.attrs['units'] = str('kelvin')
 
         #Add another portion akin to this if you want to store more data in the h5 file
         if set_alchemicalLambda:
-            self._create_earray(where='/', name='alchemicalLambda',
-                atom=self.tables.Float32Atom(), shape=(0,))
-            self._handle.root.alchemicalLambda.attrs['units'] = str('dimensionless')
+            self._create_earray(
+                where='/',
+                name='alchemicalLambda',
+                atom=self.tables.Float32Atom(),
+                shape=(0, ))
+            self._handle.root.alchemicalLambda.attrs['units'] = str(
+                'dimensionless')
 
         if set_protocolWork:
-            self._create_earray(where='/', name='protocolWork',
-                atom=self.tables.Float32Atom(), shape=(0,))
+            self._create_earray(
+                where='/',
+                name='protocolWork',
+                atom=self.tables.Float32Atom(),
+                shape=(0, ))
             self._handle.root.protocolWork.attrs['units'] = str('kT')
 
         if parameters:
@@ -357,12 +492,17 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
 
         if set_environment:
             try:
-                envout = subprocess.check_output('conda env export --no-builds', shell=True, stderr=subprocess.STDOUT)
-                envjson = json.dumps(yaml.load(envout), sort_keys=True, indent=2)
+                envout = subprocess.check_output(
+                    'conda env export --no-builds',
+                    shell=True,
+                    stderr=subprocess.STDOUT)
+                envjson = json.dumps(
+                    yaml.load(envout), sort_keys=True, indent=2)
                 self._encodeStringForPyTables(envjson, name='environment')
             except Exception as e:
                 print(e)
                 pass
+
 
 class NetCDF4Traj(NetCDFTraj):
     """
@@ -370,7 +510,7 @@ class NetCDF4Traj(NetCDFTraj):
     """
 
     def __init__(self, fname, mode='r'):
-        super(NetCDF4Traj,self).__init__(fname, mode)
+        super(NetCDF4Traj, self).__init__(fname, mode)
 
     def flush(self):
         """
@@ -383,9 +523,18 @@ class NetCDF4Traj(NetCDFTraj):
             self._ncfile.sync()
 
     @classmethod
-    def open_new(cls, fname, natom, box, crds=True, vels=False, frcs=False,
-                 remd=None, remd_dimension=None, title='',
-                 protocolWork=False, alchemicalLambda=False):
+    def open_new(cls,
+                 fname,
+                 natom,
+                 box,
+                 crds=True,
+                 vels=False,
+                 frcs=False,
+                 remd=None,
+                 remd_dimension=None,
+                 title='',
+                 protocolWork=False,
+                 alchemicalLambda=False):
         """
         Opens a new NetCDF file and sets the attributes
         Parameters
@@ -460,25 +609,26 @@ class NetCDF4Traj(NetCDFTraj):
             ncfile.createDimension('label', 5)
             inst.cell_spatial, inst.cell_angular, inst.label = 3, 3, 5
         # Create the variables and assign units and scaling factors
-        v = ncfile.createVariable('spatial', 'c', ('spatial',))
+        v = ncfile.createVariable('spatial', 'c', ('spatial', ))
         v[:] = np.asarray(list('xyz'))
         if inst.hasbox:
-            v = ncfile.createVariable('cell_spatial', 'c',
-                                            ('cell_spatial',))
+            v = ncfile.createVariable('cell_spatial', 'c', ('cell_spatial', ))
             v[:] = np.asarray(list('abc'))
-            v = ncfile.createVariable('cell_angular', 'c',
-                                            ('cell_angular', 'label',))
+            v = ncfile.createVariable('cell_angular', 'c', (
+                'cell_angular',
+                'label',
+            ))
             v[:] = np.asarray([list('alpha'), list('beta '), list('gamma')])
-        v = ncfile.createVariable('time', 'f', ('frame',))
+        v = ncfile.createVariable('time', 'f', ('frame', ))
         v.units = 'picosecond'
         if inst.hascrds:
             v = ncfile.createVariable('coordinates', 'f',
-                                            ('frame', 'atom', 'spatial'))
+                                      ('frame', 'atom', 'spatial'))
             v.units = 'angstrom'
             inst._last_crd_frame = 0
         if inst.hasvels:
             v = ncfile.createVariable('velocities', 'f',
-                                            ('frame', 'atom', 'spatial'))
+                                      ('frame', 'atom', 'spatial'))
             v.units = 'angstrom/picosecond'
             inst.velocity_scale = v.scale_factor = 20.455
             inst._last_vel_frame = 0
@@ -486,37 +636,36 @@ class NetCDF4Traj(NetCDFTraj):
                 v.set_auto_maskandscale(False)
         if inst.hasfrcs:
             v = ncfile.createVariable('forces', 'f',
-                                            ('frame', 'atom', 'spatial'))
+                                      ('frame', 'atom', 'spatial'))
             v.units = 'kilocalorie/mole/angstrom'
             inst._last_frc_frame = 0
         if inst.hasbox:
             v = ncfile.createVariable('cell_lengths', 'd',
-                                            ('frame', 'cell_spatial'))
+                                      ('frame', 'cell_spatial'))
             v.units = 'angstrom'
             v = ncfile.createVariable('cell_angles', 'd',
-                                            ('frame', 'cell_angular'))
+                                      ('frame', 'cell_angular'))
             v.units = 'degree'
             inst._last_box_frame = 0
         if inst.remd == 'TEMPERATURE':
-            v = ncfile.createVariable('temp0', 'd', ('frame',))
+            v = ncfile.createVariable('temp0', 'd', ('frame', ))
             v.units = 'kelvin'
             inst._last_remd_frame = 0
         elif inst.remd == 'MULTI':
             ncfile.createVariable('remd_indices', 'i',
-                                        ('frame', 'remd_dimension'))
-            ncfile.createVariable('remd_dimtype', 'i',
-                                        ('remd_dimension',))
+                                  ('frame', 'remd_dimension'))
+            ncfile.createVariable('remd_dimtype', 'i', ('remd_dimension', ))
             inst._last_remd_frame = 0
 
         inst._last_time_frame = 0
 
         if inst.hasprotocolWork:
-            v = ncfile.createVariable('protocolWork', 'f', ('frame',))
+            v = ncfile.createVariable('protocolWork', 'f', ('frame', ))
             v.units = 'kT'
             inst._last_protocolWork_frame = 0
 
         if inst.hasalchemicalLambda:
-            v = ncfile.createVariable('alchemicalLambda', 'f', ('frame',))
+            v = ncfile.createVariable('alchemicalLambda', 'f', ('frame', ))
             v.units = 'unitless'
             inst._last_alchemicalLambda_frame = 0
 
@@ -537,7 +686,8 @@ class NetCDF4Traj(NetCDFTraj):
             The time to add to the current frame
         """
         #if u.is_quantity(stuff): stuff = stuff.value_in_unit(u.picoseconds)
-        self._ncfile.variables['protocolWork'][self._last_protocolWork_frame] = float(stuff)
+        self._ncfile.variables['protocolWork'][
+            self._last_protocolWork_frame] = float(stuff)
         self._last_protocolWork_frame += 1
         self.flush()
 
@@ -556,6 +706,7 @@ class NetCDF4Traj(NetCDFTraj):
             The time to add to the current frame
         """
         #if u.is_quantity(stuff): stuff = stuff.value_in_unit(u.picoseconds)
-        self._ncfile.variables['alchemicalLambda'][self._last_alchemicalLambda_frame] = float(stuff)
+        self._ncfile.variables['alchemicalLambda'][
+            self._last_alchemicalLambda_frame] = float(stuff)
         self._last_alchemicalLambda_frame += 1
         self.flush()

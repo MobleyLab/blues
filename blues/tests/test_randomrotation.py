@@ -7,10 +7,12 @@ from simtk.openmm import app
 from simtk import unit
 import numpy as np
 
+
 class RandomRotationTester(unittest.TestCase):
     """
     Test the RandomLigandRotationMove class.
     """
+
     def setUp(self):
         # Obtain topologies/positions
         prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
@@ -24,29 +26,41 @@ class RandomRotationTester(unittest.TestCase):
         self.engine = MoveEngine(self.move)
         self.engine.selectMove()
 
-        self.system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
-        systems = SystemFactory(structure, self.move.atom_indices, self.system_cfg)
+        self.system_cfg = {
+            'nonbondedMethod': app.NoCutoff,
+            'constraints': app.HBonds
+        }
+        systems = SystemFactory(structure, self.move.atom_indices,
+                                self.system_cfg)
 
         #Initialize the SimulationFactory object
-        self.cfg = { 'dt' : 0.002 * unit.picoseconds,
-                'friction' : 1 * 1/unit.picoseconds,
-                'temperature' : 300 * unit.kelvin,
-                'nprop' : 1,
-                'nIter': 1,
-                'nstepsMD': 1,
-                'nstepsNC': 10,
-                'alchemical_functions' : {
-                    'lambda_sterics' : 'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
-                    'lambda_electrostatics' : 'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)' }
+        self.cfg = {
+            'dt': 0.002 * unit.picoseconds,
+            'friction': 1 * 1 / unit.picoseconds,
+            'temperature': 300 * unit.kelvin,
+            'nprop': 1,
+            'nIter': 1,
+            'nstepsMD': 1,
+            'nstepsNC': 10,
+            'alchemical_functions': {
+                'lambda_sterics':
+                'step(0.199999-lambda) + step(lambda-0.2)*step(0.8-lambda)*abs(lambda-0.5)*1/0.3 + step(lambda-0.800001)',
+                'lambda_electrostatics':
+                'step(0.2-lambda)- 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'
             }
+        }
         self.simulations = SimulationFactory(systems, self.engine, self.cfg)
         self.ncmc_sim = self.simulations.ncmc
-        self.initial_positions = self.ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.initial_positions = self.ncmc_sim.context.getState(
+            getPositions=True).getPositions(asNumpy=True)
 
     def test_random_rotation(self):
-        before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)[self.atom_indices,:]
-        self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)
-        after_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(asNumpy=True)[self.atom_indices,:]
+        before_move = self.simulations.ncmc.context.getState(
+            getPositions=True).getPositions(asNumpy=True)[self.atom_indices, :]
+        self.simulations.ncmc.context = self.engine.runEngine(
+            self.simulations.ncmc.context)
+        after_move = self.simulations.ncmc.context.getState(
+            getPositions=True).getPositions(asNumpy=True)[self.atom_indices, :]
 
         #Check that the ligand has been rotated
         pos_compare = np.not_equal(before_move, after_move).all()
@@ -54,4 +68,4 @@ class RandomRotationTester(unittest.TestCase):
 
 
 if __name__ == "__main__":
-        unittest.main()
+    unittest.main()

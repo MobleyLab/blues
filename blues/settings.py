@@ -7,6 +7,7 @@ from simtk import unit
 from simtk.openmm import app
 from blues import reporters, utils
 
+
 class Settings(object):
     """
     Function that will parse the YAML configuration file for setup and running
@@ -16,7 +17,6 @@ class Settings(object):
     ----------
     yaml_config : filepath to YAML file (or JSON)
     """
-
 
     def __init__(self, config):
         # Parse YAML or YAML docstr into dict
@@ -116,7 +116,7 @@ class Settings(object):
             outfname = config['logger']['filename']
         else:
             outfname = config['outfname']
-            
+
         if level == 'DEBUG':
             # Add verbosity if logging is set to DEBUG
             config['verbose'] = True
@@ -127,8 +127,8 @@ class Settings(object):
             config['system']['verbose'] = False
             config['simulation']['verbose'] = False
         logger_level = eval("logging.%s" % level)
-        logger = reporters.init_logger(
-            logging.getLogger(), logger_level, stream, outfname)
+        logger = reporters.init_logger(logging.getLogger(), logger_level,
+                                       stream, outfname)
         config['Logger'] = logger
 
         return config
@@ -147,18 +147,19 @@ class Settings(object):
             Force:  unit.kilocalories_per_mole/unit.angstroms**2
         """
         # Default parmed units.
-        default_units = {'nonbondedCutoff': unit.angstroms,
-                    'switchDistance': unit.angstroms,
-                    'implicitSolventKappa': unit.angstroms,
-                    'freeze_distance': unit.angstroms,
-                    'temperature': unit.kelvins,
-                    'hydrogenMass': unit.daltons,
-                    'dt': unit.picoseconds,
-                    'friction': 1 / unit.picoseconds,
-                    'pressure': unit.atmospheres,
-                    'implicitSolventSaltConc': unit.mole / unit.liters,
-                    'weight': unit.kilocalories_per_mole / unit.angstroms**2,
-                    }
+        default_units = {
+            'nonbondedCutoff': unit.angstroms,
+            'switchDistance': unit.angstroms,
+            'implicitSolventKappa': unit.angstroms,
+            'freeze_distance': unit.angstroms,
+            'temperature': unit.kelvins,
+            'hydrogenMass': unit.daltons,
+            'dt': unit.picoseconds,
+            'friction': 1 / unit.picoseconds,
+            'pressure': unit.atmospheres,
+            'implicitSolventSaltConc': unit.mole / unit.liters,
+            'weight': unit.kilocalories_per_mole / unit.angstroms**2,
+        }
 
         # Loop over parameters which require units
         for param, unit_type in default_units.items():
@@ -171,11 +172,13 @@ class Settings(object):
                         user_input = config[setup_keys][param]
 
                         if '*' in str(user_input):
-                            config[setup_keys][param] = utils.parse_unit_quantity(user_input)
+                            config[setup_keys][
+                                param] = utils.parse_unit_quantity(user_input)
                         # If not provided, set default units
                         else:
-                            config['Logger'].warn("Units for '{} = {}' not specified. Setting units to '{}'".format(
-                                param, user_input, unit_type))
+                            config['Logger'].warn(
+                                "Units for '{} = {}' not specified. Setting units to '{}'".
+                                format(param, user_input, unit_type))
                             config[setup_keys][param] = user_input * unit_type
 
                 except:
@@ -190,15 +193,17 @@ class Settings(object):
         """
         # Check Amber Selections
         if 'freeze' in config.keys():
-            freeze_keys = ['freeze_center', 'freeze_solvent', 'freeze_selection']
+            freeze_keys = [
+                'freeze_center', 'freeze_solvent', 'freeze_selection'
+            ]
             for sel in freeze_keys:
                 if sel in config['freeze']:
                     utils.check_amber_selection(config['Structure'],
-                                          config['freeze'][sel])
+                                                config['freeze'][sel])
 
         if 'restraints' in config.keys():
             utils.check_amber_selection(config['Structure'],
-                                  config['restraints']['selection'])
+                                        config['restraints']['selection'])
 
     @staticmethod
     def set_Apps(config):
@@ -212,11 +217,13 @@ class Settings(object):
 
         # System related parameters that require import from the simtk.openmm.app namesapce
         valid_apps = {
-            'nonbondedMethod': ['NoCutoff', 'CutoffNonPeriodic',
-                                'CutoffPeriodic', 'PME', 'Ewald'],
+            'nonbondedMethod': [
+                'NoCutoff', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME',
+                'Ewald'
+            ],
             'constraints': [None, 'HBonds', 'HAngles', 'AllBonds'],
             'implicitSolvent': ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
-            }
+        }
 
         for method, app_type in valid_apps.items():
             if method in config['system']:
@@ -225,7 +232,8 @@ class Settings(object):
                     config['system'][method] = eval("app.%s" % user_input)
                 except:
                     config['Logger'].exception(
-                        "'{}' was not a valid option for '{}'. Valid options: {}".format(user_input, method, app_type))
+                        "'{}' was not a valid option for '{}'. Valid options: {}".
+                        format(user_input, method, app_type))
         return config
 
     @staticmethod
@@ -235,8 +243,8 @@ class Settings(object):
         for the NCMC simulation.
         """
         ncmc_parameters = utils.calculateNCMCSteps(**config['simulation'])
-        for k,v in ncmc_parameters.items():
-            config['simulation'][k]  = v
+        for k, v in ncmc_parameters.items():
+            config['simulation'][k] = v
         return config
 
     @staticmethod
@@ -251,10 +259,12 @@ class Settings(object):
 
         if 'md_reporters' in config.keys():
             # Returns a list of Reporter objects, overwrites the configuration parameters
-            md_reporter_cfg = reporters.ReporterConfig(outfname, config['md_reporters'], logger)
+            md_reporter_cfg = reporters.ReporterConfig(
+                outfname, config['md_reporters'], logger)
             config['md_reporters'] = md_reporter_cfg.makeReporters()
             if md_reporter_cfg.trajectory_interval:
-                config['simulation']['md_trajectory_interval'] = md_reporter_cfg.trajectory_interval
+                config['simulation'][
+                    'md_trajectory_interval'] = md_reporter_cfg.trajectory_interval
         else:
             logger.warn('Configuration for MD reporters were not set.')
 
@@ -270,12 +280,19 @@ class Settings(object):
                 #If -1 is given in frame_indices, record at the last frame
                 #If 0.5 is given in frame_indices, record at the midpoint/movestep
                 if 'frame_indices' in config['ncmc_reporters'][rep].keys():
-                    frame_indices = config['ncmc_reporters'][rep]['frame_indices']
-                    frame_indices = [moveStep if x == 0.5 else x for x in frame_indices]
-                    frame_indices = [nstepsNC if x == -1 else x for x in frame_indices]
-                    config['ncmc_reporters'][rep]['frame_indices'] = frame_indices
+                    frame_indices = config['ncmc_reporters'][rep][
+                        'frame_indices']
+                    frame_indices = [
+                        moveStep if x == 0.5 else x for x in frame_indices
+                    ]
+                    frame_indices = [
+                        nstepsNC if x == -1 else x for x in frame_indices
+                    ]
+                    config['ncmc_reporters'][rep][
+                        'frame_indices'] = frame_indices
 
-            ncmc_reporter_cfg = reporters.ReporterConfig(outfname+'-ncmc', config['ncmc_reporters'], logger)
+            ncmc_reporter_cfg = reporters.ReporterConfig(
+                outfname + '-ncmc', config['ncmc_reporters'], logger)
             config['ncmc_reporters'] = ncmc_reporter_cfg.makeReporters()
         else:
             logger.warn('Configuration for NCMC reporters were not set.')
@@ -317,5 +334,10 @@ class Settings(object):
 
     def asJSON(self, pprint=False):
         if pprint:
-            return json.dumps(self.config, sort_keys=True, indent=2, skipkeys=True, default=str)
-        return json.dumps(self.config,  default=str)
+            return json.dumps(
+                self.config,
+                sort_keys=True,
+                indent=2,
+                skipkeys=True,
+                default=str)
+        return json.dumps(self.config, default=str)

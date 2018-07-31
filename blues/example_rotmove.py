@@ -20,7 +20,8 @@ systems = SystemFactory(structure, ligand.atom_indices, cfg['system'])
 systems.alch = systems.freeze_radius(structure, systems.alch, **cfg['freeze'])
 
 #Generate the OpenMM Simulations
-simulations = SimulationFactory(systems, ligand_mover, cfg['simulation'], cfg['md_reporters'], cfg['ncmc_reporters'])
+simulations = SimulationFactory(systems, ligand_mover, cfg['simulation'],
+                                cfg['md_reporters'], cfg['ncmc_reporters'])
 
 # Run BLUES Simulation
 blues = BLUESSimulation(simulations, cfg['simulation'])

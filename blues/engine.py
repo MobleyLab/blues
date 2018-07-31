@@ -14,6 +14,7 @@ class MoveEngine(object):
         #Get the dictionary of proposed moves
         mover.moves
     """
+
     def __init__(self, moves, probabilities=None):
         """Initialize the MovePropsal object that contains functions to perturb
         the context in the NCMC simulation.
@@ -30,8 +31,8 @@ class MoveEngine(object):
             If None, uniform probabilities are assigned.
         """
 
-    #make a list from moves if not a list
-        if isinstance(moves,list):
+        #make a list from moves if not a list
+        if isinstance(moves, list):
             self.moves = moves
         else:
             self.moves = [moves]
@@ -41,7 +42,7 @@ class MoveEngine(object):
             self.probs = [single_prob for x in (self.moves)]
         else:
             prob_sum = float(sum(probabilities))
-            self.probs = [x/prob_sum for x in probabilities]
+            self.probs = [x / prob_sum for x in probabilities]
         #if move and probabilitiy lists are different lengths throw error
         if len(self.moves) != len(self.probs):
             print('moves and probability list lengths need to match')

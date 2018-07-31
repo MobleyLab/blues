@@ -21,38 +21,41 @@ def saveSimulationFrame(simulation, outfname):
     an OpenMM Simulation object"""
     topology = simulation.topology
     system = simulation.context.getSystem()
-    state = simulation.context.getState(getPositions=True,
-                                        getVelocities=True,
-                                        getParameters=True,
-                                        getForces=True,
-                                        getParameterDerivatives=True,
-                                        getEnergy=True,
-                                        enforcePeriodicBox=True)
-
+    state = simulation.context.getState(
+        getPositions=True,
+        getVelocities=True,
+        getParameters=True,
+        getForces=True,
+        getParameterDerivatives=True,
+        getEnergy=True,
+        enforcePeriodicBox=True)
 
     # Generate the ParmEd Structure
-    structure = parmed.openmm.load_topology(topology, system,
-                               xyz=state.getPositions())
+    structure = parmed.openmm.load_topology(
+        topology, system, xyz=state.getPositions())
 
-    structure.save(outfname,overwrite=True)
+    structure.save(outfname, overwrite=True)
     logger.info('\tSaving Frame to: %s' % outfname)
+
 
 def print_host_info(simulation):
     """Prints hardware related information for the openmm.Simulation"""
     # OpenMM platform information
     mmver = openmm.version.version
     mmplat = simulation.context.getPlatform()
-    msg = 'OpenMM({}) simulation generated for {} platform\n'.format(mmver, mmplat.getName())
+    msg = 'OpenMM({}) simulation generated for {} platform\n'.format(
+        mmver, mmplat.getName())
 
     # Host information
     for k, v in uname()._asdict().items():
-        msg += '{} = {} \n'.format(k,v)
+        msg += '{} = {} \n'.format(k, v)
 
     # Platform properties
     for prop in mmplat.getPropertyNames():
         val = mmplat.getPropertyValue(simulation.context, prop)
-        msg += '{} = {} \n'.format(prop,val)
+        msg += '{} = {} \n'.format(prop, val)
     logger.info(msg)
+
 
 def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
     ncmc_parameters = {}
@@ -61,7 +64,7 @@ def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
         rounded_val = nstepsNC & ~1
         msg = 'nstepsNC=%i must be even for symmetric protocol.' % (nstepsNC)
         if rounded_val:
-            logger.warning(msg+' Setting to nstepsNC=%i' % rounded_val)
+            logger.warning(msg + ' Setting to nstepsNC=%i' % rounded_val)
             nstepsNC = rounded_val
         else:
             logger.error(msg)
@@ -81,13 +84,22 @@ def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
     propSteps = int(in_prop + out_prop)
 
     if propSteps != nstepsNC:
-        logger.warn("nstepsNC=%s is incompatible with prop_lambda=%s and nprop=%s." % (nstepsNC, propLambda, nprop))
-        logger.warn("Changing NCMC protocol to %s lambda switching within %s total propagation steps." % (lambdaSteps, propSteps))
+        logger.warn(
+            "nstepsNC=%s is incompatible with prop_lambda=%s and nprop=%s." %
+            (nstepsNC, propLambda, nprop))
+        logger.warn(
+            "Changing NCMC protocol to %s lambda switching within %s total propagation steps."
+            % (lambdaSteps, propSteps))
         nstepsNC = lambdaSteps
 
-    moveStep = int(nstepsNC/2)
-    ncmc_parameters = {'nstepsNC': nstepsNC, 'propSteps': propSteps, 'moveStep': moveStep,
-                       'nprop' : nprop, 'propLambda' : propLambda}
+    moveStep = int(nstepsNC / 2)
+    ncmc_parameters = {
+        'nstepsNC': nstepsNC,
+        'propSteps': propSteps,
+        'moveStep': moveStep,
+        'nprop': nprop,
+        'propLambda': propLambda
+    }
 
     return ncmc_parameters
 
@@ -111,13 +123,16 @@ def check_amber_selection(structure, selection):
     if not mask_idx:
         if ':' in selection:
             res_set = set(residue.name for residue in structure.residues)
-            logger.error("'{}' was not a valid Amber selection. \n\tValid residue names: {}".format(
-                selection, res_set))
+            logger.error(
+                "'{}' was not a valid Amber selection. \n\tValid residue names: {}".
+                format(selection, res_set))
         elif '@' in selection:
             atom_set = set(atom.name for atom in structure.atoms)
-            logger.error("'{}' was not a valid Amber selection. Valid atoms: {}".format(
-                selection, atom_set))
+            logger.error(
+                "'{}' was not a valid Amber selection. Valid atoms: {}".format(
+                    selection, atom_set))
         sys.exit(1)
+
 
 def parse_unit_quantity(unit_quantity_str):
     """
@@ -131,6 +146,7 @@ def parse_unit_quantity(unit_quantity_str):
         return unit.Quantity(float(value), eval('%s/unit.%s' % (u[0], u[1])))
     return unit.Quantity(float(value), eval('unit.%s' % u))
 
+
 def zero_masses(system, atomList=None):
     """
     Zeroes the masses of specified atoms to constrain certain degrees of freedom.
@@ -142,7 +158,7 @@ def zero_masses(system, atomList=None):
         atom indicies to zero masses
     """
     for index in (atomList):
-        system.setParticleMass(index, 0*unit.daltons)
+        system.setParticleMass(index, 0 * unit.daltons)
     return system
 
 
@@ -186,11 +202,17 @@ def get_data_filename(package_root, relative_path):
     from pkg_resources import resource_filename
     fn = resource_filename(package_root, os.path.join(relative_path))
     if not os.path.exists(fn):
-        raise ValueError("Sorry! %s does not exist. If you just added it, you'll have to re-install" % fn)
+        raise ValueError(
+            "Sorry! %s does not exist. If you just added it, you'll have to re-install"
+            % fn)
     return fn
 
 
-def spreadLambdaProtocol(switching_values, steps, switching_types='auto', kind='cubic', return_tab_function=True):
+def spreadLambdaProtocol(switching_values,
+                         steps,
+                         switching_types='auto',
+                         kind='cubic',
+                         return_tab_function=True):
     """
     Takes a list of lambda values (either for sterics or electrostatics) and transforms that list
     to be spread out over a given `steps` range to be easily compatible with the OpenMM Discrete1DFunction
@@ -246,9 +268,12 @@ def spreadLambdaProtocol(switching_values, steps, switching_types='auto', kind='
     #symmetrize the lambda values so that the off state is at the middle
     switching_values = switching_values + (switching_values)[::-1][1:]
     #find the original scaling of lambda, from 0 to 1
-    x = [float(j) / float(len(switching_values)-1) for j in range(len(switching_values))]
+    x = [
+        float(j) / float(len(switching_values) - 1)
+        for j in range(len(switching_values))
+    ]
     #find the new scaling of lambda, accounting for the number of steps
-    xsteps = np.arange(0, 1.+1./float(steps), 1./float(steps))
+    xsteps = np.arange(0, 1. + 1. / float(steps), 1. / float(steps))
     #interpolate to find the intermediate values of lambda
     interpolate = interp1d(x, switching_values, kind=kind)
 
@@ -259,17 +284,31 @@ def spreadLambdaProtocol(switching_values, steps, switching_types='auto', kind='
             switching_types = 'sterics'
         else:
             switching_types = 'electrostatics'
-    if switching_types== 'sterics':
-        tab_steps = [1.0 if (xsteps[i] < x[(one_counts-1)] or xsteps[i] > x[-(one_counts)]) else j for i, j in enumerate(interpolate(xsteps))]
+    if switching_types == 'sterics':
+        tab_steps = [
+            1.0 if (xsteps[i] < x[(one_counts - 1)]
+                    or xsteps[i] > x[-(one_counts)]) else j
+            for i, j in enumerate(interpolate(xsteps))
+        ]
     elif switching_types == 'electrostatics':
-        tab_steps = [0.0 if (xsteps[i] > x[(counts)] and xsteps[i] < x[-(counts+1)]) else j for i, j in enumerate(interpolate(xsteps))]
+        tab_steps = [
+            0.0 if (xsteps[i] > x[(counts)] and xsteps[i] < x[-(counts + 1)])
+            else j for i, j in enumerate(interpolate(xsteps))
+        ]
     else:
-        raise ValueError('`switching_types` should be either sterics or electrostatics, currently '+switching_types)
-    tab_steps = [j if i <= floor(len(tab_steps)/2.) else tab_steps[(-i)-1] for i, j in enumerate(tab_steps)]
+        raise ValueError(
+            '`switching_types` should be either sterics or electrostatics, currently '
+            + switching_types)
+    tab_steps = [
+        j if i <= floor(len(tab_steps) / 2.) else tab_steps[(-i) - 1]
+        for i, j in enumerate(tab_steps)
+    ]
     for i, j in enumerate(tab_steps):
-        if j<0.0 or j>1.0:
-            raise ValueError('This function is not working properly.',
-            'value %f at index %i is not bounded by 0.0 and 1.0 Please check if your switching_type is correct'%(j,i))
+        if j < 0.0 or j > 1.0:
+            raise ValueError(
+                'This function is not working properly.',
+                'value %f at index %i is not bounded by 0.0 and 1.0 Please check if your switching_type is correct'
+                % (j, i))
     if return_tab_function:
         tab_steps = Discrete1DFunction(tab_steps)
     return tab_steps

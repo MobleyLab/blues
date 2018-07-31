@@ -4,7 +4,9 @@ import simtk
 # Energy unit used by OpenMM unit system
 _OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
 
-class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
+
+class AlchemicalExternalLangevinIntegrator(
+        AlchemicalNonequilibriumLangevinIntegrator):
     """
     Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
@@ -70,7 +72,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
                  nsteps_neq=100,
                  nprop=1,
                  prop_lambda=0.3,
-                 *args, **kwargs):
+                 *args,
+                 **kwargs):
         """
         Parameters
         ----------
@@ -107,14 +110,16 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         """
 
         # call the base class constructor
-        super(AlchemicalExternalLangevinIntegrator, self).__init__(alchemical_functions=alchemical_functions,
-                                                               splitting=splitting, temperature=temperature,
-                                                               collision_rate=collision_rate, timestep=timestep,
-                                                               constraint_tolerance=constraint_tolerance,
-                                                               measure_shadow_work=measure_shadow_work,
-                                                               measure_heat=measure_heat,
-                                                               nsteps_neq=nsteps_neq
-                                                               )
+        super(AlchemicalExternalLangevinIntegrator, self).__init__(
+            alchemical_functions=alchemical_functions,
+            splitting=splitting,
+            temperature=temperature,
+            collision_rate=collision_rate,
+            timestep=timestep,
+            constraint_tolerance=constraint_tolerance,
+            measure_shadow_work=measure_shadow_work,
+            measure_heat=measure_heat,
+            nsteps_neq=nsteps_neq)
 
         self._prop_lambda = self._get_prop_lambda(prop_lambda)
 
@@ -128,7 +133,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("prop", 1)
         self.addGlobalVariable("prop_lambda_min", self._prop_lambda[0])
         self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
-        self._registered_step_types['H'] = (self._add_alchemical_perturbation_step, False)
+        self._registered_step_types['H'] = (
+            self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
 
         try:
@@ -137,8 +143,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.addGlobalVariable('shadow_work', 0)
 
     def _get_prop_lambda(self, prop_lambda):
-        prop_lambda_max = round(prop_lambda + 0.5,4)
-        prop_lambda_min = round(0.5 - prop_lambda,4)
+        prop_lambda_max = round(prop_lambda + 0.5, 4)
+        prop_lambda_min = round(0.5 - prop_lambda, 4)
         prop_range = prop_lambda_max - prop_lambda_min
 
         #Set values to outside [0, 1.0] to skip IfBlock
@@ -167,7 +173,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         if self._n_steps_neq == 0:
             # If nsteps = 0, we need to force execution on the first step only.
             self.beginIfBlock('step = 0')
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            super(AlchemicalNonequilibriumLangevinIntegrator,
+                  self)._add_integrator_steps()
             self.addComputeGlobal("step", "step + 1")
             self.endBlock()
         else:
@@ -180,8 +187,11 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.addComputeGlobal("unperturbed_pe", "energy")
             self.endBlock()
             #initial iteration
-            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.addComputeGlobal(
+                "protocol_work",
+                "protocol_work + (perturbed_pe - unperturbed_pe)")
+            super(AlchemicalNonequilibriumLangevinIntegrator,
+                  self)._add_integrator_steps()
             #if more propogation steps are requested
             self.beginIfBlock("lambda > prop_lambda_min")
             self.beginIfBlock("lambda <= prop_lambda_max")
@@ -189,7 +199,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.beginWhileBlock("prop < nprop")
             self.addComputeGlobal("prop", "prop + 1")
 
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            super(AlchemicalNonequilibriumLangevinIntegrator,
+                  self)._add_integrator_steps()
             self.endBlock()
             self.endBlock()
             self.endBlock()
@@ -226,7 +237,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         #TODO remove context from arguments if/once ncmc_switching is changed
         protocol = self.getGlobalVariableByName("protocol_work")
         shadow = self.getGlobalVariableByName("shadow_work")
-        logp_accept = -1.0*(protocol + shadow)*_OPENMM_ENERGY_UNIT / self.kT
+        logp_accept = -1.0 * (
+            protocol + shadow) * _OPENMM_ENERGY_UNIT / self.kT
         return logp_accept
 
     def reset(self):

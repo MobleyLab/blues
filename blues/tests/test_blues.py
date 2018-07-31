@@ -11,19 +11,26 @@ from simtk.openmm import app
 from openmmtools import testsystems
 import numpy as np
 
+
 class BLUESSimulationTester(unittest.TestCase):
     """
     Test the BLUESSimulation class.
     """
+
     def setUp(self):
         testsystem = testsystems.AlanineDipeptideVacuum(constraints=None)
-        self.structure = parmed.openmm.topsystem.load_topology(topology=testsystem.topology,
-                                            system=testsystem.system,
-                                            xyz=testsystem.positions)
+        self.structure = parmed.openmm.topsystem.load_topology(
+            topology=testsystem.topology,
+            system=testsystem.system,
+            xyz=testsystem.positions)
         self.move = RandomLigandRotationMove(self.structure, 'ALA')
         self.engine = MoveEngine(self.move)
-        system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
-        self.systems = SystemFactory(self.structure, self.move.atom_indices, system_cfg)
+        system_cfg = {
+            'nonbondedMethod': app.NoCutoff,
+            'constraints': app.HBonds
+        }
+        self.systems = SystemFactory(self.structure, self.move.atom_indices,
+                                     system_cfg)
 
     def test_blues_simulationRunYAML(self):
         yaml_cfg = """
@@ -72,13 +79,16 @@ class BLUESSimulationTester(unittest.TestCase):
         yaml_cfg = Settings(yaml_cfg)
         cfg = yaml_cfg.asDict()
 
-        simulations = SimulationFactory(self.systems, self.engine, cfg['simulation'],
-                                    cfg['md_reporters'], cfg['ncmc_reporters'])
+        simulations = SimulationFactory(self.systems, self.engine,
+                                        cfg['simulation'], cfg['md_reporters'],
+                                        cfg['ncmc_reporters'])
 
         blues = BLUESSimulation(simulations)
-        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        before_iter = blues._md_sim.context.getState(
+            getPositions=True).getPositions(asNumpy=True)
         blues.run()
-        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        after_iter = blues._md_sim.context.getState(
+            getPositions=True).getPositions(asNumpy=True)
         #Check that our system has run dynamics
         pos_compare = np.not_equal(before_iter, after_iter).all()
         self.assertTrue(pos_compare)
@@ -86,46 +96,63 @@ class BLUESSimulationTester(unittest.TestCase):
 
     def test_blues_simulationRunPure(self):
         print('Testing BLUESSimulation.run() from pure python')
-        md_rep_cfg = { 'stream': { 'title': 'md',
-                                'reportInterval': 1,
-                                'totalSteps': 4,
-                                'step': True,
-                                'speed': True,
-                                'progress': True,
-                                'remainingTime': True,
-                                'currentIter' : True} }
-        ncmc_rep_cfg = { 'stream': { 'title': 'ncmc',
-                                'reportInterval': 1,
-                                'totalSteps': 4,
-                                'step': True,
-                                'speed': True,
-                                'progress': True,
-                                'remainingTime': True,
-                                'currentIter' : True} }
+        md_rep_cfg = {
+            'stream': {
+                'title': 'md',
+                'reportInterval': 1,
+                'totalSteps': 4,
+                'step': True,
+                'speed': True,
+                'progress': True,
+                'remainingTime': True,
+                'currentIter': True
+            }
+        }
+        ncmc_rep_cfg = {
+            'stream': {
+                'title': 'ncmc',
+                'reportInterval': 1,
+                'totalSteps': 4,
+                'step': True,
+                'speed': True,
+                'progress': True,
+                'remainingTime': True,
+                'currentIter': True
+            }
+        }
 
-        md_reporters = ReporterConfig('ala-dipep-vac', md_rep_cfg).makeReporters()
-        ncmc_reporters = ReporterConfig('ala-dipep-vac-ncmc', ncmc_rep_cfg).makeReporters()
+        md_reporters = ReporterConfig('ala-dipep-vac',
+                                      md_rep_cfg).makeReporters()
+        ncmc_reporters = ReporterConfig('ala-dipep-vac-ncmc',
+                                        ncmc_rep_cfg).makeReporters()
 
-        cfg = { 'nprop' : 1,
-                'prop_lambda' : 0.3,
-                'dt' : 0.001 * unit.picoseconds,
-                'friction' : 1 * 1/unit.picoseconds,
-                'temperature' : 100 * unit.kelvin,
-                'nIter': 1,
-                'nstepsMD': 4,
-                'nstepsNC': 4,}
-        simulations = SimulationFactory(self.systems, self.engine, cfg,
-                                    md_reporters=md_reporters,
-                                    ncmc_reporters=ncmc_reporters)
+        cfg = {
+            'nprop': 1,
+            'prop_lambda': 0.3,
+            'dt': 0.001 * unit.picoseconds,
+            'friction': 1 * 1 / unit.picoseconds,
+            'temperature': 100 * unit.kelvin,
+            'nIter': 1,
+            'nstepsMD': 4,
+            'nstepsNC': 4,
+        }
+        simulations = SimulationFactory(
+            self.systems,
+            self.engine,
+            cfg,
+            md_reporters=md_reporters,
+            ncmc_reporters=ncmc_reporters)
 
         blues = BLUESSimulation(simulations)
-        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        before_iter = blues._md_sim.context.getState(
+            getPositions=True).getPositions(asNumpy=True)
         blues.run()
-        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        after_iter = blues._md_sim.context.getState(
+            getPositions=True).getPositions(asNumpy=True)
         #Check that our system has run dynamics
         pos_compare = np.not_equal(before_iter, after_iter).all()
         self.assertTrue(pos_compare)
 
 
 if __name__ == '__main__':
-        unittest.main()
+    unittest.main()
