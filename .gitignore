@@ -103,6 +103,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# Mac temp files
+*.DS_Store
 
 # Simulation files
 *.nc

@@ -19,8 +19,8 @@ DOCLINES = __doc__.split("\n")
 
 ########################
 VERSION = "0.2.2"  # Primary base version of the build
-DEVBUILD = "0"      # Dev build status, Either None or Integer as string
-ISRELEASED = True  # Are we releasing this as a full cut?
+DEVBUILD = "1"  # Dev build status, Either None or Integer as string
+ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
 
@@ -38,6 +38,7 @@ Operating System :: Unix
 ################################################################################
 # Writing version control information to the module
 ################################################################################
+
 
 def git_version():
     # Return the git revision as a string
@@ -95,14 +96,19 @@ release = {isrelease:s}
 
     a = open(filename, 'w')
     try:
-        a.write(cnt.format(base_version=base_version,   # Base version e.g. X.Y.Z
-                           build_number=DEVBUILD,       # Package build number
-                           version=local_version,       # Flushed out version, usually just base, but can be X.Y.Z.devN
-                           full_version=full_version,   # Full version + git short hash, unless released
-                           git_revision=git_revision,   # Matched full github hash
-                           isrelease=str(ISRELEASED)))  # Released flag
+        a.write(
+            cnt.format(
+                base_version=base_version,  # Base version e.g. X.Y.Z
+                build_number=DEVBUILD,  # Package build number
+                version=
+                local_version,  # Flushed out version, usually just base, but can be X.Y.Z.devN
+                full_version=
+                full_version,  # Full version + git short hash, unless released
+                git_revision=git_revision,  # Matched full github hash
+                isrelease=str(ISRELEASED)))  # Released flag
     finally:
         a.close()
+
 
 def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
     d = {}
@@ -122,8 +128,8 @@ def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
 
     a = open(filename, 'w')
     try:
-        for k,v in d.items():
-            a.write("{{% set {} = '{}' %}}\n".format(k,v))
+        for k, v in d.items():
+            a.write("{{% set {} = '{}' %}}\n".format(k, v))
         #Replace top 2 header lines that contain the package version
         a.writelines(yaml_lines[2:])
     finally:
@@ -136,12 +142,14 @@ def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
 #def read(fname):
 #    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+
 def find_package_data(data_root, package_root):
     files = []
     for root, dirnames, filenames in os.walk(data_root):
         for fn in filenames:
             files.append(relpath(join(root, fn), package_root))
     return files
+
 
 def check_dependencies():
     from distutils.version import StrictVersion
@@ -172,21 +180,40 @@ def check_dependencies():
     bar = ('-' * 70) + "\n" + ('-' * 70)
     if found_openmm:
         if not found_openmm_711_or_earlier:
-            msg = [bar, '[Unmet Dependency] BLUES requires OpenMM version 7.1.1. You have version %s.' % openmm_version, bar]
+            msg = [
+                bar,
+                '[Unmet Dependency] BLUES requires OpenMM version 7.1.1. You have version %s.'
+                % openmm_version, bar
+            ]
     else:
-        msg = [bar, '[Unmet Dependency] BLUES requires the OpenMM python package. Please install with `conda install -c omnia openmm=7.1.1` ', bar]
+        msg = [
+            bar,
+            '[Unmet Dependency] BLUES requires the OpenMM python package. Please install with `conda install -c omnia openmm=7.1.1` ',
+            bar
+        ]
 
     if not found_numpy:
-        msg = [bar, '[Unmet Dependency] BLUES requires the numpy python package. Refer to <http://www.scipy.org/scipylib/download.html> for numpy installation instructions.', bar]
+        msg = [
+            bar,
+            '[Unmet Dependency] BLUES requires the numpy python package. Refer to <http://www.scipy.org/scipylib/download.html> for numpy installation instructions.',
+            bar
+        ]
 
     if not found_openmmtools:
-        msg = [bar, '[Unmet Dependency] BLUES requires the openmmtools python package. Please install with `conda install -c omnia openmmtools=0.14.0`', bar]
+        msg = [
+            bar,
+            '[Unmet Dependency] BLUES requires the openmmtools python package. Please install with `conda install -c omnia openmmtools=0.14.0`',
+            bar
+        ]
 
     if msg is not None:
         import textwrap
         print()
-        print(os.linesep.join([line for e in msg for line in textwrap.wrap(e)]), file=sys.stderr)
+        print(
+            os.linesep.join([line for e in msg for line in textwrap.wrap(e)]),
+            file=sys.stderr)
         #print('\n'.join(list(textwrap.wrap(e) for e in msg)))
+
 
 ################################################################################
 # SETUP
@@ -195,20 +222,42 @@ write_version_py('blues/version.py')
 write_meta_yaml('devtools/conda-recipe/meta.yaml')
 setup(
     name='blues',
-    author = "Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley, and others",
+    author=
+    "Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley, and others",
     author_email='dmobley@uci.edu',
-    description = ("NCMC moves in OpenMM to enhance ligand sampling"),
+    description=("NCMC moves in OpenMM to enhance ligand sampling"),
     long_description=long_description,
     version=__version__,
     license='MIT',
     url='https://github.com/MobleyLab/blues',
-    platforms = ['Linux-64', 'Mac OSX-64', 'Unix-64'],
+    platforms=['Linux-64', 'Mac OSX-64', 'Unix-64'],
     classifiers=CLASSIFIERS.splitlines(),
     package_dir={'blues': 'blues'},
-    packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
-    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*']
-                  },
-    install_requires=['numpy', 'cython', 'scipy', 'openmm', 'parmed', 'mdtraj', 'pandas', 'netCDF4', 'pyyaml', 'pytest'],
+    packages=['blues', "blues.tests", "blues.tests.data"] +
+    ['blues.{}'.format(package) for package in find_packages('blues')],
+    package_data={
+        'blues':
+        find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb']
+        + ['images/*']
+    },
+    install_requires=[
+        'numpy', 'cython', 'scipy', 'openmm', 'parmed', 'mdtraj', 'pandas',
+        'netCDF4', 'pyyaml', 'pytest'
+    ],
+    extras_require={
+        'docs': [
+            'sphinx',  # autodoc was broken in 1.3.1
+            'sphinxcontrib-napoleon',
+            'sphinx_rtd_theme',
+            'numpydoc',
+        ],
+        'tests': [
+            'pytest',
+            'pytest-cov',
+            'pytest-pep8',
+            'tox',
+        ],
+    },
     zip_safe=False,
     include_package_data=True)
 check_dependencies()
