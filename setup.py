@@ -242,7 +242,7 @@ setup(
     },
     install_requires=[
         'numpy', 'cython', 'scipy', 'openmm', 'parmed', 'mdtraj', 'pandas',
-        'netCDF4', 'pyyaml', 'pytest', 'hdf5'
+        'netCDF4', 'pyyaml', 'pytest',
     ],
     extras_require={
         'docs': [
