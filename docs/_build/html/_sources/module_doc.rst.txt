@@ -1,8 +1,0 @@
-Module Documentation
-====================
-
-moves - Non-equilibrium Candidate Monte Carlo move types
---------------------------------------------------------
-
-.. automodule:: blues.moves
-   :members:
