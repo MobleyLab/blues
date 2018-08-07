@@ -1,4 +1,4 @@
-6conda:
+conda:
     file: docs/environment.yml
 
 python:
