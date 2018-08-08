@@ -10,8 +10,11 @@ Welcome to blues's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   module_doc
+   Introduction
 
+   module_doc
+   Citations
+   Acknowledgements
 
 
 Indices and tables
