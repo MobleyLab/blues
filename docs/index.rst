@@ -3,19 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to blues's documentation!
+Welcome to the BLUES documentation!
 =================================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   Introduction
-
+   intro
+   installation
    module_doc
-   Citations
-   Acknowledgements
-
+   examples
 
 Indices and tables
 ==================
