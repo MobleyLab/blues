@@ -679,7 +679,6 @@ class BLUESSimulation(object):
         self._md_sim = simulations.md
         self._alch_sim = simulations.alch
         self._ncmc_sim = simulations.ncmc
-        self.temperature = simulations.md.integrator.getTemperature()
 
         # Check if configuration has been specified in `SimulationFactory` object
         if not config:
@@ -832,14 +831,16 @@ class BLUESSimulation(object):
         """
         # Retrieve the state data from the MD/NCMC contexts before proposed move
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
-        self._set_stateTable_('md', 'state0', md_state0)
-
-
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
-        self._set_stateTable_('ncmc', 'state0', ncmc_state0)
 
         # Replace ncmc context data from the md context
         self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+        ### CHECK HERE ###
+        #self._ncmc_sim.context.setPositions(md_state0['positions'])
+        #self._ncmc_sim.context.setVelocities(md_state0['velocities'])
+
+        self._set_stateTable_('md', 'state0', md_state0)
+        self._set_stateTable_('ncmc', 'state0', ncmc_state0)
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
         """Function that advances the NCMC simulation."""
@@ -895,12 +896,21 @@ class BLUESSimulation(object):
 
         # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
         self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1)
+        ### CHECK HERE ####
+        #self._alch_sim.context.setPositions(ncmc_state1['positions'])
 
         # Retrieve potential_energy for alch correction
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
 
+        print('NCMC STATE 0:', ncmc_state0_PE)
+        print('MD STATE 0:', md_state0_PE)
+        print('STATE 0 DIFF:', ncmc_state0_PE - md_state0_PE)
+        print('ALCH:', alch_PE)
+        print('NCMC STATE 1:', ncmc_state1['potential_energy'])
+        print('STATE 1 DIFF:', alch_PE - ncmc_state1['potential_energy'])
+        print('KT:', (-1.0/self._ncmc_sim.context._integrator.kT))
+
         correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
-        logger.debug('Alchemical Correction = %.6f' % correction_factor)
 
         return correction_factor
 
@@ -914,6 +924,7 @@ class BLUESSimulation(object):
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
             correction_factor = self._compute_alchemical_correction_()
+            logger.info('NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
             work_ncmc = work_ncmc + correction_factor
 
         if work_ncmc > randnum:
@@ -922,6 +933,9 @@ class BLUESSimulation(object):
 
             # If accept move, sync MD context from NCMC after move.
             ncmc_state1 = self.stateTable['ncmc']['state1']
+
+            ### CHECK HERE ####
+            #self._md_sim.context.setPositions(ncmc_state1['positions'])
             self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1)
 
             if write_move:
@@ -933,7 +947,24 @@ class BLUESSimulation(object):
 
             #If reject move, reset positions in ncmc context to before move
             md_state0 = self.stateTable['md']['state0']
+            #self._ncmc_sim.context.setPositions(md_state0['positions'])
+            ### CHECK HERE ####
             self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+
+    def _reset_simulations_(self, temperature=None):
+        """At the end of each iteration:
+           1) Reset the step number in the NCMC context/integrator
+           2) Set the velocities to random values chosen from a
+              Boltzmann distribution at a given `temperature`.
+        """
+        if not temperature:
+            temperature = self._md_sim.context._integrator.getTemperature()
+
+        self._ncmc_sim.currentStep = 0
+        self._ncmc_sim.context._integrator.reset()
+
+        #Reinitialize velocities, preserving detailed balance?
+        self._md_sim.context.setVelocitiesToTemperature(temperature)
 
     def _stepMD_(self, nstepsMD):
         """Function that advances the MD simulation."""
@@ -958,26 +989,12 @@ class BLUESSimulation(object):
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
         self._set_stateTable_('md', 'state0', md_state0)
 
-        # Set NCMD poistions to last state from MD
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
-        self._set_stateTable_('ncmc', 'state0', md_state0)
+        # Set NC poistions to last positions from MD
+        ### CHECK HERE ####
+        self._ncmc_sim.context.setPositions(md_state0['positions'])
+        self._ncmc_sim.context.setVelocities(md_state0['velocities'])
 
-    def _reset_simulations_(self, temperature=None):
-        """At the end of each iteration:
-           1) Reset the step number in the NCMC context/integrator
-           2) Set the velocities to random values chosen from a
-              Boltzmann distribution at a given `temperature`.
-        """
-        if not temperature:
-            temperature = self._md_sim.context._integrator.getTemperature()
-
-        self._ncmc_sim.currentStep = 0
-        self._ncmc_sim.context._integrator.reset()
-
-        #Reinitialize velocities, preserving detailed balance?
-        self._md_sim.context.setVelocitiesToTemperature(temperature)
-
-    def run(self, nIter=None, nstepsNC=None, moveStep=None, nstepsMD=None, write_move=False, **config):
+    def run(self, nIter=None, nstepsNC=None, moveStep=None, nstepsMD=None, temperature=300, write_move=False, **config):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state niter number of times.
@@ -1002,8 +1019,8 @@ class BLUESSimulation(object):
             self._sync_states_md_to_ncmc_()
             self._stepNCMC_(nstepsNC, moveStep)
             self._accept_reject_move_(write_move)
+            self._reset_simulations_(temperature)
             self._stepMD_(nstepsMD)
-            self._reset_simulations_()
 
         # END OF NITER
         self.acceptRatio = self.accept/float(nIter)
