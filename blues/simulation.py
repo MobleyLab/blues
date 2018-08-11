@@ -4,6 +4,7 @@ simulation.py: Provides the Simulation class object that runs the BLUES engine
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, David L. Mobley
 """
+#meghan's initial comment
 import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
