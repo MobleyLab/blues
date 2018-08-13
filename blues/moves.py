@@ -265,21 +265,21 @@ class RandomLigandRotationMove(Move):
         return masses, totalmass
 
     def getCenterOfMass(self, positions, masses):
-        """Returns the calculated center of mass of the ligand as a np.array
+        """Returns the calculated center of mass of the ligand as a numpy.array
 
         Parameters
         ----------
         positions: nx3 numpy array * simtk.unit compatible with simtk.unit.nanometers
             ParmEd positions of the atoms to be moved.
         masses : numpy.array
-            np.array of particle masses
+            numpy.array of particle masses
 
         Returns
         -------
         center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
-            1x3 np.array of the center of mass of the given positions
+            1x3 numpy.array of the center of mass of the given positions
         """
-        coordinates = np.asarray(positions._value, np.float32)
+        coordinates = numpy.asarray(positions._value, numpy.float32)
         center_of_mass = parmed.geometry.center_of_mass(
             coordinates, masses) * positions.unit
         return center_of_mass
@@ -317,7 +317,7 @@ class RandomLigandRotationMove(Move):
         rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(
             rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
-        rot_move = np.dot(reduced_pos, rand_rotation_matrix
+        rot_move = numpy.dot(reduced_pos, rand_rotation_matrix
                           ) * positions.unit + self.center_of_mass
 
         # Update ligand positions in nc_sim
@@ -666,13 +666,13 @@ class SideChainMove(Move):
         theta : float
             The angle of rotation in radians.
         """
-        axis = np.asarray(axis)
-        axis = axis / math.sqrt(np.dot(axis, axis))
+        axis = numpy.asarray(axis)
+        axis = axis / math.sqrt(numpy.dot(axis, axis))
         a = math.cos(theta / 2.0)
         b, c, d = -axis * math.sin(theta / 2.0)
         aa, bb, cc, dd = a * a, b * b, c * c, d * d
         bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-        return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
+        return numpy.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
                          [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
                          [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
@@ -747,7 +747,7 @@ class SideChainMove(Move):
             # find the reduced position (substract out axis)
             red_position = (my_position - model.positions[axis2])._value
             # find the new positions by multiplying by rot matrix
-            new_position = np.dot(
+            new_position = numpy.dot(
                 rot_matrix, red_position) * positions.unit + positions[axis2]
 
             if self.verbose: print("The new position should be:", new_position)
