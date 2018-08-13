@@ -11,13 +11,10 @@ Under development
 **WARNING:** The following move classes have not been tested. Use at your own risk.
 
 .. autoclass:: SideChainMove
+  :members:
 .. autoclass:: SmartDartMove
+  :members:
 .. autoclass:: CombinationMove
-
-
-integrators - Alchemical Integrators
------------------------------------------------------------
-.. automodule:: blues.integrators
   :members:
 
 simulation - Setup and run BLUES
@@ -25,6 +22,10 @@ simulation - Setup and run BLUES
 .. automodule:: blues.simulation
   :members:
 
+integrators - Alchemical Integrators
+-----------------------------------------------------------
+.. automodule:: blues.integrators
+  :members:
 
 Utilities
 ---------
