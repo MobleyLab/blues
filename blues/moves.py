@@ -334,6 +334,17 @@ class MoveEngine(object):
         probaility of moves[i] being selected to perform its associated
         move() method. If None, uniform probabilities are assigned.
 
+    Attributes
+    ----------
+    moves : blues.move or list of N blues.move objects
+        Possible moves to be performed.
+    probabilities : list of floats
+        Normalized probabilities for each move.
+    selected_move : blues.move
+        Selected move to be performed.
+    move_name : str
+        Name of the selected move to be performed
+
     Examples
     --------
     Load a parmed.Structure, list of moves with probabilities, initialize
@@ -362,12 +373,12 @@ class MoveEngine(object):
         #normalize probabilities
         if probabilities is None:
             single_prob = 1. / len(self.moves)
-            self.probs = [single_prob for x in (self.moves)]
+            self.probabilities = [single_prob for x in (self.moves)]
         else:
             prob_sum = float(sum(probabilities))
-            self.probs = [x / prob_sum for x in probabilities]
+            self.probabilities = [x / prob_sum for x in probabilities]
         #if move and probabilitiy lists are different lengths throw error
-        if len(self.moves) != len(self.probs):
+        if len(self.moves) != len(self.probabilities):
             print('moves and probability list lengths need to match')
             raise IndexError
         #use index in selecting move
@@ -377,7 +388,7 @@ class MoveEngine(object):
         """Chooses the move which will be selected for a given NCMC
         iteration
         """
-        rand_num = numpy.random.choice(len(self.probs), p=self.probs)
+        rand_num = numpy.random.choice(len(self.probabilities), p=self.probabilities)
         self.selected_move = self.moves[rand_num]
         self.move_name = self.selected_move.__class__.__name__
 

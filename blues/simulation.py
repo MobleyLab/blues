@@ -14,15 +14,11 @@ Contributors: Nathan M. Lim, David L. Mobley
 import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
-import parmed, math
+import parmed, math, logging, sys
 from openmmtools import alchemy
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues import utils
-import os, copy, yaml, logging, sys, itertools
-import mdtraj
-from blues import utils
-from blues import reporters
-from simtk.openmm import app
+
 logger = logging.getLogger(__name__)
 
 
@@ -444,10 +440,10 @@ class SimulationFactory(object):
     systems : blues.simulation.SystemFactory object
         The object containing the MD and alchemical openmm.Systems
     move_engine : blues.moves.MoveEngine object
-        MoveProposal object which contains the dict of moves performed
+        MoveEngine object which contains the list of moves performed
         in the NCMC simulation.
-    config : dict of parameters for the simulation
-        #TODO: SET DEFAULTS OR MAKE THESE REQUIRED
+    config : dict
+        Simulation parameters which include:
         nIter, nstepsNC, nstepsMD, nprop, propLambda, temperature, dt, propSteps, write_move
     md_reporters : (optional) list of Reporter objects for the MD openmm.Simulation
     ncmc_reporters : (optional) list of Reporter objects for the NCMC openmm.Simulation
@@ -572,9 +568,6 @@ class SimulationFactory(object):
         ----------
         system : openmm.System
             The OpenMM System object corresponding to the reference system.
-
-        Kwargs
-        ------
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
         pressure : int, configional, default=None
@@ -604,8 +597,8 @@ class SimulationFactory(object):
         """
         Generates a LangevinIntegrator for the Simulations.
 
-        Kwargs
-        ------
+        Parameters
+        ----------
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
         friction: float, default=1
@@ -624,7 +617,7 @@ class SimulationFactory(object):
     @classmethod
     def generateNCMCIntegrator(
             cls,
-            nstepsNC=0,
+            nstepsNC=None,
             alchemical_functions={
                 'lambda_sterics':
                 'min(1, (1/0.3)*abs(lambda-0.5))',
@@ -642,16 +635,12 @@ class SimulationFactory(object):
 
         Parameters
         -----------
-        nstepsNC : int, optional, default=1000
+        nstepsNC : int
             The number of NCMC relaxation steps to use.
-
-        Kwargs
-        ------
-        alchemical_functions : dict of strings,
-            key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable "lambda"
+        alchemical_functions : dict
             Default = {'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-                      'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda)
-                                                  + 1/0.2*(lambda-0.8)*step(lambda-0.8)'}
+                       'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'} `
+            key : value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable "lambda".
         splitting : string, default: "H V R O R V H"
             Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option,
             which increments the global parameter `lambda` by 1/nsteps_neq for each step.
@@ -825,7 +814,6 @@ class BLUESSimulation(object):
         self._md_sim = simulations.md
         self._alch_sim = simulations.alch
         self._ncmc_sim = simulations.ncmc
-        self.temperature = simulations.md.integrator.getTemperature()
 
         # Check if configuration has been specified in `SimulationFactory` object
         if not config:
@@ -1174,6 +1162,7 @@ class BLUESSimulation(object):
             nstepsNC=None,
             moveStep=None,
             nstepsMD=None,
+            temperature=300,
             write_move=False,
             **config):
         """Function that runs the BLUES engine to iterate over the actions:
@@ -1201,7 +1190,7 @@ class BLUESSimulation(object):
             self._stepNCMC_(nstepsNC, moveStep)
             self._accept_reject_move_(write_move)
             self._stepMD_(nstepsMD)
-            self._reset_simulations_()
+            self._reset_simulations_(temperature)
 
         # END OF NITER
         self.acceptRatio = self.accept / float(nIter)
@@ -1223,7 +1212,7 @@ class MonteCarloSimulation(BLUESSimulation):
         md_state1 = self.getStateFromContext(new_context, self._state_keys_)
         self._set_stateTable_('md', 'state1', md_state1)
 
-    def _accept_reject_move_(self):
+    def _accept_reject_move_(self, temperature=None):
         """Function that chooses to accept or reject the proposed move.
         """
         md_state0 = self.stateTable['md']['state0']
@@ -1233,7 +1222,7 @@ class MonteCarloSimulation(BLUESSimulation):
                 -1.0 / self._ncmc_sim.context._integrator.kT)
         randnum = math.log(np.random.random())
 
-        if log_mc > randnum:
+        if work_mc > randnum:
             self.accept += 1
             logger.info('MC MOVE ACCEPTED: work_mc {} > randnum {}'.format(
                 work_mc, randnum))
@@ -1245,7 +1234,7 @@ class MonteCarloSimulation(BLUESSimulation):
             self._md_sim.context.setPositions(md_state0['positions'])
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def run(self, nIter, mc_per_iter=1, nstepsMD=None, write_move=False):
+    def run(self, nIter, mc_per_iter=1, nstepsMD=None, temperature=300, write_move=False):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
@@ -1269,5 +1258,5 @@ class MonteCarloSimulation(BLUESSimulation):
             for i in range(mc_per_iter):
                 self._sync_states_md_to_ncmc_()
                 self._stepMC_()
-                self._accept_reject_move_(write_move)
+                self._accept_reject_move_(write_move, temperature)
             self._stepMD_(nstepsMD)
