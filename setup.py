@@ -19,7 +19,7 @@ DOCLINES = __doc__.split("\n")
 
 ########################
 VERSION = "0.2.2"  # Primary base version of the build
-DEVBUILD = "0"      # Dev build status, Either None or Integer as string
+DEVBUILD = "1"      # Dev build status, Either None or Integer as string
 ISRELEASED = True  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
