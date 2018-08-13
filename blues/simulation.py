@@ -1,5 +1,12 @@
 """
-simulation.py: Provides the Simulation class object that runs the BLUES engine
+simulation - Provides classes for setting up and running the BLUES simulation.
+
+SystemFactory : setup and modifying the OpenMM System prior to the simulation.
+SimulationFactory : generates the OpenMM Simulations from the System.
+BLUESSimulation : runs the NCMC+MD hybrid simulation.
+MonteCarloSimulation : runs a pure Monte Carlo simulation.
+
+and running the BLUESSimulation class.
 
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, David L. Mobley
@@ -432,60 +439,6 @@ class SimulationFactory(object):
     list of reporters for the MD or NCMC simulation in the arguments
     `md_reporters` or `ncmc_reporters`.
 
-    Usage Example
-    -------------
-    #Load Parmed Structure
-    structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
-
-    #Select move type
-    ligand = RandomLigandRotationMove(structure, 'LIG')
-    #Iniitialize object that selects movestep
-    ligand_mover = MoveEngine(ligand)
-
-    #Generate the openmm.Systems
-    systems = SystemFactory(structure, ligand.atom_indices, config['system'])
-
-    #Generate the OpenMM Simulations
-    #Explicit dict of simulation configuration parameters
-    sim_cfg = { 'platform': 'OpenCL',
-                'properties' : { 'OpenCLPrecision': 'single',
-                                  'OpenCLDeviceIndex' : 2},
-                'nprop' : 1,
-                'propLambda' : 0.3,
-                'dt' : 0.001 * unit.picoseconds,
-                'friction' : 1 * 1/unit.picoseconds,
-                'temperature' : 100 * unit.kelvin,
-                'nIter': 1,
-                'nstepsMD': 10,
-                'nstepsNC': 10,}
-    simulations = SimulationFactory(systems, ligand_mover, sim_cfg])
-
-    #Access the MD/NCMC simulation objects separately with `simulations.md` or
-    `simulations.ncmc`
-
-    # If a configuration is provided at on initialization, it will call
-    # `generateSimulationSet()` for convenience. Otherwise, the class can be
-    # instantiated like a normal python class:
-
-    simulations = SimulationFactory(systems, ligand_mover)
-    hasattr(simulations, 'md')
-    hasattr(simulations, 'ncmc')
-    >>> False
-    >>> False
-
-    simulations.generateSimulationSet(sim_cfg)
-    hasattr(simulations, 'md')
-    hasattr(simulations, 'ncmc')
-    >>> False
-    >>> False
-
-    # After generating the Simulations, attach your own reporters by providing
-    # the reporters in a list. Be sure to attach to either the MD or NCMC simulation.
-
-    from simtk.openmm.app import StateDataReporter
-    reporters = [ StateDataReporter('test.log', 5) ]
-    simulations.md = simulations.attachReporters( simulations.md, reporters)
-
     Parameters
     ----------
     systems : blues.simulation.SystemFactory object
@@ -498,6 +451,78 @@ class SimulationFactory(object):
         nIter, nstepsNC, nstepsMD, nprop, propLambda, temperature, dt, propSteps, write_move
     md_reporters : (optional) list of Reporter objects for the MD openmm.Simulation
     ncmc_reporters : (optional) list of Reporter objects for the NCMC openmm.Simulation
+
+    Examples
+    --------
+    Load Parmed Structure from our input files, select the move type,
+    initialize the MoveEngine, and generate the openmm systems.
+
+    >>> structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
+    >>> ligand = RandomLigandRotationMove(structure, 'LIG')
+    >>> ligand_mover = MoveEngine(ligand)
+    >>> systems = SystemFactory(structure, ligand.atom_indices, config['system'])
+
+    Now, we can generate the Simulations from our openmm Systems using the
+    SimulationFactory class. If a configuration is provided at on initialization,
+    it will call `generateSimulationSet()` for convenience. Otherwise, the class can be
+    instantiated like a normal python class.
+
+
+    Below is an example of initializing the class like a normal python object.
+
+    >>> simulations = SimulationFactory(systems, ligand_mover)
+    >>> hasattr(simulations, 'md')
+    False
+    >>> hasattr(simulations, 'ncmc')
+    False
+
+
+    Below, we provide a dict for configuring the Simulations and then
+    generate them by calling `simulations.generateSimulationSet()`. The MD/NCMC
+    simulation objects can be accessed separately as class attributes.
+
+    >>> sim_cfg = { 'platform': 'OpenCL',
+                'properties' : { 'OpenCLPrecision': 'single',
+                                 'OpenCLDeviceIndex' : 2},
+                'nprop' : 1,
+                'propLambda' : 0.3,
+                'dt' : 0.001 * unit.picoseconds,
+                'friction' : 1 * 1/unit.picoseconds,
+                'temperature' : 100 * unit.kelvin,
+                'nIter': 1,
+                'nstepsMD': 10,
+                'nstepsNC': 10,}
+    >>> simulations.generateSimulationSet(sim_cfg)
+    >>> hasattr(simulations, 'md')
+    True
+    >>> hasattr(simulations, 'ncmc')
+    True
+
+
+    After generating the Simulations, attach your own reporters by providing
+    the reporters in a list. Be sure to attach to either the MD or NCMC simulation.
+
+    >>> from simtk.openmm.app import StateDataReporter
+    >>> md_reporters = [ StateDataReporter('test.log', 5) ]
+    >>> ncmc_reporters = [ StateDataReporter('test-ncmc.log', 5) ]
+    >>> simulations.md = simulations.attachReporters( simulations.md, md_reporters)
+    >>> simulations.ncmc = simulations.attachReporters( simulations.ncmc, ncmc_reporters)
+
+    Alternatively, you can pass the configuration dict and list of reporters
+    upon class initialization. This will do all of the above for convenience.
+
+    >>> simulations = SimulationFactory(systems, ligand_mover, sim_cfg,
+                                        md_reporters, ncmc_reporeters])
+    >>> print(simulations)
+    >>> print(simulations.md)
+    >>> print(simulations.ncmc)
+    <blues.simulation.SimulationFactory object at 0x7f461b7a8b00>
+    <simtk.openmm.app.simulation.Simulation object at 0x7f461b7a8780>
+    <simtk.openmm.app.simulation.Simulation object at 0x7f461b7a87b8>
+    >>> print(simulations.md.reporters)
+    >>> print(simulations.ncmc.reporters)
+    [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cac8>]
+    [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cb70>]
     """
 
     def __init__(self,
@@ -556,6 +581,11 @@ class SimulationFactory(object):
             Pressure (atm) for Barostat for NPT simulations.
         frequency : int, default=25
             Frequency at which Monte Carlo pressure changes should be attempted (in time steps)
+
+        Returns
+        -------
+        system : openmm.System
+            The OpenMM System with the MonteCarloBarostat attached.
         """
         logger.info(
             'Adding MonteCarloBarostat with {}. MD simulation will be {} NPT.'.
@@ -575,13 +605,18 @@ class SimulationFactory(object):
         Generates a LangevinIntegrator for the Simulations.
 
         Kwargs
-        ----------
+        ------
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
         friction: float, default=1
             friction coefficient which couples to the heat bath, measured in 1/ps
         dt: int, configional, default=0.002
             The timestep of the integrator to use (in ps).
+
+        Returns
+        -------
+        integrator : openmm.LangevinIntegrator
+            The LangevinIntegrator object intended for the System.
         """
         integrator = openmm.LangevinIntegrator(temperature, friction, dt)
         return integrator
@@ -634,6 +669,11 @@ class SimulationFactory(object):
         propLambda: float, optional, default=0.3
             The range which additional propogation steps are added,
             defined by [0.5-propLambda, 0.5+propLambda].
+
+        Returns
+        -------
+        ncmc_integrator : blues.integrator.AlchemicalExternalLangevinIntegrator
+            The NCMC integrator for the alchemical process in the NCMC simulation.
         """
         #During NCMC simulation, lambda parameters are controlled by function dict below
         # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
@@ -669,6 +709,12 @@ class SimulationFactory(object):
         platform : str, default = None
             Valid choices: 'Auto', 'OpenCL', 'CUDA'
             If None is specified, the fastest available platform will be used.
+
+        Returns
+        -------
+        simulation : openmm.Simulation
+            The generated OpenMM Simulation from the parmed.Structure, openmm.System,
+            amd the integrator.
         """
         #Specifying platform properties here used for local development.
         if platform is None:
@@ -692,13 +738,32 @@ class SimulationFactory(object):
 
     @staticmethod
     def attachReporters(simulation, reporter_list):
-        """Attach the list of reporters to the Simulation object"""
+        """Attach the list of reporters to the Simulation object
+
+        Parameters
+        ----------
+        simulation : openmm.Simulation
+            The Simulation object to attach reporters to.
+        reporter_list : list of openmm Reporeters
+            The list of reporters to attach to the OpenMM Simulation.
+
+        Returns
+        -------
+        simulation : openmm.Simulation
+            The Simulation object with the reporters attached.
+        """
         for rep in reporter_list:
             simulation.reporters.append(rep)
         return simulation
 
     def generateSimulationSet(self, config=None):
-        """Function used to generate the 3 OpenMM Simulation objects."""
+        """Function used to generate the 3 OpenMM Simulation objects.
+
+        Parameters
+        ----------
+        config : dict
+            Dictionary of parameters for configuring the OpenMM Simulations
+        """
         if not config: config = self.config
 
         #Construct MD Integrator and Simulation
@@ -937,15 +1002,14 @@ class BLUESSimulation(object):
         # Retrieve the state data from the MD/NCMC contexts before proposed move
         md_state0 = self.getStateFromContext(self._md_sim.context,
                                              self._state_keys_)
-        self._set_stateTable_('md', 'state0', md_state0)
-
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context,
                                                self._state_keys_)
-        self._set_stateTable_('ncmc', 'state0', ncmc_state0)
-
         # Replace ncmc context data from the md context
         self._ncmc_sim.context = self.setContextFromState(
             self._ncmc_sim.context, md_state0)
+        self._set_stateTable_('md', 'state0', md_state0)
+        self._set_stateTable_('ncmc', 'state0', ncmc_state0)
+
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
         """Function that advances the NCMC simulation."""
