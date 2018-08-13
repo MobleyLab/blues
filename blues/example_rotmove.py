@@ -1,5 +1,4 @@
-from blues.moves import RandomLigandRotationMove
-from blues.engine import MoveEngine
+from blues.moves import RandomLigandRotationMove, MoveEngine
 from blues.simulation import *
 import json
 from blues.settings import *

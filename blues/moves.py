@@ -1,11 +1,12 @@
 """
-moves - Provides the main Move class which allows definition of moves
+Provides the main Move class which allows definition of moves
 which alter the positions of subsets of atoms in a context during a BLUES
 simulation, in order to increase sampling.
 Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
+
 Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
@@ -37,18 +38,9 @@ except ImportError:
         'ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.'
     )
 
-
 class Move(object):
-    """This is the base Move class. Move provides methods for calculating properties on the
-    object 'move' (i.e ligand) being perturbed in the NCMC simulation.
-
-
-    Examples
-    --------
-    >>> from blues.ncmc import Model
-    >>> ligand = Model(structure, 'LIG')
-    >>> ligand.calculateProperties()
-
+    """This is the base Move class. Move provides methods for calculating properties
+    and applying the move on the set of atoms being perturbed in the NCMC simulation.
     """
 
     def __init__(self):
@@ -63,16 +55,16 @@ class Move(object):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.System
             System to be modified.
-        integrator : simtk.openmm.Integrator
+        integrator : openmm.Integrator
             Integrator to be modified.
 
         Returns
         -------
-        system : simtk.openmm.System object
+        system : openmm.System
             The modified System object.
-        integrator : simtk.openmm.Integrator object
+        integrator : openmm.Integrator
             The modified Integrator object.
 
         """
@@ -87,12 +79,12 @@ class Move(object):
 
         Parameters
         ----------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             The same input context, but whose context were changed by this function.
 
         """
@@ -105,12 +97,12 @@ class Move(object):
 
         Parameters
         ----------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             The same input context, but whose context were changed by this function.
 
         """
@@ -125,12 +117,12 @@ class Move(object):
 
         Parameters
         ----------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             The same input context, but whose context were changed by this function.
 
         """
@@ -144,12 +136,12 @@ class Move(object):
 
         Parameters
         ----------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context : simtk.openmm.Context object
+        context : openmm.Context
             The same input context, but whose context were changed by this function.
         """
         return context
@@ -162,24 +154,33 @@ class RandomLigandRotationMove(Move):
     Calculating the object's center of mass will get the positions
     and total mass.
 
+    Parameters
+    ----------
+    resname : str
+        String specifying the resiue name of the ligand.
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    random_state : integer or numpy.RandomState, optional
+        The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
+
     Attributes
     ----------
-    ligand.structure : parmed.Structure
+    structure : parmed.Structure
         The structure of the ligand or selected atoms to be rotated.
-    ligand.resname : str, default='LIG'
+    resname : str, default='LIG'
         The residue name of the ligand or selected atoms to be rotated.
-    ligand.topology : openmm.topology
+    topology : openmm.Topology
         The topology of the ligand or selected atoms to be rotated.
-    ligand.atom_indices : list
+    atom_indices : list
         Atom indicies of the ligand.
-    ligand.masses : list
+    masses : list
         Particle masses of the ligand with units.
-    ligand.totalmass : int
+    totalmass : int
         Total mass of the ligand.
-    ligand.center_of_mass : numpy.array
+    center_of_mass : numpy.array
         Calculated center of mass of the ligand in XYZ coordinates. This should
         be updated every iteration.
-    ligand.positions : numpy.array
+    positions : numpy.array
         Ligands positions in XYZ coordinates. This should be updated
         every iteration.
 
@@ -192,17 +193,6 @@ class RandomLigandRotationMove(Move):
     """
 
     def __init__(self, structure, resname='LIG', random_state=None):
-        """Initialize the model.
-
-        Parameters
-        ----------
-        resname : str
-            String specifying the resiue name of the ligand.
-        structure: parmed.Structure
-            ParmEd Structure object of the relevant system to be moved.
-        random_state : integer or numpy.RandomState, optional
-            The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
-        """
         self.structure = structure
         self.resname = resname
         self.random_state = random_state
@@ -231,7 +221,7 @@ class RandomLigandRotationMove(Move):
         atom_indices : list of ints
             list of atoms in the coordinate file matching lig_resname
         """
-        #       TODO: Add option for resnum to better select residue names
+        # TODO: Add option for resnum to better select residue names
         atom_indices = []
         topology = structure.topology
         for atom in topology.atoms():
@@ -330,8 +320,100 @@ class RandomLigandRotationMove(Move):
         return context
 
 
+class MoveEngine(object):
+    """MoveEngine provides perturbation functions for the context during the NCMC
+    simulation.
+
+    Parameters
+    ----------
+    moves : blues.move object or list of N blues.move objects
+        Specifies the possible moves to be performed.
+
+    probabilities: list of floats, optional, default=None
+        A list of N probabilities, where probabilities[i] corresponds to the
+        probaility of moves[i] being selected to perform its associated
+        move() method. If None, uniform probabilities are assigned.
+
+    Examples
+    --------
+    Load a parmed.Structure, list of moves with probabilities, initialize
+    the MoveEngine class, and select a move from our list.
+
+    >>> import parmed
+    >>> from blues.moves import *
+    >>> structure = parmed.load_file('tests/data/eqToluene.prmtop', xyz='tests/data/eqToluene.inpcrd')
+    >>> probabilities = [0.25, 0.75]
+    >>> moves = [SideChainMove(structure, [111]),RandomLigandRotationMove(structure, 'LIG')]
+    >>> mover = MoveEngine(moves, probabilities)
+    >>> mover.moves
+    [<blues.moves.SideChainMove at 0x7f2eaa168470>,
+     <blues.moves.RandomLigandRotationMove at 0x7f2eaaaa51d0>]
+    >>> mover.selectMove()
+    >>> mover.selected_move
+    <blues.moves.RandomLigandRotationMove at 0x7f2eaaaa51d0>
+    """
+
+    def __init__(self, moves, probabilities=None):
+        #make a list from moves if not a list
+        if isinstance(moves, list):
+            self.moves = moves
+        else:
+            self.moves = [moves]
+        #normalize probabilities
+        if probabilities is None:
+            single_prob = 1. / len(self.moves)
+            self.probs = [single_prob for x in (self.moves)]
+        else:
+            prob_sum = float(sum(probabilities))
+            self.probs = [x / prob_sum for x in probabilities]
+        #if move and probabilitiy lists are different lengths throw error
+        if len(self.moves) != len(self.probs):
+            print('moves and probability list lengths need to match')
+            raise IndexError
+        #use index in selecting move
+        self.selected_move = None
+
+    def selectMove(self):
+        """Chooses the move which will be selected for a given NCMC
+        iteration
+        """
+        rand_num = numpy.random.choice(len(self.probs), p=self.probs)
+        self.selected_move = self.moves[rand_num]
+        self.move_name = self.selected_move.__class__.__name__
+
+    def runEngine(self, context):
+        """Selects a random Move object based on its
+        assigned probability and and performs its move() function
+        on a context.
+
+        Parameters
+        ----------
+        context : openmm.Context
+            OpenMM context whose positions should be moved.
+
+        Returns
+        -------
+        context : openmm.Context
+            OpenMM context whose positions have been moved.
+        """
+        try:
+            new_context = self.selected_move.move(context)
+        except Exception as e:
+            #In case the move isn't properly implemented, print out useful info
+            print('Error: move not implemented correctly, printing traceback:')
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)
+            print(e)
+            raise SystemExit
+
+        return new_context
+
+########################
+## UNDER DEVELOPMENT ###
+########################
+
 class SideChainMove(Move):
-    """NOTE: Usage of this class requires a valid OpenEye license.
+    """**NOTE:** Usage of this class requires a valid OpenEye license.
 
     SideChainMove provides methods for calculating properties needed to
     rotate a sidechain residue given a parmed.Structure. Calculated properties
@@ -342,26 +424,6 @@ class SideChainMove(Move):
     The class contains functions to randomly select a bond and angle to be rotated
     and applies a rotation matrix to the target atoms to update their coordinates on the
     object 'model' (i.e sidechain) being perturbed in the NCMC simulation.
-
-    and total mass.
-
-    Attributes
-    ----------
-    sidechain.structure : parmed.Structure
-        The structure of the entire system to be simulated.
-    sidechain.molecule : oechem.OEMolecule
-        The OEMolecule containing the sidechain(s) to be rotated.
-    sidechain.residue_list : list of int
-        List containing the residue numbers of the sidechains to be rotated.
-    sidechain.all_atoms : list of int
-        List containing the atom indicies of the sidechains to be rotated.
-    sidechain.rot_atoms : dict
-        Dictionary of residues, bonds and atoms to be rotated
-    sidechain.rot_bonds : dict of oechem.OEBondBase
-        Dictionary containing the bond pointers of the rotatable bonds.
-    sidechain.qry_atoms : dict of oechem.OEAtomBase
-        Dictionary containing all the atom pointers (as OpenEye objects) that
-        make up the given residues.
 
     Parameters
     ----------
@@ -374,10 +436,28 @@ class SideChainMove(Move):
     write_move : bool, default=False
         If True, writes a PDB of the system after rotation.
 
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the entire system to be simulated.
+    molecule : oechem.OEMolecule
+        The OEMolecule containing the sidechain(s) to be rotated.
+    residue_list : list of int
+        List containing the residue numbers of the sidechains to be rotated.
+    all_atoms : list of int
+        List containing the atom indicies of the sidechains to be rotated.
+    rot_atoms : dict
+        Dictionary of residues, bonds and atoms to be rotated
+    rot_bonds : dict of oechem.OEBondBase
+        Dictionary containing the bond pointers of the rotatable bonds.
+    qry_atoms : dict of oechem.OEAtomBase
+        Dictionary containing all the atom pointers (as OpenEye objects) that
+        make up the given residues.
+
 
     Examples
     --------
-    >>> from blues.move import SideChainnMove
+    >>> from blues.move import SideChainMove
     >>> sidechain = SideChainMove(structure, [1])
 
     """
@@ -782,50 +862,8 @@ class SideChainMove(Move):
         return context
 
 
-class CombinationMove(Move):
-    """ WARNING: This class has not been completly tested. Use at your own risk.
-
-    Move object that allows Move object moves to be performed according to
-    the order in move_list. To ensure detailed balance, the moves have an equal
-    chance to be performed in listed or reverse order.
-
-    Parameters
-    ----------
-    moves : list of blues.move.Move
-
-    """
-
-    def __init__(self, moves):
-        self.moves = moves
-
-    def move(self, context):
-        """Performs the move() functions of the Moves in move_list on
-        a context.
-
-        Parameters
-        ----------
-        context: simtk.openmm.Context object
-            Context containing the positions to be moved.
-
-        Returns
-        -------
-        context: simtk.openmm.Context object
-            The same input context, but whose positions were changed by this function.
-
-        """
-        rand = numpy.random.random()
-        #to maintain detailed balance this executes both
-        #the forward and reverse order moves with equal probability
-        if rand > 0.5:
-            for single_move in self.move_list:
-                single_move.move(context)
-        else:
-            for single_move in reverse(self.move_list):
-                single_move.move(context)
-
-
 class SmartDartMove(RandomLigandRotationMove):
-    """ WARNING: This class has not been completly tested. Use at your own risk.
+    """**WARNING:** This class has not been completely tested. Use at your own risk.
 
     Move object that allows center of mass smart darting moves to be performed on a ligand,
     allowing translations of a ligand between pre-defined regions in space. The
@@ -1263,3 +1301,45 @@ class SmartDartMove(RandomLigandRotationMove):
         old_coord = self._undoBasis(basis_set, center)
         adjusted_center = old_coord + particle1
         return adjusted_center
+
+
+class CombinationMove(Move):
+    """**WARNING:** This class has not been completely tested. Use at your own risk.
+
+    Move object that allows Move object moves to be performed according to
+    the order in move_list. To ensure detailed balance, the moves have an equal
+    chance to be performed in listed or reverse order.
+
+    Parameters
+    ----------
+    moves : list of blues.move.Move
+
+    """
+
+    def __init__(self, moves):
+        self.moves = moves
+
+    def move(self, context):
+        """Performs the move() functions of the Moves in move_list on
+        a context.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
+        rand = numpy.random.random()
+        #to maintain detailed balance this executes both
+        #the forward and reverse order moves with equal probability
+        if rand > 0.5:
+            for single_move in self.move_list:
+                single_move.move(context)
+        else:
+            for single_move in reverse(self.move_list):
+                single_move.move(context)

@@ -1,29 +1,27 @@
 Modules
 ====================
 
-moves - Nonequilibrium Candidate Monte Carlo move types
+moves - NCMC Moves
 --------------------------------------------------------
-
 .. automodule:: blues.moves
-  :members:
+  :members: Move, RandomLigandRotationMove, MoveEngine
 
-engine - Nonequilibrium Candidate Monte Carlo move types
---------------------------------------------------------
-.. automodule:: blues.engine
-  :members:
+Under development
+~~~~~~~~~~~~~~~~~~~~~~~~~
+**WARNING:** The following move classes have not been tested. Use at your own risk.
 
-Integrators - Nonequilibrium Candidate Monte Carlo move types
---------------------------------------------------------
+.. autoclass:: SideChainMove
+.. autoclass:: SmartDartMove
+.. autoclass:: CombinationMove
+
+
+integrators - Alchemical Integrators
+-----------------------------------------------------------
 .. automodule:: blues.integrators
   :members:
 
-ncmc_switching
---------------
-.. automodule:: blues.ncmc_switching
-  :members:
-
-Simulation
------------
+simulation - Setup and run BLUES
+---------------------------------------------------------
 .. automodule:: blues.simulation
   :members:
 

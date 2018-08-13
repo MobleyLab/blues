@@ -443,7 +443,7 @@ class SimulationFactory(object):
     ----------
     systems : blues.simulation.SystemFactory object
         The object containing the MD and alchemical openmm.Systems
-    move_engine : blues.engine.MoveEngine object
+    move_engine : blues.moves.MoveEngine object
         MoveProposal object which contains the dict of moves performed
         in the NCMC simulation.
     config : dict of parameters for the simulation
@@ -648,8 +648,7 @@ class SimulationFactory(object):
         Kwargs
         ------
         alchemical_functions : dict of strings,
-            key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible
-            string that depends on the variable "lambda"
+            key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable "lambda"
             Default = {'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
                       'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda)
                                                   + 1/0.2*(lambda-0.8)*step(lambda-0.8)'}
