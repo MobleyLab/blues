@@ -380,9 +380,23 @@ class SystemFactory(object):
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'): freeze_distance = freeze_distance._value
         selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance,freeze_solvent)
+        logger.debug('Parmed selection for freezing: %s' % selection)
         site_idx = cls._amber_selection_to_atom_indices_(structure, selection)
         #Invert that selection to freeze everything but the binding site.
         freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
+
+        #Check if freeze selection has selected all atoms
+        if len(freeze_idx) == system.getNumParticles():
+            err = 'All %i atoms appear to be selected for freezing. Check your atom selection.' % len(freeze_idx)
+            logger.error(err)
+            sys.exit(1)
+
+        #Ensure that the freeze selection is larger than the center selection point
+        center_idx = cls._amber_selection_to_atom_indices_(structure, freeze_center)
+        if len(freeze_idx) <= len(center_idx):
+            err = "%i frozen atoms is less than (or equal to) the number of atoms from the selection center '%s' (%i atoms). Check your atom selection." %(len(freeze_idx), freeze_center, len(center_idx))
+            logger.error(err)
+            sys.exit(1)
 
         logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance, freeze_center, system))
 
@@ -757,11 +771,14 @@ class BLUESSimulation(object):
         return integrator_info
 
     @classmethod
-    def setContextFromState(cls, context, state):
+    def setContextFromState(cls, context, state, box=True, positions=True, velocities=True):
         # Replace ncmc data from the md context
-        context.setPeriodicBoxVectors(*state['box_vectors'])
-        context.setPositions(state['positions'])
-        context.setVelocities(state['velocities'])
+        if box:
+            context.setPeriodicBoxVectors(*state['box_vectors'])
+        if positions:
+            context.setPositions(state['positions'])
+        if velocities:
+            context.setVelocities(state['velocities'])
         return context
 
     def _print_simulation_timing_(self):
@@ -833,11 +850,8 @@ class BLUESSimulation(object):
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
 
-        # Replace ncmc context data from the md context
+        # Replace ncmc context data from theG md context
         self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
-        ### CHECK HERE ###
-        #self._ncmc_sim.context.setPositions(md_state0['positions'])
-        #self._ncmc_sim.context.setVelocities(md_state0['velocities'])
 
         self._set_stateTable_('md', 'state0', md_state0)
         self._set_stateTable_('ncmc', 'state0', ncmc_state0)
@@ -870,9 +884,6 @@ class BLUESSimulation(object):
                 # Do 1 NCMC step with the integrator
                 self._ncmc_sim.step(1)
 
-                #DEBUG options at every NCMC step
-                logger.debug('%s' % self.getIntegratorInfo(self._ncmc_sim.context._integrator, self._integrator_keys_))
-
                 #Attempt anything related to the move after protocol is performed
                 if step == lastStep:
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
@@ -895,20 +906,10 @@ class BLUESSimulation(object):
         ncmc_state1 = self.stateTable['ncmc']['state1']
 
         # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
-        self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1)
-        ### CHECK HERE ####
-        #self._alch_sim.context.setPositions(ncmc_state1['positions'])
+        self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1, velocities=False)
 
         # Retrieve potential_energy for alch correction
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
-
-        print('NCMC STATE 0:', ncmc_state0_PE)
-        print('MD STATE 0:', md_state0_PE)
-        print('STATE 0 DIFF:', ncmc_state0_PE - md_state0_PE)
-        print('ALCH:', alch_PE)
-        print('NCMC STATE 1:', ncmc_state1['potential_energy'])
-        print('STATE 1 DIFF:', alch_PE - ncmc_state1['potential_energy'])
-        print('KT:', (-1.0/self._ncmc_sim.context._integrator.kT))
 
         correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
 
@@ -934,9 +935,7 @@ class BLUESSimulation(object):
             # If accept move, sync MD context from NCMC after move.
             ncmc_state1 = self.stateTable['ncmc']['state1']
 
-            ### CHECK HERE ####
-            #self._md_sim.context.setPositions(ncmc_state1['positions'])
-            self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1)
+            self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
 
             if write_move:
             	utils.saveSimulationFrame(self._md_sim, '{}acc-it{}.pdb'.format(self._config['outfname'], self.currentIter))
@@ -947,9 +946,7 @@ class BLUESSimulation(object):
 
             #If reject move, reset positions in ncmc context to before move
             md_state0 = self.stateTable['md']['state0']
-            #self._ncmc_sim.context.setPositions(md_state0['positions'])
-            ### CHECK HERE ####
-            self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+            self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, velocities=False)
 
     def _reset_simulations_(self, temperature=None):
         """At the end of each iteration:
@@ -989,10 +986,10 @@ class BLUESSimulation(object):
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
         self._set_stateTable_('md', 'state0', md_state0)
 
-        # Set NC poistions to last positions from MD
-        ### CHECK HERE ####
-        self._ncmc_sim.context.setPositions(md_state0['positions'])
-        self._ncmc_sim.context.setVelocities(md_state0['velocities'])
+        # Set NCMD state to last state from MD
+        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+        self._set_stateTable_('ncmc', 'state0', md_state0)
+
 
     def run(self, nIter=None, nstepsNC=None, moveStep=None, nstepsMD=None, temperature=300, write_move=False, **config):
         """Function that runs the BLUES engine to iterate over the actions:
@@ -1019,8 +1016,8 @@ class BLUESSimulation(object):
             self._sync_states_md_to_ncmc_()
             self._stepNCMC_(nstepsNC, moveStep)
             self._accept_reject_move_(write_move)
-            self._reset_simulations_(temperature)
             self._stepMD_(nstepsMD)
+            self._reset_simulations_(temperature)
 
         # END OF NITER
         self.acceptRatio = self.accept/float(nIter)
