@@ -948,21 +948,6 @@ class BLUESSimulation(object):
             md_state0 = self.stateTable['md']['state0']
             self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, velocities=False)
 
-    def _reset_simulations_(self, temperature=None):
-        """At the end of each iteration:
-           1) Reset the step number in the NCMC context/integrator
-           2) Set the velocities to random values chosen from a
-              Boltzmann distribution at a given `temperature`.
-        """
-        if not temperature:
-            temperature = self._md_sim.context._integrator.getTemperature()
-
-        self._ncmc_sim.currentStep = 0
-        self._ncmc_sim.context._integrator.reset()
-
-        #Reinitialize velocities, preserving detailed balance?
-        self._md_sim.context.setVelocitiesToTemperature(temperature)
-
     def _stepMD_(self, nstepsMD):
         """Function that advances the MD simulation."""
         logger.info('Advancing %i MD steps...' % (nstepsMD))
@@ -990,6 +975,20 @@ class BLUESSimulation(object):
         self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
         self._set_stateTable_('ncmc', 'state0', md_state0)
 
+    def _reset_simulations_(self, temperature=None):
+        """At the end of each iteration:
+           1) Reset the step number in the NCMC context/integrator
+           2) Set the velocities to random values chosen from a
+              Boltzmann distribution at a given `temperature`.
+        """
+        if not temperature:
+            temperature = self._md_sim.context._integrator.getTemperature()
+
+        self._ncmc_sim.currentStep = 0
+        self._ncmc_sim.context._integrator.reset()
+
+        #Reinitialize velocities, preserving detailed balance?
+        self._md_sim.context.setVelocitiesToTemperature(temperature)
 
     def run(self, nIter=None, nstepsNC=None, moveStep=None, nstepsMD=None, temperature=300, write_move=False, **config):
         """Function that runs the BLUES engine to iterate over the actions:

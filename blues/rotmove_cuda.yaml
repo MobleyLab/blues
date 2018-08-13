@@ -6,7 +6,7 @@
 # MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
 # NCMC Reporters: NetCDF (stores protocol work at 1st, mid, and last frame) and speed for benchmarking
 
-output_dir: test-sync
+output_dir: .
 outfname: t4-toluene
 logger:
   level: info
@@ -52,7 +52,7 @@ simulation:
   dt: 0.004 * picoseconds
   friction: 1 * 1/picoseconds
   temperature: 300 * kelvin
-  nIter: 3
+  nIter: 5000
   nstepsMD: 10000
   nstepsNC: 10000
   #Defauilt
@@ -69,11 +69,7 @@ simulation:
 
 md_reporters:
   state:
-    reportInterval: 1
-    potentialEnergy: True
-    kineticEnergy: True
-    temperature: True
-    volume: True
+    reportInterval: 2500
   traj_netcdf:
     reportInterval: 2500
   restart:
@@ -89,12 +85,6 @@ md_reporters:
     currentIter : True
 
 ncmc_reporters:
-  state:
-    reportInterval: 1
-    potentialEnergy: True
-    kineticEnergy: True
-    temperature: True
-    volume: True
   traj_netcdf:
     frame_indices: [1, 0.5, -1]
     alchemicalLambda: True
