@@ -4,7 +4,8 @@ simulation.py: Provides the Simulation class object that runs the BLUES engine
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, David L. Mobley
 """
-#meghan's initial comment
+
+
 import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
@@ -22,8 +23,9 @@ logger = logging.getLogger(__name__)
 
 class SystemFactory(object):
     """
-    SystemFactory contains methods to generate/modify the OpenMM System object required for
-    generating the openmm.Simulation using a given parmed.Structure()
+    SystemFactory contains methods to generate/modify the OpenMM System object
+    required for generating the openmm.Simulation using a given
+    parmed.Structure()
 
     Usage Example
     -------------
@@ -152,6 +154,11 @@ class SystemFactory(object):
             impropers. This is primarily useful for debugging torsion parameter
             assignments.
 
+        Returns
+        -------
+        openmm.System
+            System formatted according to the prmtop file.
+
         Notes
         -----
         This function calls prune_empty_terms if any Topology lists have changed
@@ -225,6 +232,12 @@ class SystemFactory(object):
                 method, modifying the global variable `lambda_electrostatics` is
                 not sufficient to control the charges. The recommended way to change
                 them is through the `AlchemicalState` class.
+
+        Returns
+        -------
+        alch_system : alchemical_system
+            System to be used for the NCMC simulation.
+
         References
         ----------
         [1] Pham TT and Shirts MR. Identifying low variance pathways for free
@@ -260,12 +273,18 @@ class SystemFactory(object):
     def _amber_selection_to_atom_indices_(structure, selection):
         """
         Converts AmberMask selection to list of atom indices.
+
         Parameters
         ----------
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
         selection : str
             AmberMask selection that gets converted to a list of atom indices.
+
+        Returns
+        -------
+        mask_idx : list of int
+            List of atom indices.
         """
         mask = parmed.amber.AmberMask(structure, str(selection))
         mask_idx = [i for i in mask.Selected()]
@@ -276,12 +295,18 @@ class SystemFactory(object):
         """
         Goes through the structure and matches the previously selected atom
         indices to the atom type.
+
         Parameters
         ----------
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
         mask_idx : list of int
             List of atom indices.
+
+        Returns
+        -------
+        atom_list : list of atoms
+            The atoms that were previously selected in mask_idx.
         """
         atom_list = []
         for i, at in enumerate(structure.atoms):
@@ -313,6 +338,11 @@ class SystemFactory(object):
             AmberMask selection to apply positional restraints to
         weight : float, Default = 5.0
             Restraint weight for xyz atom restraints in kcal/(mol A^2)
+
+        Returns
+        -------
+        system : openmm.System
+            Modified with positional restraints applied.
 
         References
         -----
@@ -347,7 +377,8 @@ class SystemFactory(object):
                      **kwargs):
         """
         Function that will zero the masses of atoms from the given selection.
-        Massless atoms will be ignored by the integrator and will not change positions.
+        Massless atoms will be ignored by the integrator and will not change
+        positions.
 
         Parameters
         ----------
@@ -359,8 +390,14 @@ class SystemFactory(object):
         Kwargs
         -------
         freeze_selection : str, Default = ":LIG"
-            AmberMask selection for the center in which to select atoms for zeroing their masses.
+            AmberMask selection for the center in which to select atoms for
+            zeroing their massesself.
             Defaults to freezing protein backbone atoms.
+
+        Returns
+        -------
+        system : openmm.System
+            The modified system with the selected atoms
 
         References
         -----
@@ -399,12 +436,19 @@ class SystemFactory(object):
         Kwargs
         -------
         freeze_center : str, Default = ":LIG"
-            AmberMask selection for the center in which to select atoms for zeroing their masses. Default: LIG
+            AmberMask selection for the center in which to select atoms for
+            zeroing their masses. Default: LIG
         freeze_distance : float, Default = 5.0
             Distance (angstroms) to select atoms for retaining their masses.
             Atoms outside the set distance will have their masses set to 0.0.
         freeze_solvent : str, Default = ":HOH,NA,CL"
-            AmberMask selection in which to select solvent atoms for zeroing their masses.
+            AmberMask selection in which to select solvent atoms for zeroing
+            their masses.
+
+        Returns
+        -------
+        system : openmm.System
+            Modified system with masses outside the `freeze center` zeroed.
 
         References
         -----
@@ -556,7 +600,13 @@ class SimulationFactory(object):
         pressure : int, configional, default=None
             Pressure (atm) for Barostat for NPT simulations.
         frequency : int, default=25
-            Frequency at which Monte Carlo pressure changes should be attempted (in time steps)
+            Frequency at which Monte Carlo pressure changes should be
+            attempted (in time steps)
+
+        Returns
+        -------
+        system : openmm.System
+            Modified MD system with MonteCarloBarostat added.
         """
         logger.info(
             'Adding MonteCarloBarostat with {}. MD simulation will be {} NPT.'.
@@ -576,13 +626,18 @@ class SimulationFactory(object):
         Generates a LangevinIntegrator for the Simulations.
 
         Kwargs
-        ----------
+        ------
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
         friction: float, default=1
             friction coefficient which couples to the heat bath, measured in 1/ps
         dt: int, configional, default=0.002
             The timestep of the integrator to use (in ps).
+
+        Returns
+        -------
+        integrator : openmm.LangevinIntegrator
+            LangevinIntegrator that will be used in Simulation
         """
         integrator = openmm.LangevinIntegrator(temperature, friction, dt)
         return integrator
@@ -635,6 +690,10 @@ class SimulationFactory(object):
         propLambda: float, optional, default=0.3
             The range which additional propogation steps are added,
             defined by [0.5-propLambda, 0.5+propLambda].
+
+        Returns
+        -------
+        ncmc_integrator : AlchemicalExternalLangevinIntegrator
         """
         #During NCMC simulation, lambda parameters are controlled by function dict below
         # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
@@ -670,6 +729,12 @@ class SimulationFactory(object):
         platform : str, default = None
             Valid choices: 'Auto', 'OpenCL', 'CUDA'
             If None is specified, the fastest available platform will be used.
+
+        Returns
+        -------
+        simulation : app.simulation
+            Ties together the various objects used to run the simulation:
+            a Topology, System, Integrator, and Context.
         """
         #Specifying platform properties here used for local development.
         if platform is None:
@@ -693,13 +758,30 @@ class SimulationFactory(object):
 
     @staticmethod
     def attachReporters(simulation, reporter_list):
-        """Attach the list of reporters to the Simulation object"""
+        """Attach the list of reporters to the Simulation object.
+
+        Parameters
+        ----------
+        simulation : app.simulation
+            Simulation to be Modified.
+        reporter_list : lists
+            Contains information to be attached to simulation object.
+
+        Returns
+        -------
+        simulation : app.simulation
+            Modified simulation with the list of reporters attached.
+        """
         for rep in reporter_list:
             simulation.reporters.append(rep)
         return simulation
 
     def generateSimulationSet(self, config=None):
-        """Function used to generate the 3 OpenMM Simulation objects."""
+        """Function used to generate the 3 OpenMM Simulation objects.
+        Parameters
+        ----------
+        config : dict
+        """
         if not config: config = self.config
 
         #Construct MD Integrator and Simulation
@@ -746,18 +828,17 @@ class SimulationFactory(object):
 
 class BLUESSimulation(object):
     """Simulation class provides the functions that perform the BLUES run.
+
+    Parameters
+    ----------
+    simulations : blues.simulation.SimulationFactory object
+        SimulationFactory Object which carries the 3 required
+        OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
+    config : dict, default = None
+        Dict with simulation configuration info.
     """
 
     def __init__(self, simulations, config=None):
-        """Initialize the BLUES Simulation object.
-
-        Parameters
-        ----------
-        simulations : blues.simulation.SimulationFactory object
-            SimulationFactory Object which carries the 3 required
-            OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.
-
-        """
         self._move_engine = simulations._move_engine
         self._md_sim = simulations.md
         self._alch_sim = simulations.alch
@@ -819,6 +900,11 @@ class BLUESSimulation(object):
         state_keys : list
             Default: [ positions, velocities, potential_energy, kinetic_energy ]
             A list that defines what information to get from the context State.
+
+        Returns
+        -------
+        stateinfo : dict
+            State data as a dict.
         """
         stateinfo = {}
         state = context.getState(**state_keys)
@@ -847,6 +933,13 @@ class BLUESSimulation(object):
             list containing strings of the values to get from the integrator.
             Default : ['total_work', 'lambda', 'shadow_work',
                        'protocol_work', 'Eold', 'Enew','Epert']
+
+        Returns
+        -------
+        integrator_info : dict
+            A dict of alchemical/ncmc-swtiching data from querying the the NCMC
+            integrator.
+
         """
         integrator_info = {}
         for key in integrator_keys:
@@ -855,6 +948,20 @@ class BLUESSimulation(object):
 
     @classmethod
     def setContextFromState(cls, context, state):
+        """
+        Parameters
+        ----------
+        context : openmm.Context
+            Context of the OpenMM Simulation to be replaced
+        state : dict
+            State data as a dict with information to modify the context.
+
+        Returns
+        -------
+        context : openmm.Context
+            Modified context of the opennMM Simulation based on information
+            from the state.
+        """
         # Replace ncmc data from the md context
         context.setPeriodicBoxVectors(*state['box_vectors'])
         context.setPositions(state['positions'])
@@ -862,7 +969,8 @@ class BLUESSimulation(object):
         return context
 
     def _print_simulation_timing_(self):
-        """Prints the simulation timing and related information."""
+        """Prints the simulation timing and related information.
+        """
         dt = self._config['dt'].value_in_unit(unit.picoseconds)
         nIter = self._config['nIter']
         nprop = self._config['nprop']
@@ -933,7 +1041,6 @@ class BLUESSimulation(object):
     def _sync_states_md_to_ncmc_(self):
         """Retrieves data on the current State of the MD context to
         replace the box vectors, positions, and velocties in the NCMC context.
-
         """
         # Retrieve the state data from the MD/NCMC contexts before proposed move
         md_state0 = self.getStateFromContext(self._md_sim.context,
@@ -949,7 +1056,16 @@ class BLUESSimulation(object):
             self._ncmc_sim.context, md_state0)
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
-        """Function that advances the NCMC simulation."""
+        """Function that advances the NCMC simulation.
+        Parameters
+        ----------
+        nstepsNC : int
+            Number of steps the NC simulation will advance.
+        moveStep : MoveEngine Move
+            Move to be attempted.
+        move_engine : MoveEngine, default = None
+            Object that selects the Move step.
+        """
 
         logger.info('Advancing %i NCMC switching steps...' % (nstepsNC))
         #choose a move to be performed according to move probabilities
@@ -999,6 +1115,15 @@ class BLUESSimulation(object):
         self._set_stateTable_('ncmc', 'state1', ncmc_state1)
 
     def _compute_alchemical_correction_(self):
+        """
+        Takes the MD/NCMC state before the proposed move and the NCMC state
+        after the proposed move to calculate the alchemical correction factor.
+
+        Returns
+        -------
+        correction_factor : float
+            Float that will be used for alchemical correction.
+        """
         # Retrieve the MD/NCMC state before the proposed move.
         md_state0_PE = self.stateTable['md']['state0']['potential_energy']
         ncmc_state0_PE = self.stateTable['ncmc']['state0']['potential_energy']
@@ -1024,6 +1149,11 @@ class BLUESSimulation(object):
     def _accept_reject_move_(self, write_move=False):
         """Function that chooses to accept or reject the proposed move based
         on the acceptance criterion.
+
+        Parameters
+        ----------
+        write_move : bool
+            Writes the approved move if True.
         """
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(
             self._ncmc_sim.context)
@@ -1060,7 +1190,13 @@ class BLUESSimulation(object):
                 self._ncmc_sim.context, md_state0)
 
     def _stepMD_(self, nstepsMD):
-        """Function that advances the MD simulation."""
+        """Function that advances the MD simulation.
+
+        Parameters
+        ----------
+        nstepsMD : int
+            Number of steps the MD simulation will advance.
+        """
         logger.info('Advancing %i MD steps...' % (nstepsMD))
         self._md_sim.currentIter = self.currentIter
         #Retrieve MD state before proposed move
@@ -1097,6 +1233,12 @@ class BLUESSimulation(object):
            1) Reset the step number in the NCMC context/integrator
            2) Set the velocities to random values chosen from a
               Boltzmann distribution at a given `temperature`.
+
+        Parameters
+        ----------
+        temperature : float, default = None
+            The temperature each iteration of the simulation should
+            start at.
         """
         if not temperature:
             temperature = self._md_sim.context._integrator.getTemperature()
@@ -1120,9 +1262,16 @@ class BLUESSimulation(object):
 
         Parameters
         ----------
-        nIter: int
+        nIter : int, default = None
             Number of iterations of NCMC+MD to perform.
-
+        nstepsNC : int, default = none
+            Number of steps NCMC simulation will advance.
+        moveStep : MoveEngine Move, default = None
+            Move to be attempted
+        nstepsMD : int, default = None
+            Number of moves the MD simulation will advance.
+        write_move : bool, default = False
+            Writes move if True
         """
         if not nIter: nIter = self._config['nIter']
         if not nstepsNC: nstepsNC = self._config['nstepsNC']
@@ -1148,11 +1297,21 @@ class BLUESSimulation(object):
 
 
 class MonteCarloSimulation(BLUESSimulation):
+    """Simulation class provides the functions that perform the MonteCarlo run.
+
+    Parameters
+    ----------
+        simulations : SimulationFactory
+            Contains 3 required OpenMM Simulationobjects
+        config : dict, default = None
+            Dict with configuration info.
+    """
     def __init__(self, simulations, config=None):
         super(MonteCarloSimulation, self).__init__(simulations, config)
 
     def _stepMC_(self):
-        """Function that performs the MC simulation."""
+        """Function that performs the MC simulation.
+        """
 
         #choose a move to be performed according to move probabilities
         self._move_engine.selectMove()
@@ -1190,10 +1349,16 @@ class MonteCarloSimulation(BLUESSimulation):
 
         Parameters
         ----------
-        nIter: None or int, optional, default=None
+        nIter : None or int, optional default = None
             The number of iterations to perform. If None, then
             uses the nIter specified in the opt dictionary when
             the Simulation class was created.
+        mc_per_iter : int, default = 1
+            Number of Monte Carlo iterations.
+        nstepsMD : int, default = None
+            Number of steps the MD simulation will advance
+        write_move : bool, default = False
+            Writes the move if True
         """
         if not nIter: nIter = self._config['nIter']
         if not nstepsMD: nstepsMD = self._config['nstepsMD']
