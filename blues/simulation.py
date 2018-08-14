@@ -27,28 +27,35 @@ class SystemFactory(object):
     required for generating the openmm.Simulation using a given
     parmed.Structure()
 
-    Usage Example
-    -------------
+    Example
+    -------
     #Load Parmed Structure
-    structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
+
+    >>> structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
 
     #Select move type
-    ligand = RandomLigandRotationMove(structure, 'LIG')
+
+    >>> ligand = RandomLigandRotationMove(structure, 'LIG')
+
     #Iniitialize object that selects movestep
-    ligand_mover = MoveEngine(ligand)
+
+    >>> ligand_mover = MoveEngine(ligand)
 
     #Generate the openmm.Systems
-    systems = SystemFactory(structure, ligand.atom_indices, config['system'])
+
+    >>> systems = SystemFactory(structure, ligand.atom_indices, config['system'])
 
     #The MD and alchemical Systems are generated and stored as an attribute
-    systems.md
-    systems.alch
+
+    >>> systems.md
+    >>> systems.alch
 
     #Freeze atoms in the alchemical system
-    systems.alch = SystemFactory.freeze_atoms(systems.alch,
-                                            freeze_distance=5.0,
-                                            freeze_center='LIG'
-                                            freeze_solvent='HOH,NA,CL')
+
+    >>> systems.alch = SystemFactory.freeze_atoms(systems.alch,
+    ...                                     freeze_distance=5.0,
+    ...                                     freeze_center='LIG'
+    ...                                     freeze_solvent='HOH,NA,CL')
 
     Parameters
     ----------
@@ -477,59 +484,63 @@ class SimulationFactory(object):
     list of reporters for the MD or NCMC simulation in the arguments
     `md_reporters` or `ncmc_reporters`.
 
-    Usage Example
-    -------------
+    Example
+    -------
     #Load Parmed Structure
-    structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
+
+    >>> structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
 
     #Select move type
-    ligand = RandomLigandRotationMove(structure, 'LIG')
+
+    >>> ligand = RandomLigandRotationMove(structure, 'LIG')
+
     #Iniitialize object that selects movestep
-    ligand_mover = MoveEngine(ligand)
+
+    >>> ligand_mover = MoveEngine(ligand)
 
     #Generate the openmm.Systems
-    systems = SystemFactory(structure, ligand.atom_indices, config['system'])
+
+    >>> systems = SystemFactory(structure, ligand.atom_indices, config['system'])
 
     #Generate the OpenMM Simulations
     #Explicit dict of simulation configuration parameters
-    sim_cfg = { 'platform': 'OpenCL',
-                'properties' : { 'OpenCLPrecision': 'single',
-                                  'OpenCLDeviceIndex' : 2},
-                'nprop' : 1,
-                'propLambda' : 0.3,
-                'dt' : 0.001 * unit.picoseconds,
-                'friction' : 1 * 1/unit.picoseconds,
-                'temperature' : 100 * unit.kelvin,
-                'nIter': 1,
-                'nstepsMD': 10,
-                'nstepsNC': 10,}
-    simulations = SimulationFactory(systems, ligand_mover, sim_cfg])
+
+    >>> sim_cfg = { 'platform': 'OpenCL',
+    ...         'properties' : { 'OpenCLPrecision': 'single',
+    ...                          'OpenCLDeviceIndex' : 2},
+    ...         'nprop' : 1,
+    ...         'propLambda' : 0.3,
+    ...         'dt' : 0.001 * unit.picoseconds,
+    ...         'friction' : 1 * 1/unit.picoseconds,
+    ...         'temperature' : 100 * unit.kelvin,
+    ...         'nIter': 1,
+    ...         'nstepsMD': 10,
+    ...         'nstepsNC': 10,}
+    >>> simulations = SimulationFactory(systems, ligand_mover, sim_cfg])
 
     #Access the MD/NCMC simulation objects separately with `simulations.md` or
     `simulations.ncmc`
-
     # If a configuration is provided at on initialization, it will call
     # `generateSimulationSet()` for convenience. Otherwise, the class can be
     # instantiated like a normal python class:
 
-    simulations = SimulationFactory(systems, ligand_mover)
-    hasattr(simulations, 'md')
-    hasattr(simulations, 'ncmc')
-    >>> False
-    >>> False
-
-    simulations.generateSimulationSet(sim_cfg)
-    hasattr(simulations, 'md')
-    hasattr(simulations, 'ncmc')
-    >>> False
-    >>> False
+    >>> simulations = SimulationFactory(systems, ligand_mover)
+    >>> (simulations, 'md')
+    False
+    >>> hasattr(simulations, 'ncmc')
+    False
+    >>> simulations.generateSimulationSet(sim_cfg)
+    >>> hasattr(simulations, 'md')
+    False
+    >>> hasattr(simulations, 'ncmc')
+    False
 
     # After generating the Simulations, attach your own reporters by providing
     # the reporters in a list. Be sure to attach to either the MD or NCMC simulation.
 
-    from simtk.openmm.app import StateDataReporter
-    reporters = [ StateDataReporter('test.log', 5) ]
-    simulations.md = simulations.attachReporters( simulations.md, reporters)
+    >>> from simtk.openmm.app import StateDataReporter
+    >>> reporters = [ StateDataReporter('test.log', 5) ]
+    >>> simulations.md = simulations.attachReporters( simulations.md, reporters)
 
     Parameters
     ----------
