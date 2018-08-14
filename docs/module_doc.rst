@@ -58,11 +58,8 @@ BLUESSimulation
 ~~~~~~~~~~~~~~~
 .. autoclass:: BLUESSimulation
   :members:
+  :private-members:
 
-MonteCarloSimulation
-~~~~~~~~~~~~~~~
-.. autoclass:: MonteCarloSimulation
-  :members:
 
 integrators - Alchemical Integrators
 -----------------------------------------------------------
@@ -72,8 +69,14 @@ integrators - Alchemical Integrators
 Utilities
 ---------
 .. automodule:: blues.utils
-  :members:
+
+
+Reporters
+---------
 .. automodule:: blues.reporters
   :members:
+
+Formats
+-------
 .. automodule:: blues.formats
   :members:
