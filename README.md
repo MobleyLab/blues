@@ -61,7 +61,7 @@ pip install -e .
 ```
 
 ## Tutorial
-For a tutorial on BLUES, see the [Jupyter Notebook](https://github.com/MobleyLab/blues/blob/master/notebooks/BLUES_tutorial.ipynb)
+For a tutorial on BLUES, see the [Jupyter Notebook](https://github.com/MobleyLab/blues/blob/master/examples/BLUES_tutorial.ipynb)
 
 ## Documentation
 

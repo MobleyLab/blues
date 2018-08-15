@@ -250,6 +250,7 @@ setup(
             'sphinxcontrib-napoleon',
             'sphinx_rtd_theme',
             'numpydoc',
+            'nbsphinx'
         ],
         'tests': [
             'pytest',
