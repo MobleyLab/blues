@@ -4,11 +4,10 @@
    contain the root `toctree` directive.
 
 Welcome to the BLUES documentation!
-=================================
+===================================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    intro
    installation

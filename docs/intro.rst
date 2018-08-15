@@ -4,14 +4,13 @@ Introduction
 BLUES is a python package that takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes.
 
 .. image:: https://travis-ci.org/MobleyLab/blues.svg?branch=master
-    :target: https://travis-ci.org/MobleyLab/blues
+   :target: https://travis-ci.org/MobleyLab/blues
 
 .. image:: https://readthedocs.org/projects/blues-fork/badge/?version=molssi-practices
-:target: https://blues-fork.readthedocs.io/en/molssi-practices/?badge=molssi-practices
-:alt: Documentation Status
+   :target: https://blues-fork.readthedocs.io/en/molssi-practices/?badge=molssi-practices
 
 .. image:: https://anaconda.org/mobleylab/blues/badges/version.svg
-    :target: https://anaconda.org/mobleylab/blues
+   :target: https://anaconda.org/mobleylab/blues
 
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1324415.svg
    :target: https://doi.org/10.5281/zenodo.1324415
