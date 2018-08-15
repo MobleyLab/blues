@@ -1,38 +1,82 @@
 Modules
 ====================
 
-moves - Nonequilibrium Candidate Monte Carlo move types
+moves - NCMC Moves
 --------------------------------------------------------
-
 .. automodule:: blues.moves
+
+Move
+~~~~
+.. autoclass:: Move
   :members:
 
-engine - Nonequilibrium Candidate Monte Carlo move types
---------------------------------------------------------
-.. automodule:: blues.engine
+RandomLigandRotationMove
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: RandomLigandRotationMove
   :members:
 
-Integrators - Nonequilibrium Candidate Monte Carlo move types
---------------------------------------------------------
+
+MoveEngine
+~~~~~~~~~~
+.. autoclass:: MoveEngine
+  :members:
+
+Under Development
+~~~~~~~~~~~~~~~~~~~~~~~~~
+**WARNING:** The following move classes have not been tested. Use at your own risk.
+
+.. autoclass:: SideChainMove
+  :members:
+.. autoclass:: SmartDartMove
+  :members:
+.. autoclass:: CombinationMove
+  :members:
+
+simulation - Setup and run BLUES
+---------------------------------------------------------
+.. automodule:: blues.simulation
+
+SystemFactory
+~~~~~~~~~~~~~
+.. rubric:: Methods
+.. autoautosummary:: blues.simulation.SystemFactory
+  :methods:
+
+.. autoclass:: SystemFactory
+  :members:
+
+SimulationFactory
+~~~~~~~~~~~~~~~~~
+.. rubric:: Methods
+.. autoautosummary:: blues.simulation.SimulationFactory
+  :methods:
+
+.. autoclass:: SimulationFactory
+  :members:
+
+BLUESSimulation
+~~~~~~~~~~~~~~~
+.. autoclass:: BLUESSimulation
+  :members:
+  :private-members:
+
+
+integrators - Alchemical Integrators
+-----------------------------------------------------------
 .. automodule:: blues.integrators
   :members:
-
-ncmc_switching
---------------
-.. automodule:: blues.ncmc_switching
-  :members:
-
-Simulation
------------
-.. automodule:: blues.simulation
-  :members:
-
 
 Utilities
 ---------
 .. automodule:: blues.utils
-  :members:
+
+
+Reporters
+---------
 .. automodule:: blues.reporters
   :members:
+
+Formats
+-------
 .. automodule:: blues.formats
   :members:
