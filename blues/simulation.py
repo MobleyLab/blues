@@ -9,8 +9,10 @@ MonteCarloSimulation : runs a pure Monte Carlo simulation.
 and running the BLUESSimulation class.
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, David L. Mobley
+Contributors: Nathan M. Lim, Meghan Osato, David L. Mobley
 """
+
+
 import numpy as np
 from simtk import unit, openmm
 from simtk.openmm import app
@@ -24,28 +26,28 @@ logger = logging.getLogger(__name__)
 
 class SystemFactory(object):
     """
-    SystemFactory contains methods to generate/modify the OpenMM System object required for
-    generating the openmm.Simulation using a given parmed.Structure()
+    SystemFactory contains methods to generate/modify the OpenMM System object
+    required for generating the openmm.Simulation using a given
+    parmed.Structure()
 
-    Usage Example
-    -------------
-    #Load Parmed Structure
-    structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
+    Examples
+    --------
+    Load Parmed Structure, select move type, initialize `MoveEngine`, and
+    generate the openmm.Systems
 
-    #Select move type
-    ligand = RandomLigandRotationMove(structure, 'LIG')
-    #Iniitialize object that selects movestep
-    ligand_mover = MoveEngine(ligand)
+    >>> structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
+    >>> ligand = RandomLigandRotationMove(structure, 'LIG')
+    >>> ligand_mover = MoveEngine(ligand)
+    >>> systems = SystemFactory(structure, ligand.atom_indices, config['system'])
 
-    #Generate the openmm.Systems
-    systems = SystemFactory(structure, ligand.atom_indices, config['system'])
+    The MD and alchemical Systems are generated and stored as an attribute
 
-    #The MD and alchemical Systems are generated and stored as an attribute
-    systems.md
-    systems.alch
+    >>> systems.md
+    >>> systems.alch
 
-    #Freeze atoms in the alchemical system
-    systems.alch = SystemFactory.freeze_atoms(systems.alch,
+    Freeze atoms in the alchemical system
+
+    >>> systems.alch = SystemFactory.freeze_atoms(systems.alch,
                                             freeze_distance=5.0,
                                             freeze_center='LIG'
                                             freeze_solvent='HOH,NA,CL')
@@ -91,9 +93,6 @@ class SystemFactory(object):
         ----------
         structure : parmed.Structure()
             The parmed.Structure of the molecular system to be simulated
-
-        Kwargs
-        -------
         nonbondedMethod : cutoff method
             This is the cutoff method. It can be either the NoCutoff,
             CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald objects from the
@@ -154,9 +153,15 @@ class SystemFactory(object):
             impropers. This is primarily useful for debugging torsion parameter
             assignments.
 
+        Returns
+        -------
+        openmm.System
+            System formatted according to the prmtop file.
+
         Notes
         -----
-        This function calls prune_empty_terms if any Topology lists have changed
+        This function calls prune_empty_terms if any Topology lists have
+        changed.
         """
         return structure.createSystem(**kwargs)
 
@@ -191,9 +196,6 @@ class SystemFactory(object):
             Atom indicies of the move or designated for which the nonbonded forces
             (both sterics and electrostatics components) have to be alchemically
             modified.
-
-        Kwargs
-        ------
         annihilate_electrostatics : bool, optional
             If True, electrostatics should be annihilated, rather than decoupled
             (default is True).
@@ -227,11 +229,16 @@ class SystemFactory(object):
                 method, modifying the global variable `lambda_electrostatics` is
                 not sufficient to control the charges. The recommended way to change
                 them is through the `AlchemicalState` class.
-        References
-        ----------
-        [1] Pham TT and Shirts MR. Identifying low variance pathways for free
-        energy calculations of molecular transformations in solution phase.
-        JCP 135:034114, 2011. http://dx.doi.org/10.1063/1.3607597
+
+        Returns
+        -------
+        alch_system : alchemical_system
+            System to be used for the NCMC simulation.
+
+        Notes
+        -----
+        .. [1] T. T. Pham and M. R. Shirts, J. Chem. Phys 135, 034114 (2011).
+        http://dx.doi.org/10.1063/1.3607597
         """
         if suppress_warnings:
             #Lower logger level to suppress excess warnings
@@ -262,12 +269,18 @@ class SystemFactory(object):
     def _amber_selection_to_atom_indices_(structure, selection):
         """
         Converts AmberMask selection to list of atom indices.
+
         Parameters
         ----------
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
         selection : str
             AmberMask selection that gets converted to a list of atom indices.
+
+        Returns
+        -------
+        mask_idx : list of int
+            List of atom indices.
         """
         mask = parmed.amber.AmberMask(structure, str(selection))
         mask_idx = [i for i in mask.Selected()]
@@ -278,12 +291,18 @@ class SystemFactory(object):
         """
         Goes through the structure and matches the previously selected atom
         indices to the atom type.
+
         Parameters
         ----------
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
         mask_idx : list of int
             List of atom indices.
+
+        Returns
+        -------
+        atom_list : list of atoms
+            The atoms that were previously selected in mask_idx.
         """
         atom_list = []
         for i, at in enumerate(structure.atoms):
@@ -308,17 +327,20 @@ class SystemFactory(object):
             The OpenMM System object to be modified.
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
-
-        Kwargs
-        -------
         selection : str, Default = "(@CA,C,N)"
             AmberMask selection to apply positional restraints to
         weight : float, Default = 5.0
             Restraint weight for xyz atom restraints in kcal/(mol A^2)
 
-        References
+        Returns
+        -------
+        system : openmm.System
+            Modified with positional restraints applied.
+
+        Notes
         -----
-        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        .. [1] J. Swails, ParmEd Documentation (2015).
+        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         mask_idx = cls._amber_selection_to_atom_indices_(structure, selection)
 
@@ -349,7 +371,8 @@ class SystemFactory(object):
                      **kwargs):
         """
         Function that will zero the masses of atoms from the given selection.
-        Massless atoms will be ignored by the integrator and will not change positions.
+        Massless atoms will be ignored by the integrator and will not change
+        positions.
 
         Parameters
         ----------
@@ -357,16 +380,20 @@ class SystemFactory(object):
             The OpenMM System object to be modified.
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
-
-        Kwargs
-        -------
         freeze_selection : str, Default = ":LIG"
-            AmberMask selection for the center in which to select atoms for zeroing their masses.
+            AmberMask selection for the center in which to select atoms for
+            zeroing their massesself.
             Defaults to freezing protein backbone atoms.
 
-        References
+        Returns
+        -------
+        system : openmm.System
+            The modified system with the selected atoms
+
+        Notes
         -----
-        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        .. [1] J. Swails, ParmEd Documentation (2015).
+        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         mask_idx = cls._amber_selection_to_atom_indices_(
             structure, freeze_selection)
@@ -397,20 +424,25 @@ class SystemFactory(object):
             The OpenMM System object to be modified.
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
-
-        Kwargs
-        -------
-        freeze_center : str, Default = ":LIG"
-            AmberMask selection for the center in which to select atoms for zeroing their masses. Default: LIG
         freeze_distance : float, Default = 5.0
             Distance (angstroms) to select atoms for retaining their masses.
             Atoms outside the set distance will have their masses set to 0.0.
+        freeze_center : str, Default = ":LIG"
+            AmberMask selection for the center in which to select atoms for
+            zeroing their masses. Default: LIG
         freeze_solvent : str, Default = ":HOH,NA,CL"
-            AmberMask selection in which to select solvent atoms for zeroing their masses.
+            AmberMask selection in which to select solvent atoms for zeroing
+            their masses.
 
-        References
+        Returns
+        -------
+        system : openmm.System
+            Modified system with masses outside the `freeze center` zeroed.
+
+        Notes
         -----
-        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        .. [1] J. Swails, ParmEd Documentation (2015).
+        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'):
@@ -519,6 +551,7 @@ class SimulationFactory(object):
     >>> print(simulations.ncmc.reporters)
     [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cac8>]
     [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cb70>]
+
     """
 
     def __init__(self,
@@ -739,6 +772,7 @@ class SimulationFactory(object):
         -------
         simulation : openmm.Simulation
             The Simulation object with the reporters attached.
+
         """
         for rep in reporter_list:
             simulation.reporters.append(rep)
@@ -962,6 +996,7 @@ class BLUESSimulation(object):
 
     def _printSimulationTiming(self):
         """Prints the simulation timing and related information."""
+
         dt = self._config['dt'].value_in_unit(unit.picoseconds)
         nIter = self._config['nIter']
         nprop = self._config['nprop']
@@ -1044,7 +1079,6 @@ class BLUESSimulation(object):
         self._setStateTable('md', 'state0', md_state0)
         self._setStateTable('ncmc', 'state0', ncmc_state0)
 
-
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
         """Advance the NCMC simulation.
 
@@ -1057,6 +1091,7 @@ class BLUESSimulation(object):
             the number of nstepsNC.
         move_engine : blues.moves.MoveEngine
             The object that executes the chosen move.
+
         """
 
         logger.info('Advancing %i NCMC switching steps...' % (nstepsNC))
@@ -1109,6 +1144,7 @@ class BLUESSimulation(object):
     def _computeAlchemicalCorrection(self):
         """Computes the alchemical correction term from switching between the NCMC
         and MD potentials."""
+
         # Retrieve the MD/NCMC state before the proposed move.
         md_state0_PE = self.stateTable['md']['state0']['potential_energy']
         ncmc_state0_PE = self.stateTable['ncmc']['state0']['potential_energy']
@@ -1223,6 +1259,7 @@ class BLUESSimulation(object):
         ----------
         temperature : float
             The target temperature for the simulation.
+
         """
         if not temperature:
             temperature = self._md_sim.context._integrator.getTemperature()
@@ -1249,7 +1286,7 @@ class BLUESSimulation(object):
 
         Parameters
         ----------
-        nIter: int
+        nIter : int, default = None
             Number of iterations of NCMC+MD to perform.
         nstepsNC : int
             The number of NCMC switching steps to advance by.
@@ -1262,6 +1299,7 @@ class BLUESSimulation(object):
             The target temperature for the simulation.
         write_move : bool, default=False
             If True, writes the proposed NCMC move to a PDB file.
+
         """
         if not nIter: nIter = self._config['nIter']
         if not nstepsNC: nstepsNC = self._config['nstepsNC']
@@ -1287,11 +1325,21 @@ class BLUESSimulation(object):
 
 
 class MonteCarloSimulation(BLUESSimulation):
+    """Simulation class provides the functions that perform the MonteCarlo run.
+
+    Parameters
+    ----------
+        simulations : SimulationFactory
+            Contains 3 required OpenMM Simulationobjects
+        config : dict, default = None
+            Dict with configuration info.
+    """
     def __init__(self, simulations, config=None):
         super(MonteCarloSimulation, self).__init__(simulations, config)
 
     def _stepMC_(self):
-        """Function that performs the MC simulation."""
+        """Function that performs the MC simulation.
+        """
 
         #choose a move to be performed according to move probabilities
         self._move_engine.selectMove()
@@ -1329,10 +1377,16 @@ class MonteCarloSimulation(BLUESSimulation):
 
         Parameters
         ----------
-        nIter: None or int, optional, default=None
+        nIter : None or int, optional default = None
             The number of iterations to perform. If None, then
             uses the nIter specified in the opt dictionary when
             the Simulation class was created.
+        mc_per_iter : int, default = 1
+            Number of Monte Carlo iterations.
+        nstepsMD : int, default = None
+            Number of steps the MD simulation will advance
+        write_move : bool, default = False
+            Writes the move if True
         """
         if not nIter: nIter = self._config['nIter']
         if not nstepsMD: nstepsMD = self._config['nstepsMD']
