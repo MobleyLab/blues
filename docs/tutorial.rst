@@ -1,4 +1,4 @@
-Examples
+Tutorial
 ========
 
 This page provides examples on how to use BLUES.
