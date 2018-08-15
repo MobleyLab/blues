@@ -6,6 +6,7 @@
 Welcome to the BLUES documentation!
 ===================================
 
+
 .. toctree::
    :maxdepth: 2
 

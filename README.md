@@ -61,7 +61,7 @@ pip install -e .
 ```
 
 ## Tutorial
-For a tutorial on BLUES, see the [Jupyter Notebook](https://github.com/MobleyLab/blues/blob/master/examples/BLUES_tutorial.ipynb)
+For a tutorial on BLUES, see the [Jupyter Notebook](https://nbviewer.jupyter.org/github/mobleylab/blues/blob/master/notebooks/BLUES_tutorial.ipynb)
 
 ## Documentation
 
@@ -69,7 +69,7 @@ For a tutorial on BLUES, see the [Jupyter Notebook](https://github.com/MobleyLab
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes using the OpenMM simulation package.  One goal for this package is to allow for easy additions of other moves of interest, which will be covered below.
 
 ### Example Use
-An example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move can be found in `blues/example_rotmove.py`
+An example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move can be found in `examples/example_rotmove.py`
 
 ### Actually using BLUES
 The integrator of `BLUES` contains the framework necessary for NCMC.  Specifically, the integrator class calculates the work done during a NCMC move. It also controls the lambda scaling of parameters. The integrator that BLUES uses inherits from `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator` to keep track of the work done outside integration steps, allowing Monte Carlo (MC) moves to be incorporated together with the NCMC thermodynamic perturbation protocol. Currently the `openmmtools.alchemy` package is used to generate the lambda parameters for the ligand, allowing alchemical modification of the sterics and electrostatics of the system.
