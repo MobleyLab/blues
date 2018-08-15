@@ -5,8 +5,8 @@ This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCM
 
 Latest release:
 [![Build Status](https://travis-ci.org/MobleyLab/blues.svg?branch=master)](https://travis-ci.org/MobleyLab/blues)
-[![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
 [![Documentation Status](https://readthedocs.org/projects/blues-fork/badge/?version=molssi-practices)](https://blues-fork.readthedocs.io/en/molssi-practices/?badge=molssi-practices)
+[![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
  [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
 
 ## Citations
@@ -25,8 +25,8 @@ Latest release:
 * `notebooks` - Jupyter notebooks for testing/development
 
 ## Prerequisites
-BLUES compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still work with Python 2.7)
-Install [miniconda](http://conda.pydata.org/miniconda.html) according to your systems
+BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still works with Python 2.7)
+Install [miniconda](http://conda.pydata.org/miniconda.html) according to your system.
 
 ## Requirements
 Starting from v1.2, you will need the OpenEye toolkits and related tools:
@@ -56,8 +56,8 @@ git clone git@github.com:MobleyLab/blues.git
 # Install some dependencies
 conda install -c omnia -c conda-forge openmmtool=0.14.0 numpy cython
 
-# Install BLUES package
-python setup.py install
+# Install BLUES package from the top directory
+pip install -e .
 ```
 
 ## Tutorial

@@ -1,14 +1,7 @@
-Installing chemper
+Installing BLUES
 ==================
 
-The only way to install ``chemper`` right now is to clone or download
-the `GitHub repo <https://github.com/Mobleylab/chemper/>`_.
-When we're ready to release version 1.0.0 we'll also make it conda installable.
-
-Prerequisites
--------------
-
-We currently test with Python 3.5, though we expect anything 3.5+ should work.
+BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still works with Python 2.7)
 
 This is a python tool kit with a few dependencies. We recommend installing
 `miniconda <http://conda.pydata.org/miniconda.html>`_. Then you can create an
@@ -16,40 +9,39 @@ environment with the following commands:
 
 .. code-block:: bash
 
-    conda create -n [my env name] python=3.5 numpy networkx pytest
-    source activate [my env name]
+    conda create -n blues python=3.5
+    source activate blues
 
-This command will install all dependencies besides a toolkit for cheminformatics or storing of molecule
-information. We seek to keep this tool independent of cheminformatics toolkit, but currently only support
-`RDKit <http://www.rdkit.org/docs/index.html>`_ and `OpenEye Toolkits <https://www.eyesopen.com/>`_.
-If you wish to add support please feel free to submit a pull request.
-Make sure one of these tool kits is installed in your environment before installing chemper.
-
-RDKit environment
-^^^^^^^^^^^^^^^^^
-
-Conda installation according to `RDKit documentation <http://www.rdkit.org/docs/Install.html>`_:
+Stable Releases
+---------------
+The recommended way to install BLUES would be to install from conda.
 
 .. code-block:: bash
+    conda install -c mobleylab blues
 
-    conda install -c rdkit rdkit
-
-OpenEye environment
-^^^^^^^^^^^^^^^^^^^
-
-Conda installation according to `OpenEye documentation <https://docs.eyesopen.com/toolkits/python/quickstart-python/linuxosx.html>`_
-
-.. code-block:: bash
-
-    cond install -c openeye openeye-toolkits
-
-Installation
-------------
-
-Hopefully chemper will be conda installable in the near future, but for now the best option
-is to download or clone from `GitHub <https://github.com/Mobleylab/chemper/>`_
-and then from inside the ``chemper`` directory install with the command:
+Development Builds
+------------------
+Alternatively, you can install the latest development build. Development builds
+contain the latest commits/PRs not yet issued in a point release.
 
 .. code-block:: bash
+    conda install -c mobleylab/label/dev blues
 
+
+In order to use the `SideChainMove` class you will need OpenEye Toolkits and
+some related tools.
+
+.. code-block:: bash
+    conda install -c openeye/label/Orion -c omnia oeommtools packmol
+    conda install -c openeye openeye-toolkits
+
+
+Source Installation
+-------------------
+Although we do NOT recommend it, you can also install directly from the
+source code.
+
+.. code-block:: bash
+    git clone https://github.com/MobleyLab/blues.git
+    conda install -c omnia -c conda-forge openmmtool=0.14.0 numpy cython
     pip install -e .
