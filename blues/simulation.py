@@ -17,6 +17,8 @@ from blues import utils
 from blues import reporters
 from simtk.openmm import app
 logger = logging.getLogger(__name__)
+finfo = np.finfo(np.float32)
+rtol = finfo.precision
 
 class SystemFactory(object):
     """
@@ -270,7 +272,7 @@ class SystemFactory(object):
         for i, at in enumerate(structure.atoms):
             if i in mask_idx:
                 atom_list.append(structure.atoms[i])
-        logger.debug('\nFreezing {}'.format(atom_list))
+                logger.debug('Freezing {}'.format(structure.atoms[i]))
         return atom_list
 
     @classmethod
@@ -380,7 +382,7 @@ class SystemFactory(object):
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'): freeze_distance = freeze_distance._value
         selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance,freeze_solvent)
-        logger.debug('Parmed selection for freezing: %s' % selection)
+        logger.info('Inverting parmed selection for freezing: %s' % selection)
         site_idx = cls._amber_selection_to_atom_indices_(structure, selection)
         #Invert that selection to freeze everything but the binding site.
         freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
@@ -393,8 +395,8 @@ class SystemFactory(object):
 
         #Ensure that the freeze selection is larger than the center selection point
         center_idx = cls._amber_selection_to_atom_indices_(structure, freeze_center)
-        if len(freeze_idx) <= len(center_idx):
-            err = "%i frozen atoms is less than (or equal to) the number of atoms from the selection center '%s' (%i atoms). Check your atom selection." %(len(freeze_idx), freeze_center, len(center_idx))
+        if len(site_idx) <= len(center_idx):
+            err = "%i unfrozen atoms is less than (or equal to) the number of atoms from the selection center '%s' (%i atoms). Check your atom selection." %(len(site_idx), freeze_center, len(center_idx))
             logger.error(err)
             sys.exit(1)
 
@@ -849,12 +851,11 @@ class BLUESSimulation(object):
         # Retrieve the state data from the MD/NCMC contexts before proposed move
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
-
-        # Replace ncmc context data from theG md context
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
-
         self._set_stateTable_('md', 'state0', md_state0)
         self._set_stateTable_('ncmc', 'state0', ncmc_state0)
+
+        # Replace ncmc context data from the md context
+        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
         """Function that advances the NCMC simulation."""
@@ -903,14 +904,13 @@ class BLUESSimulation(object):
         ncmc_state0_PE = self.stateTable['ncmc']['state0']['potential_energy']
 
         # Retreive the NCMC state after the proposed move.
-        ncmc_state1 = self.stateTable['ncmc']['state1']
+        ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
 
         # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
         self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1, velocities=False)
 
         # Retrieve potential_energy for alch correction
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
-
         correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
 
         return correction_factor
@@ -925,7 +925,7 @@ class BLUESSimulation(object):
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
             correction_factor = self._compute_alchemical_correction_()
-            logger.info('NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
+            logger.debug('NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
             work_ncmc = work_ncmc + correction_factor
 
         if work_ncmc > randnum:
@@ -933,8 +933,7 @@ class BLUESSimulation(object):
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum) )
 
             # If accept move, sync MD context from NCMC after move.
-            ncmc_state1 = self.stateTable['ncmc']['state1']
-
+            ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
             self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
 
             if write_move:
@@ -947,6 +946,12 @@ class BLUESSimulation(object):
             #If reject move, reset positions in ncmc context to before move
             md_state0 = self.stateTable['md']['state0']
             self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, velocities=False)
+
+            # Check potential energy is that of the last MD step
+            md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
+            if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
+                logger.error('Last MD potential energy %s != Current MD potential energy %s. Could not set the MD simulation to the previous state.' %(md_state0['potential_energy'], md_PE))
+                sys.exit(1)
 
     def _reset_simulations_(self, temperature=None):
         """Reset the step number in the NCMC context/integrator
