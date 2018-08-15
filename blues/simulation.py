@@ -2,7 +2,7 @@
 simulation.py: Provides the Simulation class object that runs the BLUES engine
 
 Authors: Samuel C. Gill
-Contributors: Nathan M. Lim, David L. Mobley
+Contributors: Nathan M. Lim, Meghan Osato, David L. Mobley
 """
 
 
@@ -27,7 +27,7 @@ class SystemFactory(object):
     required for generating the openmm.Simulation using a given
     parmed.Structure()
 
-    Example
+    Examples
     -------
     #Load Parmed Structure
 
@@ -53,9 +53,9 @@ class SystemFactory(object):
     #Freeze atoms in the alchemical system
 
     >>> systems.alch = SystemFactory.freeze_atoms(systems.alch,
-    ...                                     freeze_distance=5.0,
-    ...                                     freeze_center='LIG'
-    ...                                     freeze_solvent='HOH,NA,CL')
+                                            freeze_distance=5.0,
+                                            freeze_center='LIG'
+                                            freeze_solvent='HOH,NA,CL')
 
     Parameters
     ----------
@@ -98,9 +98,6 @@ class SystemFactory(object):
         ----------
         structure : parmed.Structure()
             The parmed.Structure of the molecular system to be simulated
-
-        Kwargs
-        -------
         nonbondedMethod : cutoff method
             This is the cutoff method. It can be either the NoCutoff,
             CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald objects from the
@@ -168,7 +165,8 @@ class SystemFactory(object):
 
         Notes
         -----
-        This function calls prune_empty_terms if any Topology lists have changed
+        This function calls prune_empty_terms if any Topology lists have
+        changed.
         """
         return structure.createSystem(**kwargs)
 
@@ -203,9 +201,6 @@ class SystemFactory(object):
             Atom indicies of the move or designated for which the nonbonded forces
             (both sterics and electrostatics components) have to be alchemically
             modified.
-
-        Kwargs
-        ------
         annihilate_electrostatics : bool, optional
             If True, electrostatics should be annihilated, rather than decoupled
             (default is True).
@@ -245,11 +240,10 @@ class SystemFactory(object):
         alch_system : alchemical_system
             System to be used for the NCMC simulation.
 
-        References
-        ----------
-        [1] Pham TT and Shirts MR. Identifying low variance pathways for free
-        energy calculations of molecular transformations in solution phase.
-        JCP 135:034114, 2011. http://dx.doi.org/10.1063/1.3607597
+        Notes
+        -----
+        .. [1] T. T. Pham and M. R. Shirts, J. Chem. Phys 135, 034114 (2011).
+        http://dx.doi.org/10.1063/1.3607597
         """
         if suppress_warnings:
             #Lower logger level to suppress excess warnings
@@ -338,9 +332,6 @@ class SystemFactory(object):
             The OpenMM System object to be modified.
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
-
-        Kwargs
-        -------
         selection : str, Default = "(@CA,C,N)"
             AmberMask selection to apply positional restraints to
         weight : float, Default = 5.0
@@ -351,9 +342,10 @@ class SystemFactory(object):
         system : openmm.System
             Modified with positional restraints applied.
 
-        References
+        Notes
         -----
-        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        .. [1] J. Swails, ParmEd Documentation (2015).
+        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         mask_idx = cls._amber_selection_to_atom_indices_(structure, selection)
 
@@ -393,9 +385,6 @@ class SystemFactory(object):
             The OpenMM System object to be modified.
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
-
-        Kwargs
-        -------
         freeze_selection : str, Default = ":LIG"
             AmberMask selection for the center in which to select atoms for
             zeroing their massesself.
@@ -406,9 +395,10 @@ class SystemFactory(object):
         system : openmm.System
             The modified system with the selected atoms
 
-        References
+        Notes
         -----
-        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        .. [1] J. Swails, ParmEd Documentation (2015).
+        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         mask_idx = cls._amber_selection_to_atom_indices_(
             structure, freeze_selection)
@@ -439,15 +429,12 @@ class SystemFactory(object):
             The OpenMM System object to be modified.
         structure : parmed.Structure()
             Structure of the system, used for atom selection.
-
-        Kwargs
-        -------
-        freeze_center : str, Default = ":LIG"
-            AmberMask selection for the center in which to select atoms for
-            zeroing their masses. Default: LIG
         freeze_distance : float, Default = 5.0
             Distance (angstroms) to select atoms for retaining their masses.
             Atoms outside the set distance will have their masses set to 0.0.
+        freeze_center : str, Default = ":LIG"
+            AmberMask selection for the center in which to select atoms for
+            zeroing their masses. Default: LIG
         freeze_solvent : str, Default = ":HOH,NA,CL"
             AmberMask selection in which to select solvent atoms for zeroing
             their masses.
@@ -457,9 +444,10 @@ class SystemFactory(object):
         system : openmm.System
             Modified system with masses outside the `freeze center` zeroed.
 
-        References
+        Notes
         -----
-        Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        .. [1] J. Swails, ParmEd Documentation (2015).
+        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'):
@@ -484,8 +472,8 @@ class SimulationFactory(object):
     list of reporters for the MD or NCMC simulation in the arguments
     `md_reporters` or `ncmc_reporters`.
 
-    Example
-    -------
+    Examples
+    --------
     #Load Parmed Structure
 
     >>> structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
@@ -603,9 +591,6 @@ class SimulationFactory(object):
         ----------
         system : openmm.System
             The OpenMM System object corresponding to the reference system.
-
-        Kwargs
-        ------
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
         pressure : int, configional, default=None
@@ -636,8 +621,8 @@ class SimulationFactory(object):
         """
         Generates a LangevinIntegrator for the Simulations.
 
-        Kwargs
-        ------
+        Parameters
+        ----------
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
         friction: float, default=1
@@ -676,9 +661,6 @@ class SimulationFactory(object):
         -----------
         nstepsNC : int, optional, default=1000
             The number of NCMC relaxation steps to use.
-
-        Kwargs
-        ------
         alchemical_functions : dict of strings,
             key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible
             string that depends on the variable "lambda"
