@@ -1,4 +1,4 @@
-Installing BLUES
+Installation
 ==================
 
 BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still works with Python 2.7)
@@ -17,7 +17,9 @@ Stable Releases
 The recommended way to install BLUES would be to install from conda.
 
 .. code-block:: bash
+
     conda install -c mobleylab blues
+
 
 Development Builds
 ------------------
@@ -25,6 +27,7 @@ Alternatively, you can install the latest development build. Development builds
 contain the latest commits/PRs not yet issued in a point release.
 
 .. code-block:: bash
+
     conda install -c mobleylab/label/dev blues
 
 
@@ -32,6 +35,7 @@ In order to use the `SideChainMove` class you will need OpenEye Toolkits and
 some related tools.
 
 .. code-block:: bash
+
     conda install -c openeye/label/Orion -c omnia oeommtools packmol
     conda install -c openeye openeye-toolkits
 
@@ -42,6 +46,7 @@ Although we do NOT recommend it, you can also install directly from the
 source code.
 
 .. code-block:: bash
+
     git clone https://github.com/MobleyLab/blues.git
-    conda install -c omnia -c conda-forge openmmtool=0.14.0 numpy cython
+    conda install -c omnia -c conda-forge openmmtool=0.14.0 openmm=7.1.1 numpy cython
     pip install -e .
