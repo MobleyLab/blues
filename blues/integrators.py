@@ -40,6 +40,45 @@ class AlchemicalExternalLangevinIntegrator(
     evaluated in the V step, we represent this by including in our "alphabet" V0, V1, ...)
     When the system contains holonomic constraints, these steps are confined to the constraint
     manifold.
+
+    Parameters
+    ----------
+    alchemical_functions : dict of strings
+        key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible
+        string that depends on the variable "lambda"
+    splitting : string, default: "H V R O V R H"
+        Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option,
+        which increments the global parameter `lambda` by 1/nsteps_neq for each step.
+        Forces are only used in V-step. Handle multiple force groups by appending the force group index
+        to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.
+        ( will cause metropolization, and must be followed later by a ).
+    temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*simtk.unit.kelvin
+       Fictitious "bath" temperature
+    collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/simtk.unit.picoseconds
+       Collision rate
+    timestep : numpy.unit.Quantity compatible with femtoseconds, default: 1.0*simtk.unit.femtoseconds
+       Integration timestep
+    constraint_tolerance : float, default: 1.0e-8
+        Tolerance for constraint solver
+    measure_shadow_work : boolean, default: False
+        Accumulate the shadow work performed by the symplectic substeps, in the global `shadow_work`
+    measure_heat : boolean, default: True
+        Accumulate the heat exchanged with the bath in each step, in the global `heat`
+    nsteps_neq : int, default: 100
+        Number of steps in nonequilibrium protocol. Default 100
+    prop_lambda : float (Default = 0.3)
+        Defines the region in which to add extra propagation
+        steps during the NCMC simulation from the midpoint 0.5.
+        i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.
+    nprop : int (Default: 1)
+        Controls the number of propagation steps to add in the lambda
+        region defined by `prop_lambda`.
+
+    Attributes
+    ----------
+    _kinetic_energy : str
+        This is 0.5*m*v*v by default, and is the expression used for the kinetic energy
+
     Examples
     --------
         - g-BAOAB:
@@ -50,13 +89,12 @@ class AlchemicalExternalLangevinIntegrator(
             splitting="V R H R V"
         - An NCMC algorithm with Metropolized integrator:
             splitting="O { V R H R V } O"
-    Attributes
-    ----------
-    _kinetic_energy : str
-        This is 0.5*m*v*v by default, and is the expression used for the kinetic energy
+
+
     References
     ----------
     [Nilmeier, et al. 2011] Nonequilibrium candidate Monte Carlo is an efficient tool for equilibrium simulation
+    
     [Leimkuhler and Matthews, 2015] Molecular dynamics: with deterministic and stochastic numerical methods, Chapter 7
     """
 
@@ -74,41 +112,6 @@ class AlchemicalExternalLangevinIntegrator(
                  prop_lambda=0.3,
                  *args,
                  **kwargs):
-        """
-        Parameters
-        ----------
-        alchemical_functions : dict of strings
-            key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible
-            string that depends on the variable "lambda"
-        splitting : string, default: "H V R O V R H"
-            Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option,
-            which increments the global parameter `lambda` by 1/nsteps_neq for each step.
-            Forces are only used in V-step. Handle multiple force groups by appending the force group index
-            to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.
-            ( will cause metropolization, and must be followed later by a ).
-        temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*simtk.unit.kelvin
-           Fictitious "bath" temperature
-        collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/simtk.unit.picoseconds
-           Collision rate
-        timestep : numpy.unit.Quantity compatible with femtoseconds, default: 1.0*simtk.unit.femtoseconds
-           Integration timestep
-        constraint_tolerance : float, default: 1.0e-8
-            Tolerance for constraint solver
-        measure_shadow_work : boolean, default: False
-            Accumulate the shadow work performed by the symplectic substeps, in the global `shadow_work`
-        measure_heat : boolean, default: True
-            Accumulate the heat exchanged with the bath in each step, in the global `heat`
-        nsteps_neq : int, default: 100
-            Number of steps in nonequilibrium protocol. Default 100
-        prop_lambda : float (Default = 0.3)
-            Defines the region in which to add extra propagation
-            steps during the NCMC simulation from the midpoint 0.5.
-            i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.
-        nprop : int (Default: 1)
-            Controls the number of propagation steps to add in the lambda
-            region defined by `prop_lambda`.
-        """
-
         # call the base class constructor
         super(AlchemicalExternalLangevinIntegrator, self).__init__(
             alchemical_functions=alchemical_functions,

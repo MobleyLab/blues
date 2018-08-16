@@ -1,12 +1,10 @@
 """
-simulation - Provides classes for setting up and running the BLUES simulation.
+Provides classes for setting up and running the BLUES simulation.
 
-SystemFactory : setup and modifying the OpenMM System prior to the simulation.
-SimulationFactory : generates the OpenMM Simulations from the System.
-BLUESSimulation : runs the NCMC+MD hybrid simulation.
-MonteCarloSimulation : runs a pure Monte Carlo simulation.
-
-and running the BLUESSimulation class.
+- SystemFactory : setup and modifying the OpenMM System prior to the simulation.
+- SimulationFactory : generates the OpenMM Simulations from the System.
+- BLUESSimulation : runs the NCMC+MD hybrid simulation.
+- MonteCarloSimulation : runs a pure Monte Carlo simulation.
 
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, Meghan Osato, David L. Mobley
@@ -206,7 +204,7 @@ class SystemFactory(object):
             Alchemical softcore parameter for Lennard-Jones (default is 0.5).
         softcore_a, softcore_b, softcore_c : float, optional
             Parameters modifying softcore Lennard-Jones form. Introduced in
-            Eq. 13 of Ref. [1] (default is 1).
+            Eq. 13 of Ref. [1]_ (default is 1).
         softcore_beta : float, optional
             Alchemical softcore parameter for electrostatics. Set this to zero
             to recover standard electrostatic scaling (default is 0.0).
@@ -220,7 +218,7 @@ class SystemFactory(object):
             must be recomputed every time step.
         alchemical_pme_treatment : str, optional, default = 'direct-space'
             Controls how alchemical region electrostatics are treated when PME is used.
-            Options are ['direct-space', 'coulomb', 'exact'].
+            Options are 'direct-space', 'coulomb', 'exact'.
             - 'direct-space' only models the direct space contribution
             - 'coulomb' includes switched Coulomb interaction
             - 'exact' includes also the reciprocal space contribution, but it's
@@ -235,10 +233,9 @@ class SystemFactory(object):
         alch_system : alchemical_system
             System to be used for the NCMC simulation.
 
-        Notes
-        -----
-        .. [1] T. T. Pham and M. R. Shirts, J. Chem. Phys 135, 034114 (2011).
-        http://dx.doi.org/10.1063/1.3607597
+        References
+        ----------
+        .. [1] T. T. Pham and M. R. Shirts, J. Chem. Phys 135, 034114 (2011). http://dx.doi.org/10.1063/1.3607597
         """
         if suppress_warnings:
             #Lower logger level to suppress excess warnings
@@ -319,7 +316,8 @@ class SystemFactory(object):
                            weight=5.0,
                            **kwargs):
         """
-        Applies positional restraints to the given openmm.System.
+        Applies positional restraints to atoms in the openmm.System
+        by the given parmed selection [2]_.
 
         Parameters
         ----------
@@ -337,10 +335,10 @@ class SystemFactory(object):
         system : openmm.System
             Modified with positional restraints applied.
 
-        Notes
-        -----
-        .. [1] J. Swails, ParmEd Documentation (2015).
-        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        References
+        ----------
+        .. [2] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+
         """
         mask_idx = cls._amber_selection_to_atom_indices_(structure, selection)
 
@@ -370,7 +368,7 @@ class SystemFactory(object):
     def freeze_atoms(cls, structure, system, freeze_selection=":LIG",
                      **kwargs):
         """
-        Function that will zero the masses of atoms from the given selection.
+        Function that will zero the masses of atoms from the given parmed selection [3]_.
         Massless atoms will be ignored by the integrator and will not change
         positions.
 
@@ -390,10 +388,10 @@ class SystemFactory(object):
         system : openmm.System
             The modified system with the selected atoms
 
-        Notes
-        -----
-        .. [1] J. Swails, ParmEd Documentation (2015).
-        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        References
+        ----------
+        .. [3] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+
         """
         mask_idx = cls._amber_selection_to_atom_indices_(
             structure, freeze_selection)
@@ -413,8 +411,8 @@ class SystemFactory(object):
                       freeze_solvent=':HOH,NA,CL',
                       **kwargs):
         """
-        Function that will zero the masses of atoms outside the given raidus of
-        the `freeze_center` selection. Massless atoms will be ignored by the
+        Zero the masses of atoms outside the given raidus of
+        the `freeze_center` parmed selection [4]_. Massless atoms will be ignored by the
         integrator and will not change positions.This is intended to freeze
         the solvent and protein atoms around the ligand binding site.
 
@@ -439,10 +437,10 @@ class SystemFactory(object):
         system : openmm.System
             Modified system with masses outside the `freeze center` zeroed.
 
-        Notes
-        -----
-        .. [1] J. Swails, ParmEd Documentation (2015).
-        http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+        References
+        ----------
+        .. [4] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+
         """
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'):

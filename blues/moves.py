@@ -904,8 +904,8 @@ class SmartDartMove(RandomLigandRotationMove):
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
 
-    Notes
-    -----
+    References
+    ----------
     .. [1] I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
         https://doi.org/10.1063/1.1358861
 

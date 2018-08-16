@@ -69,7 +69,8 @@ integrators - Alchemical Integrators
 Utilities
 ---------
 .. automodule:: blues.utils
-
+  :members:
+  :undoc-members:
 
 Reporters
 ---------
