@@ -5,10 +5,8 @@ import simtk
 _OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
 
 
-class AlchemicalExternalLangevinIntegrator(
-        AlchemicalNonequilibriumLangevinIntegrator):
-    """
-    Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
+class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
+    """Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
     The functions can use this to create more complex protocols for other global parameters.
 
@@ -20,20 +18,21 @@ class AlchemicalExternalLangevinIntegrator(
 
     Propagator is based on Langevin splitting, as described below.
     One way to divide the Langevin system is into three parts which can each be solved "exactly:"
-        - R: Linear "drift" / Constrained "drift"
-            Deterministic update of *positions*, using current velocities
-            x <- x + v dt
-        - V: Linear "kick" / Constrained "kick"
-            Deterministic update of *velocities*, using current forces
-            v <- v + (f/m) dt
-                where f = force, m = mass
-        - O: Ornstein-Uhlenbeck
-            Stochastic update of velocities, simulating interaction with a heat bath
-            v <- av + b sqrt(kT/m) R
-                where
-                a = e^(-gamma dt)
-                b = sqrt(1 - e^(-2gamma dt))
-                R is i.i.d. standard normal
+
+    - R: Linear "drift" / Constrained "drift"
+        Deterministic update of *positions*, using current velocities
+        ``x <- x + v dt``
+    - V: Linear "kick" / Constrained "kick"
+        Deterministic update of *velocities*, using current forces
+        ``v <- v + (f/m) dt``; where f = force, m = mass
+    - O: Ornstein-Uhlenbeck
+        Stochastic update of velocities, simulating interaction with a heat bath
+        ``v <- av + b sqrt(kT/m) R`` where:
+        
+        - a = e^(-gamma dt)
+        - b = sqrt(1 - e^(-2gamma dt))
+        - R is i.i.d. standard normal
+
     We can then construct integrators by solving each part for a certain timestep in sequence.
     (We can further split up the V step by force group, evaluating cheap but fast-fluctuating
     forces more frequently than expensive but slow-fluctuating forces. Since forces are only
@@ -44,14 +43,11 @@ class AlchemicalExternalLangevinIntegrator(
     Parameters
     ----------
     alchemical_functions : dict of strings
-        key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible
-        string that depends on the variable "lambda"
+        key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable "lambda"
     splitting : string, default: "H V R O V R H"
-        Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option,
-        which increments the global parameter `lambda` by 1/nsteps_neq for each step.
+        Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option, which increments the global parameter `lambda` by 1/nsteps_neq for each step.
         Forces are only used in V-step. Handle multiple force groups by appending the force group index
-        to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.
-        ( will cause metropolization, and must be followed later by a ).
+        to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.( will cause metropolization, and must be followed later by a ).
     temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*simtk.unit.kelvin
        Fictitious "bath" temperature
     collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/simtk.unit.picoseconds
@@ -81,21 +77,22 @@ class AlchemicalExternalLangevinIntegrator(
 
     Examples
     --------
-        - g-BAOAB:
-            splitting="R V O H O V R"
-        - VVVR
-            splitting="O V R H R V O"
-        - VV
-            splitting="V R H R V"
-        - An NCMC algorithm with Metropolized integrator:
-            splitting="O { V R H R V } O"
+    - g-BAOAB:
+        splitting="R V O H O V R"
+    - VVVR
+        splitting="O V R H R V O"
+    - VV
+        splitting="V R H R V"
+    - An NCMC algorithm with Metropolized integrator:
+        splitting="O { V R H R V } O"
 
 
     References
     ----------
     [Nilmeier, et al. 2011] Nonequilibrium candidate Monte Carlo is an efficient tool for equilibrium simulation
-    
+
     [Leimkuhler and Matthews, 2015] Molecular dynamics: with deterministic and stochastic numerical methods, Chapter 7
+
     """
 
     def __init__(self,

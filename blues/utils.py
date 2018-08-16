@@ -25,6 +25,7 @@ def saveSimulationFrame(simulation, outfname):
     outfname : str
         The output file name to save the simulation frame from. Supported
         extensions:
+
         - PDB (.pdb, pdb)
         - PDBx/mmCIF (.cif, cif)
         - PQR (.pqr, pqr)
@@ -37,6 +38,7 @@ def saveSimulationFrame(simulation, outfname):
         - Mol3 file (.mol3, mol3)
         - Amber ASCII restart (.rst7/.inpcrd/.restrt, rst7)
         - Amber NetCDF restart (.ncrst, ncrst)
+
     """
     topology = simulation.topology
     system = simulation.context.getSystem()
@@ -64,6 +66,7 @@ def print_host_info(simulation):
     ----------
     simulation : openmm.Simulation
         The OpenMM Simulation to write a frame from.
+
     """
     # OpenMM platform information
     mmver = openmm.version.version
@@ -159,6 +162,7 @@ def check_amber_selection(structure, selection):
         restrained/frozen during simulation.
     logger : logging.Logger
         Records information or streams to terminal.
+
     """
 
     mask_idx = []
@@ -192,7 +196,6 @@ def parse_unit_quantity(unit_quantity_str):
     unit_quantity : simtk.unit.Quantity
         i.e `unit.Quantity(3.024, unit=dalton)`
 
-
     """
     value, u = unit_quantity_str.replace(' ', '').split('*')
     if '/' in u:
@@ -204,6 +207,7 @@ def parse_unit_quantity(unit_quantity_str):
 def zero_masses(system, atomList=None):
     """
     Zeroes the masses of specified atoms to constrain certain degrees of freedom.
+
     Arguments
     ---------
     system : penmm.System
@@ -215,6 +219,7 @@ def zero_masses(system, atomList=None):
     -------
     system : openmm.System
         The modified system with massless atoms.
+        
     """
     for index in (atomList):
         system.setParticleMass(index, 0 * unit.daltons)

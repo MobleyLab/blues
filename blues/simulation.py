@@ -1,10 +1,10 @@
 """
 Provides classes for setting up and running the BLUES simulation.
 
-- SystemFactory : setup and modifying the OpenMM System prior to the simulation.
-- SimulationFactory : generates the OpenMM Simulations from the System.
-- BLUESSimulation : runs the NCMC+MD hybrid simulation.
-- MonteCarloSimulation : runs a pure Monte Carlo simulation.
+- `SystemFactory` : setup and modifying the OpenMM System prior to the simulation.
+- `SimulationFactory` : generates the OpenMM Simulations from the System.
+- `BLUESSimulation` : runs the NCMC+MD hybrid simulation.
+- `MonteCarloSimulation` : runs a pure Monte Carlo simulation.
 
 Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, Meghan Osato, David L. Mobley
@@ -204,7 +204,7 @@ class SystemFactory(object):
             Alchemical softcore parameter for Lennard-Jones (default is 0.5).
         softcore_a, softcore_b, softcore_c : float, optional
             Parameters modifying softcore Lennard-Jones form. Introduced in
-            Eq. 13 of Ref. [1]_ (default is 1).
+            Eq. 13 of Ref. [TTPham-JChemPhys135-2011]_ (default is 1).
         softcore_beta : float, optional
             Alchemical softcore parameter for electrostatics. Set this to zero
             to recover standard electrostatic scaling (default is 0.0).
@@ -222,11 +222,11 @@ class SystemFactory(object):
             - 'direct-space' only models the direct space contribution
             - 'coulomb' includes switched Coulomb interaction
             - 'exact' includes also the reciprocal space contribution, but it's
-                only possible to annihilate the charges and the softcore parameters
-                controlling the electrostatics are deactivated. Also, with this
-                method, modifying the global variable `lambda_electrostatics` is
-                not sufficient to control the charges. The recommended way to change
-                them is through the `AlchemicalState` class.
+            only possible to annihilate the charges and the softcore parameters
+            controlling the electrostatics are deactivated. Also, with this
+            method, modifying the global variable `lambda_electrostatics` is
+            not sufficient to control the charges. The recommended way to change
+            them is through the `AlchemicalState` class.
 
         Returns
         -------
@@ -235,7 +235,7 @@ class SystemFactory(object):
 
         References
         ----------
-        .. [1] T. T. Pham and M. R. Shirts, J. Chem. Phys 135, 034114 (2011). http://dx.doi.org/10.1063/1.3607597
+        .. [TTPham-JChemPhys135-2011] T. T. Pham and M. R. Shirts, J. Chem. Phys 135, 034114 (2011). http://dx.doi.org/10.1063/1.3607597
         """
         if suppress_warnings:
             #Lower logger level to suppress excess warnings
@@ -263,9 +263,9 @@ class SystemFactory(object):
         return alch_system
 
     @staticmethod
-    def _amber_selection_to_atom_indices_(structure, selection):
+    def amber_selection_to_atom_indices(structure, selection):
         """
-        Converts AmberMask selection to list of atom indices.
+        Converts AmberMask selection [amber-syntax]_ to list of atom indices.
 
         Parameters
         ----------
@@ -278,13 +278,18 @@ class SystemFactory(object):
         -------
         mask_idx : list of int
             List of atom indices.
+
+        References
+        ----------
+        .. [amber-syntax] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+
         """
         mask = parmed.amber.AmberMask(structure, str(selection))
         mask_idx = [i for i in mask.Selected()]
         return mask_idx
 
     @staticmethod
-    def _print_atomlist_from_atom_indices_(structure, mask_idx):
+    def print_atomlist_from_atom_indices(structure, mask_idx):
         """
         Goes through the structure and matches the previously selected atom
         indices to the atom type.
@@ -317,7 +322,7 @@ class SystemFactory(object):
                            **kwargs):
         """
         Applies positional restraints to atoms in the openmm.System
-        by the given parmed selection [2]_.
+        by the given parmed selection [amber-syntax]_.
 
         Parameters
         ----------
@@ -335,12 +340,8 @@ class SystemFactory(object):
         system : openmm.System
             Modified with positional restraints applied.
 
-        References
-        ----------
-        .. [2] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
-
         """
-        mask_idx = cls._amber_selection_to_atom_indices_(structure, selection)
+        mask_idx = cls.amber_selection_to_atom_indices(structure, selection)
 
         logger.info(
             "{} positional restraints applied to selection: '{}' ({} atoms) on {}".
@@ -368,7 +369,7 @@ class SystemFactory(object):
     def freeze_atoms(cls, structure, system, freeze_selection=":LIG",
                      **kwargs):
         """
-        Function that will zero the masses of atoms from the given parmed selection [3]_.
+        Zeroes the masses of atoms from the given parmed selection [amber-syntax]_.
         Massless atoms will be ignored by the integrator and will not change
         positions.
 
@@ -387,18 +388,13 @@ class SystemFactory(object):
         -------
         system : openmm.System
             The modified system with the selected atoms
-
-        References
-        ----------
-        .. [3] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
-
         """
-        mask_idx = cls._amber_selection_to_atom_indices_(
+        mask_idx = cls.amber_selection_to_atom_indices(
             structure, freeze_selection)
         logger.info("Freezing selection '{}' ({} atoms) on {}".format(
             freeze_selection, len(mask_idx), system))
 
-        cls._print_atomlist_from_atom_indices_(structure, mask_idx)
+        cls.print_atomlist_from_atom_indices(structure, mask_idx)
         system = utils.zero_masses(system, mask_idx)
         return system
 
@@ -412,7 +408,7 @@ class SystemFactory(object):
                       **kwargs):
         """
         Zero the masses of atoms outside the given raidus of
-        the `freeze_center` parmed selection [4]_. Massless atoms will be ignored by the
+        the `freeze_center` parmed selection [amber-syntax]_. Massless atoms will be ignored by the
         integrator and will not change positions.This is intended to freeze
         the solvent and protein atoms around the ligand binding site.
 
@@ -437,24 +433,20 @@ class SystemFactory(object):
         system : openmm.System
             Modified system with masses outside the `freeze center` zeroed.
 
-        References
-        ----------
-        .. [4] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
-
         """
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'):
             freeze_distance = freeze_distance._value
         selection = "(%s<:%f)&!(%s)" % (freeze_center, freeze_distance,
                                         freeze_solvent)
-        site_idx = cls._amber_selection_to_atom_indices_(structure, selection)
+        site_idx = cls.amber_selection_to_atom_indices(structure, selection)
         #Invert that selection to freeze everything but the binding site.
         freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
 
         logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(
             len(freeze_idx), freeze_distance, freeze_center, system))
 
-        cls._print_atomlist_from_atom_indices_(structure, freeze_idx)
+        cls.print_atomlist_from_atom_indices(structure, freeze_idx)
         system = utils.zero_masses(system, freeze_idx)
         return system
 
@@ -669,15 +661,10 @@ class SimulationFactory(object):
         nstepsNC : int
             The number of NCMC relaxation steps to use.
         alchemical_functions : dict
-            Default = {'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))',
-                       'lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'} `
+            default = `{'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))', lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'}`
             key : value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable "lambda".
         splitting : string, default: "H V R O R V H"
-            Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option,
-            which increments the global parameter `lambda` by 1/nsteps_neq for each step.
-            Forces are only used in V-step. Handle multiple force groups by appending the force group index
-            to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.
-            ( will cause metropolization, and must be followed later by a ).
+            Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option, which increments the global parameter `lambda` by 1/nsteps_neq for each step. Forces are only used in V-step. Handle multiple force groups by appending the force group index to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces. ( will cause metropolization, and must be followed later by a ).
         temperature : float, default=300
             temperature (Kelvin) to be simulated at.
         dt: int, optional, default=0.002
@@ -955,8 +942,7 @@ class BLUESSimulation(object):
             The integrator from the NCMC Context
         integrator_keys : list
             list containing strings of the values to get from the integrator.
-            Default : ['total_work', 'lambda', 'shadow_work',
-                       'protocol_work', 'Eold', 'Enew','Epert']
+            Default = ['lambda', 'shadow_work', 'protocol_work', 'Eold', 'Enew','Epert']
 
         Returns
         -------

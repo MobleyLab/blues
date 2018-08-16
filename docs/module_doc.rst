@@ -1,7 +1,7 @@
 Modules
 ====================
 
-moves - NCMC Moves
+Moves
 --------------------------------------------------------
 .. automodule:: blues.moves
 
@@ -32,7 +32,7 @@ Under Development
 .. autoclass:: CombinationMove
   :members:
 
-simulation - Setup and run BLUES
+Simulation
 ---------------------------------------------------------
 .. automodule:: blues.simulation
 
@@ -61,7 +61,7 @@ BLUESSimulation
   :private-members:
 
 
-integrators - Alchemical Integrators
+Integrators
 -----------------------------------------------------------
 .. automodule:: blues.integrators
   :members:

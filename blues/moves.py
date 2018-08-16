@@ -880,7 +880,7 @@ class SmartDartMove(RandomLigandRotationMove):
     allowing translations of a ligand between pre-defined regions in space. The
     `SmartDartMove.move()` method translates the ligand to the locations of the ligand
     found in the coord_files. These locations are defined in terms of the basis_particles.
-    These locations are picked with a uniform probability.
+    These locations are picked with a uniform probability. Based on Smart Darting Monte Carlo [smart-dart]_
 
     Parameters
     ----------
@@ -906,7 +906,7 @@ class SmartDartMove(RandomLigandRotationMove):
 
     References
     ----------
-    .. [1] I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
+    .. [smart-dart] I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
         https://doi.org/10.1063/1.1358861
 
     """

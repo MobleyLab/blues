@@ -1,31 +1,46 @@
 from mdtraj.formats.hdf5 import HDF5TrajectoryFile
-from mdtraj.reporters import HDF5Reporter
-from simtk.openmm import app
-import simtk.unit as units
 import json, yaml
 import subprocess
 import numpy as np
-from mdtraj.utils import unitcell
 from mdtraj.utils import in_units_of, ensure_type
-
 import mdtraj.version
 import simtk.openmm.version
 import blues.version
 import logging
-import sys, time
 import parmed
-
-from parmed import unit as u
-from parmed.amber.netcdffiles import NetCDFTraj, NetCDFRestart
-from parmed.geometry import box_vectors_to_lengths_and_angles
 import netCDF4 as nc
 from blues import reporters
-
+from parmed.amber.netcdffiles import NetCDFTraj
 
 ######################
 #  REPORTER FORMATS  #
 ######################
 class LoggerFormatter(logging.Formatter):
+    """
+    Formats the output of the `logger.Logger` object. Allows customization
+    for customized logging levels. This will add a custom level 'REPORT'
+    to all custom BLUES reporters from the `blues.reporters` module.
+
+    Examples
+    --------
+    Below we add a custom level 'REPORT' and have the logger module stream the
+    message to `sys.stdout` without any additional information to our custom
+    reporters from the `blues.reporters` module
+
+    >>> from blues import reporters
+    >>> from blues.formats import LoggerFormatter
+    >>> import logging, sys
+    >>> logger = logging.getLogger(__name__)
+    >>> reporters.addLoggingLevel('REPORT', logging.WARNING - 5)
+    >>> fmt = LoggerFormatter(fmt="%(message)s")
+    >>> stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    >>> stdout_handler.setFormatter(fmt)
+    >>> logger.addHandler(stdout_handler)
+    >>> logger.report('This is a REPORT call')
+        This is a REPORT call
+    >>> logger.info('This is an INFO call')
+        INFO: This is an INFO call
+    """
 
     dbg_fmt = "%(levelname)s: [%(module)s.%(funcName)s] %(message)s"
     info_fmt = "%(levelname)s: %(message)s"
@@ -68,8 +83,23 @@ class LoggerFormatter(logging.Formatter):
 
 
 class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
-    #This is a subclass of the HDF5TrajectoryFile class from mdtraj that handles the writing of
-    #the trajectory information to the HDF5 file format.
+    """
+    Extension of the `mdtraj.formats.hdf5.HDF5TrajectoryFile` class which
+    handles the writing of the trajectory data to the HDF5 file format.
+    Additional features include writing NCMC related data to the HDF5 file.
+
+    Parameters
+    ----------
+    filename : str
+        The filename for the HDF5 file.
+    mode : str, default='r'
+        The mode to open the HDF5 file in.
+    force_overwrite : bool, default=True
+        If True, overwrite the file if it already exists
+    compression : str, default='zlib'
+        Valid choices are ['zlib', 'lzo', 'bzip2', 'blosc']
+
+    """
     def __init__(self,
                  filename,
                  mode='r',
@@ -99,10 +129,12 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         a unit conversion will be automatically done from the supplied units
         into the proper units for saving on disk. You won't have to worry about
         it.
+
         Furthermore, if you wish to save a single frame of simulation data, you
         can do so naturally, for instance by supplying a 2d array for the
         coordinates and a single float for the time. This "shape deficiency"
         will be recognized, and handled appropriately.
+
         Parameters
         ----------
         coordinates : np.ndarray, shape=(n_frames, n_atoms, 3)
@@ -137,8 +169,13 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             You may optionally specify the temperature in each frame. By
             convention the temperatures should b in units of Kelvin.
         alchemicalLambda : np.ndarray, shape=(n_frames,), optional
-            You may optionally specify the alchemical lambda in each frame. These
+            You may optionally specify the alchemicalLambda in each frame. These
             have no units, but are generally between zero and one.
+        protocolWork : np.ndarray, shape=(n_frames,), optional
+            You may optionally specify the protocolWork in each frame. These
+            are in reduced units of kT but are stored dimensionless
+        title : str
+            Title of the HDF5 trajectory file
         """
         _check_mode(self.mode, ('w', 'a'))
 
@@ -347,6 +384,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             Valid choices are ['zlib', 'lzo', 'bzip2', 'blosc']
         shuffle : bool, default=True
             Whether or not to use the Shuffle filter in the HDF5 library. This is normally used to improve the compression ratio. A false value disables shuffling and a true one enables it. The default value depends on whether compression is enabled or not; if compression is enabled, shuffling defaults to be enabled, else shuffling is disabled. Shuffling can only be used when compression is enabled.
+
         """
         bytestring = np.fromstring(string.encode('utf-8'), np.uint8)
         atom = self.tables.UInt8Atom()
@@ -375,12 +413,18 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         Function that initializes the tables for storing data from the simulation
         and writes metadata at the root level of the HDF5 file.
 
-        n_atoms : int, number of atoms in system
-        title : str, title for the root level data table
-        parameters : dict, arguments/parameters used for the simulation.
+        Parameters
+        -----------
+        n_atoms : int
+            Number of atoms in system
+        title : str
+            Title for the root level data table
+        parameters : dict
+            Arguments/parameters used for the simulation.
         set_* : bool
-            parameters that begin with set_*. If True, the corresponding data
+            Parameters that begin with set_*. If True, the corresponding data
             will be written to the HDF5 file.
+
         """
         self._n_atoms = n_atoms
         self._parameters = parameters
@@ -505,8 +549,17 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
 
 
 class NetCDF4Traj(NetCDFTraj):
-    """
-    Temporary class to allow for proper flushing
+    """Extension of `parmed.amber.netcdffiles.NetCDFTraj` to allow proper file
+    flushing. Requires the netcdf4 library (not scipy), install with
+    `conda install -c conda-forge netcdf4` .
+
+    Parameters
+    ----------
+    fname : str
+        File name for the trajectory file
+    mode : str, default='r'
+        The mode to open the file in.
+        
     """
 
     def __init__(self, fname, mode='r'):
@@ -535,8 +588,8 @@ class NetCDF4Traj(NetCDFTraj):
                  title='',
                  protocolWork=False,
                  alchemicalLambda=False):
-        """
-        Opens a new NetCDF file and sets the attributes
+        """Opens a new NetCDF file and sets the attributes
+
         Parameters
         ----------
         fname : str
@@ -545,20 +598,27 @@ class NetCDF4Traj(NetCDFTraj):
             Number of atoms in the restart
         box : bool
             Indicates if cell lengths and angles are written to the NetCDF file
-        crds : bool=True
+        crds : bool, default=True
             Indicates if coordinates are written to the NetCDF file
-        vels : bool=False
+        vels : bool, default=False
             Indicates if velocities are written to the NetCDF file
-        frcs : bool=False
+        frcs : bool, default=False
             Indicates if forces are written to the NetCDF file
-        remd : str=None
+        remd : str, default=None
             'T[emperature]' if replica temperature is written
             'M[ulti]' if Multi-D REMD information is written
             None if no REMD information is written
-        remd_dimension : int=None
+        remd_dimension : int, default=None
             If remd above is 'M[ulti]', this is how many REMD dimensions exist
-        title : str=''
+        title : str, default=''
             The title of the NetCDF trajectory file
+        protocolWork : bool, default=False
+            Indicates if protocolWork from the NCMC simulation should be written
+            to the NetCDF file
+        alchemicalLambda : bool, default=False
+            Indicates if alchemicalLambda from the NCMC simulation should be written
+            to the NetCDF file
+
         """
         inst = cls(fname, 'w')
         ncfile = inst._ncfile
@@ -680,6 +740,7 @@ class NetCDF4Traj(NetCDFTraj):
 
     def add_protocolWork(self, stuff):
         """ Adds the time to the current frame of the NetCDF file
+
         Parameters
         ----------
         stuff : float or time-dimension Quantity
@@ -700,6 +761,7 @@ class NetCDF4Traj(NetCDFTraj):
 
     def add_alchemicalLambda(self, stuff):
         """ Adds the time to the current frame of the NetCDF file
+
         Parameters
         ----------
         stuff : float or time-dimension Quantity
