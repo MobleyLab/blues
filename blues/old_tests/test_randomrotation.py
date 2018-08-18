@@ -2,7 +2,7 @@ import unittest, parmed
 from blues import utils
 from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
 from blues.moves import RandomLigandRotationMove
-from blues.moves import MoveEngine
+from blues.engine import MoveEngine
 from simtk.openmm import app
 from simtk import unit
 import numpy as np
@@ -64,7 +64,7 @@ class RandomRotationTester(unittest.TestCase):
 
         #Check that the ligand has been rotated
         pos_compare = np.not_equal(before_move, after_move).all()
-        assert pos_compare
+        self.assertTrue(pos_compare)
 
 
 if __name__ == "__main__":

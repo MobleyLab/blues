@@ -3,7 +3,7 @@ from blues import utils
 from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
 from simtk.openmm import app
 from blues.moves import SideChainMove
-from blues.moves import MoveEngine
+from blues.engine import MoveEngine
 from openmmtools import testsystems
 import simtk.unit as unit
 import numpy as np
@@ -76,9 +76,9 @@ class SideChainTester(unittest.TestCase):
 
     def test_getRotBondAtoms(self):
         vals = [v for v in self.sidechain.rot_atoms[1].values()][0]
-        assert len(vals) == 11
+        self.assertEqual(len(vals), 11)
         #Ensure it selects 1 rotatable bond in Valine
-        assert len(self.sidechain.rot_bonds) == 1
+        self.assertEqual(len(self.sidechain.rot_bonds), 1)
 
     def test_sidechain_move(self):
         atom_indices = [v for v in self.sidechain.rot_atoms[1].values()][0]
@@ -93,7 +93,7 @@ class SideChainTester(unittest.TestCase):
         # Integrator must step for context to update positions
         # Remove the first two atoms in check as these are the anchor atoms and are not rotated.
         pos_compare = np.not_equal(before_move, after_move)[2:, :].all()
-        assert pos_compare
+        self.assertTrue(pos_compare)
 
 
 if __name__ == "__main__":

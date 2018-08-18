@@ -510,6 +510,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
         Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
 
     """
+
     def __init__(self,
                  file,
                  reportInterval=1,

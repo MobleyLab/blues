@@ -5,7 +5,8 @@ import simtk
 _OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
 
 
-class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
+class AlchemicalExternalLangevinIntegrator(
+        AlchemicalNonequilibriumLangevinIntegrator):
     """Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
     The functions can use this to create more complex protocols for other global parameters.

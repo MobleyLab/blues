@@ -12,6 +12,7 @@ import netCDF4 as nc
 from blues import reporters
 from parmed.amber.netcdffiles import NetCDFTraj
 
+
 ######################
 #  REPORTER FORMATS  #
 ######################
@@ -100,6 +101,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         Valid choices are ['zlib', 'lzo', 'bzip2', 'blosc']
 
     """
+
     def __init__(self,
                  filename,
                  mode='r',

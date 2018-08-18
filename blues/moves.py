@@ -38,6 +38,7 @@ except ImportError:
         'ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.'
     )
 
+
 class Move(object):
     """This is the base Move class. Move provides methods for calculating properties
     and applying the move on the set of atoms being perturbed in the NCMC simulation.
@@ -308,7 +309,7 @@ class RandomLigandRotationMove(Move):
             rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
         rot_move = numpy.dot(reduced_pos, rand_rotation_matrix
-                          ) * positions.unit + self.center_of_mass
+                             ) * positions.unit + self.center_of_mass
 
         # Update ligand positions in nc_sim
         for index, atomidx in enumerate(self.atom_indices):
@@ -388,7 +389,8 @@ class MoveEngine(object):
         """Chooses the move which will be selected for a given NCMC
         iteration
         """
-        rand_num = numpy.random.choice(len(self.probabilities), p=self.probabilities)
+        rand_num = numpy.random.choice(
+            len(self.probabilities), p=self.probabilities)
         self.selected_move = self.moves[rand_num]
         self.move_name = self.selected_move.__class__.__name__
 
@@ -419,9 +421,11 @@ class MoveEngine(object):
 
         return new_context
 
+
 ########################
 ## UNDER DEVELOPMENT ###
 ########################
+
 
 class SideChainMove(Move):
     """**NOTE:** Usage of this class requires a valid OpenEye license.
@@ -764,8 +768,8 @@ class SideChainMove(Move):
         aa, bb, cc, dd = a * a, b * b, c * c, d * d
         bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
         return numpy.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                         [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-                         [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
+                            [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
+                            [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
     def move(self, context, verbose=False):
         """Rotates the target atoms around a selected bond by angle theta and updates
