@@ -25,6 +25,8 @@ before_install:
     - conda config --add channels conda-forge
     #DEBUG
     - conda info -a
+    - pip install -e .[tests]
+    - pip install codecov
 
 install:
     - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
@@ -39,7 +41,7 @@ install:
     - conda list
 
 script:
-    - py.test -v blues
+    - pytest -v --cov=./
 
 after_success:
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
