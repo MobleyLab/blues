@@ -260,6 +260,12 @@ setup(
             'tox',
         ],
     },
+    tests_require=[
+        'pytest',
+        'pytest-cov',
+        'pytest-pep8',
+        'tox',
+    ],
     zip_safe=False,
     include_package_data=True)
 check_dependencies()
