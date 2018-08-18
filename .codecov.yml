@@ -7,6 +7,9 @@
 
 # Coverage configuration
 # ----------------------
+codecov:
+  branch: molssi-practices
+
 coverage:
   status:
     patch: false
