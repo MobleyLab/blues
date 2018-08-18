@@ -44,7 +44,9 @@ script:
     - pytest -v --cov=./
 
 after_success:
+  - codecov
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
+
 
 deploy:
   #Deploy to Anaconda.org
