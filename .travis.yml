@@ -13,8 +13,8 @@ before_install:
     - export PYTHONUNBUFFERED=true
     - export PATH=$HOME/miniconda/bin:$PATH
     # Unpack encrypted OpenEye license file
-    - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
-    - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
+    #- if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
+  #  - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
     - conda update --yes -q conda
     # Turn on always yes
     - conda config --set always_yes true --set changeps1 no
@@ -60,7 +60,7 @@ deploy:
 env:
   global:
     - ORGNAME="omnia"
-    - USERNAME="mobleylab"
+    - USERNAME="nathanmlim"
     - PACKAGENAME="blues"
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
