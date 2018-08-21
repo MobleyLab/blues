@@ -183,7 +183,7 @@ install:
     - conda list
 
 script:
-    - pytest -v --cov=./
+    - pytest -v -s -cov=./
 
 after_success:
   - codecov

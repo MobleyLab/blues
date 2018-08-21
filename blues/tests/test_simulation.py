@@ -31,7 +31,7 @@ def sim_cfg():
         'nIter': 1,
         'nstepsMD': 10,
         'nstepsNC': 10,
-        'platform' : 'Reference'
+        'platform' : 'OpenCL'
     }
     return sim_cfg
 
