@@ -168,22 +168,27 @@ before_install:
 #     - conda info -a
 
 install:
-    - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
-    # Install OpenEye dependencies
-    #  Use beta version for partial bond orders
-    #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-    - conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-    - conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
-    - conda install pyopencl pocl
-    # Build the recipe
-    - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
-    - conda install --use-local ${PACKAGENAME}
-    - pip install -e .[tests]
-    - pip install codecov
-    - conda list
+  - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
+  # Install OpenEye dependencies
+  #  Use beta version for partial bond orders
+  #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+  - conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+  - conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
+  - conda install pyopencl pocl
+  # Build the recipe
+  - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
+  - conda install --use-local ${PACKAGENAME}
+  - pip install -e .[tests]
+  - pip install codecov
+  - conda list
 
 script:
-    - pytest -v -s -cov=./
+  - if [[ "$OPENCL" == "true" ]]; then
+      export OMM_PLATFORM="OpenCL"
+    else
+      export OMM_PLATFORM="Reference"
+    fi
+  - pytest -v -s --cov=./
 
 after_success:
   - codecov

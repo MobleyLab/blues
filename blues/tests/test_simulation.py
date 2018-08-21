@@ -1,4 +1,4 @@
-import pytest, parmed, fnmatch, logging
+import pytest, parmed, fnmatch, logging, os
 from blues import utils
 from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
 from blues.integrators import AlchemicalExternalLangevinIntegrator
@@ -8,6 +8,7 @@ from blues.settings import Settings
 from simtk import openmm, unit
 from simtk.openmm import app
 import numpy as np
+
 
 
 @pytest.fixture(scope='session')
@@ -22,6 +23,8 @@ def system_cfg():
 
 @pytest.fixture(scope='session')
 def sim_cfg():
+    # os.getenv is equivalent, and can also give a default value instead of `None`
+    PLATFORM = os.getenv('OMM_PLATFORM', 'Reference')
     sim_cfg = {
         'nprop': 1,
         'prop_lambda': 0.3,
@@ -31,7 +34,7 @@ def sim_cfg():
         'nIter': 1,
         'nstepsMD': 10,
         'nstepsNC': 10,
-        'platform' : 'OpenCL'
+        'platform' : PLATFORM
     }
     return sim_cfg
 
@@ -487,7 +490,7 @@ class TestBLUESSimulation(object):
               nIter: 1
               nstepsMD: 4
               nstepsNC: 4
-              platform: OpenCL
+              platform: Reference
 
             md_reporters:
               stream:
@@ -516,6 +519,9 @@ class TestBLUESSimulation(object):
         yaml_cfg = Settings(yaml_cfg)
         cfg = yaml_cfg.asDict()
         cfg['output_dir'] = tmpdir
+        # os.getenv is equivalent, and can also give a default value instead of `None`
+        PLATFORM = os.getenv('OMM_PLATFORM', 'Reference')
+        cfg['simulation']['platform'] = PLATFORM
 
         simulations = SimulationFactory(systems, engine,
                                         cfg['simulation'], cfg['md_reporters'],
