@@ -31,7 +31,7 @@ def sim_cfg():
         'nIter': 1,
         'nstepsMD': 10,
         'nstepsNC': 10,
-        'platform' : 'OpenCL'
+        'platform' : 'Reference'
     }
     return sim_cfg
 
@@ -487,6 +487,7 @@ class TestBLUESSimulation(object):
               nIter: 1
               nstepsMD: 4
               nstepsNC: 4
+              platform: Reference
 
             md_reporters:
               stream:
@@ -530,7 +531,7 @@ class TestBLUESSimulation(object):
         pos_compare = np.not_equal(before_iter, after_iter).all()
         assert pos_compare
 
-    def test_blues_simulationRunPure(self, systems, simulations, engine, tmpdir):
+    def test_blues_simulationRunPure(self, systems, simulations, engine, tmpdir, simcfg):
         print('Testing BLUESSimulation.run() from pure python')
         md_rep_cfg = {
             'stream': {
@@ -561,20 +562,10 @@ class TestBLUESSimulation(object):
         ncmc_reporters = ReporterConfig(tmpdir.join('tol-test-ncmc'),
                                         ncmc_rep_cfg).makeReporters()
 
-        cfg = {
-            'nprop': 1,
-            'prop_lambda': 0.3,
-            'dt': 0.001 * unit.picoseconds,
-            'friction': 1 * 1 / unit.picoseconds,
-            'temperature': 100 * unit.kelvin,
-            'nIter': 1,
-            'nstepsMD': 4,
-            'nstepsNC': 4,
-        }
         simulations = SimulationFactory(
             systems,
             engine,
-            cfg,
+            sim_cfg,
             md_reporters=md_reporters,
             ncmc_reporters=ncmc_reporters)
 
