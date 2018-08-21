@@ -31,7 +31,7 @@ def sim_cfg():
         'nIter': 1,
         'nstepsMD': 10,
         'nstepsNC': 10,
-        'platform' : 'Reference'
+        'platform' : 'OpenCL'
     }
     return sim_cfg
 
@@ -487,7 +487,7 @@ class TestBLUESSimulation(object):
               nIter: 1
               nstepsMD: 4
               nstepsNC: 4
-              platform: Reference
+              platform: OpenCL
 
             md_reporters:
               stream:
@@ -531,7 +531,7 @@ class TestBLUESSimulation(object):
         pos_compare = np.not_equal(before_iter, after_iter).all()
         assert pos_compare
 
-    def test_blues_simulationRunPure(self, systems, simulations, engine, tmpdir, simcfg):
+    def test_blues_simulationRunPure(self, systems, simulations, engine, tmpdir, sim_cfg):
         print('Testing BLUESSimulation.run() from pure python')
         md_rep_cfg = {
             'stream': {
