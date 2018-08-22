@@ -1,6 +1,6 @@
 [run]
-branch = True
-source = codecov
+branch = False
+source = blues
 
 [report]
 exclude_lines =
