@@ -1,7 +1,6 @@
 dist: trusty
 sudo: false
 language: python
-python: 3.5
 
 branches:
     only:
@@ -76,7 +75,9 @@ matrix:
 
     - sudo: false
       dist: trusty
-      python: 3.5
+      python: 
+          - 3.5
+          - 3.6
       env: ==PYTHON_3==
            OPENCL=false
            CUDA=false
@@ -168,26 +169,21 @@ before_install:
 #     - conda info -a
 
 install:
-  - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
+  - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client codecov
   # Install OpenEye dependencies
   #  Use beta version for partial bond orders
   #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-  - conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-  - conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
-  - conda install pyopencl pocl
+  #- conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+  #- conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
+  #- conda install pyopencl pocl
   # Build the recipe
   - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
   - conda install --use-local ${PACKAGENAME}
   - pip install -e .[tests]
-  - pip install codecov
   - conda list
 
 script:
-  - if [[ "$OPENCL" == "true" ]]; then
-      export OMM_PLATFORM="OpenCL"
-    else
-      export OMM_PLATFORM="Reference"
-    fi
+  - if [[ "$OPENCL" == "true" ]]; then export OMM_PLATFORM="OpenCL"; else export OMM_PLATFORM="CPU"; fi
   - pytest -v -s --cov=./
 
 after_success:
