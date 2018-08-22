@@ -194,7 +194,7 @@ install:
 
 script:
   - if [[ "$OPENCL" == "true" ]]; then export OMM_PLATFORM="OpenCL"; else export OMM_PLATFORM="CPU"; fi
-  - pytest --cov=blues blues/tests/ --cov-config .coveragerc -v
+  - pytest --cov=blues blues/tests/ --cov-config .coveragerc -v -s 
 after_success:
   - codecov
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
