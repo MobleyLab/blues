@@ -13,6 +13,7 @@ ignore_errors = True
 omit =
     blues/version.py
     blues/tests/*
-    blues/smartdart.py
-    blues/posedart.py
+    blues/*dart.py
+    blues/ncmc_switching.py
+    blues/formats.py
     setup.py

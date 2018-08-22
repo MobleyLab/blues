@@ -25,7 +25,11 @@ coverage:
 ignore:
   - blues/tests/.*
   - blues/version.py
+  - blues/*dart.py
+  - blues/ncmc_switching.py
+  - blues/formats.py
   - setup.py
+  - 
 
 # Pull request comments:
 # ----------------------
