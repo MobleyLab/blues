@@ -18,8 +18,8 @@ except (IOError, ImportError):
 DOCLINES = __doc__.split("\n")
 
 ########################
-VERSION = "0.2.2"  # Primary base version of the build
-DEVBUILD = "1"  # Dev build status, Either None or Integer as string
+VERSION = "0.2.3"  # Primary base version of the build
+DEVBUILD = "0"  # Dev build status, Either None or Integer as string
 ISRELEASED = False  # Are we releasing this as a full cut?
 __version__ = VERSION
 ########################
@@ -155,14 +155,14 @@ def check_dependencies():
     from distutils.version import StrictVersion
     found_openmm = True
     found_openmmtools = True
-    found_openmm_711_or_earlier = True
+    found_openmm_720_or_earlier = True
     found_numpy = True
 
     try:
         from simtk import openmm
         openmm_version = StrictVersion(openmm.Platform.getOpenMMVersion())
-        if openmm_version < StrictVersion('7.1.1'):
-            found_openmm_711_or_earlier = False
+        if openmm_version < StrictVersion('7.2.0'):
+            found_openmm_720_or_earlier = False
     except ImportError as err:
         found_openmm = False
 
@@ -179,16 +179,16 @@ def check_dependencies():
     msg = None
     bar = ('-' * 70) + "\n" + ('-' * 70)
     if found_openmm:
-        if not found_openmm_711_or_earlier:
+        if not found_openmm_720_or_earlier:
             msg = [
                 bar,
-                '[Unmet Dependency] BLUES requires OpenMM version 7.1.1. You have version %s.'
+                '[Unmet Dependency] BLUES requires OpenMM version > 7.2.0. You have version %s.'
                 % openmm_version, bar
             ]
     else:
         msg = [
             bar,
-            '[Unmet Dependency] BLUES requires the OpenMM python package. Please install with `conda install -c omnia openmm=7.1.1` ',
+            '[Unmet Dependency] BLUES requires the OpenMM python package. Please install with `conda install -c omnia openmm=7.2.2` ',
             bar
         ]
 
@@ -202,7 +202,7 @@ def check_dependencies():
     if not found_openmmtools:
         msg = [
             bar,
-            '[Unmet Dependency] BLUES requires the openmmtools python package. Please install with `conda install -c omnia openmmtools=0.14.0`',
+            '[Unmet Dependency] BLUES requires the openmmtools python package. Please install with `conda install -c omnia openmmtools=0.15.0`',
             bar
         ]
 
@@ -241,7 +241,7 @@ setup(
         + ['images/*']
     },
     install_requires=[
-        'numpy', 'cython', 'scipy', 'openmm', 'parmed', 'mdtraj', 'pandas',
+        'numpy', 'cython', 'scipy', 'pandas',
         'netCDF4', 'pyyaml', 'pytest',
     ],
     extras_require={

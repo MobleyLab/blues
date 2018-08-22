@@ -29,7 +29,7 @@ class AlchemicalExternalLangevinIntegrator(
     - O: Ornstein-Uhlenbeck
         Stochastic update of velocities, simulating interaction with a heat bath
         ``v <- av + b sqrt(kT/m) R`` where:
-        
+
         - a = e^(-gamma dt)
         - b = sqrt(1 - e^(-2gamma dt))
         - R is i.i.d. standard normal
@@ -134,8 +134,10 @@ class AlchemicalExternalLangevinIntegrator(
         self.addGlobalVariable("prop", 1)
         self.addGlobalVariable("prop_lambda_min", self._prop_lambda[0])
         self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
-        self._registered_step_types['H'] = (
-            self._add_alchemical_perturbation_step, False)
+        # Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d
+        self._step_dispatch_table['H'] = (self._add_alchemical_perturbation_step, False)
+        #$self._registered_step_types['H'] = (
+        #    self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
 
         try:

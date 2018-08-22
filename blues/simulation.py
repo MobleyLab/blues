@@ -1079,14 +1079,20 @@ class BLUESSimulation(object):
         # Retrieve the state data from the MD/NCMC contexts before proposed move
         md_state0 = self.getStateFromContext(self._md_sim.context,
                                              self._state_keys)
-        ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context,
-                                               self._state_keys)
         self._setStateTable('md', 'state0', md_state0)
-        self._setStateTable('ncmc', 'state0', ncmc_state0)
+
+        # For initial iteration, add to stateTable
+        if self.currentIter == 0:
+            ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
+            self._setStateTable('ncmc', 'state0', ncmc_state0)
 
         # Replace ncmc context data from the md context
         self._ncmc_sim.context = self.setContextFromState(
             self._ncmc_sim.context, md_state0)
+
+        ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context,
+                                               self._state_keys)
+        self._setStateTable('ncmc', 'state0', ncmc_state0)
 
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
         """Advance the NCMC simulation.
@@ -1288,7 +1294,7 @@ class BLUESSimulation(object):
                                              self._state_keys)
         self._setStateTable('md', 'state0', md_state0)
 
-        # Set NCMD state to last state from MD
+        # Set NCMC state to last state from MD
         self._ncmc_sim.context = self.setContextFromState(
             self._ncmc_sim.context, md_state0)
         self._setStateTable('ncmc', 'state0', md_state0)
