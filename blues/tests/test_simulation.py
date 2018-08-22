@@ -394,7 +394,7 @@ class TestBLUESSimulation(object):
         pos0 = md_context_0.getState(getPositions=True).getPositions(
             asNumpy=True)
 
-        assert np.all(np.not_equal(pos0, pos))
+        assert np.not_equal(pos0, pos).any()
 
     def test_printSimulationTiming(self, blues_sim, caplog):
         caplog.set_level(logging.INFO)
