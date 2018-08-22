@@ -75,15 +75,24 @@ matrix:
 
     - sudo: false
       dist: trusty
-      python: 
-          - 3.5
-          - 3.6
-      env: ==PYTHON_3==
+      python: 3.5
+      env: ==PYTHON_35==
            OPENCL=false
            CUDA=false
            CC=$CCACHE/gcc
            CXX=$CCACHE/g++
            CMAKE_FLAGS=""
+
+    - sudo: false
+      dist: trusty
+      python: 3.6
+      env: ==PYTHON_36==
+           OPENCL=false
+           CUDA=false
+           CC=$CCACHE/gcc
+           CXX=$CCACHE/g++
+           CMAKE_FLAGS=""
+
 
 before_install:
   - START_TIME=$(date +%s)

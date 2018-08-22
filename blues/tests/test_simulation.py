@@ -32,8 +32,8 @@ def sim_cfg():
         'friction': 1 * 1 / unit.picoseconds,
         'temperature': 300 * unit.kelvin,
         'nIter': 1,
-        'nstepsMD': 2,
-        'nstepsNC': 2,
+        'nstepsMD': 10,
+        'nstepsNC': 10,
         'platform' : PLATFORM
     }
     return sim_cfg
