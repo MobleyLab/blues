@@ -11,6 +11,8 @@ exclude_lines =
     if __name__ == .__main__.:
 ignore_errors = True
 omit =
-    venv/*
-    tests/*
+    blues/version.py
+    blues/tests/*
+    blues/smartdart.py
+    blues/posedart.py
     setup.py

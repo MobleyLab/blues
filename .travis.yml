@@ -178,7 +178,7 @@ before_install:
 #     - conda info -a
 
 install:
-  - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client codecov
+  - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
   # Install OpenEye dependencies
   #  Use beta version for partial bond orders
   #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
@@ -189,12 +189,12 @@ install:
   - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
   - conda install --use-local ${PACKAGENAME}
   - pip install -e .[tests]
+  - pip install codecov
   - conda list
 
 script:
   - if [[ "$OPENCL" == "true" ]]; then export OMM_PLATFORM="OpenCL"; else export OMM_PLATFORM="CPU"; fi
-  - pytest -v -s --cov=./
-
+  - pytest --cov=blues blues/tests/ --cov-config .coveragerc -v
 after_success:
   - codecov
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
