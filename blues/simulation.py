@@ -861,7 +861,7 @@ class BLUESSimulation(object):
         replace the box vectors, positions, and velocties in the NCMC context.
 
         """
-        # Retrieve MD state before proposed move
+        # Retrieve MD state from previous iteration
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
         self._set_stateTable_('md', 'state0', md_state0)
 
@@ -961,10 +961,11 @@ class BLUESSimulation(object):
             logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum) )
 
             #If reject move, reset positions in ncmc context to before move
-            #md_state0 = self.stateTable['md']['state0']
+            md_state0 = self.stateTable['md']['state0']
             #self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, velocities=False)
 
             # Potential energy should be from last MD step in the previous iteration
+            md_state0 = self.stateTable['md']['state0']
             md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
             if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
                 logger.error('Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.' %(md_state0['potential_energy'], md_PE))
