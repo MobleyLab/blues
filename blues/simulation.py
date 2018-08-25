@@ -379,25 +379,38 @@ class SystemFactory(object):
         -----
         Amber mask syntax: http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
         """
+        N_atoms = system.getNumParticles()
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'): freeze_distance = freeze_distance._value
         selection = "(%s<:%f)&!(%s)" % (freeze_center,freeze_distance,freeze_solvent)
         logger.info('Inverting parmed selection for freezing: %s' % selection)
         site_idx = cls._amber_selection_to_atom_indices_(structure, selection)
         #Invert that selection to freeze everything but the binding site.
-        freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
+        freeze_idx = set(range(N_atoms)) - set(site_idx)
 
         #Check if freeze selection has selected all atoms
-        if len(freeze_idx) == system.getNumParticles():
+        if len(freeze_idx) == N_atoms:
             err = 'All %i atoms appear to be selected for freezing. Check your atom selection.' % len(freeze_idx)
             logger.error(err)
             sys.exit(1)
 
-        #Ensure that the freeze selection is larger than the center selection point
+        freeze_threshold = 0.98
+        if len(freeze_idx)/N_atoms == freeze_threshold:
+            err = '%.0f%% of your system appears to be selected for freezing. Check your atom selection' % (100*freeze_threshold)
+            logger.error(err)
+            sys.exit(1)
+
+        #Ensure that the freeze selection is larger than the center selection of atoms
         center_idx = cls._amber_selection_to_atom_indices_(structure, freeze_center)
         if len(site_idx) <= len(center_idx):
-            err = "%i unfrozen atoms is less than (or equal to) the number of atoms from the selection center '%s' (%i atoms). Check your atom selection." %(len(site_idx), freeze_center, len(center_idx))
+            err = "%i unfrozen atoms is less than (or equal to) the number of atoms used as the selection center '%s' (%i atoms). Check your atom selection." %(len(site_idx), freeze_center, len(center_idx))
             logger.error(err)
+            sys.exit(1)
+
+        freeze_warning = 0.80
+        if len(freeze_idx)/N_atoms == freeze_warning:
+            warn = '%.0f%% of your system appears to be selected for freezing. This may cause unexpected behaviors.' % (100*freeze_warning)
+            logger.warm(warn)
             sys.exit(1)
 
         logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance, freeze_center, system))
@@ -848,24 +861,27 @@ class BLUESSimulation(object):
         replace the box vectors, positions, and velocties in the NCMC context.
 
         """
-        # Retrieve the state data from the MD/NCMC contexts before proposed move
+        # Retrieve MD state before proposed move
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
-        ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
         self._set_stateTable_('md', 'state0', md_state0)
-        self._set_stateTable_('ncmc', 'state0', ncmc_state0)
 
-        # Replace ncmc context data from the md context
+        # Sync MD state to the NCMC context
         self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
 
     def _stepNCMC_(self, nstepsNC, moveStep, move_engine=None):
         """Function that advances the NCMC simulation."""
-
         logger.info('Advancing %i NCMC switching steps...' % (nstepsNC))
+
+        # Retrieve NCMC state before proposed move
+        ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
+        self._set_stateTable_('ncmc', 'state0', ncmc_state0)
+
         #choose a move to be performed according to move probabilities
         #TODO: will have to change to work with multiple alch region
         if not move_engine: move_engine = self._move_engine
         self._ncmc_sim.currentIter = self.currentIter
         move_engine.selectMove()
+
         lastStep = nstepsNC-1
         for step in range(int(nstepsNC)):
             try:
@@ -904,7 +920,7 @@ class BLUESSimulation(object):
         ncmc_state0_PE = self.stateTable['ncmc']['state0']['potential_energy']
 
         # Retreive the NCMC state after the proposed move.
-        ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
+        ncmc_state1 = self.stateTable['ncmc']['state1']
 
         # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
         self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1, velocities=False)
@@ -932,8 +948,9 @@ class BLUESSimulation(object):
             self.accept += 1
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum) )
 
-            # If accept move, sync MD context from NCMC after move.
-            ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
+            # If accept move, sync NCMC state to MD context
+            #ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
+            ncmc_state1 = self.stateTable['ncmc']['state1']
             self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
 
             if write_move:
@@ -944,13 +961,13 @@ class BLUESSimulation(object):
             logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum) )
 
             #If reject move, reset positions in ncmc context to before move
-            md_state0 = self.stateTable['md']['state0']
-            self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, velocities=False)
+            #md_state0 = self.stateTable['md']['state0']
+            #self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, velocities=False)
 
-            # Check potential energy is that of the last MD step
+            # Potential energy should be from last MD step in the previous iteration
             md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
             if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
-                logger.error('Last MD potential energy %s != Current MD potential energy %s. Could not set the MD simulation to the previous state.' %(md_state0['potential_energy'], md_PE))
+                logger.error('Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.' %(md_state0['potential_energy'], md_PE))
                 sys.exit(1)
 
     def _reset_simulations_(self, temperature=None):
@@ -964,14 +981,15 @@ class BLUESSimulation(object):
         self._ncmc_sim.currentStep = 0
         self._ncmc_sim.context._integrator.reset()
 
-        #Reinitialize velocities, preserving detailed balance?
+        #Reinitialize velocities, preserving detailed balance
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
     def _stepMD_(self, nstepsMD):
         """Function that advances the MD simulation."""
         logger.info('Advancing %i MD steps...' % (nstepsMD))
         self._md_sim.currentIter = self.currentIter
-        #Retrieve MD state before proposed move
+
+        # Retrieve MD state before proposed move
         # Helps determine if previous iteration placed ligand poorly
         md_state0 = self.stateTable['md']['state0']
 
@@ -987,12 +1005,12 @@ class BLUESSimulation(object):
                 sys.exit(1)
 
         #If MD finishes okay, update stateTable
-        md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
-        self._set_stateTable_('md', 'state0', md_state0)
+        #md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
+        #self._set_stateTable_('md', 'state0', md_state0)
 
         # Set NCMD state to last state from MD
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
-        self._set_stateTable_('ncmc', 'state0', md_state0)
+        #self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+        #self._set_stateTable_('ncmc', 'state0', md_state0)
 
     def run(self, nIter=None, nstepsNC=None, moveStep=None, nstepsMD=None, temperature=300, write_move=False, **config):
         """Function that runs the BLUES engine to iterate over the actions:
@@ -1011,8 +1029,6 @@ class BLUESSimulation(object):
         if not moveStep: moveStep = self._config['moveStep']
 
         logger.info('Running %i BLUES iterations...' % (nIter))
-        #set inital conditions
-        self._sync_states_md_to_ncmc_()
         for N in range(int(nIter)):
             self.currentIter = N
             logger.info('BLUES Iteration: %s' % N)
