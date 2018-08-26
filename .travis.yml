@@ -87,7 +87,7 @@ install:
   - conda list
 
 script:
-  - pytest --cov=blues blues/tests/ -v -s
+  - pytest -v -s --cov=blues blues/tests/ 
 
 after_success:
   - codecov
