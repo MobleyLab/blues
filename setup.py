@@ -164,10 +164,10 @@ setup(
         + ['images/*']
     },
 
-    install_requires=[
-        'numpy', 'cython', 'scipy', 'pandas',
-        'netCDF4', 'pyyaml', 'pytest',
-    ],
+    #install_requires=[
+    #    'numpy', 'cython', 'scipy', 'pandas',
+    #    'netCDF4', 'pyyaml', 'pytest',
+    #],
     extras_require={
         'docs': [
             'sphinx',  # autodoc was broken in 1.3.1

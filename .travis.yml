@@ -35,7 +35,10 @@ matrix:
 
 
 before_install:
-    # Additional info about the build
+  - export PYTHONUNBUFFERED=true
+  - export PATH=$HOME/miniconda/bin:$PATH
+
+  # Additional info about the build
   - uname -a
   - df -h
   - ulimit -a
