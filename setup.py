@@ -30,24 +30,22 @@ Operating System :: Unix
 """
 
 def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
-    d = {}
-    with open('blues/version.py') as f:
-        data = f.read()
-    lines = data.split('\n')
 
-    keys = ['short_version', 'build_number']
-    for line in lines:
-        for k in keys:
-            if k in line:
-                (key, val) = line.split('=')
-                d[key.strip()] = val.strip().strip("'")
+    #with open('blues/version.py') as f:
+    #    data = f.read()
+    #lines = data.split('\n')
+
+    version = versioneer.get_version()
+    (short_version, build_number) = version.split('+')
+    version_numbers = {'short_version': short_version,
+                       'build_number' : build_number }
 
     with open(filename, 'r') as meta:
         yaml_lines = meta.readlines()
 
     a = open(filename, 'w')
     try:
-        for k, v in d.items():
+        for k, v in version_numbers.items():
             a.write("{{% set {} = '{}' %}}\n".format(k, v))
         #Replace top 2 header lines that contain the package version
         a.writelines(yaml_lines[2:])

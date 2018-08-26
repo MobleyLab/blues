@@ -2,9 +2,9 @@ dist: trusty
 sudo: false
 language: python
 
-branches:
-    only:
-        - master
+# branches:
+#     only:
+#         - master
 
 env:
   global:
@@ -43,8 +43,6 @@ before_install:
     # Install the Python environment
   - source devtools/travis-ci/before_install.sh
   - python -V
-  - export PYTHONUNBUFFERED=true
-  - export PATH=$HOME/miniconda/bin:$PATH
 
   # Unpack encrypted OpenEye license file
   #- if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
@@ -78,8 +76,8 @@ install:
   #- conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
   #- conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
 
-  # Build the recipe
-  - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
+  # Build and install package
+  - conda build --python=$PYTHON_VER devtools/conda-recipe
   - conda install --use-local ${PACKAGENAME}
   - pip install -e .[tests]
 
@@ -90,13 +88,13 @@ script:
 
 after_success:
   - codecov
-  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
-
-deploy:
-  #Deploy to Anaconda.org
-  - provider: script
-    skip_cleanup: true
-    script: ./devtools/conda-recipe/conda_upload.sh
+#   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
+#
+# deploy:
+#   #Deploy to Anaconda.org
+#   - provider: script
+#     skip_cleanup: true
+#     script: ./devtools/conda-recipe/conda_upload.sh
     #on:
       #branch: master
       #tags: true

@@ -1,6 +1,9 @@
+{% set build_number = '192.gbb0770f.dirty' %}
+{% set short_version = '0.2.1' %}
+
 package:
   name: blues
-  version: "0.0.0"
+  version: {{ short_version }}
 
 source:
   path : ../..
@@ -8,8 +11,7 @@ source:
   #git_url: https://github.com/mobleylab/blues.git
 
 build:
-  number: 0
-  # number: {{ build_number }}
+  number: {{ build_number }}
   # noarch: generic
   # preserve_egg_dir: True
   # script: python setup.py install --single-version-externally-managed --record=record.txt
