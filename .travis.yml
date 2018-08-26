@@ -6,13 +6,6 @@ branches:
     only:
         - master
 
-addons:
-  apt:
-    packages:
-        #- python-numpy
-        #- python-scipy
-      - libfftw3-dev
-
 env:
   global:
     - ORGNAME="omnia"
@@ -25,180 +18,79 @@ env:
 
 matrix:
   include:
-    - sudo: required
-      dist: trusty
+    # Extra includes for OSX since python language is not available by default on OSX
+    - os: osx
+      language: generic
+      env: PYTHON_VER=3.5
+    - os: osx
+      language: generic
+      env: PYTHON_VER=3.6
+
+    - os: linux
       python: 3.5
-      env: ==CPU_OPENCL==
-           OPENCL=true
-           CUDA=false
-           CC=$CCACHE/gcc
-           CXX=$CCACHE/g++
-           CMAKE_FLAGS="
-           -OPENMM_BUILD_OPENCL_LIB=ON
-           -DOPENMM_BUILD_OPENCL_TESTS=ON
-           -DOPENMM_BUILD_STATIC_LIB=OFF
-           -DOPENMM_BUILD_CPU_LIB=OFF
-           -DOPENMM_BUILD_REFERENCE_TESTS=OFF
-           -DOPENMM_BUILD_SERIALIZATION_TESTS=OFF
-           -DOPENMM_BUILD_PME_PLUGIN=OFF
-           -DOPENMM_BUILD_AMOEBA_PLUGIN=OFF
-           -DOPENMM_BUILD_PYTHON_WRAPPERS=OFF
-           -DOPENMM_BUILD_C_AND_FORTRAN_WRAPPERS=OFF
-           -DOPENMM_BUILD_EXAMPLES=OFF
-           -DOPENCL_INCLUDE_DIR=$HOME/AMDAPPSDK/include
-           -DOPENCL_LIBRARY=$HOME/AMDAPPSDK/lib/x86_64/libOpenCL.so"
-      addons: {apt: {packages: []}}
-
-    # - sudo: required
-    #   dist: trusty
-    #   env: ==CUDA_COMPILE==
-    #        CUDA=true
-    #        OPENCL=false
-    #        CUDA_VERSION="7.5-18"
-    #        CC=$CCACHE/gcc
-    #        CXX=$CCACHE/g++
-    #        CMAKE_FLAGS="
-    #          -DOPENMM_BUILD_CUDA_TESTS=OFF
-    #          -DOPENMM_BUILD_OPENCL_TESTS=OFF
-    #          -DOPENMM_BUILD_PYTHON_WRAPPERS=OFF
-    #          -DOPENMM_BUILD_REFERENCE_TESTS=OFF
-    #          -DOPENMM_BUILD_SERIALIZATION_TESTS=OFF
-    #          -DOPENMM_BUILD_C_AND_FORTRAN_WRAPPERS=OFF
-    #          -DOPENMM_BUILD_EXAMPLES=OFF
-    #          -DOPENCL_LIBRARY=/usr/local/cuda-7.5/lib64/libOpenCL.so
-    #          -DCUDA_CUDART_LIBRARY=/usr/local/cuda-7.5/lib64/libcudart.so
-    #          -DCUDA_NVCC_EXECUTABLE=/usr/local/cuda-7.5/bin/nvcc
-    #          -DCUDA_SDK_ROOT_DIR=/usr/local/cuda-7.5/
-    #          -DCUDA_TOOLKIT_INCLUDE=/usr/local/cuda-7.5/include
-    #          -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-7.5/"
-    #   addons: {apt: {packages: []}}
-
-    - sudo: false
-      dist: trusty
-      python: 3.5
-      env: ==PYTHON_35==
-           OPENCL=false
-           CUDA=false
-           CC=$CCACHE/gcc
-           CXX=$CCACHE/g++
-           CMAKE_FLAGS=""
-
-    - sudo: false
-      dist: trusty
+      env: PYTHON_VER=3.5
+    - os: linux
       python: 3.6
-      env: ==PYTHON_36==
-           OPENCL=false
-           CUDA=false
-           CC=$CCACHE/gcc
-           CXX=$CCACHE/g++
-           CMAKE_FLAGS=""
+      env: PYTHON_VER=3.6
 
 
 before_install:
-  - START_TIME=$(date +%s)
-  - wget http://anaconda.org/omnia/ccache/3.2.4/download/${TRAVIS_OS_NAME}-64/ccache-3.2.4-0.tar.bz2
-  - mkdir -p $HOME/ccache && tar xf ccache-3.2.4-0.tar.bz2 -C $HOME/ccache
-  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      CMAKE_URL="http://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.tar.gz";
-      mkdir $HOME/cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C $HOME/cmake;
-      export PATH=${HOME}/cmake/bin:${PATH};
-    fi
-  - if [[ "$OPENCL" == "true" ]]; then
-      wget http://s3.amazonaws.com/omnia-ci/AMD-APP-SDKInstaller-v3.0.130.135-GA-linux64.tar.bz2;
-      tar -xjf AMD-APP-SDK*.tar.bz2;
-      AMDAPPSDK=${HOME}/AMDAPPSDK;
-      export OPENCL_VENDOR_PATH=${AMDAPPSDK}/etc/OpenCL/vendors;
-      mkdir -p ${OPENCL_VENDOR_PATH};
-      sh AMD-APP-SDK*.sh --tar -xf -C ${AMDAPPSDK};
-      echo libamdocl64.so > ${OPENCL_VENDOR_PATH}/amdocl64.icd;
-      export LD_LIBRARY_PATH=${AMDAPPSDK}/lib/x86_64:${LD_LIBRARY_PATH};
-      chmod +x ${AMDAPPSDK}/bin/x86_64/clinfo;
-      ${AMDAPPSDK}/bin/x86_64/clinfo;
-      sudo apt-get install -y libgl1-mesa-dev;
-    fi
-  - bash -x devtools/travis-ci/install.sh
+    # Additional info about the build
+  - uname -a
+  - df -h
+  - ulimit -a
+
+    # Install the Python environment
+  - source devtools/travis-ci/before_install.sh
+  - python -V
   - export PYTHONUNBUFFERED=true
   - export PATH=$HOME/miniconda/bin:$PATH
+
   # Unpack encrypted OpenEye license file
   #- if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
 #  - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
+
   - conda update --yes -q conda
   # Turn on always yes
   - conda config --set always_yes true --set changeps1 no
   - conda config --set anaconda_upload no
+
   # Add org channel
   - conda config --add channels omnia
+
   # Add conda-forge channel to top priority
   - conda config --add channels conda-forge
+
   #DEBUG
   - conda info -a
 
-  # # Install swig for Python wrappers. However, testing CUDA and OpenCL, we
-  # # skip the Python wrapper for speed. We're not using anaconda python,
-  # # but this is a fast way to get an apparently functional precompiled
-  # # build of swig that's more modern than what's in apt.
-  # - if [[ "$OPENCL" == "false" && "$CUDA" == "false" && "$TRAVIS_OS_NAME" == "linux" ]]; then
-  #     wget http://anaconda.org/omnia/swig/3.0.7/download/linux-64/swig-3.0.7-0.tar.bz2;
-  #     mkdir $HOME/swig;
-  #     tar -xjvf swig-3.0.7-0.tar.bz2 -C $HOME/swig;
-  #     export PATH=$HOME/swig/bin:$PATH;
-  #     export SWIG_LIB=$HOME/swig/share/swig/3.0.7;
-  #   fi
-  # - if [[ "$CUDA" == "true" ]]; then
-  #     wget "http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_${CUDA_VERSION}_amd64.deb";
-  #     sudo dpkg -i cuda-repo-ubuntu1404_${CUDA_VERSION}_amd64.deb;
-  #     sudo apt-get update -qq;
-  #     export CUDA_APT=${CUDA_VERSION%-*};
-  #     export CUDA_APT=${CUDA_APT/./-};
-  #     sudo apt-get install -y cuda-drivers cuda-core-${CUDA_APT} cuda-cudart-dev-${CUDA_APT} cuda-cufft-dev-${CUDA_APT};
-  #     sudo apt-get clean;
-  #     export CUDA_HOME=/usr/local/cuda-${CUDA_VERSION%%-*};
-  #     export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH};
-  #     export PATH=${CUDA_HOME}/bin:${PATH};
-  #     sudo apt-get install -y libgl1-mesa-dev;
-  #   fi
-
-#### ORIGINAL ####
-# before_install:
-#     - bash -x devtools/travis-ci/install.sh
-#     - export PYTHONUNBUFFERED=true
-#     - export PATH=$HOME/miniconda/bin:$PATH
-#     # Unpack encrypted OpenEye license file
-#     #- if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
-#   #  - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
-#     - conda update --yes -q conda
-#     # Turn on always yes
-#     - conda config --set always_yes true --set changeps1 no
-#     - conda config --set anaconda_upload no
-#     # Add org channel
-#     - conda config --add channels omnia
-#     # Add conda-forge channel to top priority
-#     - conda config --add channels conda-forge
-#     #DEBUG
-#     - conda info -a
-
 install:
-  - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build anaconda-client
+  # Create test environment for package
+  - conda create -n test python=$PYTHON_VER pip pytest pytest-cov
+  - conda activate test
+
+    # Install pip only modules
+  - pip install codecov
+
   # Install OpenEye dependencies
   #  Use beta version for partial bond orders
   #- pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
   #- conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
   #- conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
-  #- conda install pyopencl pocl
+
   # Build the recipe
   - conda build --python=$TRAVIS_PYTHON_VERSION devtools/conda-recipe
   - conda install --use-local ${PACKAGENAME}
   - pip install -e .[tests]
-  - pip install codecov
+
   - conda list
 
 script:
-  - if [[ "$OPENCL" == "true" ]]; then export OMM_PLATFORM="OpenCL"; else export OMM_PLATFORM="CPU"; fi
-  - pytest --cov=blues blues/tests/ --cov-config .coveragerc -v -s 
+  - pytest --cov=blues blues/tests/ -v -s
+
 after_success:
   - codecov
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
-
 
 deploy:
   #Deploy to Anaconda.org
