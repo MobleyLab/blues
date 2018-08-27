@@ -3,25 +3,30 @@ from blues.simulation import *
 import json
 from blues.settings import *
 
-# Parse a YAML configuration, return as Dict
-cfg = Settings('rotmove_cuda.yaml').asDict()
-structure = cfg['Structure']
 
-#Select move type
-ligand = RandomLigandRotationMove(structure, 'LIG')
-#Iniitialize object that selects movestep
-ligand_mover = MoveEngine(ligand)
+def rotmove_cuda(yaml_file):
+    # Parse a YAML configuration, return as Dict
+    cfg = Settings('rotmove_cuda.yaml').asDict()
+    structure = cfg['Structure']
 
-#Generate the openmm.Systems outside SimulationFactory to allow modifications
-systems = SystemFactory(structure, ligand.atom_indices, cfg['system'])
+    #Select move type
+    ligand = RandomLigandRotationMove(structure, 'LIG')
+    #Iniitialize object that selects movestep
+    ligand_mover = MoveEngine(ligand)
 
-#Freeze atoms in the alchemical system to speed up alchemical calculation
-systems.alch = systems.freeze_radius(structure, systems.alch, **cfg['freeze'])
+    #Generate the openmm.Systems outside SimulationFactory to allow modifications
+    systems = SystemFactory(structure, ligand.atom_indices, cfg['system'])
 
-#Generate the OpenMM Simulations
-simulations = SimulationFactory(systems, ligand_mover, cfg['simulation'],
-                                cfg['md_reporters'], cfg['ncmc_reporters'])
+    #Freeze atoms in the alchemical system to speed up alchemical calculation
+    systems.alch = systems.freeze_radius(structure, systems.alch, **cfg['freeze'])
 
-# Run BLUES Simulation
-blues = BLUESSimulation(simulations, cfg['simulation'])
-blues.run()
+    #Generate the OpenMM Simulations
+    simulations = SimulationFactory(systems, ligand_mover, cfg['simulation'],
+                                    cfg['md_reporters'], cfg['ncmc_reporters'])
+
+    # Run BLUES Simulation
+    blues = BLUESSimulation(simulations, cfg['simulation'])
+    blues.run()
+
+if __name__ == "__main__":
+    rotmove_cuda('rotmove_cuda.yaml')

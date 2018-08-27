@@ -5,7 +5,6 @@ import numpy as np
 from mdtraj.utils import in_units_of, ensure_type
 import mdtraj.version
 import simtk.openmm.version
-import blues.version
 import logging
 import parmed
 import netCDF4 as nc
@@ -438,7 +437,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             mdtraj.version.full_version)
         self._handle.root._v_attrs.method = str('BLUES')
         self._handle.root._v_attrs.methodVersion = str(
-            blues.version.full_version)
+            blues.__version__)
         self._handle.root._v_attrs.reference = str(
             'DOI: 10.1021/acs.jpcb.7b11820')
 
@@ -561,7 +560,7 @@ class NetCDF4Traj(NetCDFTraj):
         File name for the trajectory file
     mode : str, default='r'
         The mode to open the file in.
-        
+
     """
 
     def __init__(self, fname, mode='r'):

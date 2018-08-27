@@ -152,22 +152,15 @@ setup(
     python_requires= ">=3.5",
     url='https://github.com/MobleyLab/blues',
     platforms=['Linux-64', 'Mac OSX-64', 'Unix-64'],
-
     classifiers=CLASSIFIERS.splitlines(),
+    packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
+    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*'] + ['examples/*.yml'] },
     package_dir={'blues': 'blues'},
-
-    packages=['blues', "blues.tests", "blues.tests.data"] +
-    ['blues.{}'.format(package) for package in find_packages('blues')],
-    package_data={
-        'blues':
-        find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb']
-        + ['images/*']
-    },
-
     #install_requires=[
     #    'numpy', 'cython', 'scipy', 'pandas',
     #    'netCDF4', 'pyyaml', 'pytest',
     #],
+
     extras_require={
         'docs': [
             'sphinx',  # autodoc was broken in 1.3.1

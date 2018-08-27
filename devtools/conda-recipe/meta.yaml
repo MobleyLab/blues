@@ -1,5 +1,5 @@
+{% set build_number = '7.g53b29ae.dirty' %}
 {% set short_version = '0.2.2' %}
-{% set build_number = '6.g22dc9d2.dirty' %}
 package:
   name: blues
   version: {{ short_version }}

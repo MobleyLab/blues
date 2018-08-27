@@ -2,7 +2,7 @@ import os, sys, logging
 from math import ceil, floor
 import numpy as np
 import parmed
-import yaml, json
+import yaml, json, sys
 from simtk import unit
 from simtk.openmm import app
 from blues import reporters, utils
@@ -20,10 +20,7 @@ class Settings(object):
 
     def __init__(self, config):
         # Parse YAML or YAML docstr into dict
-        if config.endswith('.yaml'):
-            config = Settings.load_yaml(config)
-        elif type(config) is str:
-            config = yaml.safe_load(config)
+        config = Settings.load_yaml(config)
 
         # Parse the config into dict
         if type(config) is dict:

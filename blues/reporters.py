@@ -3,15 +3,14 @@ from simtk.openmm import app
 import simtk.unit as unit
 import numpy as np
 from mdtraj.utils import unitcell
-import blues.version
+import blues._version
 import logging
 import sys, time
 import parmed
-from blues.formats import *
-import blues.reporters
 from parmed import unit as u
 from parmed.geometry import box_vectors_to_lengths_and_angles
-
+from blues.formats import *
+import blues.reporters
 
 def _check_mode(m, modes):
     """
