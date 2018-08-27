@@ -34,20 +34,23 @@ class Settings(object):
         returned as a dict.
         """
         # Parse input parameters from YAML
-        with open(yaml_config, 'r') as stream:
-            try:
-                config = yaml.safe_load(stream)
-            except FileNotFoundError:
-                raise FileNotFoundError
-            except yaml.YAMLError as e:
-                yaml_err = 'YAML parsing error in file: {}'.format(yaml_config)
-                if hasattr(e, 'problem_mark'):
-                    mark = e.problem_mark
-                    print(yaml_err + '\nError on Line:{} Column:{}' \
-                          .format(mark.line + 1, mark.column + 1))
-                    raise e
+        try:
+            if type(yaml_config) is str:
+                config = yaml.safe_load(yaml_config)
             else:
-                return config
+                with open(yaml_config, 'r') as stream:
+                    config = yaml.safe_load(stream)
+        except FileNotFoundError:
+            raise FileNotFoundError
+        except yaml.YAMLError as e:
+            yaml_err = 'YAML parsing error in file: {}'.format(yaml_config)
+            if hasattr(e, 'problem_mark'):
+                mark = e.problem_mark
+                print(yaml_err + '\nError on Line:{} Column:{}' \
+                      .format(mark.line + 1, mark.column + 1))
+                raise e
+        else:
+            return config
 
     @staticmethod
     def set_Structure(config):
