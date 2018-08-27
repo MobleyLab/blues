@@ -66,6 +66,7 @@ before_install:
   - conda info -a
 
 install:
+  - sudo apt-get update
   # Create test environment for package
   - conda create -n test python=$PYTHON_VER pip pytest pytest-cov
   - conda activate test
@@ -81,7 +82,7 @@ install:
 
   # Build and install package
   - conda build --python=$PYTHON_VER devtools/conda-recipe
-  - conda install --use-local ${PACKAGENAME}
+  - conda install --use-local -q ${PACKAGENAME}
   - pip install -e .[tests]
 
   - conda list

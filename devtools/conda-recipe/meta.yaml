@@ -1,5 +1,5 @@
 {% set short_version = '0.2.2' %}
-
+{% set build_number = '6.g22dc9d2.dirty' %}
 package:
   name: blues
   version: {{ short_version }}
@@ -22,12 +22,12 @@ requirements:
     - python
     - pytest
     - setuptools
-    #- openmmtools <=0.15.0
-    #- mdtraj <=1.9.1
-    #- openmm <=7.2.2
-    #- parmed <=3.0.1
-    #- netcdf4 <=1.3.1
-    #- pyyaml
+    - openmmtools <=0.15.0
+    - mdtraj <=1.9.1
+    - openmm <=7.2.2
+    - parmed <=3.0.1
+    - netcdf4 <=1.3.1
+    - pyyaml
     - pip
 
   run:
@@ -40,6 +40,7 @@ requirements:
     - parmed <=3.0.1
     - netcdf4 <=1.3.1
     - pyyaml
+    - pip
 
 test:
   requires:
