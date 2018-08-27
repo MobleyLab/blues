@@ -35,8 +35,8 @@ matrix:
 
 
 before_install:
-  - export PYTHONUNBUFFERED=true
-  - export PATH=$HOME/miniconda/bin:$PATH
+  #- export PYTHONUNBUFFERED=true
+  #- export PATH=$HOME/miniconda/bin:$PATH
 
   # Additional info about the build
   - uname -a
@@ -87,7 +87,7 @@ install:
   - conda list
 
 script:
-  - pytest -v -s --cov=blues blues/tests/ 
+  - pytest -v -s --cov=blues blues/tests/
 
 after_success:
   - codecov
