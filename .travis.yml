@@ -19,12 +19,12 @@ env:
 matrix:
   include:
     # Extra includes for OSX since python language is not available by default on OSX
-    - os: osx
-      language: generic
-      env: PYTHON_VER=3.5
-    - os: osx
-      language: generic
-      env: PYTHON_VER=3.6
+    # - os: osx
+    #   language: generic
+    #   env: PYTHON_VER=3.5
+    # - os: osx
+    #   language: generic
+    #   env: PYTHON_VER=3.6
 
     - os: linux
       python: 3.5
