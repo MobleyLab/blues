@@ -106,6 +106,9 @@ venv.bak/
 # Mac temp files
 *.DS_Store
 
+# Backup files
+*.bak
+
 # Simulation files
 *.nc
 *.ene
