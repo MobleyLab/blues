@@ -191,4 +191,4 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True)
-check_dependencies()
+#check_dependencies()

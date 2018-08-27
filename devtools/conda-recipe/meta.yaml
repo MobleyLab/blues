@@ -1,5 +1,5 @@
-{% set build_number = '192.gbb0770f.dirty' %}
-{% set short_version = '0.2.1' %}
+{% set short_version = '0.2.2' %}
+{% set build_number = '1.gda8f3a8.dirty' %}
 
 package:
   name: blues
@@ -10,7 +10,7 @@ source:
 
 build:
   number: {{ build_number }}
-  script: conda activate test; python setup.py install --single-version-externally-managed --record=record.txt
+  #script: conda activate test; python setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
   host:
