@@ -1,5 +1,4 @@
 {% set short_version = '0.2.2' %}
-{% set build_number = '1.gda8f3a8.dirty' %}
 
 package:
   name: blues
@@ -9,7 +8,7 @@ source:
   path : ../..
 
 build:
-  number: {{ build_number }}
+  number: 0
   #script: conda activate test; python setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
