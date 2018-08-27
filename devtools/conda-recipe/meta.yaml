@@ -18,9 +18,9 @@ requirements:
     - setuptools
 
   build:
-    - python
+    #- python
     - pytest
-    - setuptools
+    #- setuptools
     - openmmtools <=0.15.0
     - mdtraj <=1.9.1
     - openmm <=7.2.2
