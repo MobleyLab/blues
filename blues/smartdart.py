@@ -189,19 +189,14 @@ class SmartDarting(SimNCMC):
         total_mass = np.sum(mass_list)
         temp_list = np.zeros((len(residueList), 1))
         for index in range(len(residueList)):
-            mass_list[index] = (np.sum(mass_list[index])).value_in_unit(
-                unit.daltons)
+            mass_list[index] = (np.sum(mass_list[index])).value_in_unit(unit.daltons)
         mass_list = mass_list * unit.daltons
         if set_self == True:
             self.total_mass = total_mass
             self.mass_list = mass_list
         return total_mass, mass_list
 
-    def dartsFromPDB(self,
-                     pdb_list,
-                     forcefield,
-                     residueList=None,
-                     basis_particles=None):
+    def dartsFromPDB(self, pdb_list, forcefield, residueList=None, basis_particles=None):
         """
         Used to setup darts from a pdb, using the basis_particles to define
         a new coordinate system. ResidueList corresponds to indicies of
@@ -235,31 +230,22 @@ class SmartDarting(SimNCMC):
 
             force = ForceField(forcefield)
             system = force.createSystem(pdb.topology)
-            integrator = LangevinIntegrator(300 * kelvin, 1 / picosecond,
-                                            0.002 * picoseconds)
+            integrator = LangevinIntegrator(300 * kelvin, 1 / picosecond, 0.002 * picoseconds)
             sim = Simulation(pdb.topology, system, integrator)
             sim.context.setPositions(pdb.positions)
-            context_pos = sim.context.getState(getPositions=True).getPositions(
-                asNumpy=True)
-            total_mass, mass_list = self.get_particle_masses(
-                system, set_self=False, residueList=residueList)
+            context_pos = sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+            total_mass, mass_list = self.get_particle_masses(system, set_self=False, residueList=residueList)
             com = self.calculate_com(
-                pos_state=context_pos,
-                total_mass=total_mass,
-                mass_list=mass_list,
-                residueList=residueList)
+                pos_state=context_pos, total_mass=total_mass, mass_list=mass_list, residueList=residueList)
             #get particle positions
             particle_pos = []
             for particle in basis_particles:
-                print('particle %i position' % (particle),
-                      context_pos[particle])
+                print('particle %i position' % (particle), context_pos[particle])
                 particle_pos.append(context_pos[particle])
-            new_coord = findNewCoord(particle_pos[0], particle_pos[1],
-                                     particle_pos[2], com)
+            new_coord = findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], com)
             #keep this in for now to check code is correct
             #old_coord should be equal to com
-            old_coord = findOldCoord(particle_pos[0], particle_pos[1],
-                                     particle_pos[2], new_coord)
+            old_coord = findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
             n_dartboard.append(new_coord)
             dartboard.append(old_coord)
         print('n_dartboard from pdb', n_dartboard)
@@ -268,12 +254,7 @@ class SmartDarting(SimNCMC):
         self.n_dartboard = n_dartboard
         self.dartboard = dartboard
 
-    def dartsFromMDTraj(self,
-                        system,
-                        file_list,
-                        topology=None,
-                        residueList=None,
-                        basis_particles=None):
+    def dartsFromMDTraj(self, system, file_list, topology=None, residueList=None, basis_particles=None):
         """
         Used to setup darts from a generic coordinate file, through MDtraj using the basis_particles to define
         new basis vectors, which allows dart centers to remain consistant through a simulation.
@@ -315,25 +296,18 @@ class SmartDarting(SimNCMC):
             print('context_pos type', type(context_pos._value))
             print('temp_md', temp_md)
             context_pos = np.asarray(context_pos._value) * unit.nanometers
-            total_mass, mass_list = self.get_particle_masses(
-                system, set_self=False, residueList=residueList)
+            total_mass, mass_list = self.get_particle_masses(system, set_self=False, residueList=residueList)
             com = self.calculate_com(
-                pos_state=context_pos,
-                total_mass=total_mass,
-                mass_list=mass_list,
-                residueList=residueList)
+                pos_state=context_pos, total_mass=total_mass, mass_list=mass_list, residueList=residueList)
             #get particle positions
             particle_pos = []
             for particle in basis_particles:
-                print('particle %i position' % (particle),
-                      context_pos[particle])
+                print('particle %i position' % (particle), context_pos[particle])
                 particle_pos.append(context_pos[particle])
-            new_coord = findNewCoord(particle_pos[0], particle_pos[1],
-                                     particle_pos[2], com)
+            new_coord = findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], com)
             #keep this in for now to check code is correct
             #old_coord should be equal to com
-            old_coord = findOldCoord(particle_pos[0], particle_pos[1],
-                                     particle_pos[2], new_coord)
+            old_coord = findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
             n_dartboard.append(new_coord)
             dartboard.append(old_coord)
         print('n_dartboard from pdb', n_dartboard)
@@ -342,11 +316,7 @@ class SmartDarting(SimNCMC):
         self.n_dartboard = n_dartboard
         self.dartboard = dartboard
 
-    def dartsFromAmber(self,
-                       inpcrd_list,
-                       prmtop,
-                       residueList=None,
-                       basis_particles=None):
+    def dartsFromAmber(self, inpcrd_list, prmtop, residueList=None, basis_particles=None):
         """
         Used to setup darts from an amber coordinate file, through MDtraj using the basis_particles to define
         new basis vectors, which allows dart centers to remain consistant through a simulation.
@@ -380,35 +350,23 @@ class SmartDarting(SimNCMC):
         prmtop = AmberPrmtopFile(prmtop)
         for inpcrd_file in inpcrd_list:
             amber = AmberInpcrdFile(inpcrd_file)
-            system = prmtop.createSystem(
-                nonbondedMethod=PME,
-                nonbondedCutoff=1 * nanometer,
-                constraints=HBonds)
-            integrator = LangevinIntegrator(300 * kelvin, 1 / picosecond,
-                                            0.002 * picoseconds)
+            system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1 * nanometer, constraints=HBonds)
+            integrator = LangevinIntegrator(300 * kelvin, 1 / picosecond, 0.002 * picoseconds)
             sim = Simulation(prmtop.topology, system, integrator)
             sim.context.setPositions(pdb.positions)
-            context_pos = sim.context.getState(getPositions=True).getPositions(
-                asNumpy=True)
-            total_mass, mass_list = self.get_particle_masses(
-                system, set_self=False, residueList=residueList)
+            context_pos = sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+            total_mass, mass_list = self.get_particle_masses(system, set_self=False, residueList=residueList)
             com = self.calculate_com(
-                pos_state=context_pos,
-                total_mass=total_mass,
-                mass_list=mass_list,
-                residueList=residueList)
+                pos_state=context_pos, total_mass=total_mass, mass_list=mass_list, residueList=residueList)
             #get particle positions
             particle_pos = []
             for particle in basis_particles:
-                print('particle %i position' % (particle),
-                      context_pos[particle])
+                print('particle %i position' % (particle), context_pos[particle])
                 particle_pos.append(context_pos[particle])
-            new_coord = findNewCoord(particle_pos[0], particle_pos[1],
-                                     particle_pos[2], com)
+            new_coord = findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], com)
             #keep this in for now to check code is correct
             #old_coord should be equal to com
-            old_coord = findOldCoord(particle_pos[0], particle_pos[1],
-                                     particle_pos[2], new_coord)
+            old_coord = findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
             n_dartboard.append(new_coord)
             dartboard.append(old_coord)
         print('n_dartboard from pdb', n_dartboard)
@@ -452,8 +410,7 @@ class SmartDarting(SimNCMC):
         assert len(particle_pairs) == len(particle_weights)
 
         dart_list = []
-        state_info = self.nc_context.getState(True, True, False, True, True,
-                                              False)
+        state_info = self.nc_context.getState(True, True, False, True, True, False)
         temp_pos = state_info.getPositions(asNumpy=True)
         #find particles positions and multiply by weights
         for i, ppair in enumerate(particle_pairs):
@@ -462,8 +419,7 @@ class SmartDarting(SimNCMC):
             temp_wavg = 0
             for j, particle in enumerate(ppair):
                 print('temp_pos', particle, temp_pos[particle])
-                temp_array += (
-                    temp_pos[particle] * float(particle_weights[i][j]))
+                temp_array += (temp_pos[particle] * float(particle_weights[i][j]))
                 temp_wavg += float(particle_weights[i][j])
                 print(temp_array)
             #divide by total number of particles in a list and append
@@ -496,8 +452,7 @@ class SmartDarting(SimNCMC):
         #make sure there's an equal number of particle pair lists
         #and particle weight lists
         dart_list = []
-        state_info = self.nc_context.getState(True, True, False, True, True,
-                                              False)
+        state_info = self.nc_context.getState(True, True, False, True, True, False)
         temp_pos = state_info.getPositions(asNumpy=True)
         part1 = temp_pos[basis_particles[0]]
         part2 = temp_pos[basis_particles[1]]
@@ -535,8 +490,7 @@ class SmartDarting(SimNCMC):
             virtual_particles = self.virtual_particles
 
         dart_list = []
-        state_info = self.nc_context.getState(True, True, False, True, True,
-                                              False)
+        state_info = self.nc_context.getState(True, True, False, True, True, False)
         temp_pos = state_info.getPositions(asNumpy=True)
         #find virtual particles positions and add to dartboard
         for particle in virtual_particles:
@@ -613,8 +567,7 @@ class SmartDarting(SimNCMC):
             for residue in residueList:
                 newDartPos[residue] = newDartPos[residue] + vecMove
             context.setPositions(newDartPos)
-            newDartInfo = context.getState(True, True, False, True, True,
-                                           False)
+            newDartInfo = context.getState(True, True, False, True, True, False)
             newDartPE = newDartInfo.getPotentialEnergy()
             logaccept = -1.0 * (newDartPE - oldDartPE) * self.beta
             randnum = math.log(np.random.random())
@@ -626,8 +579,7 @@ class SmartDarting(SimNCMC):
             else:
                 print('rejected')
                 context.setPositions(oldDartPos)
-            dartInfo = context.getState(True, False, False, False, False,
-                                        False)
+            dartInfo = context.getState(True, False, False, False, False, False)
 
             return newDartInfo.getPositions(asNumpy=True)
 
@@ -660,8 +612,7 @@ class SmartDarting(SimNCMC):
             print('worked')
             print(newDartPos)
             context.setPositions(newDartPos)
-            newDartInfo = context.getState(True, True, False, True, True,
-                                           False)
+            newDartInfo = context.getState(True, True, False, True, True, False)
             #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
@@ -699,8 +650,7 @@ class SmartDarting(SimNCMC):
             print('old', oldDartPos)
             print('new', newDartPos)
             context.setPositions(newDartPos)
-            newDartInfo = context.getState(True, True, False, True, True,
-                                           False)
+            newDartInfo = context.getState(True, True, False, True, True, False)
             #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
@@ -737,8 +687,7 @@ class SmartDarting(SimNCMC):
             print('worked')
             print(newDartPos)
             context.setPositions(newDartPos)
-            newDartInfo = self.nc_context.getState(True, True, False, True,
-                                                   True, False)
+            newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
             #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)

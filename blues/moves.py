@@ -24,19 +24,13 @@ import os
 try:
     import openeye.oechem as oechem
     if not oechem.OEChemIsLicensed():
-        print(
-            'ImportError: Need License for OEChem! SideChainMove class will be unavailable.'
-        )
+        print('ImportError: Need License for OEChem! SideChainMove class will be unavailable.')
     try:
         import oeommtools.utils as oeommtools
     except ImportError:
-        print(
-            'ImportError: Could not import oeommtools. SideChainMove class will be unavailable.'
-        )
+        print('ImportError: Could not import oeommtools. SideChainMove class will be unavailable.')
 except ImportError:
-    print(
-        'ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.'
-    )
+    print('ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.')
 
 
 class Move(object):
@@ -247,9 +241,7 @@ class RandomLigandRotationMove(Move):
         totalmass: float * simtk.unit.dalton
             The sum of the mass found in masses
         """
-        masses = unit.Quantity(
-            numpy.zeros([int(topology.getNumAtoms()), 1], numpy.float32),
-            unit.dalton)
+        masses = unit.Quantity(numpy.zeros([int(topology.getNumAtoms()), 1], numpy.float32), unit.dalton)
         for idx, atom in enumerate(topology.atoms()):
             masses[idx] = atom.element._mass
         totalmass = masses.sum()
@@ -271,8 +263,7 @@ class RandomLigandRotationMove(Move):
             1x3 numpy.array of the center of mass of the given positions
         """
         coordinates = numpy.asarray(positions._value, numpy.float32)
-        center_of_mass = parmed.geometry.center_of_mass(
-            coordinates, masses) * positions.unit
+        center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
 
     def _calculateProperties(self):
@@ -295,28 +286,23 @@ class RandomLigandRotationMove(Move):
         context: simtk.openmm.Context object
             The same input context, but whose positions were changed by this function.
         """
-        positions = context.getState(getPositions=True).getPositions(
-            asNumpy=True)
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
 
         self.positions = positions[self.atom_indices]
         self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
         reduced_pos = self.positions - self.center_of_mass
 
         # Define random rotational move on the ligand
-        rand_quat = mdtraj.utils.uniform_quaternion(
-            size=None, random_state=self.random_state)
-        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(
-            rand_quat)
+        rand_quat = mdtraj.utils.uniform_quaternion(size=None, random_state=self.random_state)
+        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
-        rot_move = numpy.dot(reduced_pos, rand_rotation_matrix
-                             ) * positions.unit + self.center_of_mass
+        rot_move = numpy.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
 
         # Update ligand positions in nc_sim
         for index, atomidx in enumerate(self.atom_indices):
             positions[atomidx] = rot_move[index]
         context.setPositions(positions)
-        positions = context.getState(getPositions=True).getPositions(
-            asNumpy=True)
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         self.positions = positions[self.atom_indices]
         return context
 
@@ -389,8 +375,7 @@ class MoveEngine(object):
         """Chooses the move which will be selected for a given NCMC
         iteration
         """
-        rand_num = numpy.random.choice(
-            len(self.probabilities), p=self.probabilities)
+        rand_num = numpy.random.choice(len(self.probabilities), p=self.probabilities)
         self.selected_move = self.moves[rand_num]
         self.move_name = self.selected_move.__class__.__name__
 
@@ -477,17 +462,11 @@ class SideChainMove(Move):
 
     """
 
-    def __init__(self,
-                 structure,
-                 residue_list,
-                 verbose=False,
-                 write_move=False):
+    def __init__(self, structure, residue_list, verbose=False, write_move=False):
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
-        self.all_atoms = [
-            atom.index for atom in self.structure.topology.atoms()
-        ]
+        self.all_atoms = [atom.index for atom in self.structure.topology.atoms()]
         self.rot_atoms, self.rot_bonds, self.qry_atoms = self.getRotBondAtoms()
         self.atom_indices = self.rot_atoms
         self.verbose = verbose
@@ -566,8 +545,7 @@ class SideChainMove(Move):
                 # if heavy, find what residue it is associated with
                 myres = oechem.OEAtomGetResidue(atom)
                 # check if the residue number is amongst the list of residues
-                if myres.GetResidueNumber(
-                ) in residue_list and myres.GetName() != "HOH":
+                if myres.GetResidueNumber() in residue_list and myres.GetName() != "HOH":
                     # store the atom location in a query atom dict keyed by its atom index
                     qry_atoms.update({atom: atom.GetIdx()})
                     #print('Found atom %s in residue number %i %s'%(atom,myres.GetResidueNumber(),myres.GetName()))
@@ -608,8 +586,7 @@ class SideChainMove(Move):
                 begatom = bond.GetBgn()
                 endatom = bond.GetEnd()
                 # if begnnning and ending atoms are not Hydrogen, and the bond is rotatable
-                if endatom.GetAtomicNum() > 1 and begatom.GetAtomicNum(
-                ) > 1 and bond.IsRotor():
+                if endatom.GetAtomicNum() > 1 and begatom.GetAtomicNum() > 1 and bond.IsRotor():
                     # if the bond has not been added to dictionary already..
                     # (as would happen if one of the atom pairs was previously looped over)
                     if bond not in rot_bonds:
@@ -669,8 +646,7 @@ class SideChainMove(Move):
             for atom in query_list:
                 checklist = atom.GetAtoms()
                 for candidate in checklist:
-                    if candidate not in query_list and candidate.GetIdx(
-                    ) not in backbone and candidate != ax2:
+                    if candidate not in query_list and candidate.GetIdx() not in backbone and candidate != ax2:
                         query_list.append(candidate)
                         if candidate.GetAtomicNum() > 1:
                             can_nbors = candidate.GetAtoms()
@@ -712,8 +688,7 @@ class SideChainMove(Move):
 
         # Generate dictionary containing locations and indicies of heavy residue atoms
         #print('Dictionary of all query atoms generated from residue list\n')
-        qry_atoms, backbone_atoms = self.getTargetAtoms(
-            self.molecule, backbone_atoms, self.residue_list)
+        qry_atoms, backbone_atoms = self.getTargetAtoms(self.molecule, backbone_atoms, self.residue_list)
 
         # Identify bonds containing query atoms and return dictionary of indicies
         rot_bonds = self.findHeavyRotBonds(self.molecule, qry_atoms)
@@ -767,8 +742,8 @@ class SideChainMove(Move):
         b, c, d = -axis * math.sin(theta / 2.0)
         aa, bb, cc, dd = a * a, b * b, c * c, d * d
         bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-        return numpy.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                            [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
+        return numpy.array([[aa + bb - cc - dd, 2 * (bc + ad),
+                             2 * (bd - ac)], [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
                             [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
     def move(self, context, verbose=False):
@@ -792,12 +767,10 @@ class SideChainMove(Move):
 
         # determine the axis, theta, residue, and bond + atoms to be rotated
         theta, target_atoms, res, bond = self.chooseBondandTheta()
-        print('Rotating bond: %s in resnum: %s by %.2f radians' % (bond, res,
-                                                                   theta))
+        print('Rotating bond: %s in resnum: %s by %.2f radians' % (bond, res, theta))
 
         #retrieve the current positions
-        initial_positions = context.getState(getPositions=True).getPositions(
-            asNumpy=True)
+        initial_positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         nc_positions = copy.deepcopy(initial_positions)
 
         model = copy.copy(self.structure)
@@ -809,12 +782,9 @@ class SideChainMove(Move):
                 print(atom, idx)
                 print(nc_positions[atom], model.positions[atom])
 
-            model.atoms[atom].xx = nc_positions[atom][0].value_in_unit(
-                unit.angstroms)
-            model.atoms[atom].xy = nc_positions[atom][1].value_in_unit(
-                unit.angstroms)
-            model.atoms[atom].xz = nc_positions[atom][2].value_in_unit(
-                unit.angstroms)
+            model.atoms[atom].xx = nc_positions[atom][0].value_in_unit(unit.angstroms)
+            model.atoms[atom].xy = nc_positions[atom][1].value_in_unit(unit.angstroms)
+            model.atoms[atom].xz = nc_positions[atom][2].value_in_unit(unit.angstroms)
 
             if self.verbose:
                 print('After:')
@@ -836,14 +806,12 @@ class SideChainMove(Move):
             my_position = positions[atom]
 
             if self.verbose:
-                print(
-                    'The current position for %i is: %s' % (atom, my_position))
+                print('The current position for %i is: %s' % (atom, my_position))
 
             # find the reduced position (substract out axis)
             red_position = (my_position - model.positions[axis2])._value
             # find the new positions by multiplying by rot matrix
-            new_position = numpy.dot(
-                rot_matrix, red_position) * positions.unit + positions[axis2]
+            new_position = numpy.dot(rot_matrix, red_position) * positions.unit + positions[axis2]
 
             if self.verbose: print("The new position should be:", new_position)
 
@@ -854,16 +822,12 @@ class SideChainMove(Move):
             model.atoms[atom].xz = new_position[2] / positions.unit
 
             #update the copied ncmc context array with the new positions
-            nc_positions[atom][
-                0] = model.atoms[atom].xx * nc_positions.unit / 10
-            nc_positions[atom][
-                1] = model.atoms[atom].xy * nc_positions.unit / 10
-            nc_positions[atom][
-                2] = model.atoms[atom].xz * nc_positions.unit / 10
+            nc_positions[atom][0] = model.atoms[atom].xx * nc_positions.unit / 10
+            nc_positions[atom][1] = model.atoms[atom].xy * nc_positions.unit / 10
+            nc_positions[atom][2] = model.atoms[atom].xz * nc_positions.unit / 10
 
             if self.verbose:
-                print('The updated position for this atom is:',
-                      model.positions[atom])
+                print('The updated position for this atom is:', model.positions[atom])
 
         # update the actual ncmc context object with the new positions
         context.setPositions(nc_positions)
@@ -927,9 +891,8 @@ class SmartDartMove(RandomLigandRotationMove):
         super(SmartDartMove, self).__init__(structure, resname=resname)
 
         if len(coord_files) < 2:
-            raise ValueError(
-                'You should include at least two files in coord_files ' +
-                'in order to benefit from smart darting')
+            raise ValueError('You should include at least two files in coord_files ' +
+                             'in order to benefit from smart darting')
         self.dartboard = []
         self.n_dartboard = []
         self.particle_pairs = []
@@ -971,21 +934,16 @@ class SmartDartMove(RandomLigandRotationMove):
                 temp_md = parmed.load_file(topology, xyz=coord_file)
             #get position values in terms of nanometers
             context_pos = temp_md.positions.in_units_of(unit.nanometers)
-            lig_pos = numpy.asarray(
-                context_pos._value)[self.atom_indices] * unit.nanometers
-            particle_pos = numpy.asarray(
-                context_pos._value)[self.basis_particles] * unit.nanometers
+            lig_pos = numpy.asarray(context_pos._value)[self.atom_indices] * unit.nanometers
+            particle_pos = numpy.asarray(context_pos._value)[self.basis_particles] * unit.nanometers
             #calculate center of mass of ligand
             self.calculateProperties()
             center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
             #get particle positions
-            new_coord = self._findNewCoord(particle_pos[0], particle_pos[1],
-                                           particle_pos[2], center_of_mass)
+            new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], center_of_mass)
             #old_coord should be equal to com
-            old_coord = self._findOldCoord(particle_pos[0], particle_pos[1],
-                                           particle_pos[2], new_coord)
-            numpy.testing.assert_almost_equal(
-                old_coord._value, center_of_mass._value, decimal=1)
+            old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
+            numpy.testing.assert_almost_equal(old_coord._value, center_of_mass._value, decimal=1)
             #add the center of mass in euclidian and new basis set (defined by the basis_particles)
             n_dartboard.append(new_coord)
             dartboard.append(old_coord)
@@ -1011,17 +969,14 @@ class SmartDartMove(RandomLigandRotationMove):
 
         atom_indices = self.atom_indices
         if len(self.n_dartboard) == 0:
-            raise ValueError(
-                'No darts are specified. Make sure you use ' +
-                'SmartDartMove.dartsFromParmed() before using the move() function'
-            )
+            raise ValueError('No darts are specified. Make sure you use ' +
+                             'SmartDartMove.dartsFromParmed() before using the move() function')
 
         #get state info from context
         stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
         #get the ligand positions
-        lig_pos = numpy.asarray(
-            oldDartPos._value)[self.atom_indices] * unit.nanometers
+        lig_pos = numpy.asarray(oldDartPos._value)[self.atom_indices] * unit.nanometers
         #updates the darting regions based on the current position of the basis particles
         self._findDart(context)
         #find the ligand's current center of mass position
@@ -1092,11 +1047,10 @@ class SmartDartMove(RandomLigandRotationMove):
             return None, diff
         elif len(selected_dart) >= 2:
             #COM should never be within two different darts
-            raise ValueError(
-                ' The spheres defining two darting regions have overlapped, ' +
-                'which results in potential problems with detailed balance. ' +
-                'We are terminating the simulation. Please check the size and '
-                + 'identity of your darting regions defined by dart_radius.')
+            raise ValueError(' The spheres defining two darting regions have overlapped, ' +
+                             'which results in potential problems with detailed balance. ' +
+                             'We are terminating the simulation. Please check the size and ' +
+                             'identity of your darting regions defined by dart_radius.')
             #TODO can treat cases using appropriate probablility correction
             #see https://doi.org/10.1016/j.patcog.2011.02.006
 

@@ -12,13 +12,13 @@ from parmed.geometry import box_vectors_to_lengths_and_angles
 from blues.formats import *
 import blues.reporters
 
+
 def _check_mode(m, modes):
     """
     Check if the file has a read or write mode, otherwise throw an error.
     """
     if m not in modes:
-        raise ValueError('This operation is only available when a file '
-                         'is open in mode="%s".' % m)
+        raise ValueError('This operation is only available when a file ' 'is open in mode="%s".' % m)
 
 
 def addLoggingLevel(levelName, levelNum, methodName=None):
@@ -82,10 +82,7 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging, methodName, logToRoot)
 
 
-def init_logger(logger,
-                level=logging.INFO,
-                stream=True,
-                outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
+def init_logger(logger, level=logging.INFO, stream=True, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
     """Initialize the Logger module with the given logger_level and outfname.
 
     Parameters
@@ -197,8 +194,7 @@ class ReporterConfig:
             else:  #Default to top level outfname
                 outfname = self._outfname
 
-            state = parmed.openmm.reporters.StateDataReporter(
-                outfname + '.ene', **self._cfg['state'])
+            state = parmed.openmm.reporters.StateDataReporter(outfname + '.ene', **self._cfg['state'])
             Reporters.append(state)
 
         if 'traj_netcdf' in self._cfg.keys():
@@ -210,11 +206,9 @@ class ReporterConfig:
 
             #Store as an attribute for calculating time/frame
             if 'reportInterval' in self._cfg['traj_netcdf'].keys():
-                self.trajectory_interval = self._cfg['traj_netcdf'][
-                    'reportInterval']
+                self.trajectory_interval = self._cfg['traj_netcdf']['reportInterval']
 
-            traj_netcdf = NetCDF4Reporter(outfname + '.nc',
-                                          **self._cfg['traj_netcdf'])
+            traj_netcdf = NetCDF4Reporter(outfname + '.nc', **self._cfg['traj_netcdf'])
             Reporters.append(traj_netcdf)
 
         if 'restart' in self._cfg.keys():
@@ -224,8 +218,7 @@ class ReporterConfig:
             else:
                 outfname = self._outfname
 
-            restart = parmed.openmm.reporters.RestartReporter(
-                outfname + '.rst7', netcdf=True, **self._cfg['restart'])
+            restart = parmed.openmm.reporters.RestartReporter(outfname + '.rst7', netcdf=True, **self._cfg['restart'])
             Reporters.append(restart)
 
         if 'progress' in self._cfg.keys():
@@ -235,14 +228,12 @@ class ReporterConfig:
             else:
                 outfname = self._outfname
 
-            progress = parmed.openmm.reporters.ProgressReporter(
-                outfname + '.prog', **self._cfg['progress'])
+            progress = parmed.openmm.reporters.ProgressReporter(outfname + '.prog', **self._cfg['progress'])
             Reporters.append(progress)
 
         if 'stream' in self._cfg.keys():
             if not self._logger: self._logger = logging.getLogger(__name__)
-            stream = blues.reporters.BLUESStateDataReporter(
-                self._logger, **self._cfg['stream'])
+            stream = blues.reporters.BLUESStateDataReporter(self._logger, **self._cfg['stream'])
             Reporters.append(stream)
 
         return Reporters
@@ -333,9 +324,8 @@ class BLUESHDF5Reporter(HDF5Reporter):
                  parameters=None,
                  environment=True):
 
-        super(BLUESHDF5Reporter, self).__init__(
-            file, reportInterval, coordinates, time, cell, potentialEnergy,
-            kineticEnergy, temperature, velocities, atomSubset)
+        super(BLUESHDF5Reporter, self).__init__(file, reportInterval, coordinates, time, cell, potentialEnergy,
+                                                kineticEnergy, temperature, velocities, atomSubset)
         self._protocolWork = bool(protocolWork)
         self._alchemicalLambda = bool(alchemicalLambda)
 
@@ -375,8 +365,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if not self.frame_indices:
             steps_left = simulation.currentStep % self._reportInterval
             steps = self._reportInterval - steps_left
-        return (steps, self._coordinates, self._velocities, False,
-                self._needEnergy)
+        return (steps, self._coordinates, self._velocities, False, self._needEnergy)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -399,17 +388,14 @@ class BLUESHDF5Reporter(HDF5Reporter):
         kwargs = {}
         if self._coordinates:
             coordinates = state.getPositions(asNumpy=True)[self._atomSlice]
-            coordinates = coordinates.value_in_unit(
-                getattr(unit, self._traj_file.distance_unit))
+            coordinates = coordinates.value_in_unit(getattr(unit, self._traj_file.distance_unit))
             args = (coordinates, )
         if self._time:
             kwargs['time'] = state.getTime()
         if self._cell:
             vectors = state.getPeriodicBoxVectors(asNumpy=True)
-            vectors = vectors.value_in_unit(
-                getattr(unit, self._traj_file.distance_unit))
-            a, b, c, alpha, beta, gamma = unitcell.box_vectors_to_lengths_and_angles(
-                *vectors)
+            vectors = vectors.value_in_unit(getattr(unit, self._traj_file.distance_unit))
+            a, b, c, alpha, beta, gamma = unitcell.box_vectors_to_lengths_and_angles(*vectors)
             kwargs['cell_lengths'] = np.array([a, b, c])
             kwargs['cell_angles'] = np.array([alpha, beta, gamma])
         if self._potentialEnergy:
@@ -417,20 +403,16 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if self._kineticEnergy:
             kwargs['kineticEnergy'] = state.getKineticEnergy()
         if self._temperature:
-            kwargs['temperature'] = 2 * state.getKineticEnergy() / (
-                self._dof * unit.MOLAR_GAS_CONSTANT_R)
+            kwargs['temperature'] = 2 * state.getKineticEnergy() / (self._dof * unit.MOLAR_GAS_CONSTANT_R)
         if self._velocities:
-            kwargs['velocities'] = state.getVelocities(
-                asNumpy=True)[self._atomSlice, :]
+            kwargs['velocities'] = state.getVelocities(asNumpy=True)[self._atomSlice, :]
 
         #add a portion like this to store things other than the protocol work
         if self._protocolWork:
-            protocol_work = simulation.integrator.get_protocol_work(
-                dimensionless=True)
+            protocol_work = simulation.integrator.get_protocol_work(dimensionless=True)
             kwargs['protocolWork'] = np.array([protocol_work])
         if self._alchemicalLambda:
-            kwargs['alchemicalLambda'] = np.array(
-                [simulation.integrator.getGlobalVariableByName('lambda')])
+            kwargs['alchemicalLambda'] = np.array([simulation.integrator.getGlobalVariableByName('lambda')])
         if self._title:
             kwargs['title'] = self._title
         if self._parameters:
@@ -534,9 +516,8 @@ class BLUESStateDataReporter(app.StateDataReporter):
                  alchemicalLambda=False,
                  currentIter=False):
         super(BLUESStateDataReporter, self).__init__(
-            file, reportInterval, step, time, potentialEnergy, kineticEnergy,
-            totalEnergy, temperature, volume, density, progress, remainingTime,
-            speed, elapsedTime, separator, systemMass, totalSteps)
+            file, reportInterval, step, time, potentialEnergy, kineticEnergy, totalEnergy, temperature, volume,
+            density, progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
         self.log = self._out
         self.title = title
 
@@ -574,8 +555,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
             steps_left = simulation.currentStep % self._reportInterval
             steps = self._reportInterval - steps_left
 
-        return (steps, self._needsPositions, self._needsVelocities,
-                self._needsForces, self._needEnergy)
+        return (steps, self._needsPositions, self._needsVelocities, self._needsForces, self._needEnergy)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -592,8 +572,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
             headers = self._constructHeaders()
             if hasattr(self.log, 'report'):
                 self.log.info = self.log.report
-            self.log.info(
-                '#"%s"' % ('"' + self._separator + '"').join(headers))
+            self.log.info('#"%s"' % ('"' + self._separator + '"').join(headers))
             try:
                 self._out.flush()
             except AttributeError:
@@ -611,9 +590,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
         # Write the values.
         if hasattr(self.log, 'report'):
             self.log.info = self.log.report
-        self.log.info(
-            '%s: %s' % (self.title, self._separator.join(
-                str(v) for v in values)))
+        self.log.info('%s: %s' % (self.title, self._separator.join(str(v) for v in values)))
         try:
             self._out.flush()
         except AttributeError:
@@ -645,47 +622,36 @@ class BLUESStateDataReporter(app.StateDataReporter):
                 simulation.currentIter = 0
             values.append(simulation.currentIter)
         if self._progress:
-            values.append(
-                '%.1f%%' % (100.0 * simulation.currentStep / self._totalSteps))
+            values.append('%.1f%%' % (100.0 * simulation.currentStep / self._totalSteps))
         if self._step:
             values.append(simulation.currentStep)
         if self._time:
             values.append(state.getTime().value_in_unit(unit.picosecond))
         #add a portion like this to store things other than the protocol work
         if self._alchemicalLambda:
-            alchemicalLambda = simulation.integrator.getGlobalVariableByName(
-                'lambda')
+            alchemicalLambda = simulation.integrator.getGlobalVariableByName('lambda')
             values.append(alchemicalLambda)
         if self._protocolWork:
-            protocolWork = simulation.integrator.get_protocol_work(
-                dimensionless=True)
+            protocolWork = simulation.integrator.get_protocol_work(dimensionless=True)
             values.append(protocolWork)
         if self._potentialEnergy:
-            values.append(state.getPotentialEnergy().value_in_unit(
-                unit.kilojoules_per_mole))
+            values.append(state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
         if self._kineticEnergy:
-            values.append(state.getKineticEnergy().value_in_unit(
-                unit.kilojoules_per_mole))
+            values.append(state.getKineticEnergy().value_in_unit(unit.kilojoules_per_mole))
         if self._totalEnergy:
-            values.append((state.getKineticEnergy() +
-                           state.getPotentialEnergy()).value_in_unit(
-                               unit.kilojoules_per_mole))
+            values.append(
+                (state.getKineticEnergy() + state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole))
         if self._temperature:
             values.append(
-                (2 * state.getKineticEnergy() /
-                 (self._dof * unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(
-                     unit.kelvin))
+                (2 * state.getKineticEnergy() / (self._dof * unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin))
         if self._volume:
             values.append(volume.value_in_unit(unit.nanometer**3))
         if self._density:
-            values.append((self._totalMass / volume).value_in_unit(
-                unit.gram / unit.item / unit.milliliter))
+            values.append((self._totalMass / volume).value_in_unit(unit.gram / unit.item / unit.milliliter))
 
         if self._speed:
             elapsedDays = (clockTime - self._initialClockTime) / 86400.0
-            elapsedNs = (
-                state.getTime() - self._initialSimulationTime).value_in_unit(
-                    unit.nanosecond)
+            elapsedNs = (state.getTime() - self._initialSimulationTime).value_in_unit(unit.nanosecond)
             if elapsedDays > 0.0:
                 values.append('%.3g' % (elapsedNs / elapsedDays))
             else:
@@ -698,8 +664,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
             if elapsedSteps == 0:
                 value = '--'
             else:
-                estimatedTotalSeconds = (self._totalSteps - self._initialSteps
-                                         ) * elapsedSeconds / elapsedSteps
+                estimatedTotalSeconds = (self._totalSteps - self._initialSteps) * elapsedSeconds / elapsedSteps
                 remainingSeconds = int(estimatedTotalSeconds - elapsedSeconds)
                 remainingDays = remainingSeconds // 86400
                 remainingSeconds -= remainingDays * 86400
@@ -708,12 +673,9 @@ class BLUESStateDataReporter(app.StateDataReporter):
                 remainingMinutes = remainingSeconds // 60
                 remainingSeconds -= remainingMinutes * 60
                 if remainingDays > 0:
-                    value = "%d:%d:%02d:%02d" % (remainingDays, remainingHours,
-                                                 remainingMinutes,
-                                                 remainingSeconds)
+                    value = "%d:%d:%02d:%02d" % (remainingDays, remainingHours, remainingMinutes, remainingSeconds)
                 elif remainingHours > 0:
-                    value = "%d:%02d:%02d" % (remainingHours, remainingMinutes,
-                                              remainingSeconds)
+                    value = "%d:%02d:%02d" % (remainingHours, remainingMinutes, remainingSeconds)
                 elif remainingMinutes > 0:
                     value = "%d:%02d" % (remainingMinutes, remainingSeconds)
                 else:
@@ -801,8 +763,7 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         """
         Create a NetCDFReporter instance.
         """
-        super(NetCDF4Reporter, self).__init__(file, reportInterval, crds, vels,
-                                              frcs)
+        super(NetCDF4Reporter, self).__init__(file, reportInterval, crds, vels, frcs)
         self.crds, self.vels, self.frcs, self.protocolWork, self.alchemicalLambda = crds, vels, frcs, protocolWork, alchemicalLambda
         self.frame_indices = frame_indices
         if self.frame_indices:
@@ -856,11 +817,9 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         if self.frcs:
             frcs = state.getForces().value_in_unit(FRCUNIT)
         if self.protocolWork:
-            protocolWork = simulation.integrator.get_protocol_work(
-                dimensionless=True)
+            protocolWork = simulation.integrator.get_protocol_work(dimensionless=True)
         if self.alchemicalLambda:
-            alchemicalLambda = simulation.integrator.getGlobalVariableByName(
-                'lambda')
+            alchemicalLambda = simulation.integrator.getGlobalVariableByName('lambda')
         if self._out is None:
             # This must be the first frame, so set up the trajectory now
             if self.crds:
@@ -869,8 +828,7 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
                 atom = len(vels)
             elif self.frcs:
                 atom = len(frcs)
-            self.uses_pbc = simulation.topology.getUnitCellDimensions(
-            ) is not None
+            self.uses_pbc = simulation.topology.getUnitCellDimensions() is not None
             self._out = NetCDF4Traj.open_new(
                 self.fname,
                 atom,
@@ -886,9 +844,7 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         if self.uses_pbc:
             vecs = state.getPeriodicBoxVectors()
             lengths, angles = box_vectors_to_lengths_and_angles(*vecs)
-            self._out.add_cell_lengths_angles(
-                lengths.value_in_unit(u.angstrom),
-                angles.value_in_unit(u.degree))
+            self._out.add_cell_lengths_angles(lengths.value_in_unit(u.angstrom), angles.value_in_unit(u.degree))
 
         # Add the coordinates, velocities, and/or forces as needed
         if self.crds:

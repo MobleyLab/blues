@@ -12,26 +12,18 @@ from unittest import skipUnless
 try:
     import openeye.oechem as oechem
     if not oechem.OEChemIsLicensed():
-        raise ImportError(
-            "Need License for OEChem! SideChainMove class will be unavailable."
-        )
+        raise ImportError("Need License for OEChem! SideChainMove class will be unavailable.")
     try:
         import oeommtools.utils as oeommtools
     except ImportError:
-        raise ImportError(
-            'Could not import oeommtools. SideChainMove class will be unavailable.'
-        )
+        raise ImportError('Could not import oeommtools. SideChainMove class will be unavailable.')
     has_openeye = True
 except ImportError:
     has_openeye = False
-    print(
-        'Could not import openeye-toolkits. SideChainMove class will be unavailable.'
-    )
+    print('Could not import openeye-toolkits. SideChainMove class will be unavailable.')
 
 
-@skipUnless(
-    has_openeye,
-    'Cannot test SideChainMove without openeye-toolkits and oeommtools.')
+@skipUnless(has_openeye, 'Cannot test SideChainMove without openeye-toolkits and oeommtools.')
 class SideChainTester(unittest.TestCase):
     """
     Test the SmartDartMove.move() function.
@@ -39,22 +31,16 @@ class SideChainTester(unittest.TestCase):
 
     def setUp(self):
         # Obtain topologies/positions
-        prmtop = utils.get_data_filename('blues',
-                                         'tests/data/vacDivaline.prmtop')
-        inpcrd = utils.get_data_filename('blues',
-                                         'tests/data/vacDivaline.inpcrd')
+        prmtop = utils.get_data_filename('blues', 'tests/data/vacDivaline.prmtop')
+        inpcrd = utils.get_data_filename('blues', 'tests/data/vacDivaline.inpcrd')
         self.struct = parmed.load_file(prmtop, xyz=inpcrd)
 
         self.sidechain = SideChainMove(self.struct, [1])
         self.engine = MoveEngine(self.sidechain)
         self.engine.selectMove()
 
-        self.system_cfg = {
-            'nonbondedMethod': app.NoCutoff,
-            'constraints': app.HBonds
-        }
-        self.systems = SystemFactory(self.struct, self.sidechain.atom_indices,
-                                     self.system_cfg)
+        self.system_cfg = {'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
+        self.systems = SystemFactory(self.struct, self.sidechain.atom_indices, self.system_cfg)
 
         self.cfg = {
             'dt': 0.002 * unit.picoseconds,
@@ -71,8 +57,7 @@ class SideChainTester(unittest.TestCase):
             }
         }
 
-        self.simulations = SimulationFactory(self.systems, self.engine,
-                                             self.cfg)
+        self.simulations = SimulationFactory(self.systems, self.engine, self.cfg)
 
     def test_getRotBondAtoms(self):
         vals = [v for v in self.sidechain.rot_atoms[1].values()][0]
@@ -82,12 +67,11 @@ class SideChainTester(unittest.TestCase):
 
     def test_sidechain_move(self):
         atom_indices = [v for v in self.sidechain.rot_atoms[1].values()][0]
-        before_move = self.simulations.ncmc.context.getState(
-            getPositions=True).getPositions(asNumpy=True)[atom_indices, :]
-        self.simulations.ncmc.context = self.engine.runEngine(
-            self.simulations.ncmc.context)
-        after_move = self.simulations.ncmc.context.getState(
-            getPositions=True).getPositions(asNumpy=True)[atom_indices, :]
+        before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
+            asNumpy=True)[atom_indices, :]
+        self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)
+        after_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
+            asNumpy=True)[atom_indices, :]
 
         #Check that our system has run dynamics
         # Integrator must step for context to update positions

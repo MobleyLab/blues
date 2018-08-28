@@ -40,8 +40,7 @@ def forcegroupify(system):
 def getEnergyDecomposition(context, forcegroups):
     energies = {}
     for f, i in forcegroups.items():
-        energies[f] = context.getState(
-            getEnergy=True, groups=2**i).getPotentialEnergy()
+        energies[f] = context.getState(getEnergy=True, groups=2**i).getPotentialEnergy()
     return energies
 
 
@@ -58,9 +57,8 @@ class PoseDart(SimNCMC):
         print(self.residueList)
         if type(dart_size._value) == list:
             if len(dart_size) != len(residueList):
-                raise ValueError(
-                    'mismatch between length of dart_size (%i) and residueList (%i)'
-                    % (len(dart_size), len(residueList)))
+                raise ValueError('mismatch between length of dart_size (%i) and residueList (%i)' % (len(dart_size),
+                                                                                                     len(residueList)))
             self.dart_size = dart_size
         elif type(dart_size._value) == int or type(dart_size._value) == float:
             print('adding the same size darts')
@@ -145,9 +143,7 @@ class PoseDart(SimNCMC):
         for pose in self.binding_mode_traj:
             print('pose', pose.xyz)
             pose = pose.superpose(
-                reference=self.sim_traj,
-                atom_indices=self.fit_atoms,
-                ref_atom_indices=self.fit_atoms)
+                reference=self.sim_traj, atom_indices=self.fit_atoms, ref_atom_indices=self.fit_atoms)
             #            pose.save('temp.pdb')
             pose_coord = pose.xyz[0]
             print('pose_coord', pose.xyz[0])
@@ -161,8 +157,7 @@ class PoseDart(SimNCMC):
 
             for index, atom in enumerate(residueList):
                 temp_binding_mode_pos[index] = pose_coord[atom]
-            temp_dist, temp_diff = self.dist_from_dart_center(
-                temp_pos, temp_binding_mode_pos)
+            temp_dist, temp_diff = self.dist_from_dart_center(temp_pos, temp_binding_mode_pos)
             total_diff_list.append(temp_diff)
             total_dist_list.append(temp_dist)
 
@@ -195,12 +190,7 @@ class PoseDart(SimNCMC):
 
         #use diff list to redart
 
-    def poseRedart(self,
-                   changevec,
-                   binding_mode_pos,
-                   binding_mode_index,
-                   nc_pos,
-                   residueList=None):
+    def poseRedart(self, changevec, binding_mode_pos, binding_mode_index, nc_pos, residueList=None):
         """
         Helper function to choose a random pose and determine the vector
         that would translate the current particles to that dart center
@@ -265,12 +255,10 @@ class PoseDart(SimNCMC):
             newEnergy = stateinfo.getPotentialEnergy()
             print('oldEnergy', oldEnergy)
             print('newEnergy', newEnergy)
-            old_md_state = self.md_simulation.context.getState(
-                True, True, False, True, True, False)
+            old_md_state = self.md_simulation.context.getState(True, True, False, True, True, False)
             print('md_oldEnergy', old_md_state.getPotentialEnergy())
             self.md_simulation.context.setPositions(new_pos)
-            new_md_state = self.md_simulation.context.getState(
-                True, True, False, True, True, False)
+            new_md_state = self.md_simulation.context.getState(True, True, False, True, True, False)
             print('md_newEnergy', new_md_state.getPotentialEnergy())
 
     def findDart(self, particle_pairs=None, particle_weights=None):
@@ -302,8 +290,7 @@ class PoseDart(SimNCMC):
         assert len(particle_pairs) == len(particle_weights)
 
         dart_list = []
-        state_info = self.nc_context.getState(True, True, False, True, True,
-                                              False)
+        state_info = self.nc_context.getState(True, True, False, True, True, False)
         temp_pos = state_info.getPositions(asNumpy=True)
         #find particles positions and multiply by weights
         for i, ppair in enumerate(particle_pairs):
@@ -312,8 +299,7 @@ class PoseDart(SimNCMC):
             temp_wavg = 0
             for j, particle in enumerate(ppair):
                 print('temp_pos', particle, temp_pos[particle])
-                temp_array += (
-                    temp_pos[particle] * float(particle_weights[i][j]))
+                temp_array += (temp_pos[particle] * float(particle_weights[i][j]))
                 temp_wavg += float(particle_weights[i][j])
                 print(temp_array)
             #divide by total number of particles in a list and append
@@ -346,8 +332,7 @@ class PoseDart(SimNCMC):
             virtual_particles = self.virtual_particles
 
         dart_list = []
-        state_info = self.nc_context.getState(True, True, False, True, True,
-                                              False)
+        state_info = self.nc_context.getState(True, True, False, True, True, False)
         temp_pos = state_info.getPositions(asNumpy=True)
         #find virtual particles positions and add to dartboard
         for particle in virtual_particles:
@@ -393,8 +378,7 @@ class PoseDart(SimNCMC):
             for residue in residueList:
                 newDartPos[residue] = newDartPos[residue] + vecMove
             context.setPositions(newDartPos)
-            newDartInfo = context.getState(True, True, False, True, True,
-                                           False)
+            newDartInfo = context.getState(True, True, False, True, True, False)
             newDartPE = newDartInfo.getPotentialEnergy()
             logaccept = -1.0 * (newDartPE - oldDartPE) * self.beta
             randnum = math.log(np.random.random())
@@ -406,8 +390,7 @@ class PoseDart(SimNCMC):
             else:
                 print('rejected')
                 context.setPositions(oldDartPos)
-            dartInfo = context.getState(True, False, False, False, False,
-                                        False)
+            dartInfo = context.getState(True, False, False, False, False, False)
 
             return newDartInfo.getPositions(asNumpy=True)
 
@@ -440,8 +423,7 @@ class PoseDart(SimNCMC):
             print('worked')
             print(newDartPos)
             context.setPositions(newDartPos)
-            newDartInfo = context.getState(True, True, False, True, True,
-                                           False)
+            newDartInfo = context.getState(True, True, False, True, True, False)
             #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
@@ -478,8 +460,7 @@ class PoseDart(SimNCMC):
             print('worked')
             print(newDartPos)
             context.setPositions(newDartPos)
-            newDartInfo = self.nc_context.getState(True, True, False, True,
-                                                   True, False)
+            newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
             #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
@@ -516,8 +497,7 @@ class PoseDart(SimNCMC):
             print('worked')
             print(newDartPos)
             context.setPositions(newDartPos)
-            newDartInfo = self.nc_context.getState(True, True, False, True,
-                                                   True, False)
+            newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
             #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)

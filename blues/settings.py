@@ -127,8 +127,7 @@ class Settings(object):
             config['system']['verbose'] = False
             config['simulation']['verbose'] = False
         logger_level = eval("logging.%s" % level)
-        logger = reporters.init_logger(logging.getLogger(), logger_level,
-                                       stream, outfname)
+        logger = reporters.init_logger(logging.getLogger(), logger_level, stream, outfname)
         config['Logger'] = logger
 
         return config
@@ -172,13 +171,11 @@ class Settings(object):
                         user_input = config[setup_keys][param]
 
                         if '*' in str(user_input):
-                            config[setup_keys][
-                                param] = utils.parse_unit_quantity(user_input)
+                            config[setup_keys][param] = utils.parse_unit_quantity(user_input)
                         # If not provided, set default units
                         else:
-                            config['Logger'].warn(
-                                "Units for '{} = {}' not specified. Setting units to '{}'".
-                                format(param, user_input, unit_type))
+                            config['Logger'].warn("Units for '{} = {}' not specified. Setting units to '{}'".format(
+                                param, user_input, unit_type))
                             config[setup_keys][param] = user_input * unit_type
 
                 except:
@@ -193,17 +190,13 @@ class Settings(object):
         """
         # Check Amber Selections
         if 'freeze' in config.keys():
-            freeze_keys = [
-                'freeze_center', 'freeze_solvent', 'freeze_selection'
-            ]
+            freeze_keys = ['freeze_center', 'freeze_solvent', 'freeze_selection']
             for sel in freeze_keys:
                 if sel in config['freeze']:
-                    utils.check_amber_selection(config['Structure'],
-                                                config['freeze'][sel])
+                    utils.check_amber_selection(config['Structure'], config['freeze'][sel])
 
         if 'restraints' in config.keys():
-            utils.check_amber_selection(config['Structure'],
-                                        config['restraints']['selection'])
+            utils.check_amber_selection(config['Structure'], config['restraints']['selection'])
 
     @staticmethod
     def set_Apps(config):
@@ -217,10 +210,7 @@ class Settings(object):
 
         # System related parameters that require import from the simtk.openmm.app namesapce
         valid_apps = {
-            'nonbondedMethod': [
-                'NoCutoff', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME',
-                'Ewald'
-            ],
+            'nonbondedMethod': ['NoCutoff', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME', 'Ewald'],
             'constraints': [None, 'HBonds', 'HAngles', 'AllBonds'],
             'implicitSolvent': ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
         }
@@ -231,9 +221,8 @@ class Settings(object):
                 try:
                     config['system'][method] = eval("app.%s" % user_input)
                 except:
-                    config['Logger'].exception(
-                        "'{}' was not a valid option for '{}'. Valid options: {}".
-                        format(user_input, method, app_type))
+                    config['Logger'].exception("'{}' was not a valid option for '{}'. Valid options: {}".format(
+                        user_input, method, app_type))
         return config
 
     @staticmethod
@@ -259,12 +248,10 @@ class Settings(object):
 
         if 'md_reporters' in config.keys():
             # Returns a list of Reporter objects, overwrites the configuration parameters
-            md_reporter_cfg = reporters.ReporterConfig(
-                outfname, config['md_reporters'], logger)
+            md_reporter_cfg = reporters.ReporterConfig(outfname, config['md_reporters'], logger)
             config['md_reporters'] = md_reporter_cfg.makeReporters()
             if md_reporter_cfg.trajectory_interval:
-                config['simulation'][
-                    'md_trajectory_interval'] = md_reporter_cfg.trajectory_interval
+                config['simulation']['md_trajectory_interval'] = md_reporter_cfg.trajectory_interval
         else:
             logger.warn('Configuration for MD reporters were not set.')
 
@@ -280,19 +267,12 @@ class Settings(object):
                 #If -1 is given in frame_indices, record at the last frame
                 #If 0.5 is given in frame_indices, record at the midpoint/movestep
                 if 'frame_indices' in config['ncmc_reporters'][rep].keys():
-                    frame_indices = config['ncmc_reporters'][rep][
-                        'frame_indices']
-                    frame_indices = [
-                        moveStep if x == 0.5 else x for x in frame_indices
-                    ]
-                    frame_indices = [
-                        nstepsNC if x == -1 else x for x in frame_indices
-                    ]
-                    config['ncmc_reporters'][rep][
-                        'frame_indices'] = frame_indices
+                    frame_indices = config['ncmc_reporters'][rep]['frame_indices']
+                    frame_indices = [moveStep if x == 0.5 else x for x in frame_indices]
+                    frame_indices = [nstepsNC if x == -1 else x for x in frame_indices]
+                    config['ncmc_reporters'][rep]['frame_indices'] = frame_indices
 
-            ncmc_reporter_cfg = reporters.ReporterConfig(
-                outfname + '-ncmc', config['ncmc_reporters'], logger)
+            ncmc_reporter_cfg = reporters.ReporterConfig(outfname + '-ncmc', config['ncmc_reporters'], logger)
             config['ncmc_reporters'] = ncmc_reporter_cfg.makeReporters()
         else:
             logger.warn('Configuration for NCMC reporters were not set.')
@@ -334,10 +314,5 @@ class Settings(object):
 
     def asJSON(self, pprint=False):
         if pprint:
-            return json.dumps(
-                self.config,
-                sort_keys=True,
-                indent=2,
-                skipkeys=True,
-                default=str)
+            return json.dumps(self.config, sort_keys=True, indent=2, skipkeys=True, default=str)
         return json.dumps(self.config, default=str)

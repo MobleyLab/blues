@@ -10,14 +10,9 @@ from simtk.openmm import app
 import numpy as np
 
 
-
 @pytest.fixture(scope='session')
 def system_cfg():
-    system_cfg = {
-        'nonbondedMethod': app.PME,
-        'nonbondedCutoff': 8.0 * unit.angstroms,
-        'constraints': app.HBonds
-    }
+    system_cfg = {'nonbondedMethod': app.PME, 'nonbondedCutoff': 8.0 * unit.angstroms, 'constraints': app.HBonds}
     return system_cfg
 
 
@@ -34,17 +29,14 @@ def sim_cfg():
         'nIter': 1,
         'nstepsMD': 10,
         'nstepsNC': 10,
-        'platform' : PLATFORM
+        'platform': PLATFORM
     }
     return sim_cfg
 
 
 @pytest.fixture(scope='session')
 def stateinfo_keys():
-    stateinfo_keys = [
-        'positions', 'velocities', 'potential_energy', 'kinetic_energy',
-        'box_vectors'
-    ]
+    stateinfo_keys = ['positions', 'velocities', 'potential_energy', 'kinetic_energy', 'box_vectors']
     return stateinfo_keys
 
 
@@ -81,9 +73,12 @@ def system(structure, system_cfg):
     system = structure.createSystem(**system_cfg)
     return system
 
+
 class NoRandomLigandRotation(RandomLigandRotationMove):
     def move(self, context):
         return context
+
+
 @pytest.fixture(scope='session')
 def move(structure):
     move = NoRandomLigandRotation(structure, 'LIG')
@@ -130,10 +125,8 @@ def ncmc_integrator(structure, system):
 
 @pytest.fixture(scope='session')
 def md_sim(structure, system):
-    integrator = openmm.LangevinIntegrator(100 * unit.kelvin, 1,
-                                           0.002 * unit.picoseconds)
-    md_sim = SimulationFactory.generateSimFromStruct(structure, system,
-                                                     integrator)
+    integrator = openmm.LangevinIntegrator(100 * unit.kelvin, 1, 0.002 * unit.picoseconds)
+    md_sim = SimulationFactory.generateSimFromStruct(structure, system, integrator)
     return md_sim
 
 
@@ -148,8 +141,7 @@ def blues_sim(simulations):
 
 class TestSystemFactory(object):
     def test_atom_selections(self, structure, tol_atom_indices):
-        atom_indices = SystemFactory.amber_selection_to_atomidx(
-            structure, ':LIG')
+        atom_indices = SystemFactory.amber_selection_to_atomidx(structure, ':LIG')
 
         print('Testing AMBER selection parser')
         assert isinstance(atom_indices, list)
@@ -157,8 +149,7 @@ class TestSystemFactory(object):
 
     def test_atomidx_to_atomlist(self, structure, tol_atom_indices):
         print('Testing atoms from AMBER selection with parmed.Structure')
-        atom_list = SystemFactory.atomidx_to_atomlist(structure,
-                                                      tol_atom_indices)
+        atom_list = SystemFactory.atomidx_to_atomlist(structure, tol_atom_indices)
         atom_selection = [structure.atoms[i] for i in tol_atom_indices]
         assert atom_selection == atom_list
 
@@ -176,8 +167,7 @@ class TestSystemFactory(object):
     def test_generateAlchSystem(self, structure, system, tol_atom_indices):
         # Create the OpenMM system
         print('Creating OpenMM Alchemical System')
-        alch_system = SystemFactory.generateAlchSystem(system,
-                                                       tol_atom_indices)
+        alch_system = SystemFactory.generateAlchSystem(system, tol_atom_indices)
 
         # Check that we get an openmm.System
         assert isinstance(alch_system, openmm.System)
@@ -196,8 +186,7 @@ class TestSystemFactory(object):
         print('Testing positional restraints')
         no_restr = system.getForces()
 
-        md_system_restr = SystemFactory.restrain_positions(
-            structure, system, ':LIG')
+        md_system_restr = SystemFactory.restrain_positions(structure, system, ':LIG')
         restr = md_system_restr.getForces()
 
         # Check that forces have been added to the system.
@@ -209,9 +198,7 @@ class TestSystemFactory(object):
         print('Testing freeze_atoms')
         masses = [system.getParticleMass(i)._value for i in tol_atom_indices]
         frzn_lig = SystemFactory.freeze_atoms(structure, system, ':LIG')
-        massless = [
-            frzn_lig.getParticleMass(i)._value for i in tol_atom_indices
-        ]
+        massless = [frzn_lig.getParticleMass(i)._value for i in tol_atom_indices]
 
         # Check that masses have been zeroed
         assert massless != masses
@@ -219,11 +206,7 @@ class TestSystemFactory(object):
 
     def test_freeze_radius(self, system_cfg):
         print('Testing freeze_radius')
-        freeze_cfg = {
-            'freeze_center': ':LIG',
-            'freeze_solvent': ':Cl-',
-            'freeze_distance': 3.0 * unit.angstroms
-        }
+        freeze_cfg = {'freeze_center': ':LIG', 'freeze_solvent': ':Cl-', 'freeze_distance': 3.0 * unit.angstroms}
         # Setup toluene-T4 lysozyme system
         prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
         inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
@@ -239,10 +222,8 @@ class TestSystemFactory(object):
         assert all(m != 0 for m in lig_masses)
 
         # Check that the binding site has NOT been frozen
-        selection = "({freeze_center}<:{freeze_distance._value})&!({freeze_solvent})".format(
-            **freeze_cfg)
-        site_idx = SystemFactory.amber_selection_to_atomidx(
-            structure, selection)
+        selection = "({freeze_center}<:{freeze_distance._value})&!({freeze_solvent})".format(**freeze_cfg)
+        site_idx = SystemFactory.amber_selection_to_atomidx(structure, selection)
         masses = [frzn_sys.getParticleMass(i)._value for i in site_idx]
         assert all(m != 0 for m in masses)
 
@@ -267,10 +248,7 @@ class TestSimulationFactory(object):
 
     def test_generateIntegrator(self):
         print('Testing LangevinIntegrator')
-        cfg = {
-            'temperature': 500 * unit.kelvin,
-            'dt': 0.004 * unit.picoseconds
-        }
+        cfg = {'temperature': 500 * unit.kelvin, 'dt': 0.004 * unit.picoseconds}
         integrator = SimulationFactory.generateIntegrator(**cfg)
         #Check we made the right integrator
         assert isinstance(integrator, openmm.LangevinIntegrator)
@@ -294,12 +272,9 @@ class TestSimulationFactory(object):
         }
         ncmc_integrator = SimulationFactory.generateNCMCIntegrator(**cfg)
         #Check we made the right integrator
-        assert isinstance(ncmc_integrator,
-                          AlchemicalExternalLangevinIntegrator)
+        assert isinstance(ncmc_integrator, AlchemicalExternalLangevinIntegrator)
         #Check that the integrator has taken our Parameters
-        assert round(
-            abs(ncmc_integrator.getTemperature()._value -
-                cfg['temperature']._value), 7) == 0
+        assert round(abs(ncmc_integrator.getTemperature()._value - cfg['temperature']._value), 7) == 0
         assert ncmc_integrator.getStepSize() == cfg['dt']
         assert ncmc_integrator._n_steps_neq == cfg['nstepsNC']
         assert ncmc_integrator._n_lambda_steps == \
@@ -312,21 +287,16 @@ class TestSimulationFactory(object):
 
     def test_generateSimFromStruct(self, structure, system, tmpdir):
         print('Generating Simulation from parmed.Structure')
-        integrator = openmm.LangevinIntegrator(100 * unit.kelvin, 1,
-                                               0.002 * unit.picoseconds)
-        simulation = SimulationFactory.generateSimFromStruct(
-            structure, system, integrator)
+        integrator = openmm.LangevinIntegrator(100 * unit.kelvin, 1, 0.002 * unit.picoseconds)
+        simulation = SimulationFactory.generateSimFromStruct(structure, system, integrator)
 
         #Check that we've made a Simulation object
         assert isinstance(simulation, app.Simulation)
         state = simulation.context.getState(getPositions=True)
         positions = state.getPositions(asNumpy=True) / unit.nanometers
-        box_vectors = state.getPeriodicBoxVectors(
-            asNumpy=True) / unit.nanometers
-        struct_box = np.array(
-            structure.box_vectors.value_in_unit(unit.nanometers))
-        struct_pos = np.array(
-            structure.positions.value_in_unit(unit.nanometers))
+        box_vectors = state.getPeriodicBoxVectors(asNumpy=True) / unit.nanometers
+        struct_box = np.array(structure.box_vectors.value_in_unit(unit.nanometers))
+        struct_pos = np.array(structure.positions.value_in_unit(unit.nanometers))
 
         #Check that the box_vectors/positions in the Simulation
         # have been set from the parmed.Structure
@@ -350,19 +320,14 @@ class TestSimulationFactory(object):
         #Check that the physical parameters are equivalent
         assert simulations.ncmc_integrator.getStepSize() == sim_cfg['dt']
         assert simulations.integrator.getStepSize() == sim_cfg['dt']
-        assert round(
-            abs(simulations.ncmc_integrator.getTemperature()._value -
-                sim_cfg['temperature']._value), 7) == 0
-        assert round(
-            abs(simulations.integrator.getTemperature()._value -
-                sim_cfg['temperature']._value), 7) == 0
+        assert round(abs(simulations.ncmc_integrator.getTemperature()._value - sim_cfg['temperature']._value), 7) == 0
+        assert round(abs(simulations.integrator.getTemperature()._value - sim_cfg['temperature']._value), 7) == 0
 
 
 class TestBLUESSimulation(object):
     def test_getStateFromContext(self, md_sim, stateinfo_keys, state_keys):
 
-        stateinfo = BLUESSimulation.getStateFromContext(
-            md_sim.context, state_keys)
+        stateinfo = BLUESSimulation.getStateFromContext(md_sim.context, state_keys)
 
         assert isinstance(stateinfo, dict)
         for key in stateinfo_keys:
@@ -370,11 +335,8 @@ class TestBLUESSimulation(object):
             assert stateinfo[key] is not None
 
     def test_getIntegratorInfo(self, ncmc_integrator):
-        integrator_keys = [
-            'lambda', 'shadow_work', 'protocol_work', 'Eold', 'Enew'
-        ]
-        integrator_info = BLUESSimulation.getIntegratorInfo(
-            ncmc_integrator, integrator_keys)
+        integrator_keys = ['lambda', 'shadow_work', 'protocol_work', 'Eold', 'Enew']
+        integrator_info = BLUESSimulation.getIntegratorInfo(ncmc_integrator, integrator_keys)
 
         assert isinstance(integrator_info, dict)
 
@@ -389,10 +351,8 @@ class TestBLUESSimulation(object):
         md_state['positions'] = zero_arr * unit.nanometers
 
         # Check that the positions have been modified
-        md_context_0 = BLUESSimulation.setContextFromState(
-            md_context, md_state)
-        pos0 = md_context_0.getState(getPositions=True).getPositions(
-            asNumpy=True)
+        md_context_0 = BLUESSimulation.setContextFromState(md_context, md_state)
+        pos0 = md_context_0.getState(getPositions=True).getPositions(asNumpy=True)
 
         assert np.not_equal(pos0, pos).any()
 
@@ -415,12 +375,9 @@ class TestBLUESSimulation(object):
         assert blues_sim.stateTable['ncmc']['state0'] == {}
         blues_sim._syncStatesMDtoNCMC()
 
-        md_state = BLUESSimulation.getStateFromContext(
-            blues_sim._md_sim.context, state_keys)
-        ncmc_state = BLUESSimulation.getStateFromContext(
-            blues_sim._ncmc_sim.context, state_keys)
-        assert np.equal(blues_sim.stateTable['ncmc']['state0']['positions'],
-                        md_state['positions']).all()
+        md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
+        ncmc_state = BLUESSimulation.getStateFromContext(blues_sim._ncmc_sim.context, state_keys)
+        assert np.equal(blues_sim.stateTable['ncmc']['state0']['positions'], md_state['positions']).all()
 
     def test_stepNCMC(self, blues_sim, sim_cfg):
         nstepsNC = sim_cfg['nstepsNC']
@@ -436,47 +393,36 @@ class TestBLUESSimulation(object):
 
     def test_acceptRejectMove(self, blues_sim, state_keys, caplog):
         # Check positions are different from stepNCMC
-        md_state = BLUESSimulation.getStateFromContext(
-            blues_sim._md_sim.context, state_keys)
-        ncmc_state = BLUESSimulation.getStateFromContext(
-            blues_sim._ncmc_sim.context, state_keys)
-        assert np.not_equal(md_state['positions'],
-                            ncmc_state['positions']).all()
+        md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
+        ncmc_state = BLUESSimulation.getStateFromContext(blues_sim._ncmc_sim.context, state_keys)
+        assert np.not_equal(md_state['positions'], ncmc_state['positions']).all()
 
         caplog.set_level(logging.INFO)
         blues_sim._acceptRejectMove()
         assert 'NCMC MOVE' in caplog.text
 
         # Check positions have been reset to before move
-        md_state = BLUESSimulation.getStateFromContext(
-            blues_sim._md_sim.context, state_keys)
-        ncmc_state = BLUESSimulation.getStateFromContext(
-            blues_sim._ncmc_sim.context, state_keys)
+        md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
+        ncmc_state = BLUESSimulation.getStateFromContext(blues_sim._ncmc_sim.context, state_keys)
         assert np.equal(md_state['positions'], ncmc_state['positions']).all()
 
     def test_resetSimulations(self, blues_sim, state_keys):
-        md_state0 = BLUESSimulation.getStateFromContext(
-            blues_sim._md_sim.context, state_keys)
+        md_state0 = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
 
         blues_sim._resetSimulations(100 * unit.kelvin)
 
-        md_state1 = BLUESSimulation.getStateFromContext(
-            blues_sim._md_sim.context, state_keys)
-        assert np.not_equal(md_state0['velocities'],
-                            md_state1['velocities']).all()
+        md_state1 = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
+        assert np.not_equal(md_state0['velocities'], md_state1['velocities']).all()
 
     def test_stepMD(self, blues_sim, state_keys):
-        md_state0 = BLUESSimulation.getStateFromContext(
-            blues_sim._md_sim.context, state_keys)
+        md_state0 = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
 
         blues_sim._stepMD(2)
 
-        md_state1 = BLUESSimulation.getStateFromContext(
-            blues_sim._md_sim.context, state_keys)
+        md_state1 = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
 
         # Check positions have changed
-        assert np.not_equal(md_state0['positions'],
-                            md_state1['positions']).all()
+        assert np.not_equal(md_state0['positions'], md_state1['positions']).all()
 
     def test_blues_simulationRunYAML(self, tmpdir, structure, tol_atom_indices, system_cfg, engine):
         yaml_cfg = """
@@ -531,19 +477,15 @@ class TestBLUESSimulation(object):
         PLATFORM = os.getenv('OMM_PLATFORM', 'CPU')
         cfg['simulation']['platform'] = PLATFORM
         systems = SystemFactory(structure, tol_atom_indices, cfg['system'])
-        simulations = SimulationFactory(systems, engine,
-                                        cfg['simulation'], cfg['md_reporters'],
-                                        cfg['ncmc_reporters'])
+        simulations = SimulationFactory(systems, engine, cfg['simulation'], cfg['md_reporters'], cfg['ncmc_reporters'])
 
         blues = BLUESSimulation(simulations)
         blues._md_sim.minimizeEnergy()
         blues._alch_sim.minimizeEnergy()
         blues._ncmc_sim.minimizeEnergy()
-        before_iter = blues._md_sim.context.getState(
-            getPositions=True).getPositions(asNumpy=True)
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         blues.run()
-        after_iter = blues._md_sim.context.getState(
-            getPositions=True).getPositions(asNumpy=True)
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         #Check that our system has run dynamics
         pos_compare = np.not_equal(before_iter, after_iter).all()
         assert pos_compare
@@ -576,25 +518,18 @@ class TestBLUESSimulation(object):
         }
 
         md_reporters = ReporterConfig(tmpdir.join('tol-test'), md_rep_cfg).makeReporters()
-        ncmc_reporters = ReporterConfig(tmpdir.join('tol-test-ncmc'),
-                                        ncmc_rep_cfg).makeReporters()
+        ncmc_reporters = ReporterConfig(tmpdir.join('tol-test-ncmc'), ncmc_rep_cfg).makeReporters()
 
         simulations = SimulationFactory(
-            systems,
-            engine,
-            sim_cfg,
-            md_reporters=md_reporters,
-            ncmc_reporters=ncmc_reporters)
+            systems, engine, sim_cfg, md_reporters=md_reporters, ncmc_reporters=ncmc_reporters)
 
         blues = BLUESSimulation(simulations)
         blues._md_sim.minimizeEnergy()
         blues._alch_sim.minimizeEnergy()
         blues._ncmc_sim.minimizeEnergy()
-        before_iter = blues._md_sim.context.getState(
-            getPositions=True).getPositions(asNumpy=True)
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         blues.run()
-        after_iter = blues._md_sim.context.getState(
-            getPositions=True).getPositions(asNumpy=True)
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
         #Check that our system has run dynamics
         pos_compare = np.not_equal(before_iter, after_iter).all()
         assert pos_compare
