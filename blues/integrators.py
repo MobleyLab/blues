@@ -1,5 +1,5 @@
-from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 import simtk
+from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 
 # Energy unit used by OpenMM unit system
 _OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole

@@ -5,12 +5,15 @@ Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, David L. Mobley
 """
 
-from __future__ import print_function
-import os, logging, sys
-import parmed
-from simtk import unit, openmm
-from math import floor, ceil
+import logging
+import os
+import sys
+from math import ceil, floor
 from platform import uname
+
+import parmed
+from simtk import openmm, unit
+
 logger = logging.getLogger(__name__)
 
 
@@ -211,7 +214,7 @@ def zero_masses(system, atomList=None):
     -------
     system : openmm.System
         The modified system with massless atoms.
-        
+
     """
     for index in (atomList):
         system.setParticleMass(index, 0 * unit.daltons)

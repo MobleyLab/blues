@@ -26,7 +26,7 @@ Latest release:
 * `notebooks` - Jupyter notebooks for testing/development
 
 ## Prerequisites
-BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still works with Python 2.7)
+BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<=1.1 still works with Python 2.7)
 Install [miniconda](http://conda.pydata.org/miniconda.html) according to your system.
 
 ## Requirements
@@ -55,10 +55,14 @@ Install from source (NOT RECOMMENDED)
 git clone git@github.com:MobleyLab/blues.git
 
 # Install some dependencies
-conda install -c omnia -c conda-forge openmmtool=0.14.0 openmm=7.1.1 numpy cython
+conda install -c omnia -c conda-forge openmmtool=0.54.0 openmm=7.2.2 numpy cython
 
 # Install BLUES package from the top directory
 pip install -e .
+
+# To validate your BLUES installation run the tests.
+pip instal -e .[tests]
+pytest -v -s
 ```
 
 ## Tutorial

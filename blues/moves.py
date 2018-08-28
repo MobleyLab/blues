@@ -10,16 +10,16 @@ Authors: Samuel C. Gill
 Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
-from simtk import unit
-import parmed
-import mdtraj
-import numpy
+import copy
+import math
+import random
 import sys
 import traceback
-import math
-import copy
-import random
-import os
+
+import mdtraj
+import numpy
+import parmed
+from simtk import unit
 
 try:
     import openeye.oechem as oechem

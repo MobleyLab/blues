@@ -1,15 +1,18 @@
-from mdtraj.formats.hdf5 import HDF5TrajectoryFile
-import json, yaml
-import subprocess
-import numpy as np
-from mdtraj.utils import in_units_of, ensure_type
-import mdtraj.version
-import simtk.openmm.version
+import json
 import logging
-import parmed
+import subprocess
+
+import mdtraj.version
 import netCDF4 as nc
-from blues import reporters
+import numpy as np
+import parmed
+import simtk.openmm.version
+import yaml
+from mdtraj.formats.hdf5 import HDF5TrajectoryFile
+from mdtraj.utils import ensure_type, in_units_of
 from parmed.amber.netcdffiles import NetCDFTraj
+
+from blues import reporters
 
 
 ######################
@@ -219,7 +222,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             dtype=np.float32,
             ndim=1,
             name='time',
-            shape=(n_frames, ),
+            shape=(n_frames,),
             can_be_none=True,
             warn_on_cast=False,
             add_newaxis_on_deficient_ndim=True)
@@ -255,7 +258,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             dtype=np.float32,
             ndim=1,
             name='kineticEnergy',
-            shape=(n_frames, ),
+            shape=(n_frames,),
             can_be_none=True,
             warn_on_cast=False,
             add_newaxis_on_deficient_ndim=True)
@@ -264,7 +267,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             dtype=np.float32,
             ndim=1,
             name='potentialEnergy',
-            shape=(n_frames, ),
+            shape=(n_frames,),
             can_be_none=True,
             warn_on_cast=False,
             add_newaxis_on_deficient_ndim=True)
@@ -273,7 +276,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             dtype=np.float32,
             ndim=1,
             name='temperature',
-            shape=(n_frames, ),
+            shape=(n_frames,),
             can_be_none=True,
             warn_on_cast=False,
             add_newaxis_on_deficient_ndim=True)
@@ -282,7 +285,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             dtype=np.float32,
             ndim=1,
             name='alchemicalLambda',
-            shape=(n_frames, ),
+            shape=(n_frames,),
             can_be_none=True,
             warn_on_cast=False,
             add_newaxis_on_deficient_ndim=True)
@@ -291,7 +294,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             dtype=np.float32,
             ndim=1,
             name='protocolWork',
-            shape=(n_frames, ),
+            shape=(n_frames,),
             can_be_none=True,
             warn_on_cast=False,
             add_newaxis_on_deficient_ndim=True)
@@ -420,7 +423,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             self._handle.root.coordinates.attrs['units'] = str('nanometers')
 
         if set_time:
-            self._create_earray(where='/', name='time', atom=self.tables.Float32Atom(), shape=(0, ))
+            self._create_earray(where='/', name='time', atom=self.tables.Float32Atom(), shape=(0,))
             self._handle.root.time.attrs['units'] = str('picoseconds')
 
         if set_cell:
@@ -435,24 +438,24 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
             self._handle.root.velocities.attrs['units'] = str('nanometers/picosecond')
 
         if set_kineticEnergy:
-            self._create_earray(where='/', name='kineticEnergy', atom=self.tables.Float32Atom(), shape=(0, ))
+            self._create_earray(where='/', name='kineticEnergy', atom=self.tables.Float32Atom(), shape=(0,))
             self._handle.root.kineticEnergy.attrs['units'] = str('kilojoules_per_mole')
 
         if set_potentialEnergy:
-            self._create_earray(where='/', name='potentialEnergy', atom=self.tables.Float32Atom(), shape=(0, ))
+            self._create_earray(where='/', name='potentialEnergy', atom=self.tables.Float32Atom(), shape=(0,))
             self._handle.root.potentialEnergy.attrs['units'] = str('kilojoules_per_mole')
 
         if set_temperature:
-            self._create_earray(where='/', name='temperature', atom=self.tables.Float32Atom(), shape=(0, ))
+            self._create_earray(where='/', name='temperature', atom=self.tables.Float32Atom(), shape=(0,))
             self._handle.root.temperature.attrs['units'] = str('kelvin')
 
         #Add another portion akin to this if you want to store more data in the h5 file
         if set_alchemicalLambda:
-            self._create_earray(where='/', name='alchemicalLambda', atom=self.tables.Float32Atom(), shape=(0, ))
+            self._create_earray(where='/', name='alchemicalLambda', atom=self.tables.Float32Atom(), shape=(0,))
             self._handle.root.alchemicalLambda.attrs['units'] = str('dimensionless')
 
         if set_protocolWork:
-            self._create_earray(where='/', name='protocolWork', atom=self.tables.Float32Atom(), shape=(0, ))
+            self._create_earray(where='/', name='protocolWork', atom=self.tables.Float32Atom(), shape=(0,))
             self._handle.root.protocolWork.attrs['units'] = str('kT')
 
         if parameters:
@@ -590,17 +593,17 @@ class NetCDF4Traj(NetCDFTraj):
             ncfile.createDimension('label', 5)
             inst.cell_spatial, inst.cell_angular, inst.label = 3, 3, 5
         # Create the variables and assign units and scaling factors
-        v = ncfile.createVariable('spatial', 'c', ('spatial', ))
+        v = ncfile.createVariable('spatial', 'c', ('spatial',))
         v[:] = np.asarray(list('xyz'))
         if inst.hasbox:
-            v = ncfile.createVariable('cell_spatial', 'c', ('cell_spatial', ))
+            v = ncfile.createVariable('cell_spatial', 'c', ('cell_spatial',))
             v[:] = np.asarray(list('abc'))
             v = ncfile.createVariable('cell_angular', 'c', (
                 'cell_angular',
                 'label',
             ))
             v[:] = np.asarray([list('alpha'), list('beta '), list('gamma')])
-        v = ncfile.createVariable('time', 'f', ('frame', ))
+        v = ncfile.createVariable('time', 'f', ('frame',))
         v.units = 'picosecond'
         if inst.hascrds:
             v = ncfile.createVariable('coordinates', 'f', ('frame', 'atom', 'spatial'))
@@ -624,23 +627,23 @@ class NetCDF4Traj(NetCDFTraj):
             v.units = 'degree'
             inst._last_box_frame = 0
         if inst.remd == 'TEMPERATURE':
-            v = ncfile.createVariable('temp0', 'd', ('frame', ))
+            v = ncfile.createVariable('temp0', 'd', ('frame',))
             v.units = 'kelvin'
             inst._last_remd_frame = 0
         elif inst.remd == 'MULTI':
             ncfile.createVariable('remd_indices', 'i', ('frame', 'remd_dimension'))
-            ncfile.createVariable('remd_dimtype', 'i', ('remd_dimension', ))
+            ncfile.createVariable('remd_dimtype', 'i', ('remd_dimension',))
             inst._last_remd_frame = 0
 
         inst._last_time_frame = 0
 
         if inst.hasprotocolWork:
-            v = ncfile.createVariable('protocolWork', 'f', ('frame', ))
+            v = ncfile.createVariable('protocolWork', 'f', ('frame',))
             v.units = 'kT'
             inst._last_protocolWork_frame = 0
 
         if inst.hasalchemicalLambda:
-            v = ncfile.createVariable('alchemicalLambda', 'f', ('frame', ))
+            v = ncfile.createVariable('alchemicalLambda', 'f', ('frame',))
             v.units = 'unitless'
             inst._last_alchemicalLambda_frame = 0
 

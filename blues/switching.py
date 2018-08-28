@@ -10,10 +10,11 @@ Contributors: Samuel C. Gill
 """
 
 from __future__ import print_function
-import numpy as np
+
 import copy
-import logging
 import traceback
+
+import numpy as np
 from simtk import openmm, unit
 
 default_functions = {
@@ -48,6 +49,7 @@ default_steps_per_propagation = 1
 
 
 class NaNException(Exception):
+
     def __init__(self, *args, **kwargs):
         super(NaNException, self).__init__(*args, **kwargs)
 
@@ -517,7 +519,8 @@ class NCMCEngine(object):
         available_parameters = self._getAvailableParameters(system)
         functions = {
             parameter_name: self.functions[parameter_name]
-            for parameter_name in self.functions if (parameter_name in available_parameters)
+            for parameter_name in self.functions
+            if (parameter_name in available_parameters)
         }
         return functions
 
@@ -782,7 +785,7 @@ class NCMCHybridEngine(NCMCEngine):
         ] = self.make_alchemical_system(topology_proposal, initial_positions, proposed_positions)
 
         indices = [initial_to_hybrid_atom_map[idx] for idx in topology_proposal.unique_old_atoms
-                   ] + [final_to_hybrid_atom_map[idx] for idx in topology_proposal.unique_new_atoms]
+                  ] + [final_to_hybrid_atom_map[idx] for idx in topology_proposal.unique_new_atoms]
         functions = self._get_functions(alchemical_system)
         integrator = self._choose_integrator(alchemical_system, functions, direction)
         context = self._create_context(alchemical_system, integrator, alchemical_positions)

@@ -1,10 +1,12 @@
-import os, sys, logging
-from math import ceil, floor
-import numpy as np
+import json
+import logging
+import os
+
 import parmed
-import yaml, json, sys
+import yaml
 from simtk import unit
 from simtk.openmm import app
+
 from blues import reporters, utils
 
 

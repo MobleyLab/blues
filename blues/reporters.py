@@ -1,16 +1,19 @@
-from mdtraj.reporters import HDF5Reporter
-from simtk.openmm import app
-import simtk.unit as unit
-import numpy as np
-from mdtraj.utils import unitcell
-import blues._version
 import logging
-import sys, time
+import sys
+import time
+
+import numpy as np
 import parmed
+import simtk.unit as unit
+from mdtraj.reporters import HDF5Reporter
+from mdtraj.utils import unitcell
 from parmed import unit as u
 from parmed.geometry import box_vectors_to_lengths_and_angles
-from blues.formats import *
+from simtk.openmm import app
+
+import blues._version
 import blues.reporters
+from blues.formats import *
 
 
 def _check_mode(m, modes):
@@ -389,7 +392,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if self._coordinates:
             coordinates = state.getPositions(asNumpy=True)[self._atomSlice]
             coordinates = coordinates.value_in_unit(getattr(unit, self._traj_file.distance_unit))
-            args = (coordinates, )
+            args = (coordinates,)
         if self._time:
             kwargs['time'] = state.getTime()
         if self._cell:

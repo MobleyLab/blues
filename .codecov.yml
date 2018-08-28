@@ -33,7 +33,7 @@ ignore:
   - blues/*dart.py
   - blues/switching.py
   - blues/formats.py
-  - blues/examples.py
+  - blues/example.py
 
 
 

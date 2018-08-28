@@ -6,14 +6,14 @@ Authors: Samuel C. Gill
 Contributors: David L. Mobley
 """
 
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
-from sys import stdout
-import simtk.unit as unit
-import numpy as np
-from blues.ncmc import SimNCMC
 import mdtraj as md
+import numpy as np
+import simtk.unit as unit
+from simtk.openmm import *
+from simtk.openmm.app import *
+from simtk.unit import *
+
+from blues.ncmc import SimNCMC
 
 
 #TODO consider throwing a warning if particle choices

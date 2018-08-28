@@ -1,7 +1,6 @@
-from blues.moves import RandomLigandRotationMove, SideChainMove, MoveEngine
-from blues.simulation import *
-import json
+from blues.moves import MoveEngine, RandomLigandRotationMove, SideChainMove
 from blues.settings import Settings
+from blues.simulation import *
 from blues.utils import get_data_filename
 
 

@@ -22,11 +22,11 @@ requirements:
     - python
     - pytest
     - setuptools
-    - openmmtools <=0.15.0
-    - mdtraj <=1.9.1
-    - openmm <=7.2.2
-    - parmed <=3.0.1
-    - netcdf4 <=1.3.1
+    - openmmtools 0.15.0
+    - mdtraj
+    - openmm 7.2.2
+    - parmed
+    - netcdf4
     - pyyaml
     - pip
 
@@ -34,11 +34,11 @@ requirements:
     - python
     - pytest
     - setuptools
-    - openmmtools <=0.15.0
-    - mdtraj <=1.9.1
-    - openmm <=7.2.2
-    - parmed <=3.0.1
-    - netcdf4 <=1.3.1
+    - openmmtools 0.15.0
+    - mdtraj
+    - openmm 7.2.2
+    - parmed
+    - netcdf4
     - pyyaml
     - pip
 

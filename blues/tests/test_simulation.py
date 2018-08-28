@@ -75,6 +75,7 @@ def system(structure, system_cfg):
 
 
 class NoRandomLigandRotation(RandomLigandRotationMove):
+
     def move(self, context):
         return context
 
@@ -140,6 +141,7 @@ def blues_sim(simulations):
 
 
 class TestSystemFactory(object):
+
     def test_atom_selections(self, structure, tol_atom_indices):
         atom_indices = SystemFactory.amber_selection_to_atomidx(structure, ':LIG')
 
@@ -235,6 +237,7 @@ class TestSystemFactory(object):
 
 
 class TestSimulationFactory(object):
+
     def test_addBarostat(self, system):
         print('Testing MonteCarloBarostat')
         forces = system.getForces()
@@ -325,6 +328,7 @@ class TestSimulationFactory(object):
 
 
 class TestBLUESSimulation(object):
+
     def test_getStateFromContext(self, md_sim, stateinfo_keys, state_keys):
 
         stateinfo = BLUESSimulation.getStateFromContext(md_sim.context, state_keys)
@@ -377,13 +381,13 @@ class TestBLUESSimulation(object):
 
         md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
         ncmc_state = BLUESSimulation.getStateFromContext(blues_sim._ncmc_sim.context, state_keys)
-        assert np.equal(blues_sim.stateTable['ncmc']['state0']['positions'], md_state['positions']).all()
+        assert np.equal(ncmc_state['positions'], md_state['positions']).all()
 
     def test_stepNCMC(self, blues_sim, sim_cfg):
         nstepsNC = sim_cfg['nstepsNC']
         moveStep = sim_cfg['moveStep']
-        ncmc_state0 = blues_sim.stateTable['ncmc']['state0']['positions']
         blues_sim._stepNCMC(nstepsNC, moveStep)
+        ncmc_state0 = blues_sim.stateTable['ncmc']['state0']['positions']
         ncmc_state1 = blues_sim.stateTable['ncmc']['state1']['positions']
         assert np.not_equal(ncmc_state0, ncmc_state1).all()
 
@@ -399,12 +403,12 @@ class TestBLUESSimulation(object):
 
         caplog.set_level(logging.INFO)
         blues_sim._acceptRejectMove()
-        assert 'NCMC MOVE' in caplog.text
-
-        # Check positions have been reset to before move
-        md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
         ncmc_state = BLUESSimulation.getStateFromContext(blues_sim._ncmc_sim.context, state_keys)
-        assert np.equal(md_state['positions'], ncmc_state['positions']).all()
+        md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
+        if 'NCMC MOVE ACCEPTED' in caplog.text:
+            assert np.equal(md_state['positions'], ncmc_state['positions']).all()
+        elif 'NCMC MOVE REJECTED' in caplog.text:
+            assert np.not_equal(md_state['positions'], ncmc_state['positions']).all()
 
     def test_resetSimulations(self, blues_sim, state_keys):
         md_state0 = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
@@ -490,7 +494,7 @@ class TestBLUESSimulation(object):
         pos_compare = np.not_equal(before_iter, after_iter).all()
         assert pos_compare
 
-    def test_blues_simulationRunPure(self, systems, simulations, engine, tmpdir, sim_cfg):
+    def test_blues_simulationRunPython(self, systems, simulations, engine, tmpdir, sim_cfg):
         print('Testing BLUESSimulation.run() from pure python')
         md_rep_cfg = {
             'stream': {
