@@ -921,13 +921,14 @@ class BLUESSimulation(object):
 
         # Retreive the NCMC state after the proposed move.
         ncmc_state1 = self.stateTable['ncmc']['state1']
+        ncmc_state1_PE = ncmc_state1['potential_energy']
 
         # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
         self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1, velocities=False)
 
         # Retrieve potential_energy for alch correction
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
-        correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1['potential_energy']) * (-1.0/self._ncmc_sim.context._integrator.kT)
+        correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1_PE) * (-1.0/self._ncmc_sim.context._integrator.kT)
 
         return correction_factor
 
@@ -949,7 +950,6 @@ class BLUESSimulation(object):
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum) )
 
             # If accept move, sync NCMC state to MD context
-            #ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys_)
             ncmc_state1 = self.stateTable['ncmc']['state1']
             self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
 
@@ -960,9 +960,8 @@ class BLUESSimulation(object):
             self.reject += 1
             logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum) )
 
-            #If reject move, reset positions in ncmc context to before move
-            md_state0 = self.stateTable['md']['state0']
-            #self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0, velocities=False)
+            # If reject move, do nothing,
+            # NCMC simulation be updated from MD Simulation next iteration.
 
             # Potential energy should be from last MD step in the previous iteration
             md_state0 = self.stateTable['md']['state0']
@@ -1004,14 +1003,6 @@ class BLUESSimulation(object):
                 #Write out broken frame
                 utils.saveSimulationFrame(self._md_sim, 'MD-fail-it%s-md%i.pdb' %(self.currentIter, self._md_sim.currentStep))
                 sys.exit(1)
-
-        #If MD finishes okay, update stateTable
-        #md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys_)
-        #self._set_stateTable_('md', 'state0', md_state0)
-
-        # Set NCMD state to last state from MD
-        #self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
-        #self._set_stateTable_('ncmc', 'state0', md_state0)
 
     def run(self, nIter=None, nstepsNC=None, moveStep=None, nstepsMD=None, temperature=300, write_move=False, **config):
         """Function that runs the BLUES engine to iterate over the actions:
