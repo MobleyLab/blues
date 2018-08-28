@@ -1,0 +1,51 @@
+# For more configuration details:
+# https://docs.codecov.io/docs/codecov-yaml
+
+# Check if this file is valid by running in bash:
+# curl -X POST --data-binary @.codecov.yml https://codecov.io/validate
+
+# Coverage configuration
+# ----------------------
+codecov:
+  branch: master
+  notify:
+    require_ci_to_pass: yes
+
+coverage:
+  status:
+    patch: false
+    project:
+      default:
+        threshold: 50%
+
+  range: 70..90     # First number represents red, and second represents green
+                    # (default is 70..100)
+  round: down       # up, down, or nearest
+  precision: 2      # Number of decimal places, between 0 and 5
+
+# Ignoring Paths
+# --------------
+# which folders/files to ignore
+ignore:
+  - setup.py
+  - blues/tests/*
+  - blues/_version.py
+  - blues/*dart.py
+  - blues/switching.py
+  - blues/formats.py
+  - blues/examples.py
+
+
+
+# Pull request comments:
+# ----------------------
+# Diff is the Coverage Diff of the pull request.
+# Files are the files impacted by the pull request
+comment:
+  # accepted in any order: header, reach, diff, flags, and/or files
+  layout: header, diff, tree, changes, sunburst
+  require_changes: false
+  branches: null
+  behavior: default
+  flags: null
+  paths: null

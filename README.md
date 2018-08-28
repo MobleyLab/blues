@@ -5,6 +5,8 @@ This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCM
 
 Latest release:
 [![Build Status](https://travis-ci.org/MobleyLab/blues.svg?branch=master)](https://travis-ci.org/MobleyLab/blues)
+[![Documentation Status](https://readthedocs.org/projects/blues-fork/badge/?version=molssi-practices)](https://blues-fork.readthedocs.io/en/molssi-practices/?badge=molssi-practices)
+[![codecov](https://codecov.io/gh/nathanmlim/blues/branch/molssi-practices/graph/badge.svg)](https://codecov.io/gh/nathanmlim/blues)
 [![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
  [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
 
@@ -24,8 +26,8 @@ Latest release:
 * `notebooks` - Jupyter notebooks for testing/development
 
 ## Prerequisites
-BLUES compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still work with Python 2.7)
-Install [miniconda](http://conda.pydata.org/miniconda.html) according to your systems
+BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still works with Python 2.7)
+Install [miniconda](http://conda.pydata.org/miniconda.html) according to your system.
 
 ## Requirements
 Starting from v1.2, you will need the OpenEye toolkits and related tools:
@@ -53,14 +55,14 @@ Install from source (NOT RECOMMENDED)
 git clone git@github.com:MobleyLab/blues.git
 
 # Install some dependencies
-conda install -c omnia -c conda-forge openmmtool=0.14.0 numpy cython
+conda install -c omnia -c conda-forge openmmtool=0.14.0 openmm=7.1.1 numpy cython
 
-# Install BLUES package
-python setup.py install
+# Install BLUES package from the top directory
+pip install -e .
 ```
 
 ## Tutorial
-For a tutorial on BLUES, see the [Jupyter Notebook](https://github.com/MobleyLab/blues/blob/master/notebooks/BLUES_tutorial.ipynb)
+For a tutorial on BLUES, see the [Jupyter Notebook](https://nbviewer.jupyter.org/github/mobleylab/blues/blob/master/notebooks/BLUES_tutorial.ipynb)
 
 ## Documentation
 
@@ -68,7 +70,7 @@ For a tutorial on BLUES, see the [Jupyter Notebook](https://github.com/MobleyLab
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes using the OpenMM simulation package.  One goal for this package is to allow for easy additions of other moves of interest, which will be covered below.
 
 ### Example Use
-An example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move can be found in `blues/example_rotmove.py`
+An example of how to set up a simulation sampling the binding modes of toluene bound to T4 lysozyme using NCMC and a rotational move can be found in `examples/example_rotmove.py`
 
 ### Actually using BLUES
 The integrator of `BLUES` contains the framework necessary for NCMC.  Specifically, the integrator class calculates the work done during a NCMC move. It also controls the lambda scaling of parameters. The integrator that BLUES uses inherits from `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator` to keep track of the work done outside integration steps, allowing Monte Carlo (MC) moves to be incorporated together with the NCMC thermodynamic perturbation protocol. Currently the `openmmtools.alchemy` package is used to generate the lambda parameters for the ligand, allowing alchemical modification of the sterics and electrostatics of the system.

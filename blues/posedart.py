@@ -14,16 +14,18 @@ import simtk.unit as unit
 import numpy as np
 from blues.ncmc import SimNCMC, get_lig_residues
 import mdtraj as md
-def zero_masses( system, firstres, lastres):
+
+
+def zero_masses(system, firstres, lastres):
     for index in range(firstres, lastres):
-        system.setParticleMass(index, 0*daltons)
+        system.setParticleMass(index, 0 * daltons)
+
 
 def beta(temperature):
     kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
     kT = kB * temperature
     beta = 1.0 / kT
     return beta
-
 
 
 def forcegroupify(system):
@@ -34,16 +36,19 @@ def forcegroupify(system):
         forcegroups[force] = i
     return forcegroups
 
+
 def getEnergyDecomposition(context, forcegroups):
     energies = {}
     for f, i in forcegroups.items():
         energies[f] = context.getState(getEnergy=True, groups=2**i).getPotentialEnergy()
     return energies
 
+
 class PoseDart(SimNCMC):
     """
     Class for performing smart darting moves during an NCMC simulation.
     """
+
     def __init__(self, pdb_files, fit_atoms, dart_size, **kwds):
         super(PoseDart, self).__init__(**kwds)
         self.dartboard = []
@@ -52,15 +57,15 @@ class PoseDart(SimNCMC):
         print(self.residueList)
         if type(dart_size._value) == list:
             if len(dart_size) != len(residueList):
-                raise ValueError('mismatch between length of dart_size (%i) and residueList (%i)' % (len(dart_size), len(residueList)) )
+                raise ValueError('mismatch between length of dart_size (%i) and residueList (%i)' % (len(dart_size),
+                                                                                                     len(residueList)))
             self.dart_size = dart_size
         elif type(dart_size._value) == int or type(dart_size._value) == float:
             print('adding the same size darts')
             for entry in self.residueList:
                 print('appending dart')
                 self.dart_size.append(dart_size.value_in_unit(unit.nanometers))
-            self.dart_size = self.dart_size*unit.nanometers
-
+            self.dart_size = self.dart_size * unit.nanometers
 
         #self.dart_size = 0.2*unit.nanometers
         self.binding_mode_traj = []
@@ -71,19 +76,11 @@ class PoseDart(SimNCMC):
             self.binding_mode_traj.append(copy.deepcopy(traj))
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
 
-
-
-
-
-
     def setDartUpdates(self, residueList):
         self.residueList = residueList
 
     def defineLigandAtomsFromFile(lig_resname, coord_file, top_file=None):
-        self.residueList = get_lig_residues(lig_resname,
-                                    coord_file,
-                                    top_file)
-
+        self.residueList = get_lig_residues(lig_resname, coord_file, top_file)
 
     def add_dart(self, dart):
         self.dartboard.append(dart)
@@ -101,8 +98,8 @@ class PoseDart(SimNCMC):
 
         for index, dart in enumerate(binding_mode_atom_pos):
             diff = sim_atom_pos[index] - dart
-            dist = np.sqrt(np.sum((diff)*(diff)))
-#            dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
+            dist = np.sqrt(np.sum((diff) * (diff)))
+            #            dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
             print('binding_mode_atom_pos', binding_mode_atom_pos)
             print('sim_atom_pos', sim_atom_pos[index])
             print('dart', dart)
@@ -112,9 +109,7 @@ class PoseDart(SimNCMC):
             print('diff_list', diff_list[index])
             print('dist_list', dist_list[index])
 
-
         return dist_list, diff_list
-
 
     def poseDart(self, context=None, residueList=None):
         """check whether molecule is within a pose, and
@@ -137,7 +132,6 @@ class PoseDart(SimNCMC):
         num_lig_atoms = len(self.residueList)
         temp_pos = np.zeros((num_lig_atoms, 3))
 
-
         for index, atom in enumerate(residueList):
             print('temp_pos', temp_pos[index])
             print('nc_pos', nc_pos[atom])
@@ -148,13 +142,12 @@ class PoseDart(SimNCMC):
         #to remove rotational changes
         for pose in self.binding_mode_traj:
             print('pose', pose.xyz)
-            pose = pose.superpose(reference=self.sim_traj,
-                            atom_indices=self.fit_atoms,
-                            ref_atom_indices=self.fit_atoms)
-#            pose.save('temp.pdb')
+            pose = pose.superpose(
+                reference=self.sim_traj, atom_indices=self.fit_atoms, ref_atom_indices=self.fit_atoms)
+            #            pose.save('temp.pdb')
             pose_coord = pose.xyz[0]
             print('pose_coord', pose.xyz[0])
-#            help(pose.superpose)
+            #            help(pose.superpose)
             binding_mode_pos = []
             #find the dart vectors and distances to each protein
             #append the list to a storage list
@@ -176,7 +169,7 @@ class PoseDart(SimNCMC):
         #check to see which poses fall within the dart size
         for index, single_pose in enumerate(total_dist_list):
             counter = 0
-            for atomnumber,dist in enumerate(single_pose):
+            for atomnumber, dist in enumerate(single_pose):
                 print(self.dart_size)
                 print(self.dart_size[0])
                 if dist <= self.dart_size[atomnumber]._value:
@@ -229,20 +222,15 @@ class PoseDart(SimNCMC):
             print('changevec', changevec)
             print('changevec[index]', changevec[index])
             dart_change = dart_origin + changevec[index]
-            changed_pos[atom] = dart_change*unit.nanometers
+            changed_pos[atom] = dart_change * unit.nanometers
             print('dart_change', dart_change)
             print('dart_before', nc_pos[atom])
             print('dart_after', changed_pos[atom])
 
-
         return changed_pos
-
-
 
         #select another binding pose and then for each atom
         #use poseRedart() for each atom position
-
-
 
     def poseMove(self, context=None, residueList=None):
         if residueList == None:
@@ -257,7 +245,8 @@ class PoseDart(SimNCMC):
             print('no pose found')
         else:
             print('yes pose found')
-            new_pos = self.poseRedart(changevec=diff_list,
+            new_pos = self.poseRedart(
+                changevec=diff_list,
                 binding_mode_pos=self.binding_mode_traj,
                 binding_mode_index=selected_pose,
                 nc_pos=oldDartPos)
@@ -267,21 +256,10 @@ class PoseDart(SimNCMC):
             print('oldEnergy', oldEnergy)
             print('newEnergy', newEnergy)
             old_md_state = self.md_simulation.context.getState(True, True, False, True, True, False)
-            print('md_oldEnergy',old_md_state.getPotentialEnergy())
+            print('md_oldEnergy', old_md_state.getPotentialEnergy())
             self.md_simulation.context.setPositions(new_pos)
             new_md_state = self.md_simulation.context.getState(True, True, False, True, True, False)
-            print('md_newEnergy',new_md_state.getPotentialEnergy())
-
-
-
-
-
-
-
-
-
-
-
+            print('md_newEnergy', new_md_state.getPotentialEnergy())
 
     def findDart(self, particle_pairs=None, particle_weights=None):
         """
@@ -363,9 +341,6 @@ class PoseDart(SimNCMC):
         self.dartboard = dart_list[:]
         return dart_list
 
-
-
-
     def reDart(self, changevec):
         """
         Helper function to choose a random dart and determine the vector
@@ -393,10 +368,10 @@ class PoseDart(SimNCMC):
         selectedboard, changevec = self.calc_from_center(com=center)
         print('changevec', changevec)
         if selectedboard != None:
-        #notes
-        #comMove is where the com ends up after accounting from where
-        #it was from the original dart center
-        #basically it's final displacement location
+            #notes
+            #comMove is where the com ends up after accounting from where
+            #it was from the original dart center
+            #basically it's final displacement location
             newDartPos = copy.deepcopy(oldDartPos)
             comMove = self.reDart(changevec)
             vecMove = comMove - center
@@ -405,13 +380,13 @@ class PoseDart(SimNCMC):
             context.setPositions(newDartPos)
             newDartInfo = context.getState(True, True, False, True, True, False)
             newDartPE = newDartInfo.getPotentialEnergy()
-            logaccept = -1.0*(newDartPE - oldDartPE) * self.beta
+            logaccept = -1.0 * (newDartPE - oldDartPE) * self.beta
             randnum = math.log(np.random.random())
             print('logaccept', logaccept, randnum)
             print('old/newPE', oldDartPE, newDartPE)
             if logaccept >= randnum:
                 print('move accepted!')
-                self.acceptance = self.acceptance+1
+                self.acceptance = self.acceptance + 1
             else:
                 print('rejected')
                 context.setPositions(oldDartPos)
@@ -427,7 +402,6 @@ class PoseDart(SimNCMC):
             residueList = self.residueList
         if context == None:
             context = self.nc_context
-
 
         stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
@@ -450,7 +424,7 @@ class PoseDart(SimNCMC):
             print(newDartPos)
             context.setPositions(newDartPos)
             newDartInfo = context.getState(True, True, False, True, True, False)
-#            newDartPE = newDartInfo.getPotentialEnergy()
+            #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
 
@@ -464,7 +438,6 @@ class PoseDart(SimNCMC):
             residueList = self.residueList
         if context == None:
             context = self.nc_context
-
 
         stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
@@ -488,7 +461,7 @@ class PoseDart(SimNCMC):
             print(newDartPos)
             context.setPositions(newDartPos)
             newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
-#            newDartPE = newDartInfo.getPotentialEnergy()
+            #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
 
@@ -502,7 +475,6 @@ class PoseDart(SimNCMC):
             residueList = self.residueList
         if context == None:
             context = self.nc_context
-
 
         stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
@@ -526,6 +498,6 @@ class PoseDart(SimNCMC):
             print(newDartPos)
             context.setPositions(newDartPos)
             newDartInfo = self.nc_context.getState(True, True, False, True, True, False)
-#            newDartPE = newDartInfo.getPotentialEnergy()
+            #            newDartPE = newDartInfo.getPotentialEnergy()
 
             return newDartInfo.getPositions(asNumpy=True)
