@@ -2,46 +2,43 @@ dist: trusty
 sudo: false
 language: python
 
-# branches:
-#     only:
-#         - master
+branches:
+    only:
+        - master
 
 env:
   global:
     - ORGNAME="omnia"
     - USERNAME="nathanmlim"
-    - PACKAGENAME="blues"
+    - PKG_NAME="blues"
+    #- LABEL="main"
+    - LABEL="dev"
+    - CONDA_ENV="${PKG_NAME}-${TRAVIS_OS_NAME}"
     - OE_LICENSE="$HOME/oe_license.txt"
     - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
     - OPENEYE_BETA="https://pypi.anaconda.org/openeye/label/beta/simple"
-    - CCACHE=$HOME/ccache/lib/ccache/bin
 
 matrix:
   include:
     # Extra includes for OSX since python language is not available by default on OSX
     - os: osx
       language: generic
-      env: PYTHON_VER=3.5
+      env: CONDA_PY=35
     - os: osx
       language: generic
-      env: PYTHON_VER=3.6
+      env: CONDA_PY=36
 
     - os: linux
       python: 3.5
-      env: PYTHON_VER=3.5
+      env: CONDA_PY=35
     - os: linux
       python: 3.6
-      env: PYTHON_VER=3.6
+      env: CONDA_PY=36
 
 
 before_install:
-  #- export PYTHONUNBUFFERED=true
-  #- export PATH=$HOME/miniconda/bin:$PATH
-
   # Additional info about the build
   - uname -a
-  - df -h
-  - ulimit -a
 
     # Install the Python environment
   - source devtools/travis-ci/before_install.sh
@@ -62,13 +59,10 @@ before_install:
   # Add conda-forge channel to top priority
   - conda config --add channels conda-forge
 
-  #DEBUG
-  - conda info -a
-
 install:
   # Create test environment for package
-  - conda create -n test python=$PYTHON_VER pip pytest pytest-cov
-  - conda activate test
+  - conda create -n ${CONDA_ENV} python=${TRAVIS_PYTHON_VERSION} pip pytest pytest-cov
+  - conda activate ${CONDA_ENV}
 
     # Install pip only modules
   - pip install codecov
@@ -80,10 +74,8 @@ install:
   #- conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
 
   # Build and install package
-  - conda build --python=$PYTHON_VER devtools/conda-recipe
-  - conda install --use-local -q ${PACKAGENAME}
-  - pip install -e .[tests]
-
+  - conda build -q --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe
+  - conda install --use-local -q ${PKG_NAME}
   - conda list
 
 script:
@@ -91,13 +83,19 @@ script:
 
 after_success:
   - codecov
-#   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
-#
-# deploy:
-#   #Deploy to Anaconda.org
-#   - provider: script
-#     skip_cleanup: true
-#     script: ./devtools/conda-recipe/conda_upload.sh
-    #on:
-      #branch: master
-      #tags: true
+  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
+
+# before_deploy:
+#  # Set up git user name and tag this commit
+#   - git config --local user.name ${USERNAME}
+#   - git config --local user.email ${USERNAME}@gmail.com
+
+
+deploy:
+  #Deploy to Anaconda.org
+  - provider: script
+    skip_cleanup: true
+    script: ./devtools/conda-recipe/conda_upload.sh
+    on:
+      branch: master
+      # tags: true

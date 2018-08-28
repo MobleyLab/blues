@@ -1,15 +1,13 @@
-{% set build_number = '7.g53b29ae.dirty' %}
-{% set short_version = '0.2.2' %}
-
 package:
   name: blues
-  version: {{ short_version }}
+  version: {{ GIT_DESCRIBE_TAG }}
 
 source:
   path : ../..
 
 build:
-  number: 0
+  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
+  string: py{{ CONDA_PY }}_{{ environ.get('GIT_BUILD_STR', '') }}
   script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
 
 requirements:
@@ -22,25 +20,18 @@ requirements:
     - python
     - pytest
     - setuptools
-    - openmmtools 0.15.0
+    - openmmtools >=0.15.0
     - mdtraj
-    - openmm 7.2.2
+    - openmm >=7.2.2
     - parmed
     - netcdf4
     - pyyaml
     - pip
 
   run:
-    - python
-    - pytest
-    - setuptools
-    - openmmtools 0.15.0
-    - mdtraj
-    - openmm 7.2.2
-    - parmed
-    - netcdf4
-    - pyyaml
-    - pip
+  {% for package in resolved_packages('build') %}
+    - {{ package }}
+  {% endfor %}
 
 test:
   requires:

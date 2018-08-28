@@ -1,16 +1,13 @@
 #!/bin/bash
 
-CONDA_BLD_FILE=${HOME}/miniconda/conda-bld/noarch/blues-*.tar.bz2
+IFS="- " read -r -a GIT <<< `git describe --tags`
+CONDA_ENV_FILE=${PKG_NAME}-${GIT[0]}_py${CONDA_PY}-${TRAVIS_OS_NAME}.yml
+conda env export -n ${CONDA_ENV} -f $CONDA_ENV_FILE --no-builds
 
-#echo "Converting conda package..."
-#conda convert --platform all ${CONDA_BLD_FILE} --output-dir conda-bld/
+CONDA_BLD_FILE=`conda build --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe --output`
+
+echo "Uploading conda environment $CONDA_ENV_FILE to Anaconda.org..."
+anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USERNAME $CONDA_ENV_FILE -l ${LABEL} --force
 
 echo "Deploying $CONDA_BLD_FILE to Anaconda.org..."
-### DEV BUILDS
-#anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USERNAME -l dev ${CONDA_BLD_FILE} --force
-
-### RELEASE BUILDS
-anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USERNAME -l main ${CONDA_BLD_FILE} --force
-
-echo "Successfully deployed to Anaconda.org."
-exit 0
+anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USERNAME -l ${LABEL} ${CONDA_BLD_FILE} --force

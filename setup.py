@@ -17,7 +17,6 @@ except (IOError, ImportError):
 #from Cython.Build import cythonize
 DOCLINES = __doc__.split("\n")
 
-
 CLASSIFIERS = """\
 Development Status :: 1 - Alpha
 Intended Audience :: Science/Research
@@ -29,6 +28,7 @@ Topic :: Scientific/Engineering :: Chemistry
 Operating System :: Unix
 """
 
+
 def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
 
     #with open('blues/version.py') as f:
@@ -36,9 +36,8 @@ def write_meta_yaml(filename='devtools/conda-recipe/meta.yaml'):
     #lines = data.split('\n')
 
     version = versioneer.get_version()
-    (short_version, build_number) = version.split('+')
-    version_numbers = {'short_version': short_version,
-                       'build_number' : build_number }
+    ver = version.split('+')
+    version_numbers = {'short_version': ver[0], 'build_number': ver[1]}
 
     with open(filename, 'r') as meta:
         yaml_lines = meta.readlines()
@@ -99,8 +98,7 @@ def check_dependencies():
         if not found_openmm_720_or_earlier:
             msg = [
                 bar,
-                '[Unmet Dependency] BLUES requires OpenMM version > 7.2.0. You have version %s.'
-                % openmm_version, bar
+                '[Unmet Dependency] BLUES requires OpenMM version > 7.2.0. You have version %s.' % openmm_version, bar
             ]
     else:
         msg = [
@@ -126,9 +124,7 @@ def check_dependencies():
     if msg is not None:
         import textwrap
         print()
-        print(
-            os.linesep.join([line for e in msg for line in textwrap.wrap(e)]),
-            file=sys.stderr)
+        print(os.linesep.join([line for e in msg for line in textwrap.wrap(e)]), file=sys.stderr)
         #print('\n'.join(list(textwrap.wrap(e) for e in msg)))
 
 
@@ -136,31 +132,26 @@ def check_dependencies():
 # SETUP
 ################################################################################
 
-write_meta_yaml('devtools/conda-recipe/meta.yaml')
 setup(
     name='blues',
-    author=
-    "Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley, and others",
+    author="Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley, and others",
     author_email='dmobley@uci.edu',
     description=DOCLINES[0],
     long_description=long_description,
-    #long_description="\n".join(DOCLINES[2:]),
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     license='MIT',
-
-    python_requires= ">=3.5",
+    python_requires=">=3.5",
     url='https://github.com/MobleyLab/blues',
     platforms=['Linux-64', 'Mac OSX-64', 'Unix-64'],
     classifiers=CLASSIFIERS.splitlines(),
-    packages=['blues', "blues.tests", "blues.tests.data"] + ['blues.{}'.format(package) for package in find_packages('blues')],
-    package_data={'blues': find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*'] + ['examples/*.yml'] },
+    packages=['blues', "blues.tests", "blues.tests.data"] +
+    ['blues.{}'.format(package) for package in find_packages('blues')],
+    package_data={
+        'blues':
+        find_package_data('blues/tests/data', 'blues') + ['notebooks/*.ipynb'] + ['images/*'] + ['examples/*.yml']
+    },
     package_dir={'blues': 'blues'},
-    #install_requires=[
-    #    'numpy', 'cython', 'scipy', 'pandas',
-    #    'netCDF4', 'pyyaml', 'pytest',
-    #],
-
     extras_require={
         'docs': [
             'sphinx',  # autodoc was broken in 1.3.1
