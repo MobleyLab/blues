@@ -1,12 +1,12 @@
-from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 import simtk
+from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 
 # Energy unit used by OpenMM unit system
 _OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
 
+
 class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
-    """
-    Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
+    """Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
     The functions can use this to create more complex protocols for other global parameters.
 
@@ -18,44 +18,81 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
 
     Propagator is based on Langevin splitting, as described below.
     One way to divide the Langevin system is into three parts which can each be solved "exactly:"
-        - R: Linear "drift" / Constrained "drift"
-            Deterministic update of *positions*, using current velocities
-            x <- x + v dt
-        - V: Linear "kick" / Constrained "kick"
-            Deterministic update of *velocities*, using current forces
-            v <- v + (f/m) dt
-                where f = force, m = mass
-        - O: Ornstein-Uhlenbeck
-            Stochastic update of velocities, simulating interaction with a heat bath
-            v <- av + b sqrt(kT/m) R
-                where
-                a = e^(-gamma dt)
-                b = sqrt(1 - e^(-2gamma dt))
-                R is i.i.d. standard normal
+
+    - R: Linear "drift" / Constrained "drift"
+        Deterministic update of *positions*, using current velocities
+        ``x <- x + v dt``
+    - V: Linear "kick" / Constrained "kick"
+        Deterministic update of *velocities*, using current forces
+        ``v <- v + (f/m) dt``; where f = force, m = mass
+    - O: Ornstein-Uhlenbeck
+        Stochastic update of velocities, simulating interaction with a heat bath
+        ``v <- av + b sqrt(kT/m) R`` where:
+
+        - a = e^(-gamma dt)
+        - b = sqrt(1 - e^(-2gamma dt))
+        - R is i.i.d. standard normal
+
     We can then construct integrators by solving each part for a certain timestep in sequence.
     (We can further split up the V step by force group, evaluating cheap but fast-fluctuating
     forces more frequently than expensive but slow-fluctuating forces. Since forces are only
     evaluated in the V step, we represent this by including in our "alphabet" V0, V1, ...)
     When the system contains holonomic constraints, these steps are confined to the constraint
     manifold.
-    Examples
-    --------
-        - g-BAOAB:
-            splitting="R V O H O V R"
-        - VVVR
-            splitting="O V R H R V O"
-        - VV
-            splitting="V R H R V"
-        - An NCMC algorithm with Metropolized integrator:
-            splitting="O { V R H R V } O"
+
+    Parameters
+    ----------
+    alchemical_functions : dict of strings
+        key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable "lambda"
+    splitting : string, default: "H V R O V R H"
+        Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option, which increments the global parameter `lambda` by 1/nsteps_neq for each step.
+        Forces are only used in V-step. Handle multiple force groups by appending the force group index
+        to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.( will cause metropolization, and must be followed later by a ).
+    temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*simtk.unit.kelvin
+       Fictitious "bath" temperature
+    collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/simtk.unit.picoseconds
+       Collision rate
+    timestep : numpy.unit.Quantity compatible with femtoseconds, default: 1.0*simtk.unit.femtoseconds
+       Integration timestep
+    constraint_tolerance : float, default: 1.0e-8
+        Tolerance for constraint solver
+    measure_shadow_work : boolean, default: False
+        Accumulate the shadow work performed by the symplectic substeps, in the global `shadow_work`
+    measure_heat : boolean, default: True
+        Accumulate the heat exchanged with the bath in each step, in the global `heat`
+    nsteps_neq : int, default: 100
+        Number of steps in nonequilibrium protocol. Default 100
+    prop_lambda : float (Default = 0.3)
+        Defines the region in which to add extra propagation
+        steps during the NCMC simulation from the midpoint 0.5.
+        i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.
+    nprop : int (Default: 1)
+        Controls the number of propagation steps to add in the lambda
+        region defined by `prop_lambda`.
+
     Attributes
     ----------
     _kinetic_energy : str
         This is 0.5*m*v*v by default, and is the expression used for the kinetic energy
+
+    Examples
+    --------
+    - g-BAOAB:
+        splitting="R V O H O V R"
+    - VVVR
+        splitting="O V R H R V O"
+    - VV
+        splitting="V R H R V"
+    - An NCMC algorithm with Metropolized integrator:
+        splitting="O { V R H R V } O"
+
+
     References
     ----------
     [Nilmeier, et al. 2011] Nonequilibrium candidate Monte Carlo is an efficient tool for equilibrium simulation
+
     [Leimkuhler and Matthews, 2015] Molecular dynamics: with deterministic and stochastic numerical methods, Chapter 7
+
     """
 
     def __init__(self,
@@ -70,51 +107,19 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
                  nsteps_neq=100,
                  nprop=1,
                  prop_lambda=0.3,
-                 *args, **kwargs):
-        """
-        Parameters
-        ----------
-        alchemical_functions : dict of strings
-            key: value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible
-            string that depends on the variable "lambda"
-        splitting : string, default: "H V R O V R H"
-            Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option,
-            which increments the global parameter `lambda` by 1/nsteps_neq for each step.
-            Forces are only used in V-step. Handle multiple force groups by appending the force group index
-            to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.
-            ( will cause metropolization, and must be followed later by a ).
-        temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*simtk.unit.kelvin
-           Fictitious "bath" temperature
-        collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/simtk.unit.picoseconds
-           Collision rate
-        timestep : numpy.unit.Quantity compatible with femtoseconds, default: 1.0*simtk.unit.femtoseconds
-           Integration timestep
-        constraint_tolerance : float, default: 1.0e-8
-            Tolerance for constraint solver
-        measure_shadow_work : boolean, default: False
-            Accumulate the shadow work performed by the symplectic substeps, in the global `shadow_work`
-        measure_heat : boolean, default: True
-            Accumulate the heat exchanged with the bath in each step, in the global `heat`
-        nsteps_neq : int, default: 100
-            Number of steps in nonequilibrium protocol. Default 100
-        prop_lambda : float (Default = 0.3)
-            Defines the region in which to add extra propagation
-            steps during the NCMC simulation from the midpoint 0.5.
-            i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.
-        nprop : int (Default: 1)
-            Controls the number of propagation steps to add in the lambda
-            region defined by `prop_lambda`.
-        """
-
+                 *args,
+                 **kwargs):
         # call the base class constructor
-        super(AlchemicalExternalLangevinIntegrator, self).__init__(alchemical_functions=alchemical_functions,
-                                                               splitting=splitting, temperature=temperature,
-                                                               collision_rate=collision_rate, timestep=timestep,
-                                                               constraint_tolerance=constraint_tolerance,
-                                                               measure_shadow_work=measure_shadow_work,
-                                                               measure_heat=measure_heat,
-                                                               nsteps_neq=nsteps_neq
-                                                               )
+        super(AlchemicalExternalLangevinIntegrator, self).__init__(
+            alchemical_functions=alchemical_functions,
+            splitting=splitting,
+            temperature=temperature,
+            collision_rate=collision_rate,
+            timestep=timestep,
+            constraint_tolerance=constraint_tolerance,
+            measure_shadow_work=measure_shadow_work,
+            measure_heat=measure_heat,
+            nsteps_neq=nsteps_neq)
 
         self._prop_lambda = self._get_prop_lambda(prop_lambda)
 
@@ -128,7 +133,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("prop", 1)
         self.addGlobalVariable("prop_lambda_min", self._prop_lambda[0])
         self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
-        self._registered_step_types['H'] = (self._add_alchemical_perturbation_step, False)
+        # Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d
+        self._step_dispatch_table['H'] = (self._add_alchemical_perturbation_step, False)
+        #$self._registered_step_types['H'] = (
+        #    self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
 
         try:
@@ -137,8 +145,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.addGlobalVariable('shadow_work', 0)
 
     def _get_prop_lambda(self, prop_lambda):
-        prop_lambda_max = round(prop_lambda + 0.5,4)
-        prop_lambda_min = round(0.5 - prop_lambda,4)
+        prop_lambda_max = round(prop_lambda + 0.5, 4)
+        prop_lambda_min = round(0.5 - prop_lambda, 4)
         prop_range = prop_lambda_max - prop_lambda_min
 
         #Set values to outside [0, 1.0] to skip IfBlock
@@ -226,7 +234,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         #TODO remove context from arguments if/once ncmc_switching is changed
         protocol = self.getGlobalVariableByName("protocol_work")
         shadow = self.getGlobalVariableByName("shadow_work")
-        logp_accept = -1.0*(protocol + shadow)*_OPENMM_ENERGY_UNIT / self.kT
+        logp_accept = -1.0 * (protocol + shadow) * _OPENMM_ENERGY_UNIT / self.kT
         return logp_accept
 
     def reset(self):

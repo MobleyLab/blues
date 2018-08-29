@@ -1,0 +1,24 @@
+name: blues
+channels:
+  - omnia
+  - openeye
+  - conda-forge
+
+dependencies:
+  - python
+  - pytest
+  - sphinx >=1.4
+  - nbconvert
+  - ipykernel
+  - setuptools
+  - openmmtools >=0.15.0
+  - mdtraj
+  - openmm >=7.2.2
+  - parmed 
+  - netcdf4
+  - hdf5
+  - pyyaml
+  - numpydoc
+  - ipython
+  - pip:
+    - nbsphinx
