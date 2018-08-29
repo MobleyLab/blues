@@ -1,28 +1,33 @@
-import logging
-import sys
-import time
-
-import numpy as np
-import parmed
-import simtk.unit as unit
+from mdtraj.formats.hdf5 import HDF5TrajectoryFile
 from mdtraj.reporters import HDF5Reporter
-from mdtraj.utils import unitcell
-from parmed import unit as u
-from parmed.geometry import box_vectors_to_lengths_and_angles
 from simtk.openmm import app
+import simtk.unit as unit
+import json, yaml
+import subprocess
+import numpy as np
+from mdtraj.utils import unitcell
+from mdtraj.utils import in_units_of, ensure_type
 
-import blues._version
-import blues.reporters
+import mdtraj.version
+import simtk.openmm.version
+import blues.version
+import logging
+import sys, time
+import parmed
 from blues.formats import *
-
+import blues.reporters
+from parmed import unit as u
+from parmed.amber.netcdffiles import NetCDFTraj, NetCDFRestart
+from parmed.geometry import box_vectors_to_lengths_and_angles
+import netCDF4 as nc
 
 def _check_mode(m, modes):
     """
     Check if the file has a read or write mode, otherwise throw an error.
     """
     if m not in modes:
-        raise ValueError('This operation is only available when a file ' 'is open in mode="%s".' % m)
-
+        raise ValueError('This operation is only available when a file '
+                         'is open in mode="%s".' % m)
 
 def addLoggingLevel(levelName, levelNum, methodName=None):
     """
@@ -39,16 +44,6 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     raise an `AttributeError` if the level name is already an attribute of the
     `logging` module or if the method name is already present
 
-    Parameters
-    ----------
-    levelName : str
-        The new level name to be added to the `logging` module.
-    levelNum : int
-        The level number indicated for the logging module.
-    methodName : str, default=None
-        The method to call on the logging module for the new level name.
-        For example if provided 'trace', you would call `logging.trace()`.
-
     Example
     -------
     >>> addLoggingLevel('TRACE', logging.DEBUG - 5)
@@ -63,11 +58,11 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
         methodName = levelName.lower()
 
     if hasattr(logging, levelName):
-        logging.warn('{} already defined in logging module'.format(levelName))
+       logging.warn('{} already defined in logging module'.format(levelName))
     if hasattr(logging, methodName):
-        logging.warn('{} already defined in logging module'.format(methodName))
+       logging.warn('{} already defined in logging module'.format(methodName))
     if hasattr(logging.getLoggerClass(), methodName):
-        logging.warn('{} already defined in logger class'.format(methodName))
+       logging.warn('{} already defined in logger class'.format(methodName))
 
     # This method was inspired by the answers to Stack Overflow post
     # http://stackoverflow.com/q/2183233/2988730, especially
@@ -75,7 +70,6 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     def logForLevel(self, message, *args, **kwargs):
         if self.isEnabledFor(levelNum):
             self._log(levelNum, message, args, **kwargs)
-
     def logToRoot(message, *args, **kwargs):
         logging.log(levelNum, message, *args, **kwargs)
 
@@ -84,27 +78,8 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
-
 def init_logger(logger, level=logging.INFO, stream=True, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
     """Initialize the Logger module with the given logger_level and outfname.
-
-    Parameters
-    ----------
-    logger : logging.getLogger()
-        The root logger object if it has been created already.
-    level : logging.<LEVEL>
-        Valid options for <LEVEL> would be DEBUG, INFO, WARNING, ERROR, CRITICAL.
-    stream : bool, default = True
-        If True, the logger will also stream information to sys.stdout as well
-        as the output file.
-    outfname : str, default = time.strftime("blues-%Y%m%d-%H%M%S")
-        The output file path prefix to store the logged data. This will always
-        write to a file with the extension `.log`.
-
-    Returns
-    -------
-    logger : logging.getLogger()
-        The logging object with additional Handlers added.
     """
     fmt = LoggerFormatter()
 
@@ -116,7 +91,7 @@ def init_logger(logger, level=logging.INFO, stream=True, outfname=time.strftime(
 
     # Write to File
     if outfname:
-        fh = logging.FileHandler(outfname + '.log')
+        fh = logging.FileHandler(outfname+'.log')
         fh.setFormatter(fmt)
         logger.addHandler(fh)
 
@@ -125,59 +100,47 @@ def init_logger(logger, level=logging.INFO, stream=True, outfname=time.strftime(
 
     return logger
 
-
 class ReporterConfig:
     """
     Generates a set of custom/recommended reporters for
-    BLUES simulations from YAML configuration. It can also be called
-    externally without a YAML configuration file.
+    BLUES simulations from YAML configuration.
 
-    Parameters
-    ----------
-    outfname : str,
-        Output filename prefix for files generated by the reporters.
-    reporter_config : dict
-        Dict of parameters for the md_reporters or ncmc_reporters.
-        Valid keys for reporters are: `state`, `traj_netcdf`, `restart`,
-        `progress`, and `stream`. All reporters except `stream`
-        are extensions of the parmed.openmm.reporters. More below:
-        - `state` : State data reporter for OpenMM simulations, but it is a little more generalized.    Writes to a ``.ene`` file. For full list of parameters see `parmed.openmm.reporters.StateDataReporter`.
-        - `traj_netcdf` : Customized AMBER NetCDF (``.nc``) format reporter
-        - `restart` : Restart AMBER NetCDF (``.rst7``) format reporter
-        - `progress` : Write to a file (``.prog``), the progress report of how many steps has been done, how fast the simulation is running, and how much time is left (similar to the mdinfo file in Amber). File is overwritten at each reportInterval. For full list of parameters see `parmed.openmm.reporters.ProgressReporter`
-        - `stream` : Customized version of openmm.app.StateDataReporter.This
-        will instead stream/print the information to the terminal as opposed to
-        writing to a file. Takes the same parameters as the openmm.app.StateDataReporter
-
-    logger : logging.Logger object
-        Provide the root logger for printing information.
-
-    Examples
-    --------
     This class is intended to be called internally from `blues.config.set_Reporters`.
     Below is an example to call this externally.
 
-    >>> from blues.reporters import ReporterConfig
-    >>> import logging
-    >>> logger = logging.getLogger(__name__)
-    >>> md_reporters = { "restart": { "reportInterval": 1000 },
-                         "state" : { "reportInterval": 250  },
-                         "stream": { "progress": true,
-                                     "remainingTime": true,
-                                     "reportInterval": 250,
-                                     "speed": true,
-                                     "step": true,
-                                     "title": "md",
-                                     "totalSteps": 10000},
-                         "traj_netcdf": { "reportInterval": 250 }
-                        }
-    >>> md_reporter_cfg = ReporterConfig(outfname='blues-test', md_reporters, logger)
-    >>> md_reporters_list = md_reporter_cfg.makeReporters()
+    from blues.reporters import ReporterConfig
+    import logging
+
+    outfname = 'blues-test'
+    logger = logging.getLogger(__name__)
+    md_reporters = { "restart": { "reportInterval": 1000 },
+                      "state" : { "reportInterval": 250  },
+                      "stream": { "progress": true,
+                                  "remainingTime": true,
+                                  "reportInterval": 250,
+                                  "speed": true,
+                                  "step": true,
+                                  "title": "md",
+                                  "totalSteps": 10000},
+                     "traj_netcdf": { "reportInterval": 250 }
+                    }
+
+    md_reporter_cfg = ReporterConfig(outfname, md_reporters, logger)
+    md_reporters_list = md_reporter_cfg.makeReporters()
 
     """
-
     def __init__(self, outfname, reporter_config, logger=None):
+        """
 
+        Parameters
+        ----------
+        outfname : str,
+            Output filename prefix for files generated by the reporters.
+        reporter_config : dict
+            Dict of parameters for the md_reporters or ncmc_reporters
+        logger : logging.Logger object
+            Provide the root logger for printing information.
+        """
         self._outfname = outfname
         self._cfg = reporter_config
         self._logger = logger
@@ -194,10 +157,10 @@ class ReporterConfig:
             #Use outfname specified for reporter
             if 'outfname' in self._cfg['state']:
                 outfname = self._cfg['state']['outfname']
-            else:  #Default to top level outfname
+            else: #Default to top level outfname
                 outfname = self._outfname
 
-            state = parmed.openmm.reporters.StateDataReporter(outfname + '.ene', **self._cfg['state'])
+            state = parmed.openmm.reporters.StateDataReporter(outfname+'.ene', **self._cfg['state'])
             Reporters.append(state)
 
         if 'traj_netcdf' in self._cfg.keys():
@@ -211,7 +174,7 @@ class ReporterConfig:
             if 'reportInterval' in self._cfg['traj_netcdf'].keys():
                 self.trajectory_interval = self._cfg['traj_netcdf']['reportInterval']
 
-            traj_netcdf = NetCDF4Reporter(outfname + '.nc', **self._cfg['traj_netcdf'])
+            traj_netcdf = NetCDF4Reporter(outfname+'.nc', **self._cfg['traj_netcdf'])
             Reporters.append(traj_netcdf)
 
         if 'restart' in self._cfg.keys():
@@ -221,7 +184,7 @@ class ReporterConfig:
             else:
                 outfname = self._outfname
 
-            restart = parmed.openmm.reporters.RestartReporter(outfname + '.rst7', netcdf=True, **self._cfg['restart'])
+            restart =  parmed.openmm.reporters.RestartReporter(outfname+'.rst7', netcdf=True, **self._cfg['restart'])
             Reporters.append(restart)
 
         if 'progress' in self._cfg.keys():
@@ -231,7 +194,7 @@ class ReporterConfig:
             else:
                 outfname = self._outfname
 
-            progress = parmed.openmm.reporters.ProgressReporter(outfname + '.prog', **self._cfg['progress'])
+            progress = parmed.openmm.reporters.ProgressReporter(outfname+'.prog', **self._cfg['progress'])
             Reporters.append(progress)
 
         if 'stream' in self._cfg.keys():
@@ -241,11 +204,9 @@ class ReporterConfig:
 
         return Reporters
 
-
 ######################
 #     REPORTERS      #
 ######################
-
 
 class BLUESHDF5Reporter(HDF5Reporter):
     """This is a subclass of the HDF5 class from mdtraj that handles
@@ -257,7 +218,6 @@ class BLUESHDF5Reporter(HDF5Reporter):
     the topology of the system will also (of course) be stored in the file. All
     of the information is compressed, so the size of the file is not much
     different than DCD, despite the added flexibility.
-
     Parameters
     ----------
     file : str, or HDF5TrajectoryFile
@@ -309,26 +269,18 @@ class BLUESHDF5Reporter(HDF5Reporter):
     def backend(self):
         return BLUESHDF5TrajectoryFile
 
-    def __init__(self,
-                 file,
-                 reportInterval=1,
+    def __init__(self, file, reportInterval=1,
                  title='NCMC Trajectory',
-                 coordinates=True,
-                 frame_indices=[],
-                 time=False,
-                 cell=True,
-                 temperature=False,
-                 potentialEnergy=False,
-                 kineticEnergy=False,
-                 velocities=False,
-                 atomSubset=None,
-                 protocolWork=True,
-                 alchemicalLambda=True,
-                 parameters=None,
-                 environment=True):
+                 coordinates=True, frame_indices=[],
+                 time=False, cell=True, temperature=False,
+                 potentialEnergy=False, kineticEnergy=False,
+                 velocities=False, atomSubset=None,
+                 protocolWork=True, alchemicalLambda=True,
+                 parameters=None, environment=True):
 
-        super(BLUESHDF5Reporter, self).__init__(file, reportInterval, coordinates, time, cell, potentialEnergy,
-                                                kineticEnergy, temperature, velocities, atomSubset)
+        super(BLUESHDF5Reporter, self).__init__(file, reportInterval,
+            coordinates, time, cell, potentialEnergy, kineticEnergy,
+            temperature, velocities, atomSubset)
         self._protocolWork = bool(protocolWork)
         self._alchemicalLambda = bool(alchemicalLambda)
 
@@ -340,24 +292,21 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if self.frame_indices:
             #If simulation.currentStep = 1, store the frame from the previous step.
             # i.e. frame_indices=[1,100] will store the first and frame 100
-            self.frame_indices = [x - 1 for x in frame_indices]
+            self.frame_indices = [x-1 for x in frame_indices]
 
     def describeNextReport(self, simulation):
         """
         Get information about the next report this object will generate.
-
         Parameters
         ----------
         simulation : :class:`app.Simulation`
             The simulation to generate a report for
-
         Returns
         -------
         nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
             nsteps is the number of steps until the next report
             pos, vel, frc, and ene are flags indicating whether positions,
             velocities, forces, and/or energies are needed from the Context
-
         """
         #Monkeypatch to report at certain frame indices
         if self.frame_indices:
@@ -372,14 +321,12 @@ class BLUESHDF5Reporter(HDF5Reporter):
 
     def report(self, simulation, state):
         """Generate a report.
-
         Parameters
         ----------
         simulation : simtk.openmm.app.Simulation
             The Simulation to generate a report for
         state : simtk.openmm.State
             The current state of the simulation
-
         """
         if not self._is_intialized:
             self._initialize(simulation)
@@ -406,7 +353,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if self._kineticEnergy:
             kwargs['kineticEnergy'] = state.getKineticEnergy()
         if self._temperature:
-            kwargs['temperature'] = 2 * state.getKineticEnergy() / (self._dof * unit.MOLAR_GAS_CONSTANT_R)
+            kwargs['temperature'] = 2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)
         if self._velocities:
             kwargs['velocities'] = state.getVelocities(asNumpy=True)[self._atomSlice, :]
 
@@ -432,95 +379,76 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if hasattr(self._traj_file, 'flush'):
             self._traj_file.flush()
 
-
 class BLUESStateDataReporter(app.StateDataReporter):
-    """StateDataReporter outputs information about a simulation, such as energy and temperature, to a file. To use it, create a StateDataReporter, then add it to the Simulation's list of reporters.  The set of data to write is configurable using boolean flags passed to the constructor.  By default the data is written in comma-separated-value (CSV) format, but you can specify a different separator to use. Inherited from `openmm.app.StateDataReporter`
-
-    Parameters
-    ----------
-    file : string or file
-        The file to write to, specified as a file name or file-like object (Logger)
-    reportInterval : int
-        The interval (in time steps) at which to write frames
-    frame_indices : list, frame numbers for writing the trajectory
-    title : str,
-        Text prefix for each line of the report. Used to distinguish
-        between the NCMC and MD simulation reports.
-    step : bool=False
-        Whether to write the current step index to the file
-    time : bool=False
-        Whether to write the current time to the file
-    potentialEnergy : bool=False
-        Whether to write the potential energy to the file
-    kineticEnergy : bool=False
-        Whether to write the kinetic energy to the file
-    totalEnergy : bool=False
-        Whether to write the total energy to the file
-    temperature : bool=False
-        Whether to write the instantaneous temperature to the file
-    volume : bool=False
-        Whether to write the periodic box volume to the file
-    density : bool=False
-        Whether to write the system density to the file
-    progress : bool=False
-        Whether to write current progress (percent completion) to the file.
-        If this is True, you must also specify totalSteps.
-    remainingTime : bool=False
-        Whether to write an estimate of the remaining clock time until
-        completion to the file.  If this is True, you must also specify
-        totalSteps.
-    speed : bool=False
-        Whether to write an estimate of the simulation speed in ns/day to
-        the file
-    elapsedTime : bool=False
-        Whether to write the elapsed time of the simulation in seconds to
-        the file.
-    separator : string=','
-        The separator to use between columns in the file
-    systemMass : mass=None
-        The total mass to use for the system when reporting density.  If
-        this is None (the default), the system mass is computed by summing
-        the masses of all particles.  This parameter is useful when the
-        particle masses do not reflect their actual physical mass, such as
-        when some particles have had their masses set to 0 to immobilize
-        them.
-    totalSteps : int=None
-        The total number of steps that will be included in the simulation.
-        This is required if either progress or remainingTime is set to True,
-        and defines how many steps will indicate 100% completion.
-    protocolWork : bool=False,
-        Write the protocolWork for the alchemical process in the NCMC simulation
-    alchemicalLambda : bool=False,
-        Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
-
+    """StateDataReporter outputs information about a simulation, such as energy and temperature, to a file.
+    To use it, create a StateDataReporter, then add it to the Simulation's list of reporters.  The set of
+    data to write is configurable using boolean flags passed to the constructor.  By default the data is
+    written in comma-separated-value (CSV) format, but you can specify a different separator to use.
     """
+    def __init__(self, file, reportInterval=1, frame_indices=[], title='', step=False, time=False, potentialEnergy=False, kineticEnergy=False,    totalEnergy=False, temperature=False, volume=False, density=False, progress=False, remainingTime=False, speed=False, elapsedTime=False,    separator='\t', systemMass=None, totalSteps=None, protocolWork=False, alchemicalLambda=False, currentIter=False):
+        super(BLUESStateDataReporter, self).__init__(file, reportInterval, step, time,
+            potentialEnergy, kineticEnergy, totalEnergy, temperature, volume, density,
+            progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
+        """Create a StateDataReporter.
+        Inherited from `openmm.app.StateDataReporter`
 
-    def __init__(self,
-                 file,
-                 reportInterval=1,
-                 frame_indices=[],
-                 title='',
-                 step=False,
-                 time=False,
-                 potentialEnergy=False,
-                 kineticEnergy=False,
-                 totalEnergy=False,
-                 temperature=False,
-                 volume=False,
-                 density=False,
-                 progress=False,
-                 remainingTime=False,
-                 speed=False,
-                 elapsedTime=False,
-                 separator='\t',
-                 systemMass=None,
-                 totalSteps=None,
-                 protocolWork=False,
-                 alchemicalLambda=False,
-                 currentIter=False):
-        super(BLUESStateDataReporter, self).__init__(
-            file, reportInterval, step, time, potentialEnergy, kineticEnergy, totalEnergy, temperature, volume,
-            density, progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
+        Parameters
+        ----------
+        file : string or file
+            The file to write to, specified as a file name or file-like object (Logger)
+        reportInterval : int
+            The interval (in time steps) at which to write frames
+        frame_indices : list, frame numbers for writing the trajectory
+        title : str,
+            Text prefix for each line of the report. Used to distinguish
+            between the NCMC and MD simulation reports.
+        step : bool=False
+            Whether to write the current step index to the file
+        time : bool=False
+            Whether to write the current time to the file
+        potentialEnergy : bool=False
+            Whether to write the potential energy to the file
+        kineticEnergy : bool=False
+            Whether to write the kinetic energy to the file
+        totalEnergy : bool=False
+            Whether to write the total energy to the file
+        temperature : bool=False
+            Whether to write the instantaneous temperature to the file
+        volume : bool=False
+            Whether to write the periodic box volume to the file
+        density : bool=False
+            Whether to write the system density to the file
+        progress : bool=False
+            Whether to write current progress (percent completion) to the file.
+            If this is True, you must also specify totalSteps.
+        remainingTime : bool=False
+            Whether to write an estimate of the remaining clock time until
+            completion to the file.  If this is True, you must also specify
+            totalSteps.
+        speed : bool=False
+            Whether to write an estimate of the simulation speed in ns/day to
+            the file
+        elapsedTime : bool=False
+            Whether to write the elapsed time of the simulation in seconds to
+            the file.
+        separator : string=','
+            The separator to use between columns in the file
+        systemMass : mass=None
+            The total mass to use for the system when reporting density.  If
+            this is None (the default), the system mass is computed by summing
+            the masses of all particles.  This parameter is useful when the
+            particle masses do not reflect their actual physical mass, such as
+            when some particles have had their masses set to 0 to immobilize
+            them.
+        totalSteps : int=None
+            The total number of steps that will be included in the simulation.
+            This is required if either progress or remainingTime is set to True,
+            and defines how many steps will indicate 100% completion.
+        protocolWork : bool=False,
+            Write the protocolWork for the alchemical process in the NCMC simulation
+        alchemicalLambda : bool=False,
+            Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
+        """
         self.log = self._out
         self.title = title
 
@@ -529,24 +457,21 @@ class BLUESStateDataReporter(app.StateDataReporter):
         if self.frame_indices:
             #If simulation.currentStep = 1, store the frame from the previous step.
             # i.e. frame_indices=[1,100] will store the first and frame 100
-            self.frame_indices = [x - 1 for x in frame_indices]
+            self.frame_indices = [x-1 for x in frame_indices]
 
     def describeNextReport(self, simulation):
         """
         Get information about the next report this object will generate.
-
         Parameters
         ----------
         simulation : :class:`app.Simulation`
             The simulation to generate a report for
-
         Returns
         -------
         nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
             nsteps is the number of steps until the next report
             pos, vel, frc, and ene are flags indicating whether positions,
             velocities, forces, and/or energies are needed from the Context
-
         """
         #Monkeypatch to report at certain frame indices
         if self.frame_indices:
@@ -558,11 +483,11 @@ class BLUESStateDataReporter(app.StateDataReporter):
             steps_left = simulation.currentStep % self._reportInterval
             steps = self._reportInterval - steps_left
 
-        return (steps, self._needsPositions, self._needsVelocities, self._needsForces, self._needEnergy)
+        return (steps, self._needsPositions, self._needsVelocities,
+                self._needsForces, self._needEnergy)
 
     def report(self, simulation, state):
         """Generate a report.
-
         Parameters
         ----------
         simulation : Simulation
@@ -575,7 +500,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
             headers = self._constructHeaders()
             if hasattr(self.log, 'report'):
                 self.log.info = self.log.report
-            self.log.info('#"%s"' % ('"' + self._separator + '"').join(headers))
+            self.log.info('#"%s"' % ('"'+self._separator+'"').join(headers))
             try:
                 self._out.flush()
             except AttributeError:
@@ -601,31 +526,28 @@ class BLUESStateDataReporter(app.StateDataReporter):
 
     def _constructReportValues(self, simulation, state):
         """Query the simulation for the current state of our observables of interest.
-
         Parameters
         ----------
         simulation : Simulation
             The Simulation to generate a report for
         state : State
             The current state of the simulation
-
         Returns
         -------
-        values : list
-            A list of values summarizing the current state of the simulation,
-            to be printed or saved. Each element in the list corresponds to one
-            of the columns in the resulting CSV file.
+        A list of values summarizing the current state of
+        the simulation, to be printed or saved. Each element in the list
+        corresponds to one of the columns in the resulting CSV file.
         """
         values = []
         box = state.getPeriodicBoxVectors()
-        volume = box[0][0] * box[1][1] * box[2][2]
+        volume = box[0][0]*box[1][1]*box[2][2]
         clockTime = time.time()
         if self._currentIter:
             if not hasattr(simulation, 'currentIter'):
                 simulation.currentIter = 0
             values.append(simulation.currentIter)
         if self._progress:
-            values.append('%.1f%%' % (100.0 * simulation.currentStep / self._totalSteps))
+            values.append('%.1f%%' % (100.0*simulation.currentStep/self._totalSteps))
         if self._step:
             values.append(simulation.currentStep)
         if self._time:
@@ -642,39 +564,37 @@ class BLUESStateDataReporter(app.StateDataReporter):
         if self._kineticEnergy:
             values.append(state.getKineticEnergy().value_in_unit(unit.kilojoules_per_mole))
         if self._totalEnergy:
-            values.append(
-                (state.getKineticEnergy() + state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole))
+            values.append((state.getKineticEnergy()+state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole))
         if self._temperature:
-            values.append(
-                (2 * state.getKineticEnergy() / (self._dof * unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin))
+            values.append((2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin))
         if self._volume:
             values.append(volume.value_in_unit(unit.nanometer**3))
         if self._density:
-            values.append((self._totalMass / volume).value_in_unit(unit.gram / unit.item / unit.milliliter))
+            values.append((self._totalMass/volume).value_in_unit(unit.gram/unit.item/unit.milliliter))
 
         if self._speed:
-            elapsedDays = (clockTime - self._initialClockTime) / 86400.0
-            elapsedNs = (state.getTime() - self._initialSimulationTime).value_in_unit(unit.nanosecond)
+            elapsedDays = (clockTime-self._initialClockTime)/86400.0
+            elapsedNs = (state.getTime()-self._initialSimulationTime).value_in_unit(unit.nanosecond)
             if elapsedDays > 0.0:
-                values.append('%.3g' % (elapsedNs / elapsedDays))
+                values.append('%.3g' % (elapsedNs/elapsedDays))
             else:
                 values.append('--')
         if self._elapsedTime:
             values.append(time.time() - self._initialClockTime)
         if self._remainingTime:
-            elapsedSeconds = clockTime - self._initialClockTime
-            elapsedSteps = simulation.currentStep - self._initialSteps
+            elapsedSeconds = clockTime-self._initialClockTime
+            elapsedSteps = simulation.currentStep-self._initialSteps
             if elapsedSteps == 0:
                 value = '--'
             else:
-                estimatedTotalSeconds = (self._totalSteps - self._initialSteps) * elapsedSeconds / elapsedSteps
-                remainingSeconds = int(estimatedTotalSeconds - elapsedSeconds)
-                remainingDays = remainingSeconds // 86400
-                remainingSeconds -= remainingDays * 86400
-                remainingHours = remainingSeconds // 3600
-                remainingSeconds -= remainingHours * 3600
-                remainingMinutes = remainingSeconds // 60
-                remainingSeconds -= remainingMinutes * 60
+                estimatedTotalSeconds = (self._totalSteps-self._initialSteps)*elapsedSeconds/elapsedSteps
+                remainingSeconds = int(estimatedTotalSeconds-elapsedSeconds)
+                remainingDays = remainingSeconds//86400
+                remainingSeconds -= remainingDays*86400
+                remainingHours = remainingSeconds//3600
+                remainingSeconds -= remainingHours*3600
+                remainingMinutes = remainingSeconds//60
+                remainingSeconds -= remainingMinutes*60
                 if remainingDays > 0:
                     value = "%d:%d:%02d:%02d" % (remainingDays, remainingHours, remainingMinutes, remainingSeconds)
                 elif remainingHours > 0:
@@ -688,11 +608,7 @@ class BLUESStateDataReporter(app.StateDataReporter):
 
     def _constructHeaders(self):
         """Construct the headers for the CSV output
-
-        Returns
-        -------
-        headers : list
-            a list of strings giving the title of each observable being reported on.
+        Returns: a list of strings giving the title of each observable being reported on.
         """
         headers = []
         if self._currentIter:
@@ -727,62 +643,52 @@ class BLUESStateDataReporter(app.StateDataReporter):
             headers.append('Time Remaining')
         return headers
 
-
 class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
     """
     Class to read or write NetCDF trajectory files
-    Inherited from `parmed.openmm.reporters.NetCDFReporter`
-
-    Parameters
-    ----------
-    file : str
-        Name of the file to write the trajectory to
-    reportInterval : int
-        How frequently to write a frame to the trajectory
-    frame_indices : list, frame numbers for writing the trajectory
-        If this reporter is used for the NCMC simulation,
-        0.5 will report at the moveStep and -1 will record at the last frame.
-    crds : bool=True
-        Should we write coordinates to this trajectory? (Default True)
-    vels : bool=False
-        Should we write velocities to this trajectory? (Default False)
-    frcs : bool=False
-        Should we write forces to this trajectory? (Default False)
-    protocolWork : bool=False,
-        Write the protocolWork for the alchemical process in the NCMC simulation
-    alchemicalLambda : bool=False,
-        Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
     """
 
-    def __init__(self,
-                 file,
-                 reportInterval=1,
-                 frame_indices=[],
-                 crds=True,
-                 vels=False,
-                 frcs=False,
-                 protocolWork=False,
-                 alchemicalLambda=False):
+    def __init__(self, file, reportInterval=1, frame_indices=[], crds=True, vels=False, frcs=False,
+                protocolWork=False, alchemicalLambda=False):
         """
         Create a NetCDFReporter instance.
+        Inherited from `parmed.openmm.reporters.NetCDFReporter`
+
+        Parameters
+        ----------
+        file : str
+            Name of the file to write the trajectory to
+        reportInterval : int
+            How frequently to write a frame to the trajectory
+        frame_indices : list, frame numbers for writing the trajectory
+            If this reporter is used for the NCMC simulation,
+            0.5 will report at the moveStep and -1 will record at the last frame.
+        crds : bool=True
+            Should we write coordinates to this trajectory? (Default True)
+        vels : bool=False
+            Should we write velocities to this trajectory? (Default False)
+        frcs : bool=False
+            Should we write forces to this trajectory? (Default False)
+        protocolWork : bool=False,
+            Write the protocolWork for the alchemical process in the NCMC simulation
+        alchemicalLambda : bool=False,
+            Write the alchemicalLambda step for the alchemical process in the NCMC simulation.
         """
-        super(NetCDF4Reporter, self).__init__(file, reportInterval, crds, vels, frcs)
+        super(NetCDF4Reporter,self).__init__(file, reportInterval, crds, vels, frcs)
         self.crds, self.vels, self.frcs, self.protocolWork, self.alchemicalLambda = crds, vels, frcs, protocolWork, alchemicalLambda
         self.frame_indices = frame_indices
         if self.frame_indices:
             #If simulation.currentStep = 1, store the frame from the previous step.
             # i.e. frame_indices=[1,100] will store the first and frame 100
-            self.frame_indices = [x - 1 for x in frame_indices]
+            self.frame_indices = [x-1 for x in frame_indices]
 
     def describeNextReport(self, simulation):
         """
         Get information about the next report this object will generate.
-
         Parameters
         ----------
         simulation : :class:`app.Simulation`
             The simulation to generate a report for
-
         Returns
         -------
         nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool
@@ -803,14 +709,12 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
 
     def report(self, simulation, state):
         """Generate a report.
-
         Parameters
         ----------
         simulation : :class:`app.Simulation`
             The Simulation to generate a report for
         state : :class:`mm.State`
             The current state of the simulation
-
         """
         global VELUNIT, FRCUNIT
         if self.crds:
@@ -833,21 +737,16 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
                 atom = len(frcs)
             self.uses_pbc = simulation.topology.getUnitCellDimensions() is not None
             self._out = NetCDF4Traj.open_new(
-                self.fname,
-                atom,
-                self.uses_pbc,
-                self.crds,
-                self.vels,
-                self.frcs,
-                title="ParmEd-created trajectory using OpenMM",
-                protocolWork=self.protocolWork,
-                alchemicalLambda=self.alchemicalLambda,
+                    self.fname, atom, self.uses_pbc, self.crds, self.vels,
+                    self.frcs, title="ParmEd-created trajectory using OpenMM",
+                    protocolWork=self.protocolWork, alchemicalLambda=self.alchemicalLambda,
             )
 
         if self.uses_pbc:
             vecs = state.getPeriodicBoxVectors()
             lengths, angles = box_vectors_to_lengths_and_angles(*vecs)
-            self._out.add_cell_lengths_angles(lengths.value_in_unit(u.angstrom), angles.value_in_unit(u.degree))
+            self._out.add_cell_lengths_angles(lengths.value_in_unit(u.angstrom),
+                                              angles.value_in_unit(u.degree))
 
         # Add the coordinates, velocities, and/or forces as needed
         if self.crds:
