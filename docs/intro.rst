@@ -21,14 +21,14 @@ Github
 .. image:: https://travis-ci.org/MobleyLab/blues.svg?branch=master
    :target: https://travis-ci.org/MobleyLab/blues
 
-.. image:: https://readthedocs.org/projects/blues-fork/badge/?version=molssi-practices
-   :target: https://blues-fork.readthedocs.io/en/molssi-practices/?badge=molssi-practices
+.. image:: https://readthedocs.org/projects/mobleylab-blues/badge/?version=master
+   :target: https://mobleylab-blues.readthedocs.io/en/master/?badge=master
 
 .. image:: https://anaconda.org/mobleylab/blues/badges/version.svg
    :target: https://anaconda.org/mobleylab/blues
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1324415.svg
-   :target: https://doi.org/10.5281/zenodo.1324415
+.. image:: https://zenodo.org/badge/62096511.svg
+   :target: https://zenodo.org/badge/latestdoi/62096511
 
 
 Publication

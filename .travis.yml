@@ -9,7 +9,7 @@ branches:
 env:
   global:
     - ORGNAME="omnia"
-    - USERNAME="nathanmlim"
+    - USERNAME="mobleylab"
     - PKG_NAME="blues"
     - RELEASE=true
     #- RELEASE=false
@@ -87,8 +87,8 @@ after_success:
 
 before_deploy:
   # Set up git user name and tag this commit
-  - git config --local user.name ${USERNAME}
-  - git config --local user.email ${USERNAME}@gmail.com
+  #- git config --local user.name ${USERNAME}
+  #- git config --local user.email ${USERNAME}@gmail.com
   - export CONDA_BLD_FILE=`conda build --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe --output`
   #- git tag "$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)"
 
