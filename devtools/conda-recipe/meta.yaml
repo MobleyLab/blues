@@ -1,4 +1,4 @@
-{% set build_number = '1' %}
+{% set build_number = '0' %}
 {% set short_version = '0.2.2' %}
 
 package:
