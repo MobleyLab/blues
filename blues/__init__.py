@@ -2,10 +2,6 @@
 """
 BLUES
 """
-# Define global version.
-#from . import version
-#__version__ = version.version
-
 # Add imports here
 from blues import integrators, moves, reporters, settings, simulation, utils
 
