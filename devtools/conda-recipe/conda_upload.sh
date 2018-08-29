@@ -17,5 +17,5 @@ echo "Uploading conda environment $CONDA_ENV_FILE to $ENV_URL..."
 anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USERNAME $CONDA_ENV_FILE -l ${LABEL} --force
 
 PKG_URL="https://anaconda.org/${USERNAME}/${PKG_NAME}/files"
-echo "Deploying $CONDA_BLD_FILE to Anaconda.org..."
+echo "Deploying $CONDA_BLD_FILE to ${PKG_URL}..."
 anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USERNAME -l ${LABEL} ${CONDA_BLD_FILE} --force
