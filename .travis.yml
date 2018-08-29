@@ -85,11 +85,12 @@ after_success:
   - codecov
   - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
 
-# before_deploy:
-#  # Set up git user name and tag this commit
-#   - git config --local user.name ${USERNAME}
-#   - git config --local user.email ${USERNAME}@gmail.com
-
+before_deploy:
+  # Set up git user name and tag this commit
+  - git config --local user.name ${USERNAME}
+  - git config --local user.email ${USERNAME}@gmail.com
+  - export CONDA_BLD_FILE=`conda build --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe --output`
+  #- git tag "$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)"
 
 deploy:
   #Deploy to Anaconda.org
