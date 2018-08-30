@@ -59,6 +59,7 @@ before_install:
 
 install:
   # Create test environment for package
+  - echo ${TRAVIS_PYTHON_VERSION}
   - conda create -n ${CONDA_ENV} python=${TRAVIS_PYTHON_VERSION} pip pytest pytest-cov conda-verify
   - conda activate ${CONDA_ENV}
 
@@ -69,9 +70,12 @@ install:
   #  Use beta version for partial bond orders
   - conda install -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
   - conda install -q -c openeye/label/Orion -c omnia oeommtools packmol
+  - conda info oeommtools
+  - conda info numexpr=2.6.6
 
   # Build and install package
   - conda build -q --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe
+  - conda info blues
   - conda install --use-local -q ${PKG_NAME}
   - conda list
 
