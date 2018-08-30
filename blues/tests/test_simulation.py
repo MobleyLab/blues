@@ -75,7 +75,6 @@ def system(structure, system_cfg):
 
 
 class NoRandomLigandRotation(RandomLigandRotationMove):
-
     def move(self, context):
         return context
 
@@ -141,7 +140,6 @@ def blues_sim(simulations):
 
 
 class TestSystemFactory(object):
-
     def test_atom_selections(self, structure, tol_atom_indices):
         atom_indices = SystemFactory.amber_selection_to_atomidx(structure, ':LIG')
 
@@ -237,7 +235,6 @@ class TestSystemFactory(object):
 
 
 class TestSimulationFactory(object):
-
     def test_addBarostat(self, system):
         print('Testing MonteCarloBarostat')
         forces = system.getForces()
@@ -328,7 +325,6 @@ class TestSimulationFactory(object):
 
 
 class TestBLUESSimulation(object):
-
     def test_getStateFromContext(self, md_sim, stateinfo_keys, state_keys):
 
         stateinfo = BLUESSimulation.getStateFromContext(md_sim.context, state_keys)

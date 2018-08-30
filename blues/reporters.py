@@ -392,7 +392,7 @@ class BLUESHDF5Reporter(HDF5Reporter):
         if self._coordinates:
             coordinates = state.getPositions(asNumpy=True)[self._atomSlice]
             coordinates = coordinates.value_in_unit(getattr(unit, self._traj_file.distance_unit))
-            args = (coordinates,)
+            args = (coordinates, )
         if self._time:
             kwargs['time'] = state.getTime()
         if self._cell:

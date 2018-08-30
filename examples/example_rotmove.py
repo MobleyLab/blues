@@ -21,12 +21,13 @@ def rotmove_cuda(yaml_file):
     systems.alch = systems.freeze_radius(structure, systems.alch, **cfg['freeze'])
 
     #Generate the OpenMM Simulations
-    simulations = SimulationFactory(systems, ligand_mover, cfg['simulation'],
-                                    cfg['md_reporters'], cfg['ncmc_reporters'])
+    simulations = SimulationFactory(systems, ligand_mover, cfg['simulation'], cfg['md_reporters'],
+                                    cfg['ncmc_reporters'])
 
     # Run BLUES Simulation
     blues = BLUESSimulation(simulations, cfg['simulation'])
     blues.run()
+
 
 if __name__ == "__main__":
     rotmove_cuda('rotmove_cuda.yaml')
