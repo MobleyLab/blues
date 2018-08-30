@@ -1,0 +1,20 @@
+[run]
+branch = True
+source = codecov
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if .debug:
+    raise NotImplementedError
+    if __name__ == .__main__.:
+ignore_errors = True
+omit =
+    setup.py
+    blues/tests/*
+    blues/_version.py
+    blues/*dart.py
+    blues/switching.py
+    blues/formats.py
+    blues/example.py
