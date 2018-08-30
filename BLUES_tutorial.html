@@ -1,0 +1,1507 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Introduction to BLUES &mdash; blues 0.2.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Tutorial" href="tutorial.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> blues
+          
+
+          
+            
+            <img src="_static/blues-scaled.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="intro.html#github">Github</a></li>
+<li class="toctree-l2"><a class="reference internal" href="intro.html#publication">Publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="intro.html#theory">Theory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#stable-releases">Stable Releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#development-builds">Development Builds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#source-installation">Source Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="module_doc.html">Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="module_doc.html#module-blues.moves">Moves</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="module_doc.html#move">Move</a></li>
+<li class="toctree-l3"><a class="reference internal" href="module_doc.html#randomligandrotationmove">RandomLigandRotationMove</a></li>
+<li class="toctree-l3"><a class="reference internal" href="module_doc.html#moveengine">MoveEngine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="module_doc.html#under-development">Under Development</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="module_doc.html#module-blues.simulation">Simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="module_doc.html#systemfactory">SystemFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="module_doc.html#simulationfactory">SimulationFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="module_doc.html#bluessimulation">BLUESSimulation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="module_doc.html#module-blues.integrators">Integrators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module_doc.html#module-blues.utils">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module_doc.html#module-blues.reporters">Reporters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module_doc.html#module-blues.formats">Formats</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="tutorial.html">Tutorial</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Introduction to BLUES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Background">Background</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Coupling-MD-simulations-with-random-NCMC-moves-for-enhanced-sampling-of-ligand-binding-modes-via-BLUES">Coupling MD simulations with random NCMC moves for enhanced sampling of ligand binding modes via BLUES</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#YAML-Configuration">YAML Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Input/Output">Input/Output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Output-files">Output files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Input-files-to-generate-the-structure-of-your-system">Input files to generate the structure of your system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Restart-files">Restart files</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#System-configuration">System configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#(Optional)-Hydrogen-mass-repartitioning">(Optional) Hydrogen mass repartitioning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#(Optional)-Alchemical-system-configuration">(Optional) Alchemical system configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Simulation-Configuration">Simulation Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#NPT-Simulation">NPT Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#(Optional)-Additional-relaxation-steps-in-the-NCMC-simulation">(Optional) Additional relaxation steps in the NCMC simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#(Optional)-Platform-Properties">(Optional) Platform Properties</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Reporter-Configuration">Reporter Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#(Optional)-Advanced-options-to-the-``traj_netcdf``-reporter">(Optional) Advanced options to the <strong>``traj_netcdf``</strong> reporter</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#Running-a-BLUES-simulation">Running a BLUES simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Selecting-a-move-and-initialize-the-move-engine">Selecting a move and initialize the move engine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Generating-the-Systems-for-openMM:-``SystemFactory``">Generating the Systems for openMM: <strong>``SystemFactory``</strong></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#(Optional)-Applying-restraints-or-freezing-atoms">(Optional) Applying restraints or freezing atoms</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Generating-the-OpenMM-Simulations:-``SimulationFactory``">Generating the OpenMM Simulations: <strong>``SimulationFactory``</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Run-the-BLUES-Simulation">Run the BLUES Simulation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">blues</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="tutorial.html">Tutorial</a> &raquo;</li>
+        
+      <li>Introduction to BLUES</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/BLUES_tutorial.ipynb.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput,
+div.nbinput div.prompt,
+div.nbinput div.input_area,
+div.nbinput div[class*=highlight],
+div.nbinput div[class*=highlight] pre,
+div.nboutput,
+div.nbinput div.prompt,
+div.nbinput div.output_area,
+div.nboutput div[class*=highlight],
+div.nboutput div[class*=highlight] pre {
+    background: none;
+    border: none;
+    padding: 0 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* avoid gaps between output lines */
+div.nboutput div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput,
+div.nboutput {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput,
+    div.nboutput {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput div.prompt pre {
+    color: #303F9F;
+}
+
+/* output prompt */
+div.nboutput div.prompt pre {
+    color: #D84315;
+}
+
+/* all prompts */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    min-width: 8ex;
+    padding-top: 0.4em;
+    padding-right: 0.4em;
+    text-align: right;
+    flex: 0;
+}
+@media (max-width: 540px) {
+    div.nbinput div.prompt,
+    div.nboutput div.prompt {
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput div.prompt.empty {
+        padding: 0;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput div.prompt pre,
+div.nboutput div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    padding: 0.4em;
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput div.input_area,
+    div.nboutput div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput div.input_area {
+    border: 1px solid #cfcfcf;
+    border-radius: 2px;
+    background: #f7f7f7;
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.pngmath center alignment in output cells */
+div.nboutput div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+</style>
+<p>“nbsphinx-toctree”: { “maxdepth”: 2 }</p>
+<div class="section" id="Introduction-to-BLUES">
+<h1>Introduction to BLUES<a class="headerlink" href="#Introduction-to-BLUES" title="Permalink to this headline">¶</a></h1>
+<p>In this Jupyter Notebook, we will cover the following topics:</p>
+<ul class="simple">
+<li>YAML configuration</li>
+<li>Setting up a system for BLUES</li>
+<li>Advanced options (HMR, restraints, freezing)</li>
+<li>Configuring reporters</li>
+<li>Running a BLUES simulation</li>
+</ul>
+</div>
+<div class="section" id="Background">
+<h1>Background<a class="headerlink" href="#Background" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="Coupling-MD-simulations-with-random-NCMC-moves-for-enhanced-sampling-of-ligand-binding-modes-via-BLUES">
+<h2>Coupling MD simulations with random NCMC moves for enhanced sampling of ligand binding modes via BLUES<a class="headerlink" href="#Coupling-MD-simulations-with-random-NCMC-moves-for-enhanced-sampling-of-ligand-binding-modes-via-BLUES" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="https://pubs.acs.org/doi/abs/10.1021/acs.jpcb.7b11820">BLUES</a> is an
+approach that combines molecular dynamics
+(<a class="reference external" href="http://www.ch.embnet.org/MD_tutorial/pages/MD.Part1.html">MD</a>)
+simulations and the Non-equilibrium Candidate Monte Carlo
+(<a class="reference external" href="http://www.pnas.org/content/108/45/E1009">NCMC</a>) framework to
+enhance ligand binding mode sampling
+<a class="reference external" href="https://github.com/MobleyLab/blues">(Github)</a></p>
+<p>During a MD simulation, BLUES will perform a random rotation of the
+bound ligand and then allow the system to relax through
+<a class="reference external" href="http://www.alchemistry.org/wiki/Free_Energy_Fundamentals#Why_the_name_.22Alchemical.22.3F">alchemically</a>
+scaling off/on the ligand-receptor interactions. BLUES enables us to
+sample alternative ligand binding modes, that would normally take <em>very</em>
+long simulations to capture in a traditional MD simulation because of
+the large gap in
+<a class="reference external" href="https://www.ncbi.nlm.nih.gov/pubmed/20934381">timescales</a> between
+atomistic motions and biological motions.</p>
+</div>
+</div>
+<div class="section" id="YAML-Configuration">
+<h1>YAML Configuration<a class="headerlink" href="#YAML-Configuration" title="Permalink to this headline">¶</a></h1>
+<p>BLUES can be configured in either pure python through dictionaries of
+the appropriate parameters or using a YAML file (which is converted to a
+dict under the hood). Below we will walk through the keywords for
+configuring BLUES. An example YAML configuration file can be found in
+<code class="docutils literal notranslate"><span class="pre">rotmove_cuda.yaml</span></code>.</p>
+<p>Note: Code blocks in this notebook denoted with —— indicate a section
+from a YAML configuration file.</p>
+<div class="section" id="Input/Output">
+<h2>Input/Output<a class="headerlink" href="#Input/Output" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">------</span>
+<span class="n">output_dir</span><span class="p">:</span> <span class="o">.</span>
+<span class="n">outfname</span><span class="p">:</span> <span class="n">t4</span><span class="o">-</span><span class="n">toluene</span>
+<span class="n">logger_level</span><span class="p">:</span> <span class="n">info</span> <span class="c1">#critical, error, warning, info, debug</span>
+<span class="o">-----</span>
+</pre></div>
+</div>
+<div class="section" id="Output-files">
+<h3>Output files<a class="headerlink" href="#Output-files" title="Permalink to this headline">¶</a></h3>
+<p>Specify the directory you want all the simulation output files to be
+saved to with <strong>``output_dir``</strong>. By default, BLUES will save them in
+the current directory that you’re running BLUES in. The parameter
+<strong>``outfname``</strong> will be used for the filename prefix for all output
+files (e.g. <code class="docutils literal notranslate"><span class="pre">t4-toluene.nc</span></code>, <code class="docutils literal notranslate"><span class="pre">t4-toleune.log</span></code>). The level of
+verbosity can be controlled by <strong>``logger_level``</strong>. The default
+<strong>``logger_level``</strong> is set to <code class="docutils literal notranslate"><span class="pre">info</span></code> and valid choices are
+<code class="docutils literal notranslate"><span class="pre">critical</span></code>, <code class="docutils literal notranslate"><span class="pre">error</span></code>, <code class="docutils literal notranslate"><span class="pre">warning</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code> or <code class="docutils literal notranslate"><span class="pre">debug</span></code>.</p>
+</div>
+<div class="section" id="Input-files-to-generate-the-structure-of-your-system">
+<h3>Input files to generate the structure of your system<a class="headerlink" href="#Input-files-to-generate-the-structure-of-your-system" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Input a Parameter/topology file and a Coordinate file, which will be
+used to generate the ParmEd Structure.</li>
+<li>The ParmEd Structure is a chemical structure composed of atoms,
+bonds, angles, torsions, and other topological features.</li>
+</ul>
+<p>To see a full list of supported file formats:
+<a class="reference external" href="https://parmed.github.io/ParmEd/html/readwrite.html">https://parmed.github.io/ParmEd/html/readwrite.html</a></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">----------------</span>
+<span class="n">structure</span><span class="p">:</span>
+  <span class="n">filename</span><span class="p">:</span> <span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">eqToluene</span><span class="o">.</span><span class="n">prmtop</span>
+  <span class="n">xyz</span><span class="p">:</span> <span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">eqToluene</span><span class="o">.</span><span class="n">inpcrd</span>
+  <span class="n">restart</span><span class="p">:</span> <span class="n">t4</span><span class="o">-</span><span class="n">toluene_2</span><span class="o">.</span><span class="n">rst7</span>
+<span class="o">----------------</span>
+</pre></div>
+</div>
+<p>BLUES simulations all begin from a <code class="docutils literal notranslate"><span class="pre">parmed.Structure</span></code>. Keywords nested
+under <strong>``structure``</strong> are for generating the <code class="docutils literal notranslate"><span class="pre">parmed.Structure</span></code> by
+calling
+<a class="reference external" href="https://parmed.github.io/ParmEd/html/readwrite.html#reading-files-with-load-file">parmed.load_file()</a>
+under the hood. The <strong>``filename``</strong> keyword should point to the file
+containing the parameters for your system. For example, if coming from
+AMBER you would specify the <code class="docutils literal notranslate"><span class="pre">.prmtop</span></code> file. The <strong>``xyz``</strong> keyword is
+intended for specifying the coordinates of your system (e.g. <code class="docutils literal notranslate"><span class="pre">.inpcrd</span></code>
+or <code class="docutils literal notranslate"><span class="pre">.pdb</span></code>).</p>
+</div>
+<div class="section" id="Restart-files">
+<h3>Restart files<a class="headerlink" href="#Restart-files" title="Permalink to this headline">¶</a></h3>
+<p>BLUES supports “soft” restarts of simulations from AMBER restart files
+<strong>``.rst7``</strong> via
+<a class="reference external" href="https://parmed.github.io/ParmEd/html/amberobj/parmed.amber.Rst7.html?highlight=rst7#parmed-amber-rst7">parmed.amber.Rst7</a>.
+“Soft” restart implies the simulation will begin from the saved
+positions, velocities, and box vectors but does not store any internal
+data such as the states of random number generators. It should be noted
+that velocities are re-initialized at every BLUES iteration, so storing
+these is not so important.</p>
+</div>
+</div>
+<div class="section" id="System-configuration">
+<h2>System configuration<a class="headerlink" href="#System-configuration" title="Permalink to this headline">¶</a></h2>
+<p>From the YAML file, there is a section dedicated for generating an
+<code class="docutils literal notranslate"><span class="pre">openmm.System</span></code> from a <code class="docutils literal notranslate"><span class="pre">parmed.Structure</span></code>. For definitions of
+<strong>``system``</strong> keywords and valid options see
+<a class="reference external" href="https://parmed.github.io/ParmEd/html/structobj/parmed.structure.Structure.html#parmed.structure.Structure.createSystem">parmed.Structure.createSystem()</a></p>
+<p>Below we provide an example for generating a system in a cubic box with
+explicit solvent.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--------</span>
+<span class="n">system</span><span class="p">:</span>
+  <span class="n">nonbondedMethod</span><span class="p">:</span> <span class="n">PME</span>
+  <span class="n">nonbondedCutoff</span><span class="p">:</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">angstroms</span>
+  <span class="n">constraints</span><span class="p">:</span> <span class="n">HBonds</span>
+  <span class="n">rigidWater</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">removeCMMotion</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">ewaldErrorTolerance</span><span class="p">:</span> <span class="mf">0.005</span>
+  <span class="n">flexibleConstraints</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">splitDihedrals</span><span class="p">:</span> <span class="kc">False</span>
+<span class="o">---------</span>
+</pre></div>
+</div>
+<div class="section" id="(Optional)-Hydrogen-mass-repartitioning">
+<h3>(Optional) Hydrogen mass repartitioning<a class="headerlink" href="#(Optional)-Hydrogen-mass-repartitioning" title="Permalink to this headline">¶</a></h3>
+<p>BLUES has the option to use the hydrogen mass repartitioning scheme
+<a class="reference external" href="https://pubs.acs.org/doi/abs/10.1021/ct5010406">HMR</a> to allow use of
+longer time steps in the simulation. Simply provide the keyword
+<strong>``hydrogenMass``</strong> in the YAML file like below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--------</span>
+<span class="n">system</span><span class="p">:</span>
+  <span class="n">nonbondedMethod</span><span class="p">:</span> <span class="n">PME</span>
+  <span class="n">nonbondedCutoff</span><span class="p">:</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">angstroms</span>
+  <span class="n">constraints</span><span class="p">:</span> <span class="n">HBonds</span>
+  <span class="n">rigidWater</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">removeCMMotion</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">ewaldErrorTolerance</span><span class="p">:</span> <span class="mf">0.005</span>
+  <span class="n">flexibleConstraints</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">splitDihedrals</span><span class="p">:</span> <span class="kc">False</span>
+  <span class="n">hydrogenMass</span><span class="p">:</span> <span class="mf">3.024</span> <span class="o">*</span> <span class="n">daltons</span>
+<span class="o">---------</span>
+</pre></div>
+</div>
+<p>If using HMR, you can set the timestep (<strong>``dt``</strong>) for the simulation
+to 4fs and <strong>``constraints``</strong> should be set to either <strong>``HBonds``</strong> or
+<strong>``AllBonds``</strong>.</p>
+</div>
+<div class="section" id="(Optional)-Alchemical-system-configuration">
+<h3>(Optional) Alchemical system configuration<a class="headerlink" href="#(Optional)-Alchemical-system-configuration" title="Permalink to this headline">¶</a></h3>
+<p>Nested under the system parameters, you can modify parameters for the
+alchemical system. Below are the default settings and are not required
+to be specified in the YAML configuration. <strong>Modifications to these
+parameters are for advanced users.</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-------</span>
+<span class="n">system</span><span class="p">:</span>
+  <span class="n">nonbondedMethod</span><span class="p">:</span> <span class="n">PME</span>
+  <span class="n">nonbondedCutoff</span><span class="p">:</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">angstroms</span>
+  <span class="n">constraints</span><span class="p">:</span> <span class="n">HBonds</span>
+  <span class="n">rigidWater</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">removeCMMotion</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">ewaldErrorTolerance</span><span class="p">:</span> <span class="mf">0.005</span>
+  <span class="n">flexibleConstraints</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">splitDihedrals</span><span class="p">:</span> <span class="kc">False</span>
+  <span class="n">alchemical</span><span class="p">:</span>
+    <span class="c1"># Sterics</span>
+    <span class="n">softcore_alpha</span><span class="p">:</span> <span class="mf">0.5</span>
+    <span class="n">softcore_a</span> <span class="p">:</span> <span class="mi">1</span>
+    <span class="n">softcore_b</span> <span class="p">:</span> <span class="mi">1</span>
+    <span class="n">softcore_c</span> <span class="p">:</span> <span class="mi">6</span>
+
+    <span class="c1"># Electrostatics</span>
+    <span class="n">softcore_beta</span> <span class="p">:</span> <span class="mf">0.0</span>
+    <span class="n">softcore_d</span> <span class="p">:</span> <span class="mi">1</span>
+    <span class="n">softcore_e</span> <span class="p">:</span> <span class="mi">1</span>
+    <span class="n">softcore_f</span> <span class="p">:</span> <span class="mi">2</span>
+
+    <span class="n">annihilate_electrostatics</span> <span class="p">:</span> <span class="kc">True</span>
+    <span class="n">annihilate_sterics</span> <span class="p">:</span> <span class="kc">False</span>
+<span class="o">-------</span>
+</pre></div>
+</div>
+<p>For further details on alchemical parameters see:
+<a class="reference external" href="http://getyank.org/0.16.2/yamlpages/options.html">http://getyank.org/0.16.2/yamlpages/options.html</a></p>
+</div>
+</div>
+<div class="section" id="Simulation-Configuration">
+<h2>Simulation Configuration<a class="headerlink" href="#Simulation-Configuration" title="Permalink to this headline">¶</a></h2>
+<p>The keywords for configuring the Simulations for BLUES are explained
+below:</p>
+<ul class="simple">
+<li><strong>``dt``</strong>: timestep</li>
+<li><strong>``nIter``</strong>: number of iterations or proposed moves</li>
+<li><strong>``nstepsMD``</strong>: number of MD steps</li>
+<li><strong>``nstepsNC``</strong>: number NCMC steps</li>
+</ul>
+<p>The configuration below will run BLUES in NVT with 2fs timesteps for 10
+iterations. The MD and NCMC simulation will run 10,000 steps per
+iteration.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">----------</span>
+<span class="n">simulation</span><span class="p">:</span>
+  <span class="n">platform</span><span class="p">:</span> <span class="n">CUDA</span>
+  <span class="n">dt</span><span class="p">:</span> <span class="mf">0.002</span> <span class="o">*</span> <span class="n">picoseconds</span>
+  <span class="n">friction</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="mi">1</span><span class="o">/</span><span class="n">picoseconds</span>
+  <span class="n">temperature</span><span class="p">:</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">kelvin</span>
+  <span class="n">nIter</span><span class="p">:</span> <span class="mi">10</span>
+  <span class="n">nstepsMD</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">nstepsNC</span><span class="p">:</span> <span class="mi">10000</span>
+<span class="o">----------</span>
+</pre></div>
+</div>
+<div class="section" id="NPT-Simulation">
+<h3>NPT Simulation<a class="headerlink" href="#NPT-Simulation" title="Permalink to this headline">¶</a></h3>
+<p>To run BLUES in NPT, simply specify a <strong>``pressure``</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">----------</span>
+<span class="n">simulation</span><span class="p">:</span>
+  <span class="n">platform</span><span class="p">:</span> <span class="n">CUDA</span>
+  <span class="n">dt</span><span class="p">:</span> <span class="mf">0.002</span> <span class="o">*</span> <span class="n">picoseconds</span>
+  <span class="n">friction</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="mi">1</span><span class="o">/</span><span class="n">picoseconds</span>
+  <span class="n">temperature</span><span class="p">:</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">kelvin</span>
+  <span class="n">nIter</span><span class="p">:</span> <span class="mi">10</span>
+  <span class="n">nstepsMD</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">nstepsNC</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">pressure</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="n">atmospheres</span>
+<span class="o">----------</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="(Optional)-Additional-relaxation-steps-in-the-NCMC-simulation">
+<h3>(Optional) Additional relaxation steps in the NCMC simulation<a class="headerlink" href="#(Optional)-Additional-relaxation-steps-in-the-NCMC-simulation" title="Permalink to this headline">¶</a></h3>
+<p>Keywords <strong>``nprop``</strong> and <strong>``propLambda``</strong> allow you to add
+additional relxation steps between a set range in the lambda schedule
+for the alchemical process in the NCMC simulation. Setting
+<strong>``propLambda``</strong> to 0.3 will select a lambda range of -/+ 0.3 from the
+midpoint (0.5), giving [0.2, 0.8]. During the alchemical process, when
+lambda is between 0.2 to 0.8, <strong>``nprop``</strong> controls the number of
+additional relaxation steps to add at each lambda step (change in
+lambda). Additional relaxation steps has been show to increase
+acceptance proposed NCMC moves.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">----------</span>
+<span class="n">simulation</span><span class="p">:</span>
+  <span class="n">platform</span><span class="p">:</span> <span class="n">CUDA</span>
+  <span class="n">dt</span><span class="p">:</span> <span class="mf">0.002</span> <span class="o">*</span> <span class="n">picoseconds</span>
+  <span class="n">friction</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="mi">1</span><span class="o">/</span><span class="n">picoseconds</span>
+  <span class="n">temperature</span><span class="p">:</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">kelvin</span>
+  <span class="n">nIter</span><span class="p">:</span> <span class="mi">10</span>
+  <span class="n">nstepsMD</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">nstepsNC</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">pressure</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="n">atmospheres</span>
+  <span class="n">nprop</span><span class="p">:</span> <span class="mi">3</span>
+  <span class="n">propLambda</span><span class="p">:</span> <span class="mf">0.3</span>
+<span class="o">----------</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="(Optional)-Platform-Properties">
+<h3>(Optional) Platform Properties<a class="headerlink" href="#(Optional)-Platform-Properties" title="Permalink to this headline">¶</a></h3>
+<p>If you need to modify platform properties for the simulation, you can
+set the keyword <strong>``properties``</strong> like below:</p>
+<div class="section" id="Example:-OpenCL-in-single-precision-on-GPU-device-2">
+<h4>Example: OpenCL in single precision on GPU device 2<a class="headerlink" href="#Example:-OpenCL-in-single-precision-on-GPU-device-2" title="Permalink to this headline">¶</a></h4>
+<p><em>Note: works for running on the GPU on MacBook Pro 2017</em></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">----------</span>
+<span class="n">simulation</span><span class="p">:</span>
+  <span class="n">platform</span><span class="p">:</span> <span class="n">OpenCL</span>
+  <span class="n">properties</span><span class="p">:</span>
+    <span class="n">OpenCLPrecision</span><span class="p">:</span> <span class="n">single</span>
+    <span class="n">OpenCLDeviceIndex</span><span class="p">:</span> <span class="mi">2</span>
+  <span class="n">dt</span><span class="p">:</span> <span class="mf">0.002</span> <span class="o">*</span> <span class="n">picoseconds</span>
+  <span class="n">friction</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="mi">1</span><span class="o">/</span><span class="n">picoseconds</span>
+  <span class="n">temperature</span><span class="p">:</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">kelvin</span>
+  <span class="n">nIter</span><span class="p">:</span> <span class="mi">10</span>
+  <span class="n">nstepsMD</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">nstepsNC</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">pressure</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="n">atmospheres</span>
+<span class="o">----------</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Example:-CUDA-in-double-precision-on-GPU-device-0">
+<h4>Example: CUDA in double precision on GPU device 0<a class="headerlink" href="#Example:-CUDA-in-double-precision-on-GPU-device-0" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">----------</span>
+<span class="n">simulation</span><span class="p">:</span>
+  <span class="n">platform</span><span class="p">:</span> <span class="n">CUDA</span>
+  <span class="n">properties</span><span class="p">:</span>
+    <span class="n">CudaPrecision</span><span class="p">:</span> <span class="n">double</span>
+    <span class="n">CudaDeviceIndex</span><span class="p">:</span> <span class="mi">0</span>
+  <span class="n">dt</span><span class="p">:</span> <span class="mf">0.002</span> <span class="o">*</span> <span class="n">picoseconds</span>
+  <span class="n">friction</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="mi">1</span><span class="o">/</span><span class="n">picoseconds</span>
+  <span class="n">temperature</span><span class="p">:</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">kelvin</span>
+  <span class="n">nIter</span><span class="p">:</span> <span class="mi">10</span>
+  <span class="n">nstepsMD</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">nstepsNC</span><span class="p">:</span> <span class="mi">10000</span>
+  <span class="n">pressure</span><span class="p">:</span> <span class="mi">1</span> <span class="o">*</span> <span class="n">atmospheres</span>
+<span class="o">----------</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Reporter-Configuration">
+<h2>Reporter Configuration<a class="headerlink" href="#Reporter-Configuration" title="Permalink to this headline">¶</a></h2>
+<p>We provide functionality to configure a recommended set of reporters
+from the YAML file. These are used to record information for either the
+MD or NCMC simulation. Below are the keywords for each reporter. Each
+reporter will require the <strong>``reportInterval``</strong> keyword to specify the
+frequency to store the simulation data: - <strong>``state``</strong> : State data
+reporter for OpenMM simulations, but it is a little more generalized.
+Writes to a <code class="docutils literal notranslate"><span class="pre">.ene</span></code> file. - For full list of parameters see
+<a class="reference external" href="https://parmed.github.io/ParmEd/html/api/parmed/parmed.openmm.reporters.html#parmed.openmm.reporters.StateDataReporter">parmed.openmm.reporters.StateDataReporter</a>
+- <strong>``traj_netcdf``</strong> : Customized AMBER NetCDF (<code class="docutils literal notranslate"><span class="pre">.nc</span></code>) format
+reporter - <strong>``restart``</strong> : Restart AMBER NetCDF (<code class="docutils literal notranslate"><span class="pre">.rst7</span></code>) format
+reporter - <strong>``progress``</strong> : Write to a file (<code class="docutils literal notranslate"><span class="pre">.prog</span></code>), the progress
+report of how many steps has been done, how fast the simulation is
+running, and how much time is left (similar to the mdinfo file in
+Amber). File is overwritten at each reportInterval. - For full list of
+parameters see
+<a class="reference external" href="https://parmed.github.io/ParmEd/html/api/parmed/parmed.openmm.reporters.html#parmed.openmm.reporters.ProgressReporter">parmed.openmm.reporters.ProgressReporter</a>
+- <strong>``stream``</strong> : Customized version of openmm.app.StateDataReporter.
+This will instead stream/print the information to the terminal as
+opposed to writing to a file. - takes the same parameters as the
+<a class="reference external" href="http://docs.openmm.org/development/api-python/generated/simtk.openmm.app.statedatareporter.StateDataReporter.html#simtk.openmm.app.statedatareporter.StateDataReporter">openmm.app.StateDataReporter</a></p>
+<p>To attach them to the MD simulation. You nest the reporter keywords
+under the keyword <strong>``md_reporters``</strong> like below. To attach the
+reporters to NCMC simulation, use the <strong>``ncmc_reporters``</strong> keyword
+instead.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">------</span>
+<span class="n">md_reporters</span><span class="p">:</span>
+  <span class="n">state</span><span class="p">:</span>
+    <span class="n">reportInterval</span><span class="p">:</span> <span class="mi">250</span>
+  <span class="n">traj_netcdf</span><span class="p">:</span>
+    <span class="n">reportInterval</span><span class="p">:</span> <span class="mi">250</span>
+  <span class="n">restart</span><span class="p">:</span>
+    <span class="n">reportInterval</span><span class="p">:</span> <span class="mi">1000</span>
+  <span class="n">progress</span><span class="p">:</span>
+    <span class="n">totalSteps</span><span class="p">:</span> <span class="mi">10000</span>
+    <span class="n">reportInterval</span><span class="p">:</span> <span class="mi">10</span>
+  <span class="n">stream</span><span class="p">:</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">md</span>
+    <span class="n">reportInterval</span><span class="p">:</span> <span class="mi">250</span>
+    <span class="n">totalSteps</span><span class="p">:</span> <span class="mi">10000</span>
+    <span class="n">step</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="n">speed</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="n">remainingTime</span><span class="p">:</span> <span class="kc">True</span>
+<span class="o">----</span>
+</pre></div>
+</div>
+<p>In the above example, we are using the <strong>``stream``</strong> reporter to print
+the speeds on the intergrator at regular intervals. This may be a bit
+redudant with the <strong>``progress``</strong> reporter if are running the job
+remotely and don’t need the information streamed to terminal.</p>
+<div class="section" id="(Optional)-Advanced-options-to-the-``traj_netcdf``-reporter">
+<h3>(Optional) Advanced options to the <strong>``traj_netcdf``</strong> reporter<a class="headerlink" href="#(Optional)-Advanced-options-to-the-``traj_netcdf``-reporter" title="Permalink to this headline">¶</a></h3>
+<p>The <strong>``traj_netcdf``</strong> reporter can store additional information that
+may be useful for the NCMC simulation or record at specific frames. In
+the example below, we will store the first, midpoint (when the move is
+applied), and last frame of each NCMC iteration, along with the
+<strong>``alchemicalLambda``</strong> step and the <strong>``protocolWork``</strong>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">----</span>
+<span class="n">ncmc_reporters</span><span class="p">:</span>
+  <span class="n">traj_netcdf</span><span class="p">:</span>
+    <span class="n">frame_indices</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">alchemicalLambda</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="n">protocolWork</span><span class="p">:</span> <span class="kc">True</span>
+<span class="o">-----</span>
+</pre></div>
+</div>
+<p>To access the numerical data stored in the NetCDF file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">netCDF4</span> <span class="k">import</span> <span class="n">Dataset</span>
+
+<span class="n">f</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;t4-toluene-ncmc.nc&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;alchemicalLambda&#39;</span><span class="p">][:])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;protocolWork&#39;</span><span class="p">][:])</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="p">[</span> <span class="mf">0.001</span>  <span class="mf">0.5</span>    <span class="mf">1.</span>   <span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="p">[</span>  <span class="mf">0.03706791</span>  <span class="mf">30.72696877</span>  <span class="mf">25.708498</span>  <span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Running-a-BLUES-simulation">
+<h1>Running a BLUES simulation<a class="headerlink" href="#Running-a-BLUES-simulation" title="Permalink to this headline">¶</a></h1>
+<p>Below we will provide an example for running an NPT BLUES simulation
+which applies random rotational moves to the toluene ligand in
+T4-lysozyme from a YAML configuration.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">yaml_cfg</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">output_dir: .</span>
+<span class="s2">outfname: t4-toluene</span>
+<span class="s2">logger_level: info</span>
+
+<span class="s2">structure:</span>
+<span class="s2">  filename: ../blues/tests/data/eqToluene.prmtop</span>
+<span class="s2">  xyz: ../blues/tests/data/eqToluene.inpcrd</span>
+
+<span class="s2">system:</span>
+<span class="s2">  nonbondedMethod: PME</span>
+<span class="s2">  nonbondedCutoff: 10 * angstroms</span>
+<span class="s2">  constraints: HBonds</span>
+<span class="s2">  rigidWater: True</span>
+<span class="s2">  removeCMMotion: True</span>
+<span class="s2">  hydrogenMass: 3.024 * daltons</span>
+<span class="s2">  ewaldErrorTolerance: 0.005</span>
+<span class="s2">  flexibleConstraints: True</span>
+<span class="s2">  splitDihedrals: False</span>
+
+<span class="s2">freeze:</span>
+<span class="s2">  freeze_center: &#39;:LIG&#39;</span>
+<span class="s2">  freeze_solvent: &#39;:WAT,Cl-&#39;</span>
+<span class="s2">  freeze_distance: 5 * angstroms</span>
+
+<span class="s2">simulation:</span>
+<span class="s2">  platform: CUDA</span>
+<span class="s2">  properties:</span>
+<span class="s2">    CudaPrecision: single</span>
+<span class="s2">    CudaDeviceIndex: 0</span>
+<span class="s2">  dt: 0.004 * picoseconds</span>
+<span class="s2">  friction: 1 * 1/picoseconds</span>
+<span class="s2">  pressure: 1 * atmospheres</span>
+<span class="s2">  temperature: 300 * kelvin</span>
+<span class="s2">  nIter: 5</span>
+<span class="s2">  nstepsMD: 1000</span>
+<span class="s2">  nstepsNC: 1000</span>
+
+<span class="s2">md_reporters:</span>
+<span class="s2">  state:</span>
+<span class="s2">    reportInterval: 250</span>
+<span class="s2">  traj_netcdf:</span>
+<span class="s2">    reportInterval: 250</span>
+<span class="s2">  restart:</span>
+<span class="s2">    reportInterval: 1000</span>
+<span class="s2">  stream:</span>
+<span class="s2">    title: md</span>
+<span class="s2">    reportInterval: 250</span>
+<span class="s2">    totalSteps: 5000 # nIter * nstepsMD</span>
+<span class="s2">    step: True</span>
+<span class="s2">    speed: True</span>
+<span class="s2">    progress: True</span>
+<span class="s2">    remainingTime: True</span>
+
+<span class="s2">ncmc_reporters:</span>
+<span class="s2">  stream:</span>
+<span class="s2">    title: ncmc</span>
+<span class="s2">    reportInterval: 250</span>
+<span class="s2">    totalSteps: 1000 # Use nstepsNC</span>
+<span class="s2">    step: True</span>
+<span class="s2">    speed: True</span>
+<span class="s2">    progress: True</span>
+<span class="s2">    remainingTime: True</span>
+<span class="s2">&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</div>
+<p>Import the following BLUES modules required for the following steps.</p>
+<ul class="simple">
+<li>Make sure to specify the type of move that you want to import from
+<strong>blues.moves</strong></li>
+<li>Available moves can be veiwed in <strong>moves.py</strong>, supported/tested moves
+include:<ul>
+<li>RandomLigandRotationMove</li>
+<li>SideChainMove</li>
+</ul>
+</li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">blues.moves</span> <span class="k">import</span> <span class="n">RandomLigandRotationMove</span>
+<span class="kn">from</span> <span class="nn">blues.engine</span> <span class="k">import</span> <span class="n">MoveEngine</span>
+<span class="kn">from</span> <span class="nn">blues.simulation</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">blues.settings</span> <span class="k">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1">#Read in the YAML file</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">Settings</span><span class="p">(</span><span class="n">yaml_cfg</span><span class="p">)</span><span class="o">.</span><span class="n">asDict</span><span class="p">()</span>
+<span class="c1">#Shortcut to access `parmed.Structure` from dict</span>
+<span class="n">structure</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;Structure&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+./t4-toluene
+</pre></div></div>
+</div>
+<p>Below is what the resulting configuration dictionary looks like
+(formatted into JSON for readability).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">skipkeys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{
+  &#34;Logger&#34;: &#34;&lt;logging.RootLogger object at 0x7f96b1bff940&gt;&#34;,
+  &#34;Structure&#34;: &#34;../blues/tests/data/eqToluene.prmtop&#34;,
+  &#34;freeze&#34;: {
+    &#34;freeze_center&#34;: &#34;:LIG&#34;,
+    &#34;freeze_distance&#34;: &#34;5.0 A&#34;,
+    &#34;freeze_solvent&#34;: &#34;:WAT,Cl-&#34;
+  },
+  &#34;logger_level&#34;: &#34;info&#34;,
+  &#34;md_reporters&#34;: [
+    &#34;&lt;parmed.openmm.reporters.StateDataReporter object at 0x7f966832c128&gt;&#34;,
+    &#34;&lt;blues.reporters.NetCDF4Reporter object at 0x7f966574e898&gt;&#34;,
+    &#34;&lt;parmed.openmm.reporters.RestartReporter object at 0x7f966574e860&gt;&#34;,
+    &#34;&lt;blues.reporters.BLUESStateDataReporter object at 0x7f966574e828&gt;&#34;
+  ],
+  &#34;ncmc_reporters&#34;: [
+    &#34;&lt;blues.reporters.BLUESStateDataReporter object at 0x7f966574e908&gt;&#34;
+  ],
+  &#34;outfname&#34;: &#34;./t4-toluene&#34;,
+  &#34;output_dir&#34;: &#34;.&#34;,
+  &#34;simulation&#34;: {
+    &#34;dt&#34;: &#34;0.004 ps&#34;,
+    &#34;friction&#34;: &#34;1.0 /ps&#34;,
+    &#34;md_trajectory_interval&#34;: 250,
+    &#34;moveStep&#34;: 500,
+    &#34;nIter&#34;: 5,
+    &#34;nprop&#34;: 1,
+    &#34;nstepsMD&#34;: 1000,
+    &#34;nstepsNC&#34;: 1000,
+    &#34;outfname&#34;: &#34;./t4-toluene&#34;,
+    &#34;platform&#34;: &#34;CUDA&#34;,
+    &#34;pressure&#34;: &#34;1.0 atm&#34;,
+    &#34;propLambda&#34;: 0.3,
+    &#34;propSteps&#34;: 1000,
+    &#34;properties&#34;: {
+      &#34;CudaDeviceIndex&#34;: 0,
+      &#34;CudaPrecision&#34;: &#34;single&#34;
+    },
+    &#34;temperature&#34;: &#34;300.0 K&#34;,
+    &#34;verbose&#34;: false
+  },
+  &#34;structure&#34;: {
+    &#34;filename&#34;: &#34;../blues/tests/data/eqToluene.prmtop&#34;,
+    &#34;xyz&#34;: &#34;../blues/tests/data/eqToluene.inpcrd&#34;
+  },
+  &#34;system&#34;: {
+    &#34;constraints&#34;: &#34;HBonds&#34;,
+    &#34;ewaldErrorTolerance&#34;: 0.005,
+    &#34;flexibleConstraints&#34;: true,
+    &#34;hydrogenMass&#34;: &#34;3.024 Da&#34;,
+    &#34;nonbondedCutoff&#34;: &#34;10.0 A&#34;,
+    &#34;nonbondedMethod&#34;: &#34;PME&#34;,
+    &#34;removeCMMotion&#34;: true,
+    &#34;rigidWater&#34;: true,
+    &#34;splitDihedrals&#34;: false,
+    &#34;verbose&#34;: false
+  },
+  &#34;verbose&#34;: false
+}
+</pre></div></div>
+</div>
+<div class="section" id="Selecting-a-move-and-initialize-the-move-engine">
+<h2>Selecting a move and initialize the move engine<a class="headerlink" href="#Selecting-a-move-and-initialize-the-move-engine" title="Permalink to this headline">¶</a></h2>
+<p>Here, we initialize the <strong>``RandomLigandRotationMove``</strong> from the
+<strong>``blues.moves``</strong> module which proposes random rotations on the
+toluene ligand. We select the toluene ligand by providing the residue
+name <code class="docutils literal notranslate"><span class="pre">LIG</span></code> and the <code class="docutils literal notranslate"><span class="pre">parmed.Structure</span></code> to select the atoms from. If
+we begin BLUES from our YAML configuration, the <code class="docutils literal notranslate"><span class="pre">parmed.Structure</span></code> for
+our system is generated from the call to <code class="docutils literal notranslate"><span class="pre">startup()</span></code>. We can access it
+at the top level with <code class="docutils literal notranslate"><span class="pre">cfg['Structure']</span></code></p>
+<p>After initialization of the selected move, we pass the move object to
+the <strong>``MoveEngine``</strong> from the <strong>``blues.engine``</strong> module. The
+<strong>``MoveEngine``</strong> controls what types of moves will be performed during
+the NCMC protocol and with a given probability. This will be more useful
+when we use multiple move types.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1">#Initialize the move class and pass it to the engine</span>
+<span class="n">ligand</span> <span class="o">=</span> <span class="n">RandomLigandRotationMove</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="s1">&#39;LIG&#39;</span><span class="p">)</span>
+<span class="n">ligand_mover</span> <span class="o">=</span> <span class="n">MoveEngine</span><span class="p">(</span><span class="n">ligand</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Generating-the-Systems-for-openMM:-``SystemFactory``">
+<h2>Generating the Systems for openMM: <strong>``SystemFactory``</strong><a class="headerlink" href="#Generating-the-Systems-for-openMM:-``SystemFactory``" title="Permalink to this headline">¶</a></h2>
+<p>Next, we must generate the <code class="docutils literal notranslate"><span class="pre">openmm.System</span></code> from the
+<code class="docutils literal notranslate"><span class="pre">parmed.Structure</span></code> by calling the <strong>``SystemFactory``</strong> class from the
+<code class="docutils literal notranslate"><span class="pre">blues.simulation</span></code> module. The class must be initialized by providing
+3 required arguments:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>structure : parmed.Structure
+    A chemical structure composed of atoms, bonds, angles, torsions, and
+    other topological features.
+atom_indices : list of int
+    Atom indicies of the move or designated for which the nonbonded forces
+    (both sterics and electrostatics components) have to be alchemically
+    modified.
+config : dict, parameters for generating the `openmm.System for the MD
+    and NCMC simulation. For complete parameters, see docs for `generateSystem`
+    and `generateAlchSystem`
+</pre></div>
+</div>
+<p>Upon initialization, this class will create the system for the MD
+simulation and the NCMC simulation. They can be accessed through the
+attributes <strong>``systems.md``</strong> or <strong>``systems.alch``</strong>. Any modifications
+to either of these Systems should be done within the context of this
+object. Once the systems are passed into an <code class="docutils literal notranslate"><span class="pre">openmm.Simulation</span></code>, you
+will not be able to modify the system easily.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">systems</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">ligand</span><span class="o">.</span><span class="n">atom_indices</span><span class="p">,</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;system&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+INFO: Adding bonds...
+INFO: Adding angles...
+INFO: Adding dihedrals...
+INFO: Adding Ryckaert-Bellemans torsions...
+INFO: Adding Urey-Bradleys...
+INFO: Adding improper torsions...
+INFO: Adding CMAP torsions...
+INFO: Adding trigonal angle terms...
+INFO: Adding out-of-plane bends...
+INFO: Adding pi-torsions...
+INFO: Adding stretch-bends...
+INFO: Adding torsion-torsions...
+INFO: Adding Nonbonded force...
+</pre></div></div>
+</div>
+<div class="section" id="(Optional)-Applying-restraints-or-freezing-atoms">
+<h3>(Optional) Applying restraints or freezing atoms<a class="headerlink" href="#(Optional)-Applying-restraints-or-freezing-atoms" title="Permalink to this headline">¶</a></h3>
+<p>The <strong>``SystemFactory``</strong> class also provides functionality for
+restraining or freezing the atoms. <strong>Use extreme caution when
+freezing/restraining atoms. You should consider if freezing/restraining
+should be applied to BOTH the MD and alchemical system.</strong></p>
+<p>Selections for either restraining or freezing atoms in your system use
+the <a class="reference external" href="http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax">Amber mask
+syntax</a>.</p>
+<div class="section" id="Positional-restraints:-``SystemFactory.restrain_positions()``">
+<h4>Positional restraints: <strong>``SystemFactory.restrain_positions()``</strong><a class="headerlink" href="#Positional-restraints:-``SystemFactory.restrain_positions()``" title="Permalink to this headline">¶</a></h4>
+<p>To apply positional restraints, you can call
+<strong>``SystemFactory.restrain_positions()``</strong>. You can specify the
+parameters/selection for applying positional restraints in the YAML
+file.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">------</span>
+<span class="n">restraints</span><span class="p">:</span>
+    <span class="n">selection</span><span class="p">:</span> <span class="s1">&#39;@CA,C,N&#39;</span>
+    <span class="n">weight</span><span class="p">:</span> <span class="mi">5</span>
+<span class="o">------</span>
+</pre></div>
+</div>
+<p>restrain keywords: - <strong>``selection``</strong>: Specify what to apply positional
+restraints to using Amber mask syntax. Default = ‘&#64;CA,C,N’ -
+<strong>``weight``</strong>: Restraint weight for xyz atom restraints in kcal/(mol
+A^2). Default = 5</p>
+<p>From the YAML example above, we would be applying positional restraints
+to the backbone atoms of the protein. If applying restraints, you most
+likely will want to apply it to BOTH the MD and alchemical systems like
+below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systems</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="o">.</span><span class="n">restrain_positions</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">systems</span><span class="o">.</span><span class="n">md</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;restraints&#39;</span><span class="p">])</span>
+<span class="n">systems</span><span class="o">.</span><span class="n">alch</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="o">.</span><span class="n">restrain_positions</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">systems</span><span class="o">.</span><span class="n">alch</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;restraints&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Freezing-selected-atoms:-``SystemFactory.freeze_atoms()``">
+<h4>Freezing selected atoms: <strong>``SystemFactory.freeze_atoms()``</strong><a class="headerlink" href="#Freezing-selected-atoms:-``SystemFactory.freeze_atoms()``" title="Permalink to this headline">¶</a></h4>
+<p>To freeze a selection, call <strong>``SystemFactory.freeze_atoms()``</strong>. Atoms
+that have a mass of zero will be ignored by the integrator and will not
+change positions during the simulation, effectively they are frozen.</p>
+<p>To freeze atoms using a given selection string. Use the keyword
+<strong>``freeze_selection``</strong>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----</span>
+<span class="n">freeze</span><span class="p">:</span>
+  <span class="n">freeze_selection</span><span class="p">:</span> <span class="s1">&#39;:LIG&#39;</span>
+<span class="o">------</span>
+</pre></div>
+</div>
+<p>From the YAML example above, we would be freezing only the atoms
+belonging to the residue <code class="docutils literal notranslate"><span class="pre">LIG</span></code>. Although freezing the ligand in this
+example wouldn’t be very useful. It would be applied like</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systems</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="o">.</span><span class="n">freeze_atoms</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">systems</span><span class="o">.</span><span class="n">md</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;freeze&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Freezing-atoms-around-a-selection:-``SystemFactory.freeze_radius()``">
+<h4>Freezing atoms around a selection: <strong>``SystemFactory.freeze_radius()``</strong><a class="headerlink" href="#Freezing-atoms-around-a-selection:-``SystemFactory.freeze_radius()``" title="Permalink to this headline">¶</a></h4>
+<p>Alternatively, you can choose to freeze atoms around a given selection.
+To do so, call <strong>``SystemFactory.freeze_radius()``</strong>. For example, you
+may want to freeze atoms that are 5 angstroms away from the ligand and
+include the solvent.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----</span>
+<span class="n">freeze</span><span class="p">:</span>
+  <span class="n">freeze_center</span><span class="p">:</span> <span class="s1">&#39;:LIG&#39;</span>
+  <span class="n">freeze_solvent</span><span class="p">:</span> <span class="s1">&#39;:WAT,Cl-&#39;</span>
+  <span class="n">freeze_distance</span><span class="p">:</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">angstroms</span>
+<span class="o">------</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><strong>``freeze_center``</strong>: Specifies the center of the object for
+freezing, masses will be zeroed. Default = ‘:LIG’</li>
+<li><strong>``freeze_solvent``</strong>: select which solvent atoms should have their
+masses zeroed. Default = ‘:HOH,NA,CL’</li>
+<li><strong>``freeze_distance``</strong>: Distance ( in angstroms) to select atoms for
+retaining their masses. Atoms outside the set distance will have
+their masses set to 0.0. Default = 5.0</li>
+</ul>
+<p>We often utilize this type of freezing to speed up the alchemical
+process during the NCMC simulation while leaving them completely free in
+the MD simulation for proper relaxation.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systems</span><span class="o">.</span><span class="n">alch</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="o">.</span><span class="n">freeze_radius</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">systems</span><span class="o">.</span><span class="n">alch</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;freeze&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>In this notebook example, our YAML config indicates we will be freezing
+around the ligand (keyword: <strong>``freeze_center``</strong>). So we will call the
+<strong>``freeze_radius``</strong> function.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">systems</span><span class="o">.</span><span class="n">alch</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="o">.</span><span class="n">freeze_radius</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">systems</span><span class="o">.</span><span class="n">alch</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;freeze&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+INFO: Freezing 22065 atoms 5.0 Angstroms from &#39;:LIG&#39; on &lt;simtk.openmm.openmm.System; proxy of &lt;Swig Object of type &#39;OpenMM::System *&#39; at 0x7f96aa74fab0&gt; &gt;
+</pre></div></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Generating-the-OpenMM-Simulations:-``SimulationFactory``">
+<h2>Generating the OpenMM Simulations: <strong>``SimulationFactory``</strong><a class="headerlink" href="#Generating-the-OpenMM-Simulations:-``SimulationFactory``" title="Permalink to this headline">¶</a></h2>
+<p>Now that we have generated our <code class="docutils literal notranslate"><span class="pre">openmm.System</span></code> for the MDand frozen
+the solvent around the ligand. We are now ready to create the set of
+simulations for running BLUES. We do this by calling the
+<strong>``SimulationFactory``</strong> class . The expected parameters are:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">systems</span> <span class="p">:</span> <span class="n">blues</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">SystemFactory</span> <span class="nb">object</span>
+    <span class="n">The</span> <span class="nb">object</span> <span class="n">containing</span> <span class="n">the</span> <span class="n">MD</span> <span class="ow">and</span> <span class="n">alchemical</span> <span class="n">openmm</span><span class="o">.</span><span class="n">Systems</span>
+<span class="n">move_engine</span> <span class="p">:</span> <span class="n">blues</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">MoveEngine</span> <span class="nb">object</span>
+    <span class="n">MoveProposal</span> <span class="nb">object</span> <span class="n">which</span> <span class="n">contains</span> <span class="n">the</span> <span class="nb">dict</span> <span class="n">of</span> <span class="n">moves</span> <span class="n">performed</span>
+    <span class="ow">in</span> <span class="n">the</span> <span class="n">NCMC</span> <span class="n">simulation</span><span class="o">.</span>
+<span class="n">config</span> <span class="p">:</span> <span class="nb">dict</span> <span class="n">of</span> <span class="n">parameters</span> <span class="k">for</span> <span class="n">the</span> <span class="n">simulation</span> <span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">e</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">etc</span><span class="o">.</span><span class="p">)</span>
+<span class="n">md_reporters</span> <span class="p">:</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">Reporter</span> <span class="n">objects</span> <span class="k">for</span> <span class="n">the</span> <span class="n">MD</span> <span class="n">openmm</span><span class="o">.</span><span class="n">Simulation</span>
+<span class="n">ncmc_reporters</span> <span class="p">:</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">Reporter</span> <span class="n">objects</span> <span class="k">for</span> <span class="n">the</span> <span class="n">NCMC</span> <span class="n">openmm</span><span class="o">.</span><span class="n">Simulation</span>
+</pre></div>
+</div>
+<p>If you wish to use your own openmm reporters, simply pass them into the
+arguments as a <em>list</em> of Reporter objects. Since we have configured our
+reporters from the YAML file, we can pass them into the arguments
+<strong>``md_reporters``</strong> and <strong>``ncmc_reporters``</strong>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1"># List of MD reporters</span>
+<span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;md_reporters&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>Out[8]:
+</pre></div>
+</div>
+<div class="output_area highlight-none notranslate"><div class="highlight"><pre>
+<span></span>[&lt;parmed.openmm.reporters.StateDataReporter at 0x7f966832c128&gt;,
+ &lt;blues.reporters.NetCDF4Reporter at 0x7f966574e898&gt;,
+ &lt;parmed.openmm.reporters.RestartReporter at 0x7f966574e860&gt;,
+ &lt;blues.reporters.BLUESStateDataReporter at 0x7f966574e828&gt;]
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1"># List of NCMC reporters</span>
+<span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;ncmc_reporters&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>Out[9]:
+</pre></div>
+</div>
+<div class="output_area highlight-none notranslate"><div class="highlight"><pre>
+<span></span>[&lt;blues.reporters.BLUESStateDataReporter at 0x7f966574e908&gt;]
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">simulations</span> <span class="o">=</span> <span class="n">SimulationFactory</span><span class="p">(</span><span class="n">systems</span><span class="p">,</span> <span class="n">ligand_mover</span><span class="p">,</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">],</span>
+                                <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;md_reporters&#39;</span><span class="p">],</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;ncmc_reporters&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+INFO: Adding MonteCarloBarostat with 1.0 atm. MD simulation will be 300.0 K NPT.
+WARNING: NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.
+INFO: OpenMM(7.1.1.dev-c1a64aa) simulation generated for CUDA platform
+system = Linux
+node = titanpascal
+release = 4.13.0-41-generic
+version = #46~16.04.1-Ubuntu SMP Thu May 3 10:06:43 UTC 2018
+machine = x86_64
+processor = x86_64
+DeviceIndex = 0
+DeviceName = TITAN Xp
+UseBlockingSync = true
+Precision = single
+UseCpuPme = false
+CudaCompiler = /usr/local/cuda-8.0/bin/nvcc
+TempDirectory = /tmp
+CudaHostCompiler =
+DisablePmeStream = false
+DeterministicForces = false
+
+</pre></div></div>
+</div>
+<p>If you would like to access the MD or NCMC simulation. You can access
+them as attributes to the <strong>``SimulationFactory``</strong> class with
+<strong>``simulations.md``</strong> or <strong>``simulations.ncmc``</strong>. This will allow you
+to do things like energy minimize the system or run a few steps of
+regular dynamics before running the hybrid (MD+NCMC) BLUES approach. The
+NCMC simulation will automatically be synced to the state of the MD
+simulation when running the BLUES simulation.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1"># Energy minimization</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">simulations</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span><span class="n">getPositions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">getEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Pre-Minimized energy = </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span><span class="o">.</span><span class="n">in_units_of</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kilocalorie_per_mole</span><span class="p">)))</span>
+
+<span class="n">simulations</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">minimizeEnergy</span><span class="p">(</span><span class="n">maxIterations</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">simulations</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span><span class="n">getPositions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">getEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Minimized energy = </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span><span class="o">.</span><span class="n">in_units_of</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kilocalorie_per_mole</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Pre-Minimized energy = -69057.34671058532 kcal/mol
+Minimized energy = -87007.38938198877 kcal/mol
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1"># Running only the MD simulation</span>
+<span class="n">simulations</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+#&#34;Progress (%)&#34; &#34;Step&#34;  &#34;Speed (ns/day)&#34;        &#34;Time Remaining&#34;
+md: 5.0%        250     0       --
+md: 10.0%       500     271     0:05
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Run-the-BLUES-Simulation">
+<h2>Run the BLUES Simulation<a class="headerlink" href="#Run-the-BLUES-Simulation" title="Permalink to this headline">¶</a></h2>
+<p>To run the full BLUES simulation, where we apply NCMC moves and
+follow-up with the MD simulation, we simply pass the
+<strong>``SimulationFactory``</strong> object to the <strong>``Simulation``</strong> class and
+call the <strong>``run()``</strong> function which takes <strong>``nIter``, ``nstepsNC``,
+``nstepsMD``</strong> as arguments (or we can pass it the simulation
+configuration from the YAML on initialization of the class).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">blues</span> <span class="o">=</span> <span class="n">BLUESSimulation</span><span class="p">(</span><span class="n">simulations</span><span class="p">,</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">])</span>
+<span class="n">blues</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+INFO: Total BLUES Simulation Time = 40.0 ps (8.0 ps/Iter)
+Total Force Evaluations = 10000
+Total NCMC time = 20.0 ps (4.0 ps/iter)
+Total MD time = 20.0 ps (4.0 ps/iter)
+Trajectory Interval = 2.0 ps/frame (4.0 frames/iter)
+INFO: Running 5 BLUES iterations...
+INFO: BLUES Iteration: 0
+INFO: Advancing 1000 NCMC switching steps...
+#&#34;Progress (%)&#34; &#34;Step&#34;  &#34;Speed (ns/day)&#34;        &#34;Time Remaining&#34;
+ncmc: 25.0%     250     0       --
+ncmc: 50.0%     500     110     0:01
+Performing RandomLigandRotationMove...
+ncmc: 75.0%     750     93.3    0:00
+ncmc: 100.0%    1000    93      0:00
+NCMC MOVE REJECTED: work_ncmc -17.61007128922719 &lt; -3.476065340494845
+Advancing 1000 MD steps...
+md: 15.0%       750     31.9    0:46
+md: 20.0%       1000    43.1    0:32
+md: 25.0%       1250    54.8    0:23
+md: 30.0%       1500    65.5    0:18
+BLUES Iteration: 1
+Advancing 1000 NCMC switching steps...
+ncmc: 25.0%     250     57.2    --
+ncmc: 50.0%     500     62.6    0:13
+Performing RandomLigandRotationMove...
+ncmc: 75.0%     750     65.4    0:03
+ncmc: 100.0%    1000    69.1    0:00
+NCMC MOVE REJECTED: work_ncmc -28.930984747001787 &lt; -2.602259467723195
+Advancing 1000 MD steps...
+md: 35.0%       1750    45.5    0:24
+md: 40.0%       2000    50.5    0:20
+md: 45.0%       2250    56.3    0:16
+md: 50.0%       2500    61.9    0:13
+BLUES Iteration: 2
+Advancing 1000 NCMC switching steps...
+ncmc: 25.0%     250     57.9    --
+ncmc: 50.0%     500     60.1    0:25
+Performing RandomLigandRotationMove...
+ncmc: 75.0%     750     62.4    0:06
+ncmc: 100.0%    1000    64.6    0:00
+NCMC MOVE REJECTED: work_ncmc -9.178847171172448 &lt; -0.3081492900307722
+Advancing 1000 MD steps...
+md: 55.0%       2750    49.7    0:15
+md: 60.0%       3000    53.1    0:13
+md: 65.0%       3250    56.7    0:10
+md: 70.0%       3500    60.4    0:08
+BLUES Iteration: 3
+Advancing 1000 NCMC switching steps...
+ncmc: 25.0%     250     58.4    --
+ncmc: 50.0%     500     60.4    0:37
+Performing RandomLigandRotationMove...
+ncmc: 75.0%     750     61.6    0:09
+ncmc: 100.0%    1000    63.6    0:00
+NCMC MOVE REJECTED: work_ncmc -6.022089748510081 &lt; -0.28447339331708726
+Advancing 1000 MD steps...
+md: 75.0%       3750    52.6    0:08
+md: 80.0%       4000    55      0:06
+md: 85.0%       4250    58      0:04
+md: 90.0%       4500    60.8    0:02
+BLUES Iteration: 4
+Advancing 1000 NCMC switching steps...
+ncmc: 25.0%     250     58.6    --
+ncmc: 50.0%     500     59.8    0:49
+Performing RandomLigandRotationMove...
+ncmc: 75.0%     750     60.7    0:12
+ncmc: 100.0%    1000    61.9    0:00
+NCMC MOVE REJECTED: work_ncmc -63.43688730563919 &lt; -0.5417610940298393
+Advancing 1000 MD steps...
+md: 95.0%       4750    53.3    0:01
+md: 100.0%      5000    55.2    0:00
+md: 105.0%      5250    57.5    23:59:59
+md: 110.0%      5500    59.8    23:59:58
+Acceptance Ratio: 0.0
+nIter: 5
+</pre></div></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="tutorial.html" class="btn btn-neutral" title="Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.2.2',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

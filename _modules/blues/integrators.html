@@ -1,0 +1,530 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>blues.integrators &mdash; blues 0.2.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> blues
+          
+
+          
+            
+            <img src="../../_static/blues-scaled.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#github">Github</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#publication">Publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#theory">Theory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#stable-releases">Stable Releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#development-builds">Development Builds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#source-installation">Source Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../module_doc.html">Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.moves">Moves</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#move">Move</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#randomligandrotationmove">RandomLigandRotationMove</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#moveengine">MoveEngine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#under-development">Under Development</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.simulation">Simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#systemfactory">SystemFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#simulationfactory">SimulationFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#bluessimulation">BLUESSimulation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.integrators">Integrators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.utils">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.reporters">Reporters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.formats">Formats</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html">Introduction to BLUES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Background">Background</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Coupling-MD-simulations-with-random-NCMC-moves-for-enhanced-sampling-of-ligand-binding-modes-via-BLUES">Coupling MD simulations with random NCMC moves for enhanced sampling of ligand binding modes via BLUES</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#YAML-Configuration">YAML Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Input/Output">Input/Output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Output-files">Output files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Input-files-to-generate-the-structure-of-your-system">Input files to generate the structure of your system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Restart-files">Restart files</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#System-configuration">System configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Hydrogen-mass-repartitioning">(Optional) Hydrogen mass repartitioning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Alchemical-system-configuration">(Optional) Alchemical system configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Simulation-Configuration">Simulation Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#NPT-Simulation">NPT Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Additional-relaxation-steps-in-the-NCMC-simulation">(Optional) Additional relaxation steps in the NCMC simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Platform-Properties">(Optional) Platform Properties</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Reporter-Configuration">Reporter Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Advanced-options-to-the-``traj_netcdf``-reporter">(Optional) Advanced options to the <strong>``traj_netcdf``</strong> reporter</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Running-a-BLUES-simulation">Running a BLUES simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Selecting-a-move-and-initialize-the-move-engine">Selecting a move and initialize the move engine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-Systems-for-openMM:-``SystemFactory``">Generating the Systems for openMM: <strong>``SystemFactory``</strong></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Applying-restraints-or-freezing-atoms">(Optional) Applying restraints or freezing atoms</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-OpenMM-Simulations:-``SimulationFactory``">Generating the OpenMM Simulations: <strong>``SimulationFactory``</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Run-the-BLUES-Simulation">Run the BLUES Simulation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">blues</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>blues.integrators</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for blues.integrators</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">simtk</span>
+<span class="kn">from</span> <span class="nn">openmmtools.integrators</span> <span class="k">import</span> <span class="n">AlchemicalNonequilibriumLangevinIntegrator</span>
+
+<span class="c1"># Energy unit used by OpenMM unit system</span>
+<span class="n">_OPENMM_ENERGY_UNIT</span> <span class="o">=</span> <span class="n">simtk</span><span class="o">.</span><span class="n">unit</span><span class="o">.</span><span class="n">kilojoules_per_mole</span>
+
+
+<div class="viewcode-block" id="AlchemicalExternalLangevinIntegrator"><a class="viewcode-back" href="../../module_doc.html#blues.integrators.AlchemicalExternalLangevinIntegrator">[docs]</a><span class="k">class</span> <span class="nc">AlchemicalExternalLangevinIntegrator</span><span class="p">(</span><span class="n">AlchemicalNonequilibriumLangevinIntegrator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Allows nonequilibrium switching based on force parameters specified in alchemical_functions.</span>
+<span class="sd">    A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.</span>
+<span class="sd">    The functions can use this to create more complex protocols for other global parameters.</span>
+
+<span class="sd">    As opposed to `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator`,</span>
+<span class="sd">    which this inherits from, the AlchemicalExternalLangevinIntegrator integrator also takes</span>
+<span class="sd">    into account work done outside the nonequilibrium switching portion(between integration steps).</span>
+<span class="sd">    For example if a molecule is rotated between integration steps, this integrator would</span>
+<span class="sd">    correctly account for the work caused by that rotation.</span>
+
+<span class="sd">    Propagator is based on Langevin splitting, as described below.</span>
+<span class="sd">    One way to divide the Langevin system is into three parts which can each be solved &quot;exactly:&quot;</span>
+
+<span class="sd">    - R: Linear &quot;drift&quot; / Constrained &quot;drift&quot;</span>
+<span class="sd">        Deterministic update of *positions*, using current velocities</span>
+<span class="sd">        ``x &lt;- x + v dt``</span>
+<span class="sd">    - V: Linear &quot;kick&quot; / Constrained &quot;kick&quot;</span>
+<span class="sd">        Deterministic update of *velocities*, using current forces</span>
+<span class="sd">        ``v &lt;- v + (f/m) dt``; where f = force, m = mass</span>
+<span class="sd">    - O: Ornstein-Uhlenbeck</span>
+<span class="sd">        Stochastic update of velocities, simulating interaction with a heat bath</span>
+<span class="sd">        ``v &lt;- av + b sqrt(kT/m) R`` where:</span>
+
+<span class="sd">        - a = e^(-gamma dt)</span>
+<span class="sd">        - b = sqrt(1 - e^(-2gamma dt))</span>
+<span class="sd">        - R is i.i.d. standard normal</span>
+
+<span class="sd">    We can then construct integrators by solving each part for a certain timestep in sequence.</span>
+<span class="sd">    (We can further split up the V step by force group, evaluating cheap but fast-fluctuating</span>
+<span class="sd">    forces more frequently than expensive but slow-fluctuating forces. Since forces are only</span>
+<span class="sd">    evaluated in the V step, we represent this by including in our &quot;alphabet&quot; V0, V1, ...)</span>
+<span class="sd">    When the system contains holonomic constraints, these steps are confined to the constraint</span>
+<span class="sd">    manifold.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    alchemical_functions : dict of strings</span>
+<span class="sd">        key: value pairs such as &quot;global_parameter&quot; : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable &quot;lambda&quot;</span>
+<span class="sd">    splitting : string, default: &quot;H V R O V R H&quot;</span>
+<span class="sd">        Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option, which increments the global parameter `lambda` by 1/nsteps_neq for each step.</span>
+<span class="sd">        Forces are only used in V-step. Handle multiple force groups by appending the force group index</span>
+<span class="sd">        to V-steps, e.g. &quot;V0&quot; will only use forces from force group 0. &quot;V&quot; will perform a step using all forces.( will cause metropolization, and must be followed later by a ).</span>
+<span class="sd">    temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*simtk.unit.kelvin</span>
+<span class="sd">       Fictitious &quot;bath&quot; temperature</span>
+<span class="sd">    collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/simtk.unit.picoseconds</span>
+<span class="sd">       Collision rate</span>
+<span class="sd">    timestep : numpy.unit.Quantity compatible with femtoseconds, default: 1.0*simtk.unit.femtoseconds</span>
+<span class="sd">       Integration timestep</span>
+<span class="sd">    constraint_tolerance : float, default: 1.0e-8</span>
+<span class="sd">        Tolerance for constraint solver</span>
+<span class="sd">    measure_shadow_work : boolean, default: False</span>
+<span class="sd">        Accumulate the shadow work performed by the symplectic substeps, in the global `shadow_work`</span>
+<span class="sd">    measure_heat : boolean, default: True</span>
+<span class="sd">        Accumulate the heat exchanged with the bath in each step, in the global `heat`</span>
+<span class="sd">    nsteps_neq : int, default: 100</span>
+<span class="sd">        Number of steps in nonequilibrium protocol. Default 100</span>
+<span class="sd">    prop_lambda : float (Default = 0.3)</span>
+<span class="sd">        Defines the region in which to add extra propagation</span>
+<span class="sd">        steps during the NCMC simulation from the midpoint 0.5.</span>
+<span class="sd">        i.e. A value of 0.3 will add extra steps from lambda 0.2 to 0.8.</span>
+<span class="sd">    nprop : int (Default: 1)</span>
+<span class="sd">        Controls the number of propagation steps to add in the lambda</span>
+<span class="sd">        region defined by `prop_lambda`.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    _kinetic_energy : str</span>
+<span class="sd">        This is 0.5*m*v*v by default, and is the expression used for the kinetic energy</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    - g-BAOAB:</span>
+<span class="sd">        splitting=&quot;R V O H O V R&quot;</span>
+<span class="sd">    - VVVR</span>
+<span class="sd">        splitting=&quot;O V R H R V O&quot;</span>
+<span class="sd">    - VV</span>
+<span class="sd">        splitting=&quot;V R H R V&quot;</span>
+<span class="sd">    - An NCMC algorithm with Metropolized integrator:</span>
+<span class="sd">        splitting=&quot;O { V R H R V } O&quot;</span>
+
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    [Nilmeier, et al. 2011] Nonequilibrium candidate Monte Carlo is an efficient tool for equilibrium simulation</span>
+
+<span class="sd">    [Leimkuhler and Matthews, 2015] Molecular dynamics: with deterministic and stochastic numerical methods, Chapter 7</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">alchemical_functions</span><span class="p">,</span>
+                 <span class="n">splitting</span><span class="o">=</span><span class="s2">&quot;R V O H O V R&quot;</span><span class="p">,</span>
+                 <span class="n">temperature</span><span class="o">=</span><span class="mf">298.0</span> <span class="o">*</span> <span class="n">simtk</span><span class="o">.</span><span class="n">unit</span><span class="o">.</span><span class="n">kelvin</span><span class="p">,</span>
+                 <span class="n">collision_rate</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">simtk</span><span class="o">.</span><span class="n">unit</span><span class="o">.</span><span class="n">picoseconds</span><span class="p">,</span>
+                 <span class="n">timestep</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">simtk</span><span class="o">.</span><span class="n">unit</span><span class="o">.</span><span class="n">femtoseconds</span><span class="p">,</span>
+                 <span class="n">constraint_tolerance</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span>
+                 <span class="n">measure_shadow_work</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">measure_heat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">nsteps_neq</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                 <span class="n">nprop</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">prop_lambda</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                 <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># call the base class constructor</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AlchemicalExternalLangevinIntegrator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">alchemical_functions</span><span class="o">=</span><span class="n">alchemical_functions</span><span class="p">,</span>
+            <span class="n">splitting</span><span class="o">=</span><span class="n">splitting</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span>
+            <span class="n">collision_rate</span><span class="o">=</span><span class="n">collision_rate</span><span class="p">,</span>
+            <span class="n">timestep</span><span class="o">=</span><span class="n">timestep</span><span class="p">,</span>
+            <span class="n">constraint_tolerance</span><span class="o">=</span><span class="n">constraint_tolerance</span><span class="p">,</span>
+            <span class="n">measure_shadow_work</span><span class="o">=</span><span class="n">measure_shadow_work</span><span class="p">,</span>
+            <span class="n">measure_heat</span><span class="o">=</span><span class="n">measure_heat</span><span class="p">,</span>
+            <span class="n">nsteps_neq</span><span class="o">=</span><span class="n">nsteps_neq</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prop_lambda</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_prop_lambda</span><span class="p">(</span><span class="n">prop_lambda</span><span class="p">)</span>
+
+        <span class="c1"># add some global variables relevant to the integrator</span>
+        <span class="n">kB</span> <span class="o">=</span> <span class="n">simtk</span><span class="o">.</span><span class="n">unit</span><span class="o">.</span><span class="n">BOLTZMANN_CONSTANT_kB</span> <span class="o">*</span> <span class="n">simtk</span><span class="o">.</span><span class="n">unit</span><span class="o">.</span><span class="n">AVOGADRO_CONSTANT_NA</span>
+        <span class="n">kT</span> <span class="o">=</span> <span class="n">kB</span> <span class="o">*</span> <span class="n">temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;perturbed_pe&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;unperturbed_pe&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;first_step&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;nprop&quot;</span><span class="p">,</span> <span class="n">nprop</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;prop&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;prop_lambda_min&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prop_lambda</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;prop_lambda_max&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prop_lambda</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="c1"># Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_step_dispatch_table</span><span class="p">[</span><span class="s1">&#39;H&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_add_alchemical_perturbation_step</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="c1">#$self._registered_step_types[&#39;H&#39;] = (</span>
+        <span class="c1">#    self._add_alchemical_perturbation_step, False)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">getGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;shadow_work&quot;</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addGlobalVariable</span><span class="p">(</span><span class="s1">&#39;shadow_work&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_prop_lambda</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prop_lambda</span><span class="p">):</span>
+        <span class="n">prop_lambda_max</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">prop_lambda</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">prop_lambda_min</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">-</span> <span class="n">prop_lambda</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">prop_range</span> <span class="o">=</span> <span class="n">prop_lambda_max</span> <span class="o">-</span> <span class="n">prop_lambda_min</span>
+
+        <span class="c1">#Set values to outside [0, 1.0] to skip IfBlock</span>
+        <span class="k">if</span> <span class="n">prop_range</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">prop_lambda_min</span> <span class="o">=</span> <span class="mf">2.0</span>
+            <span class="n">prop_lambda_max</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+        <span class="k">return</span> <span class="n">prop_lambda_min</span><span class="p">,</span> <span class="n">prop_lambda_max</span>
+
+    <span class="k">def</span> <span class="nf">_add_integrator_steps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Override the base class to insert reset steps around the integrator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># First step: Constrain positions and velocities and reset work accumulators and alchemical integrators</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beginIfBlock</span><span class="p">(</span><span class="s1">&#39;step = 0&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;perturbed_pe&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;unperturbed_pe&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addConstrainPositions</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addConstrainVelocities</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_reset_protocol_work_step</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_alchemical_reset_step</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+
+        <span class="c1"># Main body</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_steps_neq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># If nsteps = 0, we need to force execution on the first step only.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">beginIfBlock</span><span class="p">(</span><span class="s1">&#39;step = 0&#39;</span><span class="p">)</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">AlchemicalNonequilibriumLangevinIntegrator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_add_integrator_steps</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="s2">&quot;step + 1&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1">#call the superclass function to insert the appropriate steps, provided the step number is less than n_steps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">beginIfBlock</span><span class="p">(</span><span class="s2">&quot;step &lt; nsteps&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;perturbed_pe&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">beginIfBlock</span><span class="p">(</span><span class="s2">&quot;first_step &lt; 1&quot;</span><span class="p">)</span>
+            <span class="c1">#TODO write better test that checks that the initial work isn&#39;t gigantic</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;first_step&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;unperturbed_pe&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+            <span class="c1">#initial iteration</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;protocol_work&quot;</span><span class="p">,</span> <span class="s2">&quot;protocol_work + (perturbed_pe - unperturbed_pe)&quot;</span><span class="p">)</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">AlchemicalNonequilibriumLangevinIntegrator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_add_integrator_steps</span><span class="p">()</span>
+            <span class="c1">#if more propogation steps are requested</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">beginIfBlock</span><span class="p">(</span><span class="s2">&quot;lambda &gt; prop_lambda_min&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">beginIfBlock</span><span class="p">(</span><span class="s2">&quot;lambda &lt;= prop_lambda_max&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">beginWhileBlock</span><span class="p">(</span><span class="s2">&quot;prop &lt; nprop&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;prop&quot;</span><span class="p">,</span> <span class="s2">&quot;prop + 1&quot;</span><span class="p">)</span>
+
+            <span class="nb">super</span><span class="p">(</span><span class="n">AlchemicalNonequilibriumLangevinIntegrator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_add_integrator_steps</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+            <span class="c1">#ending variables to reset</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;unperturbed_pe&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="s2">&quot;step + 1&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;prop&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_add_alchemical_perturbation_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add alchemical perturbation step, accumulating protocol work.</span>
+<span class="sd">        TODO: Extend this to be able to handle force groups?</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Store initial potential energy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beginIfBlock</span><span class="p">(</span><span class="s2">&quot;prop = 1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="s2">&quot;debug + 1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;Eold&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Update lambda and increment that tracks updates.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s1">&#39;lambda&#39;</span><span class="p">,</span> <span class="s1">&#39;(lambda_step+1)/n_lambda_steps&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s1">&#39;lambda_step&#39;</span><span class="p">,</span> <span class="s1">&#39;lambda_step + 1&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Update all slaved alchemical parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_update_alchemical_parameters_step</span><span class="p">()</span>
+
+        <span class="c1"># Accumulate protocol work</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;Enew&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addComputeGlobal</span><span class="p">(</span><span class="s2">&quot;protocol_work&quot;</span><span class="p">,</span> <span class="s2">&quot;protocol_work + (Enew-Eold)&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">endBlock</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">getLogAcceptanceProbability</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+        <span class="c1">#TODO remove context from arguments if/once ncmc_switching is changed</span>
+        <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;protocol_work&quot;</span><span class="p">)</span>
+        <span class="n">shadow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;shadow_work&quot;</span><span class="p">)</span>
+        <span class="n">logp_accept</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">protocol</span> <span class="o">+</span> <span class="n">shadow</span><span class="p">)</span> <span class="o">*</span> <span class="n">_OPENMM_ENERGY_UNIT</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">kT</span>
+        <span class="k">return</span> <span class="n">logp_accept</span>
+
+<div class="viewcode-block" id="AlchemicalExternalLangevinIntegrator.reset"><a class="viewcode-back" href="../../module_doc.html#blues.integrators.AlchemicalExternalLangevinIntegrator.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;protocol_work&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;shadow_work&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;first_step&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;perturbed_pe&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;unperturbed_pe&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setGlobalVariableByName</span><span class="p">(</span><span class="s2">&quot;prop&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AlchemicalExternalLangevinIntegrator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.2.2',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

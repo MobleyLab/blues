@@ -1,0 +1,650 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>blues.utils &mdash; blues 0.2.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> blues
+          
+
+          
+            
+            <img src="../../_static/blues-scaled.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#github">Github</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#publication">Publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#theory">Theory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#stable-releases">Stable Releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#development-builds">Development Builds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#source-installation">Source Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../module_doc.html">Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.moves">Moves</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#move">Move</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#randomligandrotationmove">RandomLigandRotationMove</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#moveengine">MoveEngine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#under-development">Under Development</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.simulation">Simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#systemfactory">SystemFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#simulationfactory">SimulationFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#bluessimulation">BLUESSimulation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.integrators">Integrators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.utils">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.reporters">Reporters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.formats">Formats</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html">Introduction to BLUES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Background">Background</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Coupling-MD-simulations-with-random-NCMC-moves-for-enhanced-sampling-of-ligand-binding-modes-via-BLUES">Coupling MD simulations with random NCMC moves for enhanced sampling of ligand binding modes via BLUES</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#YAML-Configuration">YAML Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Input/Output">Input/Output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Output-files">Output files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Input-files-to-generate-the-structure-of-your-system">Input files to generate the structure of your system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Restart-files">Restart files</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#System-configuration">System configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Hydrogen-mass-repartitioning">(Optional) Hydrogen mass repartitioning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Alchemical-system-configuration">(Optional) Alchemical system configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Simulation-Configuration">Simulation Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#NPT-Simulation">NPT Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Additional-relaxation-steps-in-the-NCMC-simulation">(Optional) Additional relaxation steps in the NCMC simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Platform-Properties">(Optional) Platform Properties</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Reporter-Configuration">Reporter Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Advanced-options-to-the-``traj_netcdf``-reporter">(Optional) Advanced options to the <strong>``traj_netcdf``</strong> reporter</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Running-a-BLUES-simulation">Running a BLUES simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Selecting-a-move-and-initialize-the-move-engine">Selecting a move and initialize the move engine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-Systems-for-openMM:-``SystemFactory``">Generating the Systems for openMM: <strong>``SystemFactory``</strong></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Applying-restraints-or-freezing-atoms">(Optional) Applying restraints or freezing atoms</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-OpenMM-Simulations:-``SimulationFactory``">Generating the OpenMM Simulations: <strong>``SimulationFactory``</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Run-the-BLUES-Simulation">Run the BLUES Simulation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">blues</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>blues.utils</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for blues.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Provides a host of utility functions for the BLUES engine.</span>
+
+<span class="sd">Authors: Samuel C. Gill</span>
+<span class="sd">Contributors: Nathan M. Lim, David L. Mobley</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="k">import</span> <span class="n">ceil</span><span class="p">,</span> <span class="n">floor</span>
+<span class="kn">from</span> <span class="nn">platform</span> <span class="k">import</span> <span class="n">uname</span>
+
+<span class="kn">import</span> <span class="nn">parmed</span>
+<span class="kn">from</span> <span class="nn">simtk</span> <span class="k">import</span> <span class="n">openmm</span><span class="p">,</span> <span class="n">unit</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="saveSimulationFrame"><a class="viewcode-back" href="../../module_doc.html#blues.utils.saveSimulationFrame">[docs]</a><span class="k">def</span> <span class="nf">saveSimulationFrame</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="n">outfname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Extracts a ParmEd structure and writes the frame given</span>
+<span class="sd">    an OpenMM Simulation object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    simulation : openmm.Simulation</span>
+<span class="sd">        The OpenMM Simulation to write a frame from.</span>
+<span class="sd">    outfname : str</span>
+<span class="sd">        The output file name to save the simulation frame from. Supported</span>
+<span class="sd">        extensions:</span>
+
+<span class="sd">        - PDB (.pdb, pdb)</span>
+<span class="sd">        - PDBx/mmCIF (.cif, cif)</span>
+<span class="sd">        - PQR (.pqr, pqr)</span>
+<span class="sd">        - Amber topology file (.prmtop/.parm7, amber)</span>
+<span class="sd">        - CHARMM PSF file (.psf, psf)</span>
+<span class="sd">        - CHARMM coordinate file (.crd, charmmcrd)</span>
+<span class="sd">        - Gromacs topology file (.top, gromacs)</span>
+<span class="sd">        - Gromacs GRO file (.gro, gro)</span>
+<span class="sd">        - Mol2 file (.mol2, mol2)</span>
+<span class="sd">        - Mol3 file (.mol3, mol3)</span>
+<span class="sd">        - Amber ASCII restart (.rst7/.inpcrd/.restrt, rst7)</span>
+<span class="sd">        - Amber NetCDF restart (.ncrst, ncrst)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">topology</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">topology</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getSystem</span><span class="p">()</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span>
+        <span class="n">getPositions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">getVelocities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">getParameters</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">getForces</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">getParameterDerivatives</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">getEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">enforcePeriodicBox</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Generate the ParmEd Structure</span>
+    <span class="n">structure</span> <span class="o">=</span> <span class="n">parmed</span><span class="o">.</span><span class="n">openmm</span><span class="o">.</span><span class="n">load_topology</span><span class="p">(</span><span class="n">topology</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">xyz</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">getPositions</span><span class="p">())</span>
+
+    <span class="n">structure</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">outfname</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Saving Frame to: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">outfname</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="print_host_info"><a class="viewcode-back" href="../../module_doc.html#blues.utils.print_host_info">[docs]</a><span class="k">def</span> <span class="nf">print_host_info</span><span class="p">(</span><span class="n">simulation</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Prints hardware related information for the openmm.Simulation</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    simulation : openmm.Simulation</span>
+<span class="sd">        The OpenMM Simulation to write a frame from.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># OpenMM platform information</span>
+    <span class="n">mmver</span> <span class="o">=</span> <span class="n">openmm</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">version</span>
+    <span class="n">mmplat</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getPlatform</span><span class="p">()</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;OpenMM(</span><span class="si">{}</span><span class="s1">) simulation generated for </span><span class="si">{}</span><span class="s1"> platform</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mmver</span><span class="p">,</span> <span class="n">mmplat</span><span class="o">.</span><span class="n">getName</span><span class="p">())</span>
+
+    <span class="c1"># Host information</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">uname</span><span class="p">()</span><span class="o">.</span><span class="n">_asdict</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> = </span><span class="si">{}</span><span class="s1"> </span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="c1"># Platform properties</span>
+    <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">mmplat</span><span class="o">.</span><span class="n">getPropertyNames</span><span class="p">():</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">mmplat</span><span class="o">.</span><span class="n">getPropertyValue</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="n">prop</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> = </span><span class="si">{}</span><span class="s1"> </span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prop</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="calculateNCMCSteps"><a class="viewcode-back" href="../../module_doc.html#blues.utils.calculateNCMCSteps">[docs]</a><span class="k">def</span> <span class="nf">calculateNCMCSteps</span><span class="p">(</span><span class="n">nstepsNC</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nprop</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">propLambda</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the number of NCMC switching steps.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nstepsNC : int</span>
+<span class="sd">        The number of NCMC switching steps</span>
+<span class="sd">    nprop : int, default=1</span>
+<span class="sd">        The number of propagation steps per NCMC switching steps</span>
+<span class="sd">    propLambda : float, default=0.3</span>
+<span class="sd">        The lambda values in which additional propagation steps will be added</span>
+<span class="sd">        or 0.5 +/- propLambda. If 0.3, this will add propgation steps at lambda</span>
+<span class="sd">        values 0.2 to 0.8.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ncmc_parameters</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># Make sure provided NCMC steps is even.</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nstepsNC</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">rounded_val</span> <span class="o">=</span> <span class="n">nstepsNC</span> <span class="o">&amp;</span> <span class="o">~</span><span class="mi">1</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;nstepsNC=</span><span class="si">%i</span><span class="s1"> must be even for symmetric protocol.&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nstepsNC</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rounded_val</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span> <span class="o">+</span> <span class="s1">&#39; Setting to nstepsNC=</span><span class="si">%i</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">rounded_val</span><span class="p">)</span>
+            <span class="n">nstepsNC</span> <span class="o">=</span> <span class="n">rounded_val</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Calculate the total number of lambda switching steps</span>
+    <span class="n">lambdaSteps</span> <span class="o">=</span> <span class="n">nstepsNC</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">nprop</span> <span class="o">*</span> <span class="n">propLambda</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">-</span> <span class="n">propLambda</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">lambdaSteps</span><span class="p">)</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">lambdaSteps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">lambdaSteps</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lambdaSteps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">lambdaSteps</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="c1"># Calculate number of lambda steps inside/outside region with extra propgation steps</span>
+    <span class="n">in_portion</span> <span class="o">=</span> <span class="p">(</span><span class="n">propLambda</span><span class="p">)</span> <span class="o">*</span> <span class="n">lambdaSteps</span>
+    <span class="n">out_portion</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">-</span> <span class="n">propLambda</span><span class="p">)</span> <span class="o">*</span> <span class="n">lambdaSteps</span>
+    <span class="n">in_prop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nprop</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">floor</span><span class="p">(</span><span class="n">in_portion</span><span class="p">)))</span>
+    <span class="n">out_prop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">ceil</span><span class="p">(</span><span class="n">out_portion</span><span class="p">)))</span>
+    <span class="n">propSteps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">in_prop</span> <span class="o">+</span> <span class="n">out_prop</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">propSteps</span> <span class="o">!=</span> <span class="n">nstepsNC</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;nstepsNC=</span><span class="si">%s</span><span class="s2"> is incompatible with prop_lambda=</span><span class="si">%s</span><span class="s2"> and nprop=</span><span class="si">%s</span><span class="s2">.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nstepsNC</span><span class="p">,</span> <span class="n">propLambda</span><span class="p">,</span> <span class="n">nprop</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Changing NCMC protocol to </span><span class="si">%s</span><span class="s2"> lambda switching within </span><span class="si">%s</span><span class="s2"> total propagation steps.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">lambdaSteps</span><span class="p">,</span>
+                                                                                                          <span class="n">propSteps</span><span class="p">))</span>
+        <span class="n">nstepsNC</span> <span class="o">=</span> <span class="n">lambdaSteps</span>
+
+    <span class="n">moveStep</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nstepsNC</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">ncmc_parameters</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;nstepsNC&#39;</span><span class="p">:</span> <span class="n">nstepsNC</span><span class="p">,</span>
+        <span class="s1">&#39;propSteps&#39;</span><span class="p">:</span> <span class="n">propSteps</span><span class="p">,</span>
+        <span class="s1">&#39;moveStep&#39;</span><span class="p">:</span> <span class="n">moveStep</span><span class="p">,</span>
+        <span class="s1">&#39;nprop&#39;</span><span class="p">:</span> <span class="n">nprop</span><span class="p">,</span>
+        <span class="s1">&#39;propLambda&#39;</span><span class="p">:</span> <span class="n">propLambda</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">ncmc_parameters</span></div>
+
+
+<div class="viewcode-block" id="check_amber_selection"><a class="viewcode-back" href="../../module_doc.html#blues.utils.check_amber_selection">[docs]</a><span class="k">def</span> <span class="nf">check_amber_selection</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">selection</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a AmberMask selection (str) for selecting atoms to freeze or restrain,</span>
+<span class="sd">    check if it will actually select atoms. If the selection produces None,</span>
+<span class="sd">    suggest valid residues or atoms.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    structure : parmed.Structure</span>
+<span class="sd">        The structure of the simulated system</span>
+<span class="sd">    selection : str</span>
+<span class="sd">        The selection string uses Amber selection syntax to select atoms to be</span>
+<span class="sd">        restrained/frozen during simulation.</span>
+<span class="sd">    logger : logging.Logger</span>
+<span class="sd">        Records information or streams to terminal.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">mask_idx</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">parmed</span><span class="o">.</span><span class="n">amber</span><span class="o">.</span><span class="n">AmberMask</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">selection</span><span class="p">))</span>
+    <span class="n">mask_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">mask</span><span class="o">.</span><span class="n">Selected</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">mask_idx</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">selection</span><span class="p">:</span>
+            <span class="n">res_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">structure</span><span class="o">.</span><span class="n">residues</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; was not a valid Amber selection. </span><span class="se">\n\t</span><span class="s2">Valid residue names: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">selection</span><span class="p">,</span> <span class="n">res_set</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="s1">&#39;@&#39;</span> <span class="ow">in</span> <span class="n">selection</span><span class="p">:</span>
+            <span class="n">atom_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">atom</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">structure</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; was not a valid Amber selection. Valid atoms: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">selection</span><span class="p">,</span> <span class="n">atom_set</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="parse_unit_quantity"><a class="viewcode-back" href="../../module_doc.html#blues.utils.parse_unit_quantity">[docs]</a><span class="k">def</span> <span class="nf">parse_unit_quantity</span><span class="p">(</span><span class="n">unit_quantity_str</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Utility for parsing parameters from the YAML file that require units.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    unit_quantity_str : str</span>
+<span class="sd">        A string specifying a quantity and it&#39;s units. i.e. &#39;3.024 * daltons&#39;</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    unit_quantity : simtk.unit.Quantity</span>
+<span class="sd">        i.e `unit.Quantity(3.024, unit=dalton)`</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span><span class="p">,</span> <span class="n">u</span> <span class="o">=</span> <span class="n">unit_quantity_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">u</span><span class="p">:</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">unit</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="nb">eval</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/unit.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+    <span class="k">return</span> <span class="n">unit</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="nb">eval</span><span class="p">(</span><span class="s1">&#39;unit.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">u</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="zero_masses"><a class="viewcode-back" href="../../module_doc.html#blues.utils.zero_masses">[docs]</a><span class="k">def</span> <span class="nf">zero_masses</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="n">atomList</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Zeroes the masses of specified atoms to constrain certain degrees of freedom.</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    system : penmm.System</span>
+<span class="sd">        system to zero masses</span>
+<span class="sd">    atomList : list of ints</span>
+<span class="sd">        atom indicies to zero masses</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    system : openmm.System</span>
+<span class="sd">        The modified system with massless atoms.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="p">(</span><span class="n">atomList</span><span class="p">):</span>
+        <span class="n">system</span><span class="o">.</span><span class="n">setParticleMass</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">daltons</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">system</span></div>
+
+
+<div class="viewcode-block" id="atomIndexfromTop"><a class="viewcode-back" href="../../module_doc.html#blues.utils.atomIndexfromTop">[docs]</a><span class="k">def</span> <span class="nf">atomIndexfromTop</span><span class="p">(</span><span class="n">resname</span><span class="p">,</span> <span class="n">topology</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get atom indices of a ligand from OpenMM Topology.</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    resname: str</span>
+<span class="sd">        resname that you want to get the atom indicies for (ex. &#39;LIG&#39;)</span>
+<span class="sd">    topology: str, optional, default=None</span>
+<span class="sd">        path of topology file. Include if the topology is not included</span>
+<span class="sd">        in the coord_file</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    lig_atoms : list of ints</span>
+<span class="sd">        list of atoms in the coordinate file matching lig_resname</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lig_atoms</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">topology</span><span class="o">.</span><span class="n">atoms</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">resname</span><span class="p">)</span> <span class="ow">in</span> <span class="n">atom</span><span class="o">.</span><span class="n">residue</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">lig_atoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">atom</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lig_atoms</span></div>
+
+
+<div class="viewcode-block" id="get_data_filename"><a class="viewcode-back" href="../../module_doc.html#blues.utils.get_data_filename">[docs]</a><span class="k">def</span> <span class="nf">get_data_filename</span><span class="p">(</span><span class="n">package_root</span><span class="p">,</span> <span class="n">relative_path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the full path to one of the reference files in testsystems.</span>
+<span class="sd">    In the source distribution, these files are in ``blues/data/``,</span>
+<span class="sd">    but on installation, they&#39;re moved to somewhere in the user&#39;s python</span>
+<span class="sd">    site-packages directory.</span>
+<span class="sd">    Adapted from:</span>
+<span class="sd">    https://github.com/open-forcefield-group/smarty/blob/master/smarty/utils.py</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    package_root : str</span>
+<span class="sd">        Name of the included/installed python package</span>
+<span class="sd">    relative_path : str</span>
+<span class="sd">        Path to the file within the python package</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fn : str</span>
+<span class="sd">        Full path to file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="kn">from</span> <span class="nn">pkg_resources</span> <span class="k">import</span> <span class="n">resource_filename</span>
+    <span class="n">fn</span> <span class="o">=</span> <span class="n">resource_filename</span><span class="p">(</span><span class="n">package_root</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">relative_path</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Sorry! </span><span class="si">%s</span><span class="s2"> does not exist. If you just added it, you&#39;ll have to re-install&quot;</span> <span class="o">%</span> <span class="n">fn</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fn</span></div>
+
+
+<div class="viewcode-block" id="spreadLambdaProtocol"><a class="viewcode-back" href="../../module_doc.html#blues.utils.spreadLambdaProtocol">[docs]</a><span class="k">def</span> <span class="nf">spreadLambdaProtocol</span><span class="p">(</span><span class="n">switching_values</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="n">switching_types</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">,</span> <span class="n">return_tab_function</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Takes a list of lambda values (either for sterics or electrostatics) and transforms that list</span>
+<span class="sd">    to be spread out over a given `steps` range to be easily compatible with the OpenMM Discrete1DFunction</span>
+<span class="sd">    tabulated function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    switching_values : list</span>
+<span class="sd">        A list of lambda values decreasing from 1 to 0.</span>
+<span class="sd">    steps : int</span>
+<span class="sd">        The number of steps wanted for the tabulated function.</span>
+<span class="sd">    switching_types : str, optional, default=&#39;auto&#39;</span>
+<span class="sd">        The type of lambda switching the `switching_values` corresponds to, either &#39;auto&#39;, &#39;electrostatics&#39;,</span>
+<span class="sd">        or &#39;sterics&#39;. If &#39;electrostatics&#39; this assumes the inital value immediately decreases from 1.</span>
+<span class="sd">        If &#39;sterics&#39; this assumes the inital values stay at 1 for some period.</span>
+<span class="sd">        If &#39;auto&#39; this function tries to guess the switching_types based on this, based on typical</span>
+<span class="sd">        lambda protocols turning off the electrostatics completely, before turning off sterics.</span>
+<span class="sd">    kind : str, optional, default=&#39;cubic&#39;</span>
+<span class="sd">        The kind of interpolation that should be performed (using scipy.interpolate.interp1d) to</span>
+<span class="sd">        define the lines between the points of switching_values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tab_steps : list or simtk.openmm.openmm.Discrete1DFunction</span>
+<span class="sd">        List of length `steps` that corresponds to the tabulated-friendly version of the input switching_values.</span>
+<span class="sd">        If return-tab_function=True</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from simtk.openmm.openmm import Continuous1DFunction, Discrete1DFunction</span>
+<span class="sd">    &gt;&gt;&gt; sterics = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.95, 0.8848447462380346,</span>
+<span class="sd">                    0.8428373352131427, 0.7928373352131427, 0.7490146003095886, 0.6934088361682191,</span>
+<span class="sd">                    0.6515123083157823, 0.6088924298371354, 0.5588924298371354, 0.5088924298371353,</span>
+<span class="sd">                    0.4649556683144045, 0.4298606804827029, 0.3798606804827029, 0.35019373288005945,</span>
+<span class="sd">                    0.31648339779024653, 0.2780498882483276, 0.2521302239477468, 0.23139484523965026,</span>
+<span class="sd">                    0.18729812232625365, 0.15427643961733822, 0.12153116162972155,</span>
+<span class="sd">                    0.09632462702545555, 0.06463743549588846, 0.01463743549588846,</span>
+<span class="sd">                    0.0]</span>
+
+<span class="sd">    &gt;&gt;&gt; statics = [1.0, 0.8519493439593149, 0.7142750443470669,</span>
+<span class="sd">                    0.5385929179832776, 0.3891972949356391, 0.18820309596839535, 0.0,</span>
+<span class="sd">                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,</span>
+<span class="sd">                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]</span>
+<span class="sd">    &gt;&gt;&gt; statics_tab = spreadLambdaProtocol(statics, opt[&#39;nstepsNC&#39;], switching_types=&#39;auto&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; sterics_tab = spreadLambdaProtocol(sterics, opt[&#39;nstepsNC&#39;], switching_types=&#39;sterics&#39;)</span>
+
+<span class="sd">    &gt;&gt;&gt; # Assuming some Context already exists:</span>
+<span class="sd">    &gt;&gt;&gt; context._integrator.addTabulatedFunction( &#39;sterics_tab&#39;, sterics_tab)</span>
+<span class="sd">    &gt;&gt;&gt; context._integrator.addTabulatedFunction( &#39;electrostatics_tab&#39;, statics_tab)</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#In order to symmetrize the interpolation of turning lambda on/off use the 1.0/0.0 values as a guide</span>
+    <span class="n">one_counts</span> <span class="o">=</span> <span class="n">switching_values</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">switching_values</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="c1">#symmetrize the lambda values so that the off state is at the middle</span>
+    <span class="n">switching_values</span> <span class="o">=</span> <span class="n">switching_values</span> <span class="o">+</span> <span class="p">(</span><span class="n">switching_values</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="c1">#find the original scaling of lambda, from 0 to 1</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">switching_values</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">switching_values</span><span class="p">))]</span>
+    <span class="c1">#find the new scaling of lambda, accounting for the number of steps</span>
+    <span class="n">xsteps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.</span> <span class="o">+</span> <span class="mf">1.</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span> <span class="mf">1.</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">steps</span><span class="p">))</span>
+    <span class="c1">#interpolate to find the intermediate values of lambda</span>
+    <span class="n">interpolate</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">switching_values</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">)</span>
+
+    <span class="c1">#next we check if we&#39;re doing a electrostatic or steric protocol</span>
+    <span class="c1">#interpolation doesn&#39;t guarantee</span>
+    <span class="k">if</span> <span class="n">switching_types</span> <span class="o">==</span> <span class="s1">&#39;auto&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">switching_values</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="n">switching_types</span> <span class="o">=</span> <span class="s1">&#39;sterics&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">switching_types</span> <span class="o">=</span> <span class="s1">&#39;electrostatics&#39;</span>
+    <span class="k">if</span> <span class="n">switching_types</span> <span class="o">==</span> <span class="s1">&#39;sterics&#39;</span><span class="p">:</span>
+        <span class="n">tab_steps</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="p">(</span><span class="n">xsteps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">x</span><span class="p">[(</span><span class="n">one_counts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span> <span class="ow">or</span> <span class="n">xsteps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="n">one_counts</span><span class="p">)])</span> <span class="k">else</span> <span class="n">j</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">interpolate</span><span class="p">(</span><span class="n">xsteps</span><span class="p">))</span>
+        <span class="p">]</span>
+    <span class="k">elif</span> <span class="n">switching_types</span> <span class="o">==</span> <span class="s1">&#39;electrostatics&#39;</span><span class="p">:</span>
+        <span class="n">tab_steps</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="mf">0.0</span> <span class="k">if</span> <span class="p">(</span><span class="n">xsteps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">x</span><span class="p">[(</span><span class="n">counts</span><span class="p">)]</span> <span class="ow">and</span> <span class="n">xsteps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="n">counts</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)])</span> <span class="k">else</span> <span class="n">j</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">interpolate</span><span class="p">(</span><span class="n">xsteps</span><span class="p">))</span>
+        <span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;`switching_types` should be either sterics or electrostatics, currently &#39;</span> <span class="o">+</span> <span class="n">switching_types</span><span class="p">)</span>
+    <span class="n">tab_steps</span> <span class="o">=</span> <span class="p">[</span><span class="n">j</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">floor</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tab_steps</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">)</span> <span class="k">else</span> <span class="n">tab_steps</span><span class="p">[(</span><span class="o">-</span><span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tab_steps</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tab_steps</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">j</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;This function is not working properly.&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;value </span><span class="si">%f</span><span class="s1"> at index </span><span class="si">%i</span><span class="s1"> is not bounded by 0.0 and 1.0 Please check if your switching_type is correct&#39;</span> <span class="o">%</span>
+                <span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">return_tab_function</span><span class="p">:</span>
+        <span class="n">tab_steps</span> <span class="o">=</span> <span class="n">Discrete1DFunction</span><span class="p">(</span><span class="n">tab_steps</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tab_steps</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.2.2',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

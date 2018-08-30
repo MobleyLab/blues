@@ -1,0 +1,1146 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>blues.reporters &mdash; blues 0.2.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> blues
+          
+
+          
+            
+            <img src="../../_static/blues-scaled.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#github">Github</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#publication">Publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#theory">Theory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#stable-releases">Stable Releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#development-builds">Development Builds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#source-installation">Source Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../module_doc.html">Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.moves">Moves</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#move">Move</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#randomligandrotationmove">RandomLigandRotationMove</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#moveengine">MoveEngine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#under-development">Under Development</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.simulation">Simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#systemfactory">SystemFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#simulationfactory">SimulationFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#bluessimulation">BLUESSimulation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.integrators">Integrators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.utils">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.reporters">Reporters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.formats">Formats</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html">Introduction to BLUES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Background">Background</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Coupling-MD-simulations-with-random-NCMC-moves-for-enhanced-sampling-of-ligand-binding-modes-via-BLUES">Coupling MD simulations with random NCMC moves for enhanced sampling of ligand binding modes via BLUES</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#YAML-Configuration">YAML Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Input/Output">Input/Output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Output-files">Output files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Input-files-to-generate-the-structure-of-your-system">Input files to generate the structure of your system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Restart-files">Restart files</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#System-configuration">System configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Hydrogen-mass-repartitioning">(Optional) Hydrogen mass repartitioning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Alchemical-system-configuration">(Optional) Alchemical system configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Simulation-Configuration">Simulation Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#NPT-Simulation">NPT Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Additional-relaxation-steps-in-the-NCMC-simulation">(Optional) Additional relaxation steps in the NCMC simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Platform-Properties">(Optional) Platform Properties</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Reporter-Configuration">Reporter Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Advanced-options-to-the-``traj_netcdf``-reporter">(Optional) Advanced options to the <strong>``traj_netcdf``</strong> reporter</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Running-a-BLUES-simulation">Running a BLUES simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Selecting-a-move-and-initialize-the-move-engine">Selecting a move and initialize the move engine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-Systems-for-openMM:-``SystemFactory``">Generating the Systems for openMM: <strong>``SystemFactory``</strong></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Applying-restraints-or-freezing-atoms">(Optional) Applying restraints or freezing atoms</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-OpenMM-Simulations:-``SimulationFactory``">Generating the OpenMM Simulations: <strong>``SimulationFactory``</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Run-the-BLUES-Simulation">Run the BLUES Simulation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">blues</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>blues.reporters</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for blues.reporters</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">parmed</span>
+<span class="kn">import</span> <span class="nn">simtk.unit</span> <span class="k">as</span> <span class="nn">unit</span>
+<span class="kn">from</span> <span class="nn">mdtraj.reporters</span> <span class="k">import</span> <span class="n">HDF5Reporter</span>
+<span class="kn">from</span> <span class="nn">mdtraj.utils</span> <span class="k">import</span> <span class="n">unitcell</span>
+<span class="kn">from</span> <span class="nn">parmed</span> <span class="k">import</span> <span class="n">unit</span> <span class="k">as</span> <span class="n">u</span>
+<span class="kn">from</span> <span class="nn">parmed.geometry</span> <span class="k">import</span> <span class="n">box_vectors_to_lengths_and_angles</span>
+<span class="kn">from</span> <span class="nn">simtk.openmm</span> <span class="k">import</span> <span class="n">app</span>
+
+<span class="kn">import</span> <span class="nn">blues._version</span>
+<span class="kn">import</span> <span class="nn">blues.reporters</span>
+<span class="kn">from</span> <span class="nn">blues.formats</span> <span class="k">import</span> <span class="o">*</span>
+
+
+<span class="k">def</span> <span class="nf">_check_mode</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">modes</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if the file has a read or write mode, otherwise throw an error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">m</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">modes</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;This operation is only available when a file &#39;</span> <span class="s1">&#39;is open in mode=&quot;</span><span class="si">%s</span><span class="s1">&quot;.&#39;</span> <span class="o">%</span> <span class="n">m</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="addLoggingLevel"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.addLoggingLevel">[docs]</a><span class="k">def</span> <span class="nf">addLoggingLevel</span><span class="p">(</span><span class="n">levelName</span><span class="p">,</span> <span class="n">levelNum</span><span class="p">,</span> <span class="n">methodName</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Comprehensively adds a new logging level to the `logging` module and the</span>
+<span class="sd">    currently configured logging class.</span>
+
+<span class="sd">    `levelName` becomes an attribute of the `logging` module with the value</span>
+<span class="sd">    `levelNum`. `methodName` becomes a convenience method for both `logging`</span>
+<span class="sd">    itself and the class returned by `logging.getLoggerClass()` (usually just</span>
+<span class="sd">    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is</span>
+<span class="sd">    used.</span>
+
+<span class="sd">    To avoid accidental clobberings of existing attributes, this method will</span>
+<span class="sd">    raise an `AttributeError` if the level name is already an attribute of the</span>
+<span class="sd">    `logging` module or if the method name is already present</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    levelName : str</span>
+<span class="sd">        The new level name to be added to the `logging` module.</span>
+<span class="sd">    levelNum : int</span>
+<span class="sd">        The level number indicated for the logging module.</span>
+<span class="sd">    methodName : str, default=None</span>
+<span class="sd">        The method to call on the logging module for the new level name.</span>
+<span class="sd">        For example if provided &#39;trace&#39;, you would call `logging.trace()`.</span>
+
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; addLoggingLevel(&#39;TRACE&#39;, logging.DEBUG - 5)</span>
+<span class="sd">    &gt;&gt;&gt; logging.getLogger(__name__).setLevel(&quot;TRACE&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; logging.getLogger(__name__).trace(&#39;that worked&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; logging.trace(&#39;so did this&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; logging.TRACE</span>
+<span class="sd">    5</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">methodName</span><span class="p">:</span>
+        <span class="n">methodName</span> <span class="o">=</span> <span class="n">levelName</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">logging</span><span class="p">,</span> <span class="n">levelName</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> already defined in logging module&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">levelName</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">logging</span><span class="p">,</span> <span class="n">methodName</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> already defined in logging module&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">methodName</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">getLoggerClass</span><span class="p">(),</span> <span class="n">methodName</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> already defined in logger class&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">methodName</span><span class="p">))</span>
+
+    <span class="c1"># This method was inspired by the answers to Stack Overflow post</span>
+    <span class="c1"># http://stackoverflow.com/q/2183233/2988730, especially</span>
+    <span class="c1"># http://stackoverflow.com/a/13638084/2988730</span>
+    <span class="k">def</span> <span class="nf">logForLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isEnabledFor</span><span class="p">(</span><span class="n">levelNum</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">(</span><span class="n">levelNum</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">logToRoot</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">levelNum</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">levelNum</span><span class="p">,</span> <span class="n">levelName</span><span class="p">)</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">logging</span><span class="p">,</span> <span class="n">levelName</span><span class="p">,</span> <span class="n">levelNum</span><span class="p">)</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">getLoggerClass</span><span class="p">(),</span> <span class="n">methodName</span><span class="p">,</span> <span class="n">logForLevel</span><span class="p">)</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">logging</span><span class="p">,</span> <span class="n">methodName</span><span class="p">,</span> <span class="n">logToRoot</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="init_logger"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.init_logger">[docs]</a><span class="k">def</span> <span class="nf">init_logger</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">outfname</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;blues-%Y%m</span><span class="si">%d</span><span class="s2">-%H%M%S&quot;</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot;Initialize the Logger module with the given logger_level and outfname.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    logger : logging.getLogger()</span>
+<span class="sd">        The root logger object if it has been created already.</span>
+<span class="sd">    level : logging.&lt;LEVEL&gt;</span>
+<span class="sd">        Valid options for &lt;LEVEL&gt; would be DEBUG, INFO, WARNING, ERROR, CRITICAL.</span>
+<span class="sd">    stream : bool, default = True</span>
+<span class="sd">        If True, the logger will also stream information to sys.stdout as well</span>
+<span class="sd">        as the output file.</span>
+<span class="sd">    outfname : str, default = time.strftime(&quot;blues-%Y%m%d-%H%M%S&quot;)</span>
+<span class="sd">        The output file path prefix to store the logged data. This will always</span>
+<span class="sd">        write to a file with the extension `.log`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    logger : logging.getLogger()</span>
+<span class="sd">        The logging object with additional Handlers added.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fmt</span> <span class="o">=</span> <span class="n">LoggerFormatter</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
+        <span class="c1"># Stream to terminal</span>
+        <span class="n">stdout_handler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+        <span class="n">stdout_handler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">fmt</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">stdout_handler</span><span class="p">)</span>
+
+    <span class="c1"># Write to File</span>
+    <span class="k">if</span> <span class="n">outfname</span><span class="p">:</span>
+        <span class="n">fh</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">outfname</span> <span class="o">+</span> <span class="s1">&#39;.log&#39;</span><span class="p">)</span>
+        <span class="n">fh</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">fmt</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">NullHandler</span><span class="p">())</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">level</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">logger</span></div>
+
+
+<div class="viewcode-block" id="ReporterConfig"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.ReporterConfig">[docs]</a><span class="k">class</span> <span class="nc">ReporterConfig</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a set of custom/recommended reporters for</span>
+<span class="sd">    BLUES simulations from YAML configuration. It can also be called</span>
+<span class="sd">    externally without a YAML configuration file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfname : str,</span>
+<span class="sd">        Output filename prefix for files generated by the reporters.</span>
+<span class="sd">    reporter_config : dict</span>
+<span class="sd">        Dict of parameters for the md_reporters or ncmc_reporters.</span>
+<span class="sd">        Valid keys for reporters are: `state`, `traj_netcdf`, `restart`,</span>
+<span class="sd">        `progress`, and `stream`. All reporters except `stream`</span>
+<span class="sd">        are extensions of the parmed.openmm.reporters. More below:</span>
+<span class="sd">        - `state` : State data reporter for OpenMM simulations, but it is a little more generalized.    Writes to a ``.ene`` file. For full list of parameters see `parmed.openmm.reporters.StateDataReporter`.</span>
+<span class="sd">        - `traj_netcdf` : Customized AMBER NetCDF (``.nc``) format reporter</span>
+<span class="sd">        - `restart` : Restart AMBER NetCDF (``.rst7``) format reporter</span>
+<span class="sd">        - `progress` : Write to a file (``.prog``), the progress report of how many steps has been done, how fast the simulation is running, and how much time is left (similar to the mdinfo file in Amber). File is overwritten at each reportInterval. For full list of parameters see `parmed.openmm.reporters.ProgressReporter`</span>
+<span class="sd">        - `stream` : Customized version of openmm.app.StateDataReporter.This</span>
+<span class="sd">        will instead stream/print the information to the terminal as opposed to</span>
+<span class="sd">        writing to a file. Takes the same parameters as the openmm.app.StateDataReporter</span>
+
+<span class="sd">    logger : logging.Logger object</span>
+<span class="sd">        Provide the root logger for printing information.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    This class is intended to be called internally from `blues.config.set_Reporters`.</span>
+<span class="sd">    Below is an example to call this externally.</span>
+
+<span class="sd">    &gt;&gt;&gt; from blues.reporters import ReporterConfig</span>
+<span class="sd">    &gt;&gt;&gt; import logging</span>
+<span class="sd">    &gt;&gt;&gt; logger = logging.getLogger(__name__)</span>
+<span class="sd">    &gt;&gt;&gt; md_reporters = { &quot;restart&quot;: { &quot;reportInterval&quot;: 1000 },</span>
+<span class="sd">                         &quot;state&quot; : { &quot;reportInterval&quot;: 250  },</span>
+<span class="sd">                         &quot;stream&quot;: { &quot;progress&quot;: true,</span>
+<span class="sd">                                     &quot;remainingTime&quot;: true,</span>
+<span class="sd">                                     &quot;reportInterval&quot;: 250,</span>
+<span class="sd">                                     &quot;speed&quot;: true,</span>
+<span class="sd">                                     &quot;step&quot;: true,</span>
+<span class="sd">                                     &quot;title&quot;: &quot;md&quot;,</span>
+<span class="sd">                                     &quot;totalSteps&quot;: 10000},</span>
+<span class="sd">                         &quot;traj_netcdf&quot;: { &quot;reportInterval&quot;: 250 }</span>
+<span class="sd">                        }</span>
+<span class="sd">    &gt;&gt;&gt; md_reporter_cfg = ReporterConfig(outfname=&#39;blues-test&#39;, md_reporters, logger)</span>
+<span class="sd">    &gt;&gt;&gt; md_reporters_list = md_reporter_cfg.makeReporters()</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfname</span><span class="p">,</span> <span class="n">reporter_config</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_outfname</span> <span class="o">=</span> <span class="n">outfname</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span> <span class="o">=</span> <span class="n">reporter_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_interval</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="ReporterConfig.makeReporters"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.ReporterConfig.makeReporters">[docs]</a>    <span class="k">def</span> <span class="nf">makeReporters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a list of openmm Reporters based on the configuration at</span>
+<span class="sd">        initialization of the class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Reporters</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="s1">&#39;state&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+            <span class="c1">#Use outfname specified for reporter</span>
+            <span class="k">if</span> <span class="s1">&#39;outfname&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">]:</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">][</span><span class="s1">&#39;outfname&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1">#Default to top level outfname</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_outfname</span>
+
+            <span class="n">state</span> <span class="o">=</span> <span class="n">parmed</span><span class="o">.</span><span class="n">openmm</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">StateDataReporter</span><span class="p">(</span><span class="n">outfname</span> <span class="o">+</span> <span class="s1">&#39;.ene&#39;</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">])</span>
+            <span class="n">Reporters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;traj_netcdf&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+            <span class="k">if</span> <span class="s1">&#39;outfname&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;traj_netcdf&#39;</span><span class="p">]:</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;traj_netcdf&#39;</span><span class="p">][</span><span class="s1">&#39;outfname&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_outfname</span>
+
+            <span class="c1">#Store as an attribute for calculating time/frame</span>
+            <span class="k">if</span> <span class="s1">&#39;reportInterval&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;traj_netcdf&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;traj_netcdf&#39;</span><span class="p">][</span><span class="s1">&#39;reportInterval&#39;</span><span class="p">]</span>
+
+            <span class="n">traj_netcdf</span> <span class="o">=</span> <span class="n">NetCDF4Reporter</span><span class="p">(</span><span class="n">outfname</span> <span class="o">+</span> <span class="s1">&#39;.nc&#39;</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;traj_netcdf&#39;</span><span class="p">])</span>
+            <span class="n">Reporters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">traj_netcdf</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;restart&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+            <span class="k">if</span> <span class="s1">&#39;outfname&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;restart&#39;</span><span class="p">]:</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;restart&#39;</span><span class="p">][</span><span class="s1">&#39;outfname&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_outfname</span>
+
+            <span class="n">restart</span> <span class="o">=</span> <span class="n">parmed</span><span class="o">.</span><span class="n">openmm</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">RestartReporter</span><span class="p">(</span><span class="n">outfname</span> <span class="o">+</span> <span class="s1">&#39;.rst7&#39;</span><span class="p">,</span> <span class="n">netcdf</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;restart&#39;</span><span class="p">])</span>
+            <span class="n">Reporters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">restart</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;progress&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+
+            <span class="k">if</span> <span class="s1">&#39;outfname&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]:</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">][</span><span class="s1">&#39;outfname&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">outfname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_outfname</span>
+
+            <span class="n">progress</span> <span class="o">=</span> <span class="n">parmed</span><span class="o">.</span><span class="n">openmm</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">ProgressReporter</span><span class="p">(</span><span class="n">outfname</span> <span class="o">+</span> <span class="s1">&#39;.prog&#39;</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">])</span>
+            <span class="n">Reporters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">progress</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;stream&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="n">stream</span> <span class="o">=</span> <span class="n">blues</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">BLUESStateDataReporter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_cfg</span><span class="p">[</span><span class="s1">&#39;stream&#39;</span><span class="p">])</span>
+            <span class="n">Reporters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Reporters</span></div></div>
+
+
+<span class="c1">######################</span>
+<span class="c1">#     REPORTERS      #</span>
+<span class="c1">######################</span>
+
+
+<div class="viewcode-block" id="BLUESHDF5Reporter"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.BLUESHDF5Reporter">[docs]</a><span class="k">class</span> <span class="nc">BLUESHDF5Reporter</span><span class="p">(</span><span class="n">HDF5Reporter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This is a subclass of the HDF5 class from mdtraj that handles</span>
+<span class="sd">    reporting of the trajectory.</span>
+
+<span class="sd">    HDF5Reporter stores a molecular dynamics trajectory in the HDF5 format.</span>
+<span class="sd">    This object supports saving all kinds of information from the simulation --</span>
+<span class="sd">    more than any other trajectory format. In addition to all of the options,</span>
+<span class="sd">    the topology of the system will also (of course) be stored in the file. All</span>
+<span class="sd">    of the information is compressed, so the size of the file is not much</span>
+<span class="sd">    different than DCD, despite the added flexibility.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str, or HDF5TrajectoryFile</span>
+<span class="sd">        Either an open HDF5TrajecoryFile object to write to, or a string</span>
+<span class="sd">        specifying the filename of a new HDF5 file to save the trajectory to.</span>
+<span class="sd">    title : str,</span>
+<span class="sd">        String to specify the title of the HDF5 tables</span>
+<span class="sd">    frame_indices : list, frame numbers for writing the trajectory</span>
+<span class="sd">    reportInterval : int</span>
+<span class="sd">        The interval (in time steps) at which to write frames.</span>
+<span class="sd">    coordinates : bool</span>
+<span class="sd">        Whether to write the coordinates to the file.</span>
+<span class="sd">    time : bool</span>
+<span class="sd">        Whether to write the current time to the file.</span>
+<span class="sd">    cell : bool</span>
+<span class="sd">        Whether to write the current unit cell dimensions to the file.</span>
+<span class="sd">    potentialEnergy : bool</span>
+<span class="sd">        Whether to write the potential energy to the file.</span>
+<span class="sd">    kineticEnergy : bool</span>
+<span class="sd">        Whether to write the kinetic energy to the file.</span>
+<span class="sd">    temperature : bool</span>
+<span class="sd">        Whether to write the instantaneous temperature to the file.</span>
+<span class="sd">    velocities : bool</span>
+<span class="sd">        Whether to write the velocities to the file.</span>
+<span class="sd">    atomSubset : array_like, default=None</span>
+<span class="sd">        Only write a subset of the atoms, with these (zero based) indices</span>
+<span class="sd">        to the file. If None, *all* of the atoms will be written to disk.</span>
+<span class="sd">    protocolWork : bool=False,</span>
+<span class="sd">        Write the protocolWork for the alchemical process in the NCMC simulation</span>
+<span class="sd">    alchemicalLambda : bool=False,</span>
+<span class="sd">        Write the alchemicalLambda step for the alchemical process in the NCMC simulation.</span>
+<span class="sd">    parameters : dict</span>
+<span class="sd">        Dict of the simulation parameters. Useful for record keeping.</span>
+<span class="sd">    environment : bool</span>
+<span class="sd">        True will attempt to export your conda environment to JSON and</span>
+<span class="sd">        store the information in the HDF5 file. Useful for record keeping.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    If you use the ``atomSubset`` option to write only a subset of the atoms</span>
+<span class="sd">    to disk, the ``kineticEnergy``, ``potentialEnergy``, and ``temperature``</span>
+<span class="sd">    fields will not change. They will still refer to the energy and temperature</span>
+<span class="sd">    of the *whole* system, and are not &quot;subsetted&quot; to only include the energy</span>
+<span class="sd">    of your subsystem.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">backend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">BLUESHDF5TrajectoryFile</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">file</span><span class="p">,</span>
+                 <span class="n">reportInterval</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">title</span><span class="o">=</span><span class="s1">&#39;NCMC Trajectory&#39;</span><span class="p">,</span>
+                 <span class="n">coordinates</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">frame_indices</span><span class="o">=</span><span class="p">[],</span>
+                 <span class="n">time</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">cell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">temperature</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">potentialEnergy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">kineticEnergy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">velocities</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">atomSubset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">protocolWork</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">alchemicalLambda</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">environment</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">BLUESHDF5Reporter</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">reportInterval</span><span class="p">,</span> <span class="n">coordinates</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">potentialEnergy</span><span class="p">,</span>
+                                                <span class="n">kineticEnergy</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">velocities</span><span class="p">,</span> <span class="n">atomSubset</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_protocolWork</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">protocolWork</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alchemicalLambda</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">alchemicalLambda</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_environment</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">environment</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_title</span> <span class="o">=</span> <span class="n">title</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span> <span class="o">=</span> <span class="n">parameters</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span> <span class="o">=</span> <span class="n">frame_indices</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="c1">#If simulation.currentStep = 1, store the frame from the previous step.</span>
+            <span class="c1"># i.e. frame_indices=[1,100] will store the first and frame 100</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">frame_indices</span><span class="p">]</span>
+
+<div class="viewcode-block" id="BLUESHDF5Reporter.describeNextReport"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.BLUESHDF5Reporter.describeNextReport">[docs]</a>    <span class="k">def</span> <span class="nf">describeNextReport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulation</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get information about the next report this object will generate.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : :class:`app.Simulation`</span>
+<span class="sd">            The simulation to generate a report for</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool</span>
+<span class="sd">            nsteps is the number of steps until the next report</span>
+<span class="sd">            pos, vel, frc, and ene are flags indicating whether positions,</span>
+<span class="sd">            velocities, forces, and/or energies are needed from the Context</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#Monkeypatch to report at certain frame indices</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+                <span class="n">steps</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">steps</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="n">steps_left</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reportInterval</span>
+            <span class="n">steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reportInterval</span> <span class="o">-</span> <span class="n">steps_left</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coordinates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_velocities</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_needEnergy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESHDF5Reporter.report"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.BLUESHDF5Reporter.report">[docs]</a>    <span class="k">def</span> <span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulation</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate a report.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : simtk.openmm.app.Simulation</span>
+<span class="sd">            The Simulation to generate a report for</span>
+<span class="sd">        state : simtk.openmm.State</span>
+<span class="sd">            The current state of the simulation</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_intialized</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">(</span><span class="n">simulation</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_is_intialized</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_checkForErrors</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+
+        <span class="n">args</span> <span class="o">=</span> <span class="p">()</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coordinates</span><span class="p">:</span>
+            <span class="n">coordinates</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPositions</span><span class="p">(</span><span class="n">asNumpy</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">_atomSlice</span><span class="p">]</span>
+            <span class="n">coordinates</span> <span class="o">=</span> <span class="n">coordinates</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traj_file</span><span class="o">.</span><span class="n">distance_unit</span><span class="p">))</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">coordinates</span><span class="p">,</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cell</span><span class="p">:</span>
+            <span class="n">vectors</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPeriodicBoxVectors</span><span class="p">(</span><span class="n">asNumpy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">vectors</span> <span class="o">=</span> <span class="n">vectors</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traj_file</span><span class="o">.</span><span class="n">distance_unit</span><span class="p">))</span>
+            <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">gamma</span> <span class="o">=</span> <span class="n">unitcell</span><span class="o">.</span><span class="n">box_vectors_to_lengths_and_angles</span><span class="p">(</span><span class="o">*</span><span class="n">vectors</span><span class="p">)</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;cell_lengths&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;cell_angles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">gamma</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_potentialEnergy</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;potentialEnergy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kineticEnergy</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;kineticEnergy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getKineticEnergy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_temperature</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;temperature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">state</span><span class="o">.</span><span class="n">getKineticEnergy</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dof</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">MOLAR_GAS_CONSTANT_R</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_velocities</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;velocities&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getVelocities</span><span class="p">(</span><span class="n">asNumpy</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">_atomSlice</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="c1">#add a portion like this to store things other than the protocol work</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocolWork</span><span class="p">:</span>
+            <span class="n">protocol_work</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">get_protocol_work</span><span class="p">(</span><span class="n">dimensionless</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;protocolWork&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">protocol_work</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alchemicalLambda</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;alchemicalLambda&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">simulation</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">getGlobalVariableByName</span><span class="p">(</span><span class="s1">&#39;lambda&#39;</span><span class="p">)])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_title</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_title</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_environment</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;environment&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_environment</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_traj_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># flush the file to disk. it might not be necessary to do this every</span>
+        <span class="c1"># report, but this is the most proactive solution. We don&#39;t want to</span>
+        <span class="c1"># accumulate a lot of data in memory only to find out, at the very</span>
+        <span class="c1"># end of the run, that there wasn&#39;t enough space on disk to hold the</span>
+        <span class="c1"># data.</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_traj_file</span><span class="p">,</span> <span class="s1">&#39;flush&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_traj_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="BLUESStateDataReporter"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.BLUESStateDataReporter">[docs]</a><span class="k">class</span> <span class="nc">BLUESStateDataReporter</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">StateDataReporter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;StateDataReporter outputs information about a simulation, such as energy and temperature, to a file. To use it, create a StateDataReporter, then add it to the Simulation&#39;s list of reporters.  The set of data to write is configurable using boolean flags passed to the constructor.  By default the data is written in comma-separated-value (CSV) format, but you can specify a different separator to use. Inherited from `openmm.app.StateDataReporter`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : string or file</span>
+<span class="sd">        The file to write to, specified as a file name or file-like object (Logger)</span>
+<span class="sd">    reportInterval : int</span>
+<span class="sd">        The interval (in time steps) at which to write frames</span>
+<span class="sd">    frame_indices : list, frame numbers for writing the trajectory</span>
+<span class="sd">    title : str,</span>
+<span class="sd">        Text prefix for each line of the report. Used to distinguish</span>
+<span class="sd">        between the NCMC and MD simulation reports.</span>
+<span class="sd">    step : bool=False</span>
+<span class="sd">        Whether to write the current step index to the file</span>
+<span class="sd">    time : bool=False</span>
+<span class="sd">        Whether to write the current time to the file</span>
+<span class="sd">    potentialEnergy : bool=False</span>
+<span class="sd">        Whether to write the potential energy to the file</span>
+<span class="sd">    kineticEnergy : bool=False</span>
+<span class="sd">        Whether to write the kinetic energy to the file</span>
+<span class="sd">    totalEnergy : bool=False</span>
+<span class="sd">        Whether to write the total energy to the file</span>
+<span class="sd">    temperature : bool=False</span>
+<span class="sd">        Whether to write the instantaneous temperature to the file</span>
+<span class="sd">    volume : bool=False</span>
+<span class="sd">        Whether to write the periodic box volume to the file</span>
+<span class="sd">    density : bool=False</span>
+<span class="sd">        Whether to write the system density to the file</span>
+<span class="sd">    progress : bool=False</span>
+<span class="sd">        Whether to write current progress (percent completion) to the file.</span>
+<span class="sd">        If this is True, you must also specify totalSteps.</span>
+<span class="sd">    remainingTime : bool=False</span>
+<span class="sd">        Whether to write an estimate of the remaining clock time until</span>
+<span class="sd">        completion to the file.  If this is True, you must also specify</span>
+<span class="sd">        totalSteps.</span>
+<span class="sd">    speed : bool=False</span>
+<span class="sd">        Whether to write an estimate of the simulation speed in ns/day to</span>
+<span class="sd">        the file</span>
+<span class="sd">    elapsedTime : bool=False</span>
+<span class="sd">        Whether to write the elapsed time of the simulation in seconds to</span>
+<span class="sd">        the file.</span>
+<span class="sd">    separator : string=&#39;,&#39;</span>
+<span class="sd">        The separator to use between columns in the file</span>
+<span class="sd">    systemMass : mass=None</span>
+<span class="sd">        The total mass to use for the system when reporting density.  If</span>
+<span class="sd">        this is None (the default), the system mass is computed by summing</span>
+<span class="sd">        the masses of all particles.  This parameter is useful when the</span>
+<span class="sd">        particle masses do not reflect their actual physical mass, such as</span>
+<span class="sd">        when some particles have had their masses set to 0 to immobilize</span>
+<span class="sd">        them.</span>
+<span class="sd">    totalSteps : int=None</span>
+<span class="sd">        The total number of steps that will be included in the simulation.</span>
+<span class="sd">        This is required if either progress or remainingTime is set to True,</span>
+<span class="sd">        and defines how many steps will indicate 100% completion.</span>
+<span class="sd">    protocolWork : bool=False,</span>
+<span class="sd">        Write the protocolWork for the alchemical process in the NCMC simulation</span>
+<span class="sd">    alchemicalLambda : bool=False,</span>
+<span class="sd">        Write the alchemicalLambda step for the alchemical process in the NCMC simulation.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">file</span><span class="p">,</span>
+                 <span class="n">reportInterval</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">frame_indices</span><span class="o">=</span><span class="p">[],</span>
+                 <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+                 <span class="n">step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">time</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">potentialEnergy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">kineticEnergy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">totalEnergy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">temperature</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">volume</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">remainingTime</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">speed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">elapsedTime</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">separator</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span>
+                 <span class="n">systemMass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">totalSteps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">protocolWork</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">alchemicalLambda</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">currentIter</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BLUESStateDataReporter</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">file</span><span class="p">,</span> <span class="n">reportInterval</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">potentialEnergy</span><span class="p">,</span> <span class="n">kineticEnergy</span><span class="p">,</span> <span class="n">totalEnergy</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">volume</span><span class="p">,</span>
+            <span class="n">density</span><span class="p">,</span> <span class="n">progress</span><span class="p">,</span> <span class="n">remainingTime</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">elapsedTime</span><span class="p">,</span> <span class="n">separator</span><span class="p">,</span> <span class="n">systemMass</span><span class="p">,</span> <span class="n">totalSteps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_out</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span> <span class="o">=</span> <span class="n">frame_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_protocolWork</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alchemicalLambda</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_currentIter</span> <span class="o">=</span> <span class="n">protocolWork</span><span class="p">,</span> <span class="n">alchemicalLambda</span><span class="p">,</span> <span class="n">currentIter</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="c1">#If simulation.currentStep = 1, store the frame from the previous step.</span>
+            <span class="c1"># i.e. frame_indices=[1,100] will store the first and frame 100</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">frame_indices</span><span class="p">]</span>
+
+<div class="viewcode-block" id="BLUESStateDataReporter.describeNextReport"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.BLUESStateDataReporter.describeNextReport">[docs]</a>    <span class="k">def</span> <span class="nf">describeNextReport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulation</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get information about the next report this object will generate.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : :class:`app.Simulation`</span>
+<span class="sd">            The simulation to generate a report for</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool</span>
+<span class="sd">            nsteps is the number of steps until the next report</span>
+<span class="sd">            pos, vel, frc, and ene are flags indicating whether positions,</span>
+<span class="sd">            velocities, forces, and/or energies are needed from the Context</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#Monkeypatch to report at certain frame indices</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+                <span class="n">steps</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">steps</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="n">steps_left</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reportInterval</span>
+            <span class="n">steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reportInterval</span> <span class="o">-</span> <span class="n">steps_left</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_needsPositions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_needsVelocities</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_needsForces</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_needEnergy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESStateDataReporter.report"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.BLUESStateDataReporter.report">[docs]</a>    <span class="k">def</span> <span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulation</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate a report.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : Simulation</span>
+<span class="sd">            The Simulation to generate a report for</span>
+<span class="sd">        state : State</span>
+<span class="sd">            The current state of the simulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hasInitialized</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initializeConstants</span><span class="p">(</span><span class="n">simulation</span><span class="p">)</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constructHeaders</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span> <span class="s1">&#39;report&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">report</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;#&quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="s1">&#39;&quot;&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_separator</span> <span class="o">+</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">headers</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialClockTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialSimulationTime</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialSteps</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hasInitialized</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Check for errors.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_checkForErrors</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="c1"># Query for the values</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constructReportValues</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># Write the values.</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span> <span class="s1">&#39;report&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">report</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_separator</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">)))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span></div>
+
+    <span class="k">def</span> <span class="nf">_constructReportValues</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulation</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Query the simulation for the current state of our observables of interest.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : Simulation</span>
+<span class="sd">            The Simulation to generate a report for</span>
+<span class="sd">        state : State</span>
+<span class="sd">            The current state of the simulation</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        values : list</span>
+<span class="sd">            A list of values summarizing the current state of the simulation,</span>
+<span class="sd">            to be printed or saved. Each element in the list corresponds to one</span>
+<span class="sd">            of the columns in the resulting CSV file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">box</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPeriodicBoxVectors</span><span class="p">()</span>
+        <span class="n">volume</span> <span class="o">=</span> <span class="n">box</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">box</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">box</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">clockTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_currentIter</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="s1">&#39;currentIter&#39;</span><span class="p">):</span>
+                <span class="n">simulation</span><span class="o">.</span><span class="n">currentIter</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">currentIter</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_progress</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%.1f%%</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totalSteps</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">picosecond</span><span class="p">))</span>
+        <span class="c1">#add a portion like this to store things other than the protocol work</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alchemicalLambda</span><span class="p">:</span>
+            <span class="n">alchemicalLambda</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">getGlobalVariableByName</span><span class="p">(</span><span class="s1">&#39;lambda&#39;</span><span class="p">)</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">alchemicalLambda</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocolWork</span><span class="p">:</span>
+            <span class="n">protocolWork</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">get_protocol_work</span><span class="p">(</span><span class="n">dimensionless</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">protocolWork</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_potentialEnergy</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kilojoules_per_mole</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kineticEnergy</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getKineticEnergy</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kilojoules_per_mole</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totalEnergy</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getKineticEnergy</span><span class="p">()</span> <span class="o">+</span> <span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">())</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kilojoules_per_mole</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_temperature</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">state</span><span class="o">.</span><span class="n">getKineticEnergy</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dof</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">MOLAR_GAS_CONSTANT_R</span><span class="p">))</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kelvin</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_volume</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">volume</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">nanometer</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_density</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_totalMass</span> <span class="o">/</span> <span class="n">volume</span><span class="p">)</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">gram</span> <span class="o">/</span> <span class="n">unit</span><span class="o">.</span><span class="n">item</span> <span class="o">/</span> <span class="n">unit</span><span class="o">.</span><span class="n">milliliter</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_speed</span><span class="p">:</span>
+            <span class="n">elapsedDays</span> <span class="o">=</span> <span class="p">(</span><span class="n">clockTime</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialClockTime</span><span class="p">)</span> <span class="o">/</span> <span class="mf">86400.0</span>
+            <span class="n">elapsedNs</span> <span class="o">=</span> <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialSimulationTime</span><span class="p">)</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">nanosecond</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">elapsedDays</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%.3g</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">elapsedNs</span> <span class="o">/</span> <span class="n">elapsedDays</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_elapsedTime</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialClockTime</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainingTime</span><span class="p">:</span>
+            <span class="n">elapsedSeconds</span> <span class="o">=</span> <span class="n">clockTime</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialClockTime</span>
+            <span class="n">elapsedSteps</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialSteps</span>
+            <span class="k">if</span> <span class="n">elapsedSteps</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="s1">&#39;--&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">estimatedTotalSeconds</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_totalSteps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialSteps</span><span class="p">)</span> <span class="o">*</span> <span class="n">elapsedSeconds</span> <span class="o">/</span> <span class="n">elapsedSteps</span>
+                <span class="n">remainingSeconds</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">estimatedTotalSeconds</span> <span class="o">-</span> <span class="n">elapsedSeconds</span><span class="p">)</span>
+                <span class="n">remainingDays</span> <span class="o">=</span> <span class="n">remainingSeconds</span> <span class="o">//</span> <span class="mi">86400</span>
+                <span class="n">remainingSeconds</span> <span class="o">-=</span> <span class="n">remainingDays</span> <span class="o">*</span> <span class="mi">86400</span>
+                <span class="n">remainingHours</span> <span class="o">=</span> <span class="n">remainingSeconds</span> <span class="o">//</span> <span class="mi">3600</span>
+                <span class="n">remainingSeconds</span> <span class="o">-=</span> <span class="n">remainingHours</span> <span class="o">*</span> <span class="mi">3600</span>
+                <span class="n">remainingMinutes</span> <span class="o">=</span> <span class="n">remainingSeconds</span> <span class="o">//</span> <span class="mi">60</span>
+                <span class="n">remainingSeconds</span> <span class="o">-=</span> <span class="n">remainingMinutes</span> <span class="o">*</span> <span class="mi">60</span>
+                <span class="k">if</span> <span class="n">remainingDays</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">:</span><span class="si">%d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">remainingDays</span><span class="p">,</span> <span class="n">remainingHours</span><span class="p">,</span> <span class="n">remainingMinutes</span><span class="p">,</span> <span class="n">remainingSeconds</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">remainingHours</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">remainingHours</span><span class="p">,</span> <span class="n">remainingMinutes</span><span class="p">,</span> <span class="n">remainingSeconds</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">remainingMinutes</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">remainingMinutes</span><span class="p">,</span> <span class="n">remainingSeconds</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;0:</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">remainingSeconds</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">values</span>
+
+    <span class="k">def</span> <span class="nf">_constructHeaders</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Construct the headers for the CSV output</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        headers : list</span>
+<span class="sd">            a list of strings giving the title of each observable being reported on.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_currentIter</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Iter&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_progress</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Progress (%)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Step&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Time (ps)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alchemicalLambda</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;alchemicalLambda&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocolWork</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;protocolWork&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_potentialEnergy</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Potential Energy (kJ/mole)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kineticEnergy</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Kinetic Energy (kJ/mole)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totalEnergy</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Total Energy (kJ/mole)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_temperature</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Temperature (K)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_volume</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Box Volume (nm^3)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_density</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Density (g/mL)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_speed</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Speed (ns/day)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_elapsedTime</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Elapsed Time (s)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remainingTime</span><span class="p">:</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Time Remaining&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">headers</span></div>
+
+
+<div class="viewcode-block" id="NetCDF4Reporter"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.NetCDF4Reporter">[docs]</a><span class="k">class</span> <span class="nc">NetCDF4Reporter</span><span class="p">(</span><span class="n">parmed</span><span class="o">.</span><span class="n">openmm</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">NetCDFReporter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to read or write NetCDF trajectory files</span>
+<span class="sd">    Inherited from `parmed.openmm.reporters.NetCDFReporter`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        Name of the file to write the trajectory to</span>
+<span class="sd">    reportInterval : int</span>
+<span class="sd">        How frequently to write a frame to the trajectory</span>
+<span class="sd">    frame_indices : list, frame numbers for writing the trajectory</span>
+<span class="sd">        If this reporter is used for the NCMC simulation,</span>
+<span class="sd">        0.5 will report at the moveStep and -1 will record at the last frame.</span>
+<span class="sd">    crds : bool=True</span>
+<span class="sd">        Should we write coordinates to this trajectory? (Default True)</span>
+<span class="sd">    vels : bool=False</span>
+<span class="sd">        Should we write velocities to this trajectory? (Default False)</span>
+<span class="sd">    frcs : bool=False</span>
+<span class="sd">        Should we write forces to this trajectory? (Default False)</span>
+<span class="sd">    protocolWork : bool=False,</span>
+<span class="sd">        Write the protocolWork for the alchemical process in the NCMC simulation</span>
+<span class="sd">    alchemicalLambda : bool=False,</span>
+<span class="sd">        Write the alchemicalLambda step for the alchemical process in the NCMC simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">file</span><span class="p">,</span>
+                 <span class="n">reportInterval</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">frame_indices</span><span class="o">=</span><span class="p">[],</span>
+                 <span class="n">crds</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">vels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">frcs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">protocolWork</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">alchemicalLambda</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a NetCDFReporter instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">NetCDF4Reporter</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">reportInterval</span><span class="p">,</span> <span class="n">crds</span><span class="p">,</span> <span class="n">vels</span><span class="p">,</span> <span class="n">frcs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">frcs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">protocolWork</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alchemicalLambda</span> <span class="o">=</span> <span class="n">crds</span><span class="p">,</span> <span class="n">vels</span><span class="p">,</span> <span class="n">frcs</span><span class="p">,</span> <span class="n">protocolWork</span><span class="p">,</span> <span class="n">alchemicalLambda</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span> <span class="o">=</span> <span class="n">frame_indices</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="c1">#If simulation.currentStep = 1, store the frame from the previous step.</span>
+            <span class="c1"># i.e. frame_indices=[1,100] will store the first and frame 100</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">frame_indices</span><span class="p">]</span>
+
+<div class="viewcode-block" id="NetCDF4Reporter.describeNextReport"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.NetCDF4Reporter.describeNextReport">[docs]</a>    <span class="k">def</span> <span class="nf">describeNextReport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulation</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get information about the next report this object will generate.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : :class:`app.Simulation`</span>
+<span class="sd">            The simulation to generate a report for</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        nsteps, pos, vel, frc, ene : int, bool, bool, bool, bool</span>
+<span class="sd">            nsteps is the number of steps until the next report</span>
+<span class="sd">            pos, vel, frc, and ene are flags indicating whether positions,</span>
+<span class="sd">            velocities, forces, and/or energies are needed from the Context</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#Monkeypatch to report at certain frame indices</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+                <span class="n">steps</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">steps</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_indices</span><span class="p">:</span>
+            <span class="n">steps_left</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reportInterval</span>
+            <span class="n">steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reportInterval</span> <span class="o">-</span> <span class="n">steps_left</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">crds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">frcs</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NetCDF4Reporter.report"><a class="viewcode-back" href="../../module_doc.html#blues.reporters.NetCDF4Reporter.report">[docs]</a>    <span class="k">def</span> <span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulation</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate a report.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : :class:`app.Simulation`</span>
+<span class="sd">            The Simulation to generate a report for</span>
+<span class="sd">        state : :class:`mm.State`</span>
+<span class="sd">            The current state of the simulation</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">VELUNIT</span><span class="p">,</span> <span class="n">FRCUNIT</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">crds</span><span class="p">:</span>
+            <span class="n">crds</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPositions</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">angstrom</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vels</span><span class="p">:</span>
+            <span class="n">vels</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getVelocities</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">VELUNIT</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frcs</span><span class="p">:</span>
+            <span class="n">frcs</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getForces</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">FRCUNIT</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">protocolWork</span><span class="p">:</span>
+            <span class="n">protocolWork</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">get_protocol_work</span><span class="p">(</span><span class="n">dimensionless</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alchemicalLambda</span><span class="p">:</span>
+            <span class="n">alchemicalLambda</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">getGlobalVariableByName</span><span class="p">(</span><span class="s1">&#39;lambda&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># This must be the first frame, so set up the trajectory now</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">crds</span><span class="p">:</span>
+                <span class="n">atom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">crds</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">vels</span><span class="p">:</span>
+                <span class="n">atom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vels</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">frcs</span><span class="p">:</span>
+                <span class="n">atom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">frcs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">uses_pbc</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">getUnitCellDimensions</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span> <span class="o">=</span> <span class="n">NetCDF4Traj</span><span class="o">.</span><span class="n">open_new</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fname</span><span class="p">,</span>
+                <span class="n">atom</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">uses_pbc</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">crds</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">vels</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frcs</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;ParmEd-created trajectory using OpenMM&quot;</span><span class="p">,</span>
+                <span class="n">protocolWork</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">protocolWork</span><span class="p">,</span>
+                <span class="n">alchemicalLambda</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alchemicalLambda</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uses_pbc</span><span class="p">:</span>
+            <span class="n">vecs</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPeriodicBoxVectors</span><span class="p">()</span>
+            <span class="n">lengths</span><span class="p">,</span> <span class="n">angles</span> <span class="o">=</span> <span class="n">box_vectors_to_lengths_and_angles</span><span class="p">(</span><span class="o">*</span><span class="n">vecs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">add_cell_lengths_angles</span><span class="p">(</span><span class="n">lengths</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">angstrom</span><span class="p">),</span> <span class="n">angles</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">degree</span><span class="p">))</span>
+
+        <span class="c1"># Add the coordinates, velocities, and/or forces as needed</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">crds</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">add_coordinates</span><span class="p">(</span><span class="n">crds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vels</span><span class="p">:</span>
+            <span class="c1"># The velocities get scaled right before writing</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">add_velocities</span><span class="p">(</span><span class="n">vels</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frcs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">add_forces</span><span class="p">(</span><span class="n">frcs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">protocolWork</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">add_protocolWork</span><span class="p">(</span><span class="n">protocolWork</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alchemicalLambda</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">add_alchemicalLambda</span><span class="p">(</span><span class="n">alchemicalLambda</span><span class="p">)</span>
+        <span class="c1"># Now it&#39;s time to add the time.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">add_time</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">picosecond</span><span class="p">))</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.2.2',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

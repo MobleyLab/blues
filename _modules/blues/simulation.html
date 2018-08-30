@@ -1,0 +1,1613 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>blues.simulation &mdash; blues 0.2.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> blues
+          
+
+          
+            
+            <img src="../../_static/blues-scaled.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#github">Github</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#publication">Publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../intro.html#theory">Theory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#stable-releases">Stable Releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#development-builds">Development Builds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#source-installation">Source Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../module_doc.html">Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.moves">Moves</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#move">Move</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#randomligandrotationmove">RandomLigandRotationMove</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#moveengine">MoveEngine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#under-development">Under Development</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.simulation">Simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#systemfactory">SystemFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#simulationfactory">SimulationFactory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../module_doc.html#bluessimulation">BLUESSimulation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.integrators">Integrators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.utils">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.reporters">Reporters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../module_doc.html#module-blues.formats">Formats</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html">Introduction to BLUES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Background">Background</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Coupling-MD-simulations-with-random-NCMC-moves-for-enhanced-sampling-of-ligand-binding-modes-via-BLUES">Coupling MD simulations with random NCMC moves for enhanced sampling of ligand binding modes via BLUES</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#YAML-Configuration">YAML Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Input/Output">Input/Output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Output-files">Output files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Input-files-to-generate-the-structure-of-your-system">Input files to generate the structure of your system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#Restart-files">Restart files</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#System-configuration">System configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Hydrogen-mass-repartitioning">(Optional) Hydrogen mass repartitioning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Alchemical-system-configuration">(Optional) Alchemical system configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Simulation-Configuration">Simulation Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#NPT-Simulation">NPT Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Additional-relaxation-steps-in-the-NCMC-simulation">(Optional) Additional relaxation steps in the NCMC simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Platform-Properties">(Optional) Platform Properties</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Reporter-Configuration">Reporter Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Advanced-options-to-the-``traj_netcdf``-reporter">(Optional) Advanced options to the <strong>``traj_netcdf``</strong> reporter</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../BLUES_tutorial.html#Running-a-BLUES-simulation">Running a BLUES simulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Selecting-a-move-and-initialize-the-move-engine">Selecting a move and initialize the move engine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-Systems-for-openMM:-``SystemFactory``">Generating the Systems for openMM: <strong>``SystemFactory``</strong></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../BLUES_tutorial.html#(Optional)-Applying-restraints-or-freezing-atoms">(Optional) Applying restraints or freezing atoms</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Generating-the-OpenMM-Simulations:-``SimulationFactory``">Generating the OpenMM Simulations: <strong>``SimulationFactory``</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../BLUES_tutorial.html#Run-the-BLUES-Simulation">Run the BLUES Simulation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">blues</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>blues.simulation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for blues.simulation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Provides classes for setting up and running the BLUES simulation.</span>
+
+<span class="sd">- `SystemFactory` : setup and modifying the OpenMM System prior to the simulation.</span>
+<span class="sd">- `SimulationFactory` : generates the OpenMM Simulations from the System.</span>
+<span class="sd">- `BLUESSimulation` : runs the NCMC+MD hybrid simulation.</span>
+<span class="sd">- `MonteCarloSimulation` : runs a pure Monte Carlo simulation.</span>
+
+<span class="sd">Authors: Samuel C. Gill</span>
+<span class="sd">Contributors: Nathan M. Lim, Meghan Osato, David L. Mobley</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">parmed</span>
+<span class="kn">from</span> <span class="nn">openmmtools</span> <span class="k">import</span> <span class="n">alchemy</span>
+<span class="kn">from</span> <span class="nn">simtk</span> <span class="k">import</span> <span class="n">openmm</span><span class="p">,</span> <span class="n">unit</span>
+<span class="kn">from</span> <span class="nn">simtk.openmm</span> <span class="k">import</span> <span class="n">app</span>
+
+<span class="kn">from</span> <span class="nn">blues</span> <span class="k">import</span> <span class="n">utils</span>
+<span class="kn">from</span> <span class="nn">blues.integrators</span> <span class="k">import</span> <span class="n">AlchemicalExternalLangevinIntegrator</span>
+
+<span class="n">finfo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">rtol</span> <span class="o">=</span> <span class="n">finfo</span><span class="o">.</span><span class="n">precision</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SystemFactory"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory">[docs]</a><span class="k">class</span> <span class="nc">SystemFactory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SystemFactory contains methods to generate/modify the OpenMM System object</span>
+<span class="sd">    required for generating the openmm.Simulation using a given</span>
+<span class="sd">    parmed.Structure()</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Load Parmed Structure, select move type, initialize `MoveEngine`, and</span>
+<span class="sd">    generate the openmm.Systems</span>
+
+<span class="sd">    &gt;&gt;&gt; structure = parmed.load_file(&#39;eqToluene.prmtop&#39;, xyz=&#39;eqToluene.inpcrd&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; ligand = RandomLigandRotationMove(structure, &#39;LIG&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; ligand_mover = MoveEngine(ligand)</span>
+<span class="sd">    &gt;&gt;&gt; systems = SystemFactory(structure, ligand.atom_indices, config[&#39;system&#39;])</span>
+
+<span class="sd">    The MD and alchemical Systems are generated and stored as an attribute</span>
+
+<span class="sd">    &gt;&gt;&gt; systems.md</span>
+<span class="sd">    &gt;&gt;&gt; systems.alch</span>
+
+<span class="sd">    Freeze atoms in the alchemical system</span>
+
+<span class="sd">    &gt;&gt;&gt; systems.alch = SystemFactory.freeze_atoms(systems.alch,</span>
+<span class="sd">                                            freeze_distance=5.0,</span>
+<span class="sd">                                            freeze_center=&#39;LIG&#39;</span>
+<span class="sd">                                            freeze_solvent=&#39;HOH,NA,CL&#39;)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    structure : parmed.Structure</span>
+<span class="sd">        A chemical structure composed of atoms, bonds, angles, torsions, and</span>
+<span class="sd">        other topological features.</span>
+<span class="sd">    atom_indices : list of int</span>
+<span class="sd">        Atom indicies of the move or designated for which the nonbonded forces</span>
+<span class="sd">        (both sterics and electrostatics components) have to be alchemically</span>
+<span class="sd">        modified.</span>
+<span class="sd">    config : dict, parameters for generating the `openmm.System` for the MD</span>
+<span class="sd">        and NCMC simulation. For complete parameters, see docs for `generateSystem`</span>
+<span class="sd">        and `generateAlchSystem`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span> <span class="n">atom_indices</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structure</span> <span class="o">=</span> <span class="n">structure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span> <span class="o">=</span> <span class="n">atom_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="n">config</span>
+
+        <span class="c1">#If parameters for generating the openmm.System is given, make them.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;alchemical&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alch_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;alchemical&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1">#Use function defaults if none is provided</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alch_config</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="o">.</span><span class="n">generateSystem</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">structure</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alch</span> <span class="o">=</span> <span class="n">SystemFactory</span><span class="o">.</span><span class="n">generateAlchSystem</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">alch_config</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SystemFactory.amber_selection_to_atomidx"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory.amber_selection_to_atomidx">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">amber_selection_to_atomidx</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">selection</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts AmberMask selection [amber-syntax]_ to list of atom indices.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        structure : parmed.Structure()</span>
+<span class="sd">            Structure of the system, used for atom selection.</span>
+<span class="sd">        selection : str</span>
+<span class="sd">            AmberMask selection that gets converted to a list of atom indices.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mask_idx : list of int</span>
+<span class="sd">            List of atom indices.</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        .. [amber-syntax] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">parmed</span><span class="o">.</span><span class="n">amber</span><span class="o">.</span><span class="n">AmberMask</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">selection</span><span class="p">))</span>
+        <span class="n">mask_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">mask</span><span class="o">.</span><span class="n">Selected</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">mask_idx</span></div>
+
+<div class="viewcode-block" id="SystemFactory.atomidx_to_atomlist"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory.atomidx_to_atomlist">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">atomidx_to_atomlist</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">mask_idx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Goes through the structure and matches the previously selected atom</span>
+<span class="sd">        indices to the atom type.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        structure : parmed.Structure()</span>
+<span class="sd">            Structure of the system, used for atom selection.</span>
+<span class="sd">        mask_idx : list of int</span>
+<span class="sd">            List of atom indices.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        atom_list : list of atoms</span>
+<span class="sd">            The atoms that were previously selected in mask_idx.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">atom_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">at</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">structure</span><span class="o">.</span><span class="n">atoms</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">mask_idx</span><span class="p">:</span>
+                <span class="n">atom_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">structure</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Freezing </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">atom_list</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">atom_list</span></div>
+
+<div class="viewcode-block" id="SystemFactory.generateSystem"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory.generateSystem">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">generateSystem</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct an OpenMM System representing the topology described by the</span>
+<span class="sd">        prmtop file. This function is just a wrapper for parmed Structure.createSystem().</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        structure : parmed.Structure()</span>
+<span class="sd">            The parmed.Structure of the molecular system to be simulated</span>
+<span class="sd">        nonbondedMethod : cutoff method</span>
+<span class="sd">            This is the cutoff method. It can be either the NoCutoff,</span>
+<span class="sd">            CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald objects from the</span>
+<span class="sd">            simtk.openmm.app namespace</span>
+<span class="sd">        nonbondedCutoff : float or distance Quantity</span>
+<span class="sd">            The nonbonded cutoff must be either a floating point number</span>
+<span class="sd">            (interpreted as nanometers) or a Quantity with attached units. This</span>
+<span class="sd">            is ignored if nonbondedMethod is NoCutoff.</span>
+<span class="sd">        switchDistance : float or distance Quantity</span>
+<span class="sd">            The distance at which the switching function is turned on for van</span>
+<span class="sd">            der Waals interactions. This is ignored when no cutoff is used, and</span>
+<span class="sd">            no switch is used if switchDistance is 0, negative, or greater than</span>
+<span class="sd">            the cutoff</span>
+<span class="sd">        constraints : None, app.HBonds, app.HAngles, or app.AllBonds</span>
+<span class="sd">            Which type of constraints to add to the system (e.g., SHAKE). None</span>
+<span class="sd">            means no bonds are constrained. HBonds means bonds with hydrogen are</span>
+<span class="sd">            constrained</span>
+<span class="sd">        rigidWater : bool=True</span>
+<span class="sd">            If True, water is kept rigid regardless of the value of constraints.</span>
+<span class="sd">            A value of False is ignored if constraints is not None.</span>
+<span class="sd">        implicitSolvent : None, app.HCT, app.OBC1, app.OBC2, app.GBn, app.GBn2</span>
+<span class="sd">            The Generalized Born implicit solvent model to use.</span>
+<span class="sd">        implicitSolventKappa : float or 1/distance Quantity = None</span>
+<span class="sd">            This is the Debye kappa property related to modeling saltwater</span>
+<span class="sd">            conditions in GB. It should have units of 1/distance (1/nanometers</span>
+<span class="sd">            is assumed if no units present). A value of None means that kappa</span>
+<span class="sd">            will be calculated from implicitSolventSaltConc (below)</span>
+<span class="sd">        implicitSolventSaltConc : float or amount/volume Quantity=0 moles/liter</span>
+<span class="sd">            If implicitSolventKappa is None, the kappa will be computed from the</span>
+<span class="sd">            salt concentration. It should have units compatible with mol/L</span>
+<span class="sd">        temperature : float or temperature Quantity = 298.15 kelvin</span>
+<span class="sd">            This is only used to compute kappa from implicitSolventSaltConc</span>
+<span class="sd">        soluteDielectric : float=1.0</span>
+<span class="sd">            The dielectric constant of the protein interior used in GB</span>
+<span class="sd">        solventDielectric : float=78.5</span>
+<span class="sd">            The dielectric constant of the water used in GB</span>
+<span class="sd">        useSASA : bool=False</span>
+<span class="sd">            If True, use the ACE non-polar solvation model. Otherwise, use no</span>
+<span class="sd">            SASA-based nonpolar solvation model.</span>
+<span class="sd">        removeCMMotion : bool=True</span>
+<span class="sd">            If True, the center-of-mass motion will be removed periodically</span>
+<span class="sd">            during the simulation. If False, it will not.</span>
+<span class="sd">        hydrogenMass : float or mass quantity = None</span>
+<span class="sd">            If not None, hydrogen masses will be changed to this mass and the</span>
+<span class="sd">            difference subtracted from the attached heavy atom (hydrogen mass</span>
+<span class="sd">            repartitioning)</span>
+<span class="sd">        ewaldErrorTolerance : float=0.0005</span>
+<span class="sd">            When using PME or Ewald, the Ewald parameters will be calculated</span>
+<span class="sd">            from this value</span>
+<span class="sd">        flexibleConstraints : bool=True</span>
+<span class="sd">            If False, the energies and forces from the constrained degrees of</span>
+<span class="sd">            freedom will NOT be computed. If True, they will (but those degrees</span>
+<span class="sd">            of freedom will *still* be constrained).</span>
+<span class="sd">        verbose : bool=False</span>
+<span class="sd">            If True, the progress of this subroutine will be printed to stdout</span>
+<span class="sd">        splitDihedrals : bool=False</span>
+<span class="sd">            If True, the dihedrals will be split into two forces -- proper and</span>
+<span class="sd">            impropers. This is primarily useful for debugging torsion parameter</span>
+<span class="sd">            assignments.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        openmm.System</span>
+<span class="sd">            System formatted according to the prmtop file.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This function calls prune_empty_terms if any Topology lists have</span>
+<span class="sd">        changed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">structure</span><span class="o">.</span><span class="n">createSystem</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SystemFactory.generateAlchSystem"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory.generateAlchSystem">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">generateAlchSystem</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span>
+                           <span class="n">system</span><span class="p">,</span>
+                           <span class="n">atom_indices</span><span class="p">,</span>
+                           <span class="n">softcore_alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                           <span class="n">softcore_a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                           <span class="n">softcore_b</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                           <span class="n">softcore_c</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                           <span class="n">softcore_beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                           <span class="n">softcore_d</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                           <span class="n">softcore_e</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                           <span class="n">softcore_f</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                           <span class="n">annihilate_electrostatics</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                           <span class="n">annihilate_sterics</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                           <span class="n">disable_alchemical_dispersion_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                           <span class="n">alchemical_pme_treatment</span><span class="o">=</span><span class="s1">&#39;direct-space&#39;</span><span class="p">,</span>
+                           <span class="n">suppress_warnings</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                           <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the OpenMM System for alchemical perturbations.</span>
+<span class="sd">        This function calls `openmmtools.alchemy.AbsoluteAlchemicalFactory` and</span>
+<span class="sd">        `openmmtools.alchemy.AlchemicalRegion` to generate the System for the</span>
+<span class="sd">        NCMC simulation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The OpenMM System object corresponding to the reference system.</span>
+<span class="sd">        atom_indices : list of int</span>
+<span class="sd">            Atom indicies of the move or designated for which the nonbonded forces</span>
+<span class="sd">            (both sterics and electrostatics components) have to be alchemically</span>
+<span class="sd">            modified.</span>
+<span class="sd">        annihilate_electrostatics : bool, optional</span>
+<span class="sd">            If True, electrostatics should be annihilated, rather than decoupled</span>
+<span class="sd">            (default is True).</span>
+<span class="sd">        annihilate_sterics : bool, optional</span>
+<span class="sd">            If True, sterics (Lennard-Jones or Halgren potential) will be annihilated,</span>
+<span class="sd">            rather than decoupled (default is False).</span>
+<span class="sd">        softcore_alpha : float, optional</span>
+<span class="sd">            Alchemical softcore parameter for Lennard-Jones (default is 0.5).</span>
+<span class="sd">        softcore_a, softcore_b, softcore_c : float, optional</span>
+<span class="sd">            Parameters modifying softcore Lennard-Jones form. Introduced in</span>
+<span class="sd">            Eq. 13 of Ref. [TTPham-JChemPhys135-2011]_ (default is 1).</span>
+<span class="sd">        softcore_beta : float, optional</span>
+<span class="sd">            Alchemical softcore parameter for electrostatics. Set this to zero</span>
+<span class="sd">            to recover standard electrostatic scaling (default is 0.0).</span>
+<span class="sd">        softcore_d, softcore_e, softcore_f : float, optional</span>
+<span class="sd">            Parameters modifying softcore electrostatics form (default is 1).</span>
+<span class="sd">        disable_alchemical_dispersion_correction : bool, optional, default=True</span>
+<span class="sd">            If True, the long-range dispersion correction will not be included for the alchemical</span>
+<span class="sd">            region to avoid the need to recompute the correction (a CPU operation that takes ~ 0.5 s)</span>
+<span class="sd">            every time &#39;lambda_sterics&#39; is changed. If using nonequilibrium protocols, it is recommended</span>
+<span class="sd">            that this be set to True since this can lead to enormous (100x) slowdowns if the correction</span>
+<span class="sd">            must be recomputed every time step.</span>
+<span class="sd">        alchemical_pme_treatment : str, optional, default = &#39;direct-space&#39;</span>
+<span class="sd">            Controls how alchemical region electrostatics are treated when PME is used.</span>
+<span class="sd">            Options are &#39;direct-space&#39;, &#39;coulomb&#39;, &#39;exact&#39;.</span>
+<span class="sd">            - &#39;direct-space&#39; only models the direct space contribution</span>
+<span class="sd">            - &#39;coulomb&#39; includes switched Coulomb interaction</span>
+<span class="sd">            - &#39;exact&#39; includes also the reciprocal space contribution, but it&#39;s</span>
+<span class="sd">            only possible to annihilate the charges and the softcore parameters</span>
+<span class="sd">            controlling the electrostatics are deactivated. Also, with this</span>
+<span class="sd">            method, modifying the global variable `lambda_electrostatics` is</span>
+<span class="sd">            not sufficient to control the charges. The recommended way to change</span>
+<span class="sd">            them is through the `AlchemicalState` class.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        alch_system : alchemical_system</span>
+<span class="sd">            System to be used for the NCMC simulation.</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        .. [TTPham-JChemPhys135-2011] T. T. Pham and M. R. Shirts, J. Chem. Phys 135, 034114 (2011). http://dx.doi.org/10.1063/1.3607597</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">suppress_warnings</span><span class="p">:</span>
+            <span class="c1">#Lower logger level to suppress excess warnings</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;openmmtools.alchemy&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+        <span class="c1">#Disabled correction term due to increased computational cost</span>
+        <span class="n">factory</span> <span class="o">=</span> <span class="n">alchemy</span><span class="o">.</span><span class="n">AbsoluteAlchemicalFactory</span><span class="p">(</span>
+            <span class="n">disable_alchemical_dispersion_correction</span><span class="o">=</span><span class="n">disable_alchemical_dispersion_correction</span><span class="p">,</span>
+            <span class="n">alchemical_pme_treatment</span><span class="o">=</span><span class="n">alchemical_pme_treatment</span><span class="p">)</span>
+        <span class="n">alch_region</span> <span class="o">=</span> <span class="n">alchemy</span><span class="o">.</span><span class="n">AlchemicalRegion</span><span class="p">(</span>
+            <span class="n">alchemical_atoms</span><span class="o">=</span><span class="n">atom_indices</span><span class="p">,</span>
+            <span class="n">softcore_alpha</span><span class="o">=</span><span class="n">softcore_alpha</span><span class="p">,</span>
+            <span class="n">softcore_a</span><span class="o">=</span><span class="n">softcore_a</span><span class="p">,</span>
+            <span class="n">softcore_b</span><span class="o">=</span><span class="n">softcore_b</span><span class="p">,</span>
+            <span class="n">softcore_c</span><span class="o">=</span><span class="n">softcore_c</span><span class="p">,</span>
+            <span class="n">softcore_beta</span><span class="o">=</span><span class="n">softcore_beta</span><span class="p">,</span>
+            <span class="n">softcore_d</span><span class="o">=</span><span class="n">softcore_d</span><span class="p">,</span>
+            <span class="n">softcore_e</span><span class="o">=</span><span class="n">softcore_e</span><span class="p">,</span>
+            <span class="n">softcore_f</span><span class="o">=</span><span class="n">softcore_f</span><span class="p">,</span>
+            <span class="n">annihilate_electrostatics</span><span class="o">=</span><span class="n">annihilate_electrostatics</span><span class="p">,</span>
+            <span class="n">annihilate_sterics</span><span class="o">=</span><span class="n">annihilate_sterics</span><span class="p">)</span>
+
+        <span class="n">alch_system</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">create_alchemical_system</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="n">alch_region</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">alch_system</span></div>
+
+<div class="viewcode-block" id="SystemFactory.restrain_positions"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory.restrain_positions">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">restrain_positions</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">selection</span><span class="o">=</span><span class="s2">&quot;(@CA,C,N)&quot;</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies positional restraints to atoms in the openmm.System</span>
+<span class="sd">        by the given parmed selection [amber-syntax]_.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The OpenMM System object to be modified.</span>
+<span class="sd">        structure : parmed.Structure()</span>
+<span class="sd">            Structure of the system, used for atom selection.</span>
+<span class="sd">        selection : str, Default = &quot;(@CA,C,N)&quot;</span>
+<span class="sd">            AmberMask selection to apply positional restraints to</span>
+<span class="sd">        weight : float, Default = 5.0</span>
+<span class="sd">            Restraint weight for xyz atom restraints in kcal/(mol A^2)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            Modified with positional restraints applied.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask_idx</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">amber_selection_to_atomidx</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">selection</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> positional restraints applied to selection: &#39;</span><span class="si">{}</span><span class="s2">&#39; (</span><span class="si">{}</span><span class="s2"> atoms) on </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">weight</span><span class="p">,</span> <span class="n">selection</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mask_idx</span><span class="p">),</span> <span class="n">system</span><span class="p">))</span>
+        <span class="c1"># define the custom force to restrain atoms to their starting positions</span>
+        <span class="n">force</span> <span class="o">=</span> <span class="n">openmm</span><span class="o">.</span><span class="n">CustomExternalForce</span><span class="p">(</span><span class="s1">&#39;k_restr*periodicdistance(x, y, z, x0, y0, z0)^2&#39;</span><span class="p">)</span>
+        <span class="c1"># Add the restraint weight as a global parameter in kcal/mol/A^2</span>
+        <span class="n">force</span><span class="o">.</span><span class="n">addGlobalParameter</span><span class="p">(</span><span class="s2">&quot;k_restr&quot;</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+        <span class="c1">#force.addGlobalParameter(&quot;k_restr&quot;, weight*unit.kilocalories_per_mole/unit.angstroms**2)</span>
+        <span class="c1"># Define the target xyz coords for the restraint as per-atom (per-particle) parameters</span>
+        <span class="n">force</span><span class="o">.</span><span class="n">addPerParticleParameter</span><span class="p">(</span><span class="s2">&quot;x0&quot;</span><span class="p">)</span>
+        <span class="n">force</span><span class="o">.</span><span class="n">addPerParticleParameter</span><span class="p">(</span><span class="s2">&quot;y0&quot;</span><span class="p">)</span>
+        <span class="n">force</span><span class="o">.</span><span class="n">addPerParticleParameter</span><span class="p">(</span><span class="s2">&quot;z0&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">atom_crd</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">structure</span><span class="o">.</span><span class="n">positions</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">mask_idx</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">structure</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">force</span><span class="o">.</span><span class="n">addParticle</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">atom_crd</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">nanometers</span><span class="p">))</span>
+        <span class="n">system</span><span class="o">.</span><span class="n">addForce</span><span class="p">(</span><span class="n">force</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">system</span></div>
+
+<div class="viewcode-block" id="SystemFactory.freeze_atoms"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory.freeze_atoms">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">freeze_atoms</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">freeze_selection</span><span class="o">=</span><span class="s2">&quot;:LIG&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Zeroes the masses of atoms from the given parmed selection [amber-syntax]_.</span>
+<span class="sd">        Massless atoms will be ignored by the integrator and will not change</span>
+<span class="sd">        positions.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The OpenMM System object to be modified.</span>
+<span class="sd">        structure : parmed.Structure()</span>
+<span class="sd">            Structure of the system, used for atom selection.</span>
+<span class="sd">        freeze_selection : str, Default = &quot;:LIG&quot;</span>
+<span class="sd">            AmberMask selection for the center in which to select atoms for</span>
+<span class="sd">            zeroing their massesself.</span>
+<span class="sd">            Defaults to freezing protein backbone atoms.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The modified system with the selected atoms</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask_idx</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">amber_selection_to_atomidx</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">freeze_selection</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Freezing selection &#39;</span><span class="si">{}</span><span class="s2">&#39; (</span><span class="si">{}</span><span class="s2"> atoms) on </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">freeze_selection</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mask_idx</span><span class="p">),</span> <span class="n">system</span><span class="p">))</span>
+
+        <span class="bp">cls</span><span class="o">.</span><span class="n">atomidx_to_atomlist</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">mask_idx</span><span class="p">)</span>
+        <span class="n">system</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">zero_masses</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="n">mask_idx</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">system</span></div>
+
+<div class="viewcode-block" id="SystemFactory.freeze_radius"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SystemFactory.freeze_radius">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">freeze_radius</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span>
+                      <span class="n">structure</span><span class="p">,</span>
+                      <span class="n">system</span><span class="p">,</span>
+                      <span class="n">freeze_distance</span><span class="o">=</span><span class="mf">5.0</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">angstrom</span><span class="p">,</span>
+                      <span class="n">freeze_center</span><span class="o">=</span><span class="s1">&#39;:LIG&#39;</span><span class="p">,</span>
+                      <span class="n">freeze_solvent</span><span class="o">=</span><span class="s1">&#39;:HOH,NA,CL&#39;</span><span class="p">,</span>
+                      <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Zero the masses of atoms outside the given raidus of</span>
+<span class="sd">        the `freeze_center` parmed selection [amber-syntax]_. Massless atoms will be ignored by the</span>
+<span class="sd">        integrator and will not change positions.This is intended to freeze</span>
+<span class="sd">        the solvent and protein atoms around the ligand binding site.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The OpenMM System object to be modified.</span>
+<span class="sd">        structure : parmed.Structure()</span>
+<span class="sd">            Structure of the system, used for atom selection.</span>
+<span class="sd">        freeze_distance : float, Default = 5.0</span>
+<span class="sd">            Distance (angstroms) to select atoms for retaining their masses.</span>
+<span class="sd">            Atoms outside the set distance will have their masses set to 0.0.</span>
+<span class="sd">        freeze_center : str, Default = &quot;:LIG&quot;</span>
+<span class="sd">            AmberMask selection for the center in which to select atoms for</span>
+<span class="sd">            zeroing their masses. Default: LIG</span>
+<span class="sd">        freeze_solvent : str, Default = &quot;:HOH,NA,CL&quot;</span>
+<span class="sd">            AmberMask selection in which to select solvent atoms for zeroing</span>
+<span class="sd">            their masses.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            Modified system with masses outside the `freeze center` zeroed.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">N_atoms</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">getNumParticles</span><span class="p">()</span>
+        <span class="c1">#Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">freeze_distance</span><span class="p">,</span> <span class="s1">&#39;_value&#39;</span><span class="p">):</span> <span class="n">freeze_distance</span> <span class="o">=</span> <span class="n">freeze_distance</span><span class="o">.</span><span class="n">_value</span>
+        <span class="n">selection</span> <span class="o">=</span> <span class="s2">&quot;(</span><span class="si">%s</span><span class="s2">&lt;:</span><span class="si">%f</span><span class="s2">)&amp;!(</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">freeze_center</span><span class="p">,</span> <span class="n">freeze_distance</span><span class="p">,</span> <span class="n">freeze_solvent</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Inverting parmed selection for freezing: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">selection</span><span class="p">)</span>
+        <span class="n">site_idx</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">amber_selection_to_atomidx</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">selection</span><span class="p">)</span>
+        <span class="c1">#Invert that selection to freeze everything but the binding site.</span>
+        <span class="n">freeze_idx</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">N_atoms</span><span class="p">))</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">site_idx</span><span class="p">)</span>
+
+        <span class="c1">#Check if freeze selection has selected all atoms</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">freeze_idx</span><span class="p">)</span> <span class="o">==</span> <span class="n">N_atoms</span><span class="p">:</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="s1">&#39;All </span><span class="si">%i</span><span class="s1"> atoms appear to be selected for freezing. Check your atom selection.&#39;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">freeze_idx</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">freeze_threshold</span> <span class="o">=</span> <span class="mf">0.98</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">freeze_idx</span><span class="p">)</span> <span class="o">/</span> <span class="n">N_atoms</span> <span class="o">==</span> <span class="n">freeze_threshold</span><span class="p">:</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%.0f%%</span><span class="s1"> of your system appears to be selected for freezing. Check your atom selection&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="mi">100</span> <span class="o">*</span> <span class="n">freeze_threshold</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1">#Ensure that the freeze selection is larger than the center selection of atoms</span>
+        <span class="n">center_idx</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">amber_selection_to_atomidx</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">freeze_center</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">site_idx</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">center_idx</span><span class="p">):</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%i</span><span class="s2"> unfrozen atoms is less than (or equal to) the number of atoms used as the selection center &#39;</span><span class="si">%s</span><span class="s2">&#39; (</span><span class="si">%i</span><span class="s2"> atoms). Check your atom selection.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">site_idx</span><span class="p">),</span> <span class="n">freeze_center</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">center_idx</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">freeze_warning</span> <span class="o">=</span> <span class="mf">0.80</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">freeze_idx</span><span class="p">)</span> <span class="o">/</span> <span class="n">N_atoms</span> <span class="o">==</span> <span class="n">freeze_warning</span><span class="p">:</span>
+            <span class="n">warn</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%.0f%%</span><span class="s1"> of your system appears to be selected for freezing. This may cause unexpected behaviors.&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="mi">100</span> <span class="o">*</span> <span class="n">freeze_warning</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warm</span><span class="p">(</span><span class="n">warn</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1">#Ensure that the freeze selection is larger than the center selection point</span>
+        <span class="n">center_idx</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">amber_selection_to_atomidx</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">freeze_center</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">site_idx</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">center_idx</span><span class="p">):</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%i</span><span class="s2"> unfrozen atoms is less than (or equal to) the number of atoms from the selection center &#39;</span><span class="si">%s</span><span class="s2">&#39; (</span><span class="si">%i</span><span class="s2"> atoms). Check your atom selection.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">site_idx</span><span class="p">),</span> <span class="n">freeze_center</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">center_idx</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Freezing </span><span class="si">{}</span><span class="s2"> atoms </span><span class="si">{}</span><span class="s2"> Angstroms from &#39;</span><span class="si">{}</span><span class="s2">&#39; on </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">freeze_idx</span><span class="p">),</span> <span class="n">freeze_distance</span><span class="p">,</span> <span class="n">freeze_center</span><span class="p">,</span> <span class="n">system</span><span class="p">))</span>
+
+        <span class="bp">cls</span><span class="o">.</span><span class="n">atomidx_to_atomlist</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">freeze_idx</span><span class="p">)</span>
+        <span class="n">system</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">zero_masses</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="n">freeze_idx</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">system</span></div></div>
+
+
+<div class="viewcode-block" id="SimulationFactory"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SimulationFactory">[docs]</a><span class="k">class</span> <span class="nc">SimulationFactory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;SimulationFactory is used to generate the 3 required OpenMM Simulation</span>
+<span class="sd">    objects (MD, NCMC, ALCH) required for the BLUES run. This class can take a</span>
+<span class="sd">    list of reporters for the MD or NCMC simulation in the arguments</span>
+<span class="sd">    `md_reporters` or `ncmc_reporters`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    systems : blues.simulation.SystemFactory object</span>
+<span class="sd">        The object containing the MD and alchemical openmm.Systems</span>
+<span class="sd">    move_engine : blues.moves.MoveEngine object</span>
+<span class="sd">        MoveEngine object which contains the list of moves performed</span>
+<span class="sd">        in the NCMC simulation.</span>
+<span class="sd">    config : dict</span>
+<span class="sd">        Simulation parameters which include:</span>
+<span class="sd">        nIter, nstepsNC, nstepsMD, nprop, propLambda, temperature, dt, propSteps, write_move</span>
+<span class="sd">    md_reporters : (optional) list of Reporter objects for the MD openmm.Simulation</span>
+<span class="sd">    ncmc_reporters : (optional) list of Reporter objects for the NCMC openmm.Simulation</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Load Parmed Structure from our input files, select the move type,</span>
+<span class="sd">    initialize the MoveEngine, and generate the openmm systems.</span>
+
+<span class="sd">    &gt;&gt;&gt; structure = parmed.load_file(&#39;eqToluene.prmtop&#39;, xyz=&#39;eqToluene.inpcrd&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; ligand = RandomLigandRotationMove(structure, &#39;LIG&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; ligand_mover = MoveEngine(ligand)</span>
+<span class="sd">    &gt;&gt;&gt; systems = SystemFactory(structure, ligand.atom_indices, config[&#39;system&#39;])</span>
+
+<span class="sd">    Now, we can generate the Simulations from our openmm Systems using the</span>
+<span class="sd">    SimulationFactory class. If a configuration is provided at on initialization,</span>
+<span class="sd">    it will call `generateSimulationSet()` for convenience. Otherwise, the class can be</span>
+<span class="sd">    instantiated like a normal python class.</span>
+
+
+<span class="sd">    Below is an example of initializing the class like a normal python object.</span>
+
+<span class="sd">    &gt;&gt;&gt; simulations = SimulationFactory(systems, ligand_mover)</span>
+<span class="sd">    &gt;&gt;&gt; hasattr(simulations, &#39;md&#39;)</span>
+<span class="sd">    False</span>
+<span class="sd">    &gt;&gt;&gt; hasattr(simulations, &#39;ncmc&#39;)</span>
+<span class="sd">    False</span>
+
+
+<span class="sd">    Below, we provide a dict for configuring the Simulations and then</span>
+<span class="sd">    generate them by calling `simulations.generateSimulationSet()`. The MD/NCMC</span>
+<span class="sd">    simulation objects can be accessed separately as class attributes.</span>
+
+<span class="sd">    &gt;&gt;&gt; sim_cfg = { &#39;platform&#39;: &#39;OpenCL&#39;,</span>
+<span class="sd">                &#39;properties&#39; : { &#39;OpenCLPrecision&#39;: &#39;single&#39;,</span>
+<span class="sd">                                 &#39;OpenCLDeviceIndex&#39; : 2},</span>
+<span class="sd">                &#39;nprop&#39; : 1,</span>
+<span class="sd">                &#39;propLambda&#39; : 0.3,</span>
+<span class="sd">                &#39;dt&#39; : 0.001 * unit.picoseconds,</span>
+<span class="sd">                &#39;friction&#39; : 1 * 1/unit.picoseconds,</span>
+<span class="sd">                &#39;temperature&#39; : 100 * unit.kelvin,</span>
+<span class="sd">                &#39;nIter&#39;: 1,</span>
+<span class="sd">                &#39;nstepsMD&#39;: 10,</span>
+<span class="sd">                &#39;nstepsNC&#39;: 10,}</span>
+<span class="sd">    &gt;&gt;&gt; simulations.generateSimulationSet(sim_cfg)</span>
+<span class="sd">    &gt;&gt;&gt; hasattr(simulations, &#39;md&#39;)</span>
+<span class="sd">    True</span>
+<span class="sd">    &gt;&gt;&gt; hasattr(simulations, &#39;ncmc&#39;)</span>
+<span class="sd">    True</span>
+
+
+<span class="sd">    After generating the Simulations, attach your own reporters by providing</span>
+<span class="sd">    the reporters in a list. Be sure to attach to either the MD or NCMC simulation.</span>
+
+<span class="sd">    &gt;&gt;&gt; from simtk.openmm.app import StateDataReporter</span>
+<span class="sd">    &gt;&gt;&gt; md_reporters = [ StateDataReporter(&#39;test.log&#39;, 5) ]</span>
+<span class="sd">    &gt;&gt;&gt; ncmc_reporters = [ StateDataReporter(&#39;test-ncmc.log&#39;, 5) ]</span>
+<span class="sd">    &gt;&gt;&gt; simulations.md = simulations.attachReporters( simulations.md, md_reporters)</span>
+<span class="sd">    &gt;&gt;&gt; simulations.ncmc = simulations.attachReporters( simulations.ncmc, ncmc_reporters)</span>
+
+<span class="sd">    Alternatively, you can pass the configuration dict and list of reporters</span>
+<span class="sd">    upon class initialization. This will do all of the above for convenience.</span>
+
+<span class="sd">    &gt;&gt;&gt; simulations = SimulationFactory(systems, ligand_mover, sim_cfg,</span>
+<span class="sd">                                        md_reporters, ncmc_reporters)</span>
+<span class="sd">    &gt;&gt;&gt; print(simulations)</span>
+<span class="sd">    &gt;&gt;&gt; print(simulations.md)</span>
+<span class="sd">    &gt;&gt;&gt; print(simulations.ncmc)</span>
+<span class="sd">    &lt;blues.simulation.SimulationFactory object at 0x7f461b7a8b00&gt;</span>
+<span class="sd">    &lt;simtk.openmm.app.simulation.Simulation object at 0x7f461b7a8780&gt;</span>
+<span class="sd">    &lt;simtk.openmm.app.simulation.Simulation object at 0x7f461b7a87b8&gt;</span>
+<span class="sd">    &gt;&gt;&gt; print(simulations.md.reporters)</span>
+<span class="sd">    &gt;&gt;&gt; print(simulations.ncmc.reporters)</span>
+<span class="sd">    [&lt;simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cac8&gt;]</span>
+<span class="sd">    [&lt;simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cb70&gt;]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">systems</span><span class="p">,</span> <span class="n">move_engine</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_reporters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ncmc_reporters</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1">#Hide these properties since they exist on the SystemsFactory object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_structure</span> <span class="o">=</span> <span class="n">systems</span><span class="o">.</span><span class="n">structure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_system</span> <span class="o">=</span> <span class="n">systems</span><span class="o">.</span><span class="n">md</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alch_system</span> <span class="o">=</span> <span class="n">systems</span><span class="o">.</span><span class="n">alch</span>
+        <span class="c1">#Atom indicies from move_engine</span>
+        <span class="c1">#TODO: change atom_indices selection for multiple regions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_atom_indices</span> <span class="o">=</span> <span class="n">move_engine</span><span class="o">.</span><span class="n">moves</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">atom_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_move_engine</span> <span class="o">=</span> <span class="n">move_engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+
+        <span class="c1">#If parameters for generating the openmm.Simulation are given, make them.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">generateSimulationSet</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">e</span>
+
+        <span class="k">if</span> <span class="n">md_reporters</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_md_reporters</span> <span class="o">=</span> <span class="n">md_reporters</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="n">SimulationFactory</span><span class="o">.</span><span class="n">attachReporters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_md_reporters</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ncmc_reporters</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_reporters</span> <span class="o">=</span> <span class="n">ncmc_reporters</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ncmc</span> <span class="o">=</span> <span class="n">SimulationFactory</span><span class="o">.</span><span class="n">attachReporters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncmc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_reporters</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SimulationFactory.addBarostat"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SimulationFactory.addBarostat">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">addBarostat</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">300</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">kelvin</span><span class="p">,</span> <span class="n">pressure</span><span class="o">=</span><span class="mi">1</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">atmospheres</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds a MonteCarloBarostat to the MD system.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The OpenMM System object corresponding to the reference system.</span>
+<span class="sd">        temperature : float, default=300</span>
+<span class="sd">            temperature (Kelvin) to be simulated at.</span>
+<span class="sd">        pressure : int, configional, default=None</span>
+<span class="sd">            Pressure (atm) for Barostat for NPT simulations.</span>
+<span class="sd">        frequency : int, default=25</span>
+<span class="sd">            Frequency at which Monte Carlo pressure changes should be attempted (in time steps)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The OpenMM System with the MonteCarloBarostat attached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Adding MonteCarloBarostat with </span><span class="si">{}</span><span class="s1">. MD simulation will be </span><span class="si">{}</span><span class="s1"> NPT.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">temperature</span><span class="p">))</span>
+        <span class="c1"># Add Force Barostat to the system</span>
+        <span class="n">system</span><span class="o">.</span><span class="n">addForce</span><span class="p">(</span><span class="n">openmm</span><span class="o">.</span><span class="n">MonteCarloBarostat</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">frequency</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">system</span></div>
+
+<div class="viewcode-block" id="SimulationFactory.generateIntegrator"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SimulationFactory.generateIntegrator">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">generateIntegrator</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">300</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">kelvin</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.002</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">picoseconds</span><span class="p">,</span> <span class="n">friction</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates a LangevinIntegrator for the Simulations.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        temperature : float, default=300</span>
+<span class="sd">            temperature (Kelvin) to be simulated at.</span>
+<span class="sd">        friction: float, default=1</span>
+<span class="sd">            friction coefficient which couples to the heat bath, measured in 1/ps</span>
+<span class="sd">        dt: int, configional, default=0.002</span>
+<span class="sd">            The timestep of the integrator to use (in ps).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        integrator : openmm.LangevinIntegrator</span>
+<span class="sd">            The LangevinIntegrator object intended for the System.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">integrator</span> <span class="o">=</span> <span class="n">openmm</span><span class="o">.</span><span class="n">LangevinIntegrator</span><span class="p">(</span><span class="n">temperature</span><span class="p">,</span> <span class="n">friction</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">integrator</span></div>
+
+<div class="viewcode-block" id="SimulationFactory.generateNCMCIntegrator"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SimulationFactory.generateNCMCIntegrator">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">generateNCMCIntegrator</span><span class="p">(</span>
+            <span class="bp">cls</span><span class="p">,</span>
+            <span class="n">nstepsNC</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">alchemical_functions</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;lambda_sterics&#39;</span><span class="p">:</span>
+                <span class="s1">&#39;min(1, (1/0.3)*abs(lambda-0.5))&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;lambda_electrostatics&#39;</span><span class="p">:</span>
+                <span class="s1">&#39;step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)&#39;</span>
+            <span class="p">},</span>
+            <span class="n">splitting</span><span class="o">=</span><span class="s2">&quot;H V R O R V H&quot;</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="mi">300</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">kelvin</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="mf">0.002</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">picoseconds</span><span class="p">,</span>
+            <span class="n">nprop</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">propLambda</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates the AlchemicalExternalLangevinIntegrator using openmmtools.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        nstepsNC : int</span>
+<span class="sd">            The number of NCMC relaxation steps to use.</span>
+<span class="sd">        alchemical_functions : dict</span>
+<span class="sd">            default = `{&#39;lambda_sterics&#39; : &#39;min(1, (1/0.3)*abs(lambda-0.5))&#39;, lambda_electrostatics&#39; : &#39;step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)&#39;}`</span>
+<span class="sd">            key : value pairs such as &quot;global_parameter&quot; : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable &quot;lambda&quot;.</span>
+<span class="sd">        splitting : string, default: &quot;H V R O R V H&quot;</span>
+<span class="sd">            Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option, which increments the global parameter `lambda` by 1/nsteps_neq for each step. Forces are only used in V-step. Handle multiple force groups by appending the force group index to V-steps, e.g. &quot;V0&quot; will only use forces from force group 0. &quot;V&quot; will perform a step using all forces. ( will cause metropolization, and must be followed later by a ).</span>
+<span class="sd">        temperature : float, default=300</span>
+<span class="sd">            temperature (Kelvin) to be simulated at.</span>
+<span class="sd">        dt: int, optional, default=0.002</span>
+<span class="sd">            The timestep of the integrator to use (in ps).</span>
+<span class="sd">        nprop : int (Default: 1)</span>
+<span class="sd">            Controls the number of propagation steps to add in the lambda</span>
+<span class="sd">            region defined by `propLambda`</span>
+<span class="sd">        propLambda: float, optional, default=0.3</span>
+<span class="sd">            The range which additional propogation steps are added,</span>
+<span class="sd">            defined by [0.5-propLambda, 0.5+propLambda].</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ncmc_integrator : blues.integrator.AlchemicalExternalLangevinIntegrator</span>
+<span class="sd">            The NCMC integrator for the alchemical process in the NCMC simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#During NCMC simulation, lambda parameters are controlled by function dict below</span>
+        <span class="c1"># Keys correspond to parameter type (i.e &#39;lambda_sterics&#39;, &#39;lambda_electrostatics&#39;)</span>
+        <span class="c1"># &#39;lambda&#39; = step/totalsteps where step corresponds to current NCMC step,</span>
+        <span class="n">ncmc_integrator</span> <span class="o">=</span> <span class="n">AlchemicalExternalLangevinIntegrator</span><span class="p">(</span>
+            <span class="n">alchemical_functions</span><span class="o">=</span><span class="n">alchemical_functions</span><span class="p">,</span>
+            <span class="n">splitting</span><span class="o">=</span><span class="n">splitting</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span>
+            <span class="n">nsteps_neq</span><span class="o">=</span><span class="n">nstepsNC</span><span class="p">,</span>
+            <span class="n">timestep</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">nprop</span><span class="o">=</span><span class="n">nprop</span><span class="p">,</span>
+            <span class="n">prop_lambda</span><span class="o">=</span><span class="n">propLambda</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ncmc_integrator</span></div>
+
+<div class="viewcode-block" id="SimulationFactory.generateSimFromStruct"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SimulationFactory.generateSimFromStruct">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">generateSimFromStruct</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">integrator</span><span class="p">,</span> <span class="n">platform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate the OpenMM Simulation objects from a given parmed.Structure()</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        structure : parmed.Structure</span>
+<span class="sd">            ParmEd Structure object of the entire system to be simulated.</span>
+<span class="sd">        system : openmm.System</span>
+<span class="sd">            The OpenMM System object corresponding to the reference system.</span>
+<span class="sd">        integrator : openmm.Integrator</span>
+<span class="sd">            The OpenMM Integrator object for the simulation.</span>
+<span class="sd">        platform : str, default = None</span>
+<span class="sd">            Valid choices: &#39;Auto&#39;, &#39;OpenCL&#39;, &#39;CUDA&#39;</span>
+<span class="sd">            If None is specified, the fastest available platform will be used.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        simulation : openmm.Simulation</span>
+<span class="sd">            The generated OpenMM Simulation from the parmed.Structure, openmm.System,</span>
+<span class="sd">            amd the integrator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#Specifying platform properties here used for local development.</span>
+        <span class="k">if</span> <span class="n">platform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1">#Use the fastest available platform</span>
+            <span class="n">simulation</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">Simulation</span><span class="p">(</span><span class="n">structure</span><span class="o">.</span><span class="n">topology</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">integrator</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="n">openmm</span><span class="o">.</span><span class="n">Platform</span><span class="o">.</span><span class="n">getPlatformByName</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+            <span class="c1">#Make sure key/values are strings</span>
+            <span class="n">properties</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">):</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">properties</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="n">simulation</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">Simulation</span><span class="p">(</span><span class="n">structure</span><span class="o">.</span><span class="n">topology</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">integrator</span><span class="p">,</span> <span class="n">platform</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># Set initial positions/velocities</span>
+        <span class="k">if</span> <span class="n">structure</span><span class="o">.</span><span class="n">box_vectors</span><span class="p">:</span>
+            <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setPeriodicBoxVectors</span><span class="p">(</span><span class="o">*</span><span class="n">structure</span><span class="o">.</span><span class="n">box_vectors</span><span class="p">)</span>
+        <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setPositions</span><span class="p">(</span><span class="n">structure</span><span class="o">.</span><span class="n">positions</span><span class="p">)</span>
+        <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setVelocitiesToTemperature</span><span class="p">(</span><span class="n">integrator</span><span class="o">.</span><span class="n">getTemperature</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">simulation</span></div>
+
+<div class="viewcode-block" id="SimulationFactory.attachReporters"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SimulationFactory.attachReporters">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">attachReporters</span><span class="p">(</span><span class="n">simulation</span><span class="p">,</span> <span class="n">reporter_list</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Attach the list of reporters to the Simulation object</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulation : openmm.Simulation</span>
+<span class="sd">            The Simulation object to attach reporters to.</span>
+<span class="sd">        reporter_list : list of openmm Reporeters</span>
+<span class="sd">            The list of reporters to attach to the OpenMM Simulation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        simulation : openmm.Simulation</span>
+<span class="sd">            The Simulation object with the reporters attached.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="n">reporter_list</span><span class="p">:</span>
+            <span class="n">simulation</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rep</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">simulation</span></div>
+
+<div class="viewcode-block" id="SimulationFactory.generateSimulationSet"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.SimulationFactory.generateSimulationSet">[docs]</a>    <span class="k">def</span> <span class="nf">generateSimulationSet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generates the 3 OpenMM Simulation objects.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        config : dict</span>
+<span class="sd">            Dictionary of parameters for configuring the OpenMM Simulations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="p">:</span> <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+
+        <span class="c1">#Construct MD Integrator and Simulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">integrator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generateIntegrator</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1">#Check for pressure parameter to set simulation to NPT</span>
+        <span class="k">if</span> <span class="s1">&#39;pressure&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">addBarostat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_system</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s1">&#39;NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;MD simulation will be </span><span class="si">{}</span><span class="s1"> NVT.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;temperature&#39;</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generateSimFromStruct</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_structure</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">integrator</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1">#Alchemical Simulation is used for computing correction term from MD simulation.</span>
+        <span class="n">alch_integrator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generateIntegrator</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generateSimFromStruct</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_structure</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_system</span><span class="p">,</span> <span class="n">alch_integrator</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1">#If the moveStep hasn&#39;t been calculated, recheck the NCMC steps.</span>
+        <span class="k">if</span> <span class="s1">&#39;moveStep&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Did not find `moveStep` in configuration. Checking NCMC paramters&#39;</span><span class="p">)</span>
+            <span class="n">ncmc_parameters</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">calculateNCMCSteps</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ncmc_parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">config</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+
+        <span class="c1">#Construct NCMC Integrator and Simulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncmc_integrator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generateNCMCIntegrator</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1">#Initialize the Move Engine with the Alchemical System and NCMC Integrator</span>
+        <span class="k">for</span> <span class="n">move</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_move_engine</span><span class="o">.</span><span class="n">moves</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_alch_system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncmc_integrator</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">initializeSystem</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_alch_system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncmc_integrator</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncmc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generateSimFromStruct</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_structure</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alch_system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncmc_integrator</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">print_host_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncmc</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="BLUESSimulation"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation">[docs]</a><span class="k">class</span> <span class="nc">BLUESSimulation</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;BLUESSimulation class provides methods to execute the NCMC+MD</span>
+<span class="sd">    simulation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    simulations : blues.simulation.SimulationFactory object</span>
+<span class="sd">        SimulationFactory Object which carries the 3 required</span>
+<span class="sd">        OpenMM Simulation objects (MD, NCMC, ALCH) required to run BLUES.</span>
+<span class="sd">    config : dict</span>
+<span class="sd">        Dictionary of parameters for configuring the OpenMM Simulations</span>
+<span class="sd">        If None, will search for configuration parameters on the `simulations`</span>
+<span class="sd">        object.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Create our SimulationFactory object and run `BLUESSimulation`</span>
+
+<span class="sd">    &gt;&gt;&gt; sim_cfg = { &#39;platform&#39;: &#39;OpenCL&#39;,</span>
+<span class="sd">                    &#39;properties&#39; : { &#39;OpenCLPrecision&#39;: &#39;single&#39;,</span>
+<span class="sd">                                     &#39;OpenCLDeviceIndex&#39; : 2},</span>
+<span class="sd">                    &#39;nprop&#39; : 1,</span>
+<span class="sd">                    &#39;propLambda&#39; : 0.3,</span>
+<span class="sd">                    &#39;dt&#39; : 0.001 * unit.picoseconds,</span>
+<span class="sd">                    &#39;friction&#39; : 1 * 1/unit.picoseconds,</span>
+<span class="sd">                    &#39;temperature&#39; : 100 * unit.kelvin,</span>
+<span class="sd">                    &#39;nIter&#39;: 1,</span>
+<span class="sd">                    &#39;nstepsMD&#39;: 10,</span>
+<span class="sd">                    &#39;nstepsNC&#39;: 10,}</span>
+<span class="sd">    &gt;&gt;&gt; simulations = SimulationFactory(systems, ligand_mover, sim_cfg)</span>
+<span class="sd">    &gt;&gt;&gt; blues = BLUESSimulation(simulations)</span>
+<span class="sd">    &gt;&gt;&gt; blues.run()</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulations</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_move_engine</span> <span class="o">=</span> <span class="n">simulations</span><span class="o">.</span><span class="n">_move_engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span> <span class="o">=</span> <span class="n">simulations</span><span class="o">.</span><span class="n">md</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alch_sim</span> <span class="o">=</span> <span class="n">simulations</span><span class="o">.</span><span class="n">alch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span> <span class="o">=</span> <span class="n">simulations</span><span class="o">.</span><span class="n">ncmc</span>
+
+        <span class="c1"># Check if configuration has been specified in `SimulationFactory` object</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">simulations</span><span class="p">,</span> <span class="s1">&#39;config&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="n">simulations</span><span class="o">.</span><span class="n">config</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1">#Otherwise take specified config</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_printSimulationTiming</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">accept</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reject</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">acceptRatio</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentIter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1">#Dict to keep track of each simulation state before/after each iteration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;md&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;state0&#39;</span><span class="p">:</span> <span class="p">{},</span> <span class="s1">&#39;state1&#39;</span><span class="p">:</span> <span class="p">{}},</span> <span class="s1">&#39;ncmc&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;state0&#39;</span><span class="p">:</span> <span class="p">{},</span> <span class="s1">&#39;state1&#39;</span><span class="p">:</span> <span class="p">{}}}</span>
+
+        <span class="c1">#specify nc integrator variables to report in verbose output</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_integrator_keys_</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lambda&#39;</span><span class="p">,</span> <span class="s1">&#39;shadow_work&#39;</span><span class="p">,</span> <span class="s1">&#39;protocol_work&#39;</span><span class="p">,</span> <span class="s1">&#39;Eold&#39;</span><span class="p">,</span> <span class="s1">&#39;Enew&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state_keys</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;getPositions&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;getVelocities&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;getForces&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s1">&#39;getEnergy&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;getParameters&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;enforcePeriodicBox&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="BLUESSimulation.getStateFromContext"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation.getStateFromContext">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">getStateFromContext</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">state_keys</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gets the State information from the given context and</span>
+<span class="sd">        list of state_keys to query it with.</span>
+
+<span class="sd">        Returns the state data as a dict.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        context : openmm.Context</span>
+<span class="sd">            Context of the OpenMM Simulation to query.</span>
+<span class="sd">        state_keys : list</span>
+<span class="sd">            Default: [ positions, velocities, potential_energy, kinetic_energy ]</span>
+<span class="sd">            A list that defines what information to get from the context State.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        stateinfo : dict</span>
+<span class="sd">            Current positions, velocities, energies and box vectors of the context.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">stateinfo</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span><span class="o">**</span><span class="n">state_keys</span><span class="p">)</span>
+        <span class="n">stateinfo</span><span class="p">[</span><span class="s1">&#39;positions&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPositions</span><span class="p">(</span><span class="n">asNumpy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">stateinfo</span><span class="p">[</span><span class="s1">&#39;velocities&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getVelocities</span><span class="p">(</span><span class="n">asNumpy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">stateinfo</span><span class="p">[</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span>
+        <span class="n">stateinfo</span><span class="p">[</span><span class="s1">&#39;kinetic_energy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getKineticEnergy</span><span class="p">()</span>
+        <span class="n">stateinfo</span><span class="p">[</span><span class="s1">&#39;box_vectors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPeriodicBoxVectors</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">stateinfo</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation.getIntegratorInfo"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation.getIntegratorInfo">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">getIntegratorInfo</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span>
+                          <span class="n">ncmc_integrator</span><span class="p">,</span>
+                          <span class="n">integrator_keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;lambda&#39;</span><span class="p">,</span> <span class="s1">&#39;shadow_work&#39;</span><span class="p">,</span> <span class="s1">&#39;protocol_work&#39;</span><span class="p">,</span> <span class="s1">&#39;Eold&#39;</span><span class="p">,</span> <span class="s1">&#39;Enew&#39;</span><span class="p">]):</span>
+        <span class="sd">&quot;&quot;&quot;Returns a dict of alchemical/ncmc-swtiching data from querying the the NCMC</span>
+<span class="sd">        integrator.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ncmc_integrator : openmm.Context.Integrator</span>
+<span class="sd">            The integrator from the NCMC Context</span>
+<span class="sd">        integrator_keys : list</span>
+<span class="sd">            list containing strings of the values to get from the integrator.</span>
+<span class="sd">            Default = [&#39;lambda&#39;, &#39;shadow_work&#39;, &#39;protocol_work&#39;, &#39;Eold&#39;, &#39;Enew&#39;,&#39;Epert&#39;]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        integrator_info : dict</span>
+<span class="sd">            Work values and energies from the NCMC integrator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">integrator_info</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">integrator_keys</span><span class="p">:</span>
+            <span class="n">integrator_info</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">ncmc_integrator</span><span class="o">.</span><span class="n">getGlobalVariableByName</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">integrator_info</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation.setContextFromState"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation.setContextFromState">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">setContextFromState</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">box</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">positions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">velocities</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update a given Context from the given State.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        context : openmm.Context</span>
+<span class="sd">            The Context to be updated from the given State.</span>
+<span class="sd">        state : openmm.State</span>
+<span class="sd">            The current state (box_vectors, positions, velocities) of the</span>
+<span class="sd">            Simulation to update the given context.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        context : openmm.Context</span>
+<span class="sd">            The updated Context whose box_vectors, positions, and velocities</span>
+<span class="sd">            have been updated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Replace ncmc data from the md context</span>
+        <span class="k">if</span> <span class="n">box</span><span class="p">:</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">setPeriodicBoxVectors</span><span class="p">(</span><span class="o">*</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;box_vectors&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">positions</span><span class="p">:</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">setPositions</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;positions&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">velocities</span><span class="p">:</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">setVelocities</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;velocities&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">context</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._printSimulationTiming"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._printSimulationTiming">[docs]</a>    <span class="k">def</span> <span class="nf">_printSimulationTiming</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Prints the simulation timing and related information.&quot;&quot;&quot;</span>
+
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;dt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">picoseconds</span><span class="p">)</span>
+        <span class="n">nIter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nIter&#39;</span><span class="p">]</span>
+        <span class="n">nprop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nprop&#39;</span><span class="p">]</span>
+        <span class="n">propLambda</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;propLambda&#39;</span><span class="p">]</span>
+        <span class="n">propSteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;propSteps&#39;</span><span class="p">]</span>
+        <span class="n">nstepsNC</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nstepsNC&#39;</span><span class="p">]</span>
+        <span class="n">nstepsMD</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nstepsMD&#39;</span><span class="p">]</span>
+
+        <span class="n">force_eval</span> <span class="o">=</span> <span class="n">nIter</span> <span class="o">*</span> <span class="p">(</span><span class="n">propSteps</span> <span class="o">+</span> <span class="n">nstepsMD</span><span class="p">)</span>
+        <span class="n">time_ncmc_iter</span> <span class="o">=</span> <span class="n">propSteps</span> <span class="o">*</span> <span class="n">dt</span>
+        <span class="n">time_ncmc_total</span> <span class="o">=</span> <span class="n">time_ncmc_iter</span> <span class="o">*</span> <span class="n">nIter</span>
+        <span class="n">time_md_iter</span> <span class="o">=</span> <span class="n">nstepsMD</span> <span class="o">*</span> <span class="n">dt</span>
+        <span class="n">time_md_total</span> <span class="o">=</span> <span class="n">time_md_iter</span> <span class="o">*</span> <span class="n">nIter</span>
+        <span class="n">time_iter</span> <span class="o">=</span> <span class="n">time_ncmc_iter</span> <span class="o">+</span> <span class="n">time_md_iter</span>
+        <span class="n">time_total</span> <span class="o">=</span> <span class="n">time_iter</span> <span class="o">*</span> <span class="n">nIter</span>
+
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Total BLUES Simulation Time = </span><span class="si">%s</span><span class="s1"> ps (</span><span class="si">%s</span><span class="s1"> ps/Iter)</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time_total</span><span class="p">,</span> <span class="n">time_iter</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;Total Force Evaluations = </span><span class="si">%s</span><span class="s1"> </span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">force_eval</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;Total NCMC time = </span><span class="si">%s</span><span class="s1"> ps (</span><span class="si">%s</span><span class="s1"> ps/iter)</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time_ncmc_total</span><span class="p">,</span> <span class="n">time_ncmc_iter</span><span class="p">)</span>
+
+        <span class="c1"># Calculate number of lambda steps inside/outside region with extra propgation steps</span>
+        <span class="n">steps_in_prop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nprop</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">propLambda</span> <span class="o">*</span> <span class="n">nstepsNC</span><span class="p">)))</span>
+        <span class="n">steps_out_prop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="mf">0.5</span> <span class="o">-</span> <span class="n">propLambda</span><span class="p">)</span> <span class="o">*</span> <span class="n">nstepsNC</span><span class="p">)))</span>
+
+        <span class="n">prop_lambda_window</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">_integrator</span><span class="o">.</span><span class="n">_prop_lambda</span>
+        <span class="c1"># prop_range = round(prop_lambda_window[1] - prop_lambda_window[0], 4)</span>
+        <span class="k">if</span> <span class="n">propSteps</span> <span class="o">!=</span> <span class="n">nstepsNC</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1"> lambda switching steps within </span><span class="si">%s</span><span class="s1"> total propagation steps.</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nstepsNC</span><span class="p">,</span> <span class="n">propSteps</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Extra propgation steps between lambda [</span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">]</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prop_lambda_window</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                                                           <span class="n">prop_lambda_window</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Lambda: 0.0 -&gt; </span><span class="si">%s</span><span class="s1"> = </span><span class="si">%s</span><span class="s1"> propagation steps</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prop_lambda_window</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">steps_out_prop</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Lambda: </span><span class="si">%s</span><span class="s1"> -&gt; </span><span class="si">%s</span><span class="s1"> = </span><span class="si">%s</span><span class="s1"> propagation steps</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prop_lambda_window</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">prop_lambda_window</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                                                    <span class="n">steps_in_prop</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Lambda: </span><span class="si">%s</span><span class="s1"> -&gt; 1.0 = </span><span class="si">%s</span><span class="s1"> propagation steps</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prop_lambda_window</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">steps_out_prop</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;Total MD time = </span><span class="si">%s</span><span class="s1"> ps (</span><span class="si">%s</span><span class="s1"> ps/iter)</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time_md_total</span><span class="p">,</span> <span class="n">time_md_iter</span><span class="p">)</span>
+
+        <span class="c1">#Get trajectory frame interval timing for BLUES simulation</span>
+        <span class="k">if</span> <span class="s1">&#39;md_trajectory_interval&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">frame_iter</span> <span class="o">=</span> <span class="n">nstepsMD</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;md_trajectory_interval&#39;</span><span class="p">]</span>
+            <span class="n">timetraj_frame</span> <span class="o">=</span> <span class="p">(</span><span class="n">time_ncmc_iter</span> <span class="o">+</span> <span class="n">time_md_iter</span><span class="p">)</span> <span class="o">/</span> <span class="n">frame_iter</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;Trajectory Interval = </span><span class="si">%s</span><span class="s1"> ps/frame (</span><span class="si">%s</span><span class="s1"> frames/iter)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">timetraj_frame</span><span class="p">,</span> <span class="n">frame_iter</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._setStateTable"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._setStateTable">[docs]</a>    <span class="k">def</span> <span class="nf">_setStateTable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simkey</span><span class="p">,</span> <span class="n">stateidx</span><span class="p">,</span> <span class="n">stateinfo</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Updates `stateTable` (dict) containing:  Positions, Velocities, Potential/Kinetic energies</span>
+<span class="sd">        of the state before and after a NCMC step or iteration.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simkey : str (key: &#39;md&#39;, &#39;ncmc&#39;, &#39;alch&#39;)</span>
+<span class="sd">            Key corresponding to the simulation.</span>
+<span class="sd">        stateidx : str (key: &#39;state0&#39; or &#39;state1&#39;)</span>
+<span class="sd">            Key corresponding to the state information being stored.</span>
+<span class="sd">        stateinfo : dict</span>
+<span class="sd">            Dictionary containing the State information.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="n">simkey</span><span class="p">][</span><span class="n">stateidx</span><span class="p">]</span> <span class="o">=</span> <span class="n">stateinfo</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._syncStatesMDtoNCMC"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._syncStatesMDtoNCMC">[docs]</a>    <span class="k">def</span> <span class="nf">_syncStatesMDtoNCMC</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Retrieves data on the current State of the MD context to</span>
+<span class="sd">        replace the box vectors, positions, and velocties in the NCMC context.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Retrieve MD state from previous iteration</span>
+        <span class="n">md_state0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getStateFromContext</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_keys</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setStateTable</span><span class="p">(</span><span class="s1">&#39;md&#39;</span><span class="p">,</span> <span class="s1">&#39;state0&#39;</span><span class="p">,</span> <span class="n">md_state0</span><span class="p">)</span>
+
+        <span class="c1"># Sync MD state to the NCMC context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setContextFromState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="n">md_state0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._stepNCMC"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._stepNCMC">[docs]</a>    <span class="k">def</span> <span class="nf">_stepNCMC</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nstepsNC</span><span class="p">,</span> <span class="n">moveStep</span><span class="p">,</span> <span class="n">move_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Advance the NCMC simulation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        nstepsNC : int</span>
+<span class="sd">            The number of NCMC switching steps to advance by.</span>
+<span class="sd">        moveStep : int</span>
+<span class="sd">            The step number to perform the chosen move, which should be half</span>
+<span class="sd">            the number of nstepsNC.</span>
+<span class="sd">        move_engine : blues.moves.MoveEngine</span>
+<span class="sd">            The object that executes the chosen move.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Advancing </span><span class="si">%i</span><span class="s1"> NCMC switching steps...&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nstepsNC</span><span class="p">))</span>
+        <span class="c1"># Retrieve NCMC state before proposed move</span>
+        <span class="n">ncmc_state0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getStateFromContext</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_keys</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setStateTable</span><span class="p">(</span><span class="s1">&#39;ncmc&#39;</span><span class="p">,</span> <span class="s1">&#39;state0&#39;</span><span class="p">,</span> <span class="n">ncmc_state0</span><span class="p">)</span>
+
+        <span class="c1">#choose a move to be performed according to move probabilities</span>
+        <span class="c1">#TODO: will have to change to work with multiple alch region</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">move_engine</span><span class="p">:</span> <span class="n">move_engine</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_move_engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">currentIter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">currentIter</span>
+        <span class="n">move_engine</span><span class="o">.</span><span class="n">selectMove</span><span class="p">()</span>
+
+        <span class="n">lastStep</span> <span class="o">=</span> <span class="n">nstepsNC</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">nstepsNC</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1">#Attempt anything related to the move before protocol is performed</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">step</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">move_engine</span><span class="o">.</span><span class="n">selected_move</span><span class="o">.</span><span class="n">beforeMove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
+
+                <span class="c1"># Attempt selected MoveEngine Move at the halfway point</span>
+                <span class="c1">#to ensure protocol is symmetric</span>
+                <span class="k">if</span> <span class="n">step</span> <span class="o">==</span> <span class="n">moveStep</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s1">&#39;report&#39;</span><span class="p">):</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="n">logger</span><span class="o">.</span><span class="n">report</span>
+                    <span class="c1">#Do move</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Performing </span><span class="si">%s</span><span class="s1">...&#39;</span> <span class="o">%</span> <span class="n">move_engine</span><span class="o">.</span><span class="n">move_name</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">move_engine</span><span class="o">.</span><span class="n">runEngine</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
+
+                <span class="c1"># Do 1 NCMC step with the integrator</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="c1">#Attempt anything related to the move after protocol is performed</span>
+                <span class="k">if</span> <span class="n">step</span> <span class="o">==</span> <span class="n">lastStep</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">move_engine</span><span class="o">.</span><span class="n">selected_move</span><span class="o">.</span><span class="n">afterMove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="n">move_engine</span><span class="o">.</span><span class="n">selected_move</span><span class="o">.</span><span class="n">_error</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
+                <span class="k">break</span>
+
+        <span class="c1"># ncmc_state1 stores the state AFTER a proposed move.</span>
+        <span class="n">ncmc_state1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getStateFromContext</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_keys</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setStateTable</span><span class="p">(</span><span class="s1">&#39;ncmc&#39;</span><span class="p">,</span> <span class="s1">&#39;state1&#39;</span><span class="p">,</span> <span class="n">ncmc_state1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._computeAlchemicalCorrection"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._computeAlchemicalCorrection">[docs]</a>    <span class="k">def</span> <span class="nf">_computeAlchemicalCorrection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Computes the alchemical correction term from switching between the NCMC</span>
+<span class="sd">        and MD potentials.&quot;&quot;&quot;</span>
+        <span class="c1"># Retrieve the MD/NCMC state before the proposed move.</span>
+        <span class="n">md_state0_PE</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;md&#39;</span><span class="p">][</span><span class="s1">&#39;state0&#39;</span><span class="p">][</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">]</span>
+        <span class="n">ncmc_state0_PE</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;ncmc&#39;</span><span class="p">][</span><span class="s1">&#39;state0&#39;</span><span class="p">][</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Retreive the NCMC state after the proposed move.</span>
+        <span class="n">ncmc_state1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;ncmc&#39;</span><span class="p">][</span><span class="s1">&#39;state1&#39;</span><span class="p">]</span>
+        <span class="n">ncmc_state1_PE</span> <span class="o">=</span> <span class="n">ncmc_state1</span><span class="p">[</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Set the box_vectors and positions in the alchemical simulation to after the proposed move.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alch_sim</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setContextFromState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_alch_sim</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="n">ncmc_state1</span><span class="p">,</span> <span class="n">velocities</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Retrieve potential_energy for alch correction</span>
+        <span class="n">alch_PE</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alch_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span><span class="n">getEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span>
+        <span class="n">correction_factor</span> <span class="o">=</span> <span class="p">(</span><span class="n">ncmc_state0_PE</span> <span class="o">-</span> <span class="n">md_state0_PE</span> <span class="o">+</span> <span class="n">alch_PE</span> <span class="o">-</span> <span class="n">ncmc_state1_PE</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="o">-</span><span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">_integrator</span><span class="o">.</span><span class="n">kT</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">correction_factor</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._acceptRejectMove"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._acceptRejectMove">[docs]</a>    <span class="k">def</span> <span class="nf">_acceptRejectMove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_move</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Choose to accept or reject the proposed move based</span>
+<span class="sd">        on the acceptance criterion.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        write_move : bool, default=False</span>
+<span class="sd">            If True, writes the proposed NCMC move to a PDB file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">work_ncmc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">_integrator</span><span class="o">.</span><span class="n">getLogAcceptanceProbability</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
+        <span class="n">randnum</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
+
+        <span class="c1"># Compute correction if work_ncmc is not NaN</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">work_ncmc</span><span class="p">):</span>
+            <span class="n">correction_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_computeAlchemicalCorrection</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;NCMCLogAcceptanceProbability = </span><span class="si">%.6f</span><span class="s1"> + Alchemical Correction = </span><span class="si">%.6f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">work_ncmc</span><span class="p">,</span> <span class="n">correction_factor</span><span class="p">))</span>
+            <span class="n">work_ncmc</span> <span class="o">=</span> <span class="n">work_ncmc</span> <span class="o">+</span> <span class="n">correction_factor</span>
+
+        <span class="k">if</span> <span class="n">work_ncmc</span> <span class="o">&gt;</span> <span class="n">randnum</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">accept</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;NCMC MOVE ACCEPTED: work_ncmc </span><span class="si">{}</span><span class="s1"> &gt; randnum </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">work_ncmc</span><span class="p">,</span> <span class="n">randnum</span><span class="p">))</span>
+
+            <span class="c1"># If accept move, sync NCMC state to MD context</span>
+            <span class="n">ncmc_state1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;ncmc&#39;</span><span class="p">][</span><span class="s1">&#39;state1&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setContextFromState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="p">,</span> <span class="n">ncmc_state1</span><span class="p">,</span> <span class="n">velocities</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">write_move</span><span class="p">:</span>
+                <span class="n">utils</span><span class="o">.</span><span class="n">saveSimulationFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">acc-it</span><span class="si">{}</span><span class="s1">.pdb&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;outfname&#39;</span><span class="p">],</span>
+                                                                                <span class="bp">self</span><span class="o">.</span><span class="n">currentIter</span><span class="p">))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reject</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;NCMC MOVE REJECTED: work_ncmc </span><span class="si">{}</span><span class="s1"> &lt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">work_ncmc</span><span class="p">,</span> <span class="n">randnum</span><span class="p">))</span>
+
+            <span class="c1"># If reject move, do nothing,</span>
+            <span class="c1"># NCMC simulation be updated from MD Simulation next iteration.</span>
+
+            <span class="c1"># Potential energy should be from last MD step in the previous iteration</span>
+            <span class="n">md_state0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;md&#39;</span><span class="p">][</span><span class="s1">&#39;state0&#39;</span><span class="p">]</span>
+            <span class="n">md_PE</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span><span class="n">getEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">md_state0</span><span class="p">[</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">_value</span><span class="p">,</span> <span class="n">md_PE</span><span class="o">.</span><span class="n">_value</span><span class="p">,</span> <span class="n">rel_tol</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;1e-</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">rtol</span><span class="p">)):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                    <span class="s1">&#39;Last MD potential energy </span><span class="si">%s</span><span class="s1"> != Current MD potential energy </span><span class="si">%s</span><span class="s1">. Potential energy should match the prior state.&#39;</span>
+                    <span class="o">%</span> <span class="p">(</span><span class="n">md_state0</span><span class="p">[</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">],</span> <span class="n">md_PE</span><span class="p">))</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._resetSimulations"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._resetSimulations">[docs]</a>    <span class="k">def</span> <span class="nf">_resetSimulations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;At the end of each iteration:</span>
+
+<span class="sd">        1. Reset the step number in the NCMC context/integrator</span>
+<span class="sd">        2. Set the velocities to random values chosen from a Boltzmann distribution at a given `temperature`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            The target temperature for the simulation.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">temperature</span><span class="p">:</span>
+            <span class="n">temperature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">_integrator</span><span class="o">.</span><span class="n">getTemperature</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">_integrator</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+        <span class="c1">#Reinitialize velocities, preserving detailed balance?</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setVelocitiesToTemperature</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation._stepMD"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation._stepMD">[docs]</a>    <span class="k">def</span> <span class="nf">_stepMD</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nstepsMD</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Advance the MD simulation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        nstepsMD : int</span>
+<span class="sd">            The number of steps to advance the MD simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Advancing </span><span class="si">%i</span><span class="s1"> MD steps...&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nstepsMD</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">currentIter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">currentIter</span>
+        <span class="c1"># Retrieve MD state before proposed move</span>
+        <span class="c1"># Helps determine if previous iteration placed ligand poorly</span>
+        <span class="n">md_state0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;md&#39;</span><span class="p">][</span><span class="s1">&#39;state0&#39;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">md_step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">nstepsMD</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;potential energy before NCMC: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">md_state0</span><span class="p">[</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">])</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;kinetic energy before NCMC: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">md_state0</span><span class="p">[</span><span class="s1">&#39;kinetic_energy&#39;</span><span class="p">])</span>
+                <span class="c1">#Write out broken frame</span>
+                <span class="n">utils</span><span class="o">.</span><span class="n">saveSimulationFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="p">,</span>
+                                          <span class="s1">&#39;MD-fail-it</span><span class="si">%s</span><span class="s1">-md</span><span class="si">%i</span><span class="s1">.pdb&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currentIter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">currentStep</span><span class="p">))</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BLUESSimulation.run"><a class="viewcode-back" href="../../module_doc.html#blues.simulation.BLUESSimulation.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nIter</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nstepsNC</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">moveStep</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nstepsMD</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">write_move</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Executes the BLUES engine to iterate over the actions:</span>
+<span class="sd">        Perform NCMC simulation, perform proposed move, accepts/rejects move,</span>
+<span class="sd">        then performs the MD simulation from the NCMC state, niter number of times.</span>
+<span class="sd">        **Note:** If the parameters are not given explicitly, will look for the parameters</span>
+<span class="sd">        in the provided configuration on the `SimulationFactory` object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        nIter : int, default = None</span>
+<span class="sd">            Number of iterations of NCMC+MD to perform.</span>
+<span class="sd">        nstepsNC : int</span>
+<span class="sd">            The number of NCMC switching steps to advance by.</span>
+<span class="sd">        moveStep : int</span>
+<span class="sd">            The step number to perform the chosen move, which should be half</span>
+<span class="sd">            the number of nstepsNC.</span>
+<span class="sd">        nstepsMD : int</span>
+<span class="sd">            The number of steps to advance the MD simulation.</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            The target temperature for the simulation.</span>
+<span class="sd">        write_move : bool, default=False</span>
+<span class="sd">            If True, writes the proposed NCMC move to a PDB file.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">nIter</span><span class="p">:</span> <span class="n">nIter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nIter&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">nstepsNC</span><span class="p">:</span> <span class="n">nstepsNC</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nstepsNC&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">nstepsMD</span><span class="p">:</span> <span class="n">nstepsMD</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nstepsMD&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">moveStep</span><span class="p">:</span> <span class="n">moveStep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;moveStep&#39;</span><span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Running </span><span class="si">%i</span><span class="s1"> BLUES iterations...&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nIter</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">N</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">nIter</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">currentIter</span> <span class="o">=</span> <span class="n">N</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;BLUES Iteration: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">N</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_syncStatesMDtoNCMC</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stepNCMC</span><span class="p">(</span><span class="n">nstepsNC</span><span class="p">,</span> <span class="n">moveStep</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acceptRejectMove</span><span class="p">(</span><span class="n">write_move</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resetSimulations</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stepMD</span><span class="p">(</span><span class="n">nstepsMD</span><span class="p">)</span>
+
+        <span class="c1"># END OF NITER</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">acceptRatio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">accept</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">nIter</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Acceptance Ratio: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">acceptRatio</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;nIter: </span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">nIter</span><span class="p">)</span></div></div>
+
+
+<span class="k">class</span> <span class="nc">MonteCarloSimulation</span><span class="p">(</span><span class="n">BLUESSimulation</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Simulation class provides the functions that perform the MonteCarlo run.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        simulations : SimulationFactory</span>
+<span class="sd">            Contains 3 required OpenMM Simulationobjects</span>
+<span class="sd">        config : dict, default = None</span>
+<span class="sd">            Dict with configuration info.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulations</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MonteCarloSimulation</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">simulations</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_stepMC_</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Function that performs the MC simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1">#choose a move to be performed according to move probabilities</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_move_engine</span><span class="o">.</span><span class="n">selectMove</span><span class="p">()</span>
+        <span class="c1">#change coordinates according to Moves in MoveEngine</span>
+        <span class="n">new_context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_move_engine</span><span class="o">.</span><span class="n">runEngine</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
+        <span class="n">md_state1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getStateFromContext</span><span class="p">(</span><span class="n">new_context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_keys</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setStateTable</span><span class="p">(</span><span class="s1">&#39;md&#39;</span><span class="p">,</span> <span class="s1">&#39;state1&#39;</span><span class="p">,</span> <span class="n">md_state1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_acceptRejectMove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Function that chooses to accept or reject the proposed move.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">md_state0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;md&#39;</span><span class="p">][</span><span class="s1">&#39;state0&#39;</span><span class="p">]</span>
+        <span class="n">md_state1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stateTable</span><span class="p">[</span><span class="s1">&#39;md&#39;</span><span class="p">][</span><span class="s1">&#39;state1&#39;</span><span class="p">]</span>
+        <span class="n">work_mc</span> <span class="o">=</span> <span class="p">(</span><span class="n">md_state1</span><span class="p">[</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">md_state0</span><span class="p">[</span><span class="s1">&#39;potential_energy&#39;</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="o">-</span><span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncmc_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">_integrator</span><span class="o">.</span><span class="n">kT</span><span class="p">)</span>
+        <span class="n">randnum</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">work_mc</span> <span class="o">&gt;</span> <span class="n">randnum</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">accept</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;MC MOVE ACCEPTED: work_mc </span><span class="si">{}</span><span class="s1"> &gt; randnum </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">work_mc</span><span class="p">,</span> <span class="n">randnum</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setPositions</span><span class="p">(</span><span class="n">md_state1</span><span class="p">[</span><span class="s1">&#39;positions&#39;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reject</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;MC MOVE REJECTED: work_mc </span><span class="si">{}</span><span class="s1"> &lt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">work_mc</span><span class="p">,</span> <span class="n">randnum</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setPositions</span><span class="p">(</span><span class="n">md_state0</span><span class="p">[</span><span class="s1">&#39;positions&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_md_sim</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setVelocitiesToTemperature</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nIter</span><span class="p">,</span> <span class="n">mc_per_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">nstepsMD</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">write_move</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Function that runs the BLUES engine to iterate over the actions:</span>
+<span class="sd">        perform proposed move, accepts/rejects move,</span>
+<span class="sd">        then performs the MD simulation from the accepted or rejected state.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        nIter : None or int, optional default = None</span>
+<span class="sd">            The number of iterations to perform. If None, then</span>
+<span class="sd">            uses the nIter specified in the opt dictionary when</span>
+<span class="sd">            the Simulation class was created.</span>
+<span class="sd">        mc_per_iter : int, default = 1</span>
+<span class="sd">            Number of Monte Carlo iterations.</span>
+<span class="sd">        nstepsMD : int, default = None</span>
+<span class="sd">            Number of steps the MD simulation will advance</span>
+<span class="sd">        write_move : bool, default = False</span>
+<span class="sd">            Writes the move if True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">nIter</span><span class="p">:</span> <span class="n">nIter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nIter&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">nstepsMD</span><span class="p">:</span> <span class="n">nstepsMD</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;nstepsMD&#39;</span><span class="p">]</span>
+        <span class="c1">#controls how many mc moves are performed during each iteration</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mc_per_iter</span><span class="p">:</span> <span class="n">mc_per_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s1">&#39;mc_per_iter&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_syncStatesMDtoNCMC</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">N</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nIter</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">currentIter</span> <span class="o">=</span> <span class="n">N</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;MonteCarlo Iteration: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">N</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mc_per_iter</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_syncStatesMDtoNCMC</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stepMC_</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_acceptRejectMove</span><span class="p">(</span><span class="n">write_move</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stepMD</span><span class="p">(</span><span class="n">nstepsMD</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Samuel C. Gill, Nathan M. Lim, Kalistyn Burley, David L. Mobley.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.2.2',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
