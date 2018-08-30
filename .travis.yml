@@ -21,17 +21,25 @@ matrix:
     # Extra includes for OSX since python language is not available by default on OSX
     - os: osx
       language: generic
-      env: CONDA_PY=35
+      env:
+          - CONDA_PY="35"
+          - PYTHON_VER="3.5"
     - os: osx
       language: generic
-      env: CONDA_PY=36
+      env:
+          - CONDA_PY="36"
+          - PYTHON_VER="3.6"
 
     - os: linux
       python: 3.5
-      env: CONDA_PY=35
+      env:
+          - CONDA_PY="35"
+          - PYTHON_VER="3.5"
     - os: linux
       python: 3.6
-      env: CONDA_PY=36
+      env:
+          - CONDA_PY="36"
+          - PYTHON_VER="3.6"
 
 
 before_install:
@@ -59,8 +67,8 @@ before_install:
 
 install:
   # Create test environment for package
-  - echo ${TRAVIS_PYTHON_VERSION}
-  - conda create -n ${CONDA_ENV} python=${TRAVIS_PYTHON_VERSION} pip pytest pytest-cov conda-verify
+  - echo ${PYTHON_VER} ${CONDA_PY}
+  - conda create -n ${CONDA_ENV} python=${PYTHON_VER} pip pytest pytest-cov conda-verify
   - conda activate ${CONDA_ENV}
 
     # Install pip only modules
@@ -74,7 +82,7 @@ install:
   - conda info numexpr=2.6.6
 
   # Build and install package
-  - conda build -q --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe
+  - conda build -q --python=${PYTHON_VER} devtools/conda-recipe
   - conda info blues
   - conda install --use-local -q ${PKG_NAME}
   - conda list
@@ -90,7 +98,7 @@ before_deploy:
   # Set up git user name and tag this commit
   #- git config --local user.name ${USERNAME}
   #- git config --local user.email ${USERNAME}@gmail.com
-  - export CONDA_BLD_FILE=`conda build --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe --output`
+  - export CONDA_BLD_FILE=`conda build --python=${PYTHON_VER} devtools/conda-recipe --output`
   #- git tag "$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)"
 
 deploy:
