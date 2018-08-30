@@ -67,66 +67,65 @@ def find_package_data(data_root, package_root):
     return files
 
 
-def check_dependencies():
-    from distutils.version import StrictVersion
-    found_openmm = True
-    found_openmmtools = True
-    found_openmm_720_or_earlier = True
-    found_numpy = True
-
-    try:
-        from simtk import openmm
-        openmm_version = StrictVersion(openmm.Platform.getOpenMMVersion())
-        if openmm_version < StrictVersion('7.2.0'):
-            found_openmm_720_or_earlier = False
-    except ImportError as err:
-        found_openmm = False
-
-    try:
-        import numpy
-    except:
-        found_numpy = False
-
-    try:
-        import openmmtools
-    except:
-        found_openmmtools = False
-
-    msg = None
-    bar = ('-' * 70) + "\n" + ('-' * 70)
-    if found_openmm:
-        if not found_openmm_720_or_earlier:
-            msg = [
-                bar,
-                '[Unmet Dependency] BLUES requires OpenMM version > 7.2.0. You have version %s.' % openmm_version, bar
-            ]
-    else:
-        msg = [
-            bar,
-            '[Unmet Dependency] BLUES requires the OpenMM python package. Please install with `conda install -c omnia openmm=7.2.2` ',
-            bar
-        ]
-
-    if not found_numpy:
-        msg = [
-            bar,
-            '[Unmet Dependency] BLUES requires the numpy python package. Refer to <http://www.scipy.org/scipylib/download.html> for numpy installation instructions.',
-            bar
-        ]
-
-    if not found_openmmtools:
-        msg = [
-            bar,
-            '[Unmet Dependency] BLUES requires the openmmtools python package. Please install with `conda install -c omnia openmmtools=0.15.0`',
-            bar
-        ]
-
-    if msg is not None:
-        import textwrap
-        print()
-        print(os.linesep.join([line for e in msg for line in textwrap.wrap(e)]), file=sys.stderr)
-        #print('\n'.join(list(textwrap.wrap(e) for e in msg)))
-
+# def check_dependencies():
+#     from distutils.version import StrictVersion
+#     found_openmm = True
+#     found_openmmtools = True
+#     found_openmm_720_or_earlier = True
+#     found_numpy = True
+#
+#     try:
+#         from simtk import openmm
+#         openmm_version = StrictVersion(openmm.Platform.getOpenMMVersion())
+#         if openmm_version < StrictVersion('7.2.0'):
+#             found_openmm_720_or_earlier = False
+#     except ImportError as err:
+#         found_openmm = False
+#
+#     try:
+#         import numpy
+#     except:
+#         found_numpy = False
+#
+#     try:
+#         import openmmtools
+#     except:
+#         found_openmmtools = False
+#
+#     msg = None
+#     bar = ('-' * 70) + "\n" + ('-' * 70)
+#     if found_openmm:
+#         if not found_openmm_720_or_earlier:
+#             msg = [
+#                 bar,
+#                 '[Unmet Dependency] BLUES requires OpenMM version > 7.2.0. You have version %s.' % openmm_version, bar
+#             ]
+#     else:
+#         msg = [
+#             bar,
+#             '[Unmet Dependency] BLUES requires the OpenMM python package. Please install with `conda install -c omnia openmm=7.2.2` ',
+#             bar
+#         ]
+#
+#     if not found_numpy:
+#         msg = [
+#             bar,
+#             '[Unmet Dependency] BLUES requires the numpy python package. Refer to <http://www.scipy.org/scipylib/download.html> for numpy installation instructions.',
+#             bar
+#         ]
+#
+#     if not found_openmmtools:
+#         msg = [
+#             bar,
+#             '[Unmet Dependency] BLUES requires the openmmtools python package. Please install with `conda install -c omnia openmmtools=0.15.0`',
+#             bar
+#         ]
+#
+#     if msg is not None:
+#         import textwrap
+#         print()
+#         print(os.linesep.join([line for e in msg for line in textwrap.wrap(e)]), file=sys.stderr)
+#         #print('\n'.join(list(textwrap.wrap(e) for e in msg)))
 
 ################################################################################
 # SETUP
