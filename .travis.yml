@@ -15,8 +15,6 @@ env:
     - RELEASE=false
     - CONDA_ENV="${PKG_NAME}-${TRAVIS_OS_NAME}"
     - OE_LICENSE="$HOME/oe_license.txt"
-    - OPENEYE_CHANNEL="-i https://pypi.anaconda.org/openeye/channel/main/simple"
-    - OPENEYE_BETA="https://pypi.anaconda.org/openeye/label/beta/simple"
 
 matrix:
   include:
@@ -45,7 +43,7 @@ before_install:
   - python -V
 
   # Unpack encrypted OpenEye license file
-  - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_b87d53775ae1_key -iv $encrypted_b87d53775ae1_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
+  - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_7751cf1f2f9d_key -iv $encrypted_7751cf1f2f9d_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
   - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
 
   - conda update --yes -q conda
@@ -69,9 +67,8 @@ install:
 
   # Install OpenEye dependencies
   #  Use beta version for partial bond orders
-  - pip install -i ${OPENEYE_BETA} openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-  - conda install --yes -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
-  - conda install -q --yes -c openeye/label/Orion -c omnia oeommtools packmol
+  - conda install -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
+  - conda install -q -c openeye/label/Orion -c omnia oeommtools packmol
 
   # Build and install package
   - conda build -q --python=${TRAVIS_PYTHON_VERSION} devtools/conda-recipe
