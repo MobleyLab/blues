@@ -1,4 +1,7 @@
+# .readthedocs.yml
+
 name: blues
+
 channels:
   - omnia
   - openeye
@@ -14,7 +17,7 @@ dependencies:
   - openmmtools >=0.15.0
   - mdtraj
   - openmm >=7.2.2
-  - parmed 
+  - parmed
   - netcdf4
   - hdf5
   - pyyaml

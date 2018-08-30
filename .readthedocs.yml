@@ -1,5 +1,10 @@
+# .readthedocs.yml
 conda:
     file: docs/environment.yml
 
 python:
-    setup_py_install: true
+    version: 3.5
+    pip_install: true
+    extra_requirements:
+    - tests
+    - docs
