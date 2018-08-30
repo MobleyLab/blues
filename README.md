@@ -4,7 +4,7 @@
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes.
 
 Latest release:
-[![Build Status](https://travis-ci.org/mobleylab/blues.svg?branch=master)](https://travis-ci.com/mobleylab/blues)
+[![Build Status](https://travis-ci.org/mobleylab/blues.svg?branch=master)](https://travis-ci.org/mobleylab/blues)
 [![Documentation Status](https://readthedocs.org/projects/mobleylab-blues/badge/?version=master)](https://mobleylab-blues.readthedocs.io/en/master/?badge=master)
 [![codecov](https://codecov.io/gh/mobleylab/blues/branch/master/graph/badge.svg)](https://codecov.io/gh/mobleylab/blues)
 [![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
