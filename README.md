@@ -4,9 +4,9 @@
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes.
 
 Latest release:
-[![Build Status](https://travis-ci.org/mobleylab/blues.svg?branch=master)](https://travis-ci.org/mobleylab/blues)
-[![Documentation Status](https://readthedocs.org/projects/mobleylab-blues/badge/?version=master)](https://mobleylab-blues.readthedocs.io/en/master/?badge=master)
-[![codecov](https://codecov.io/gh/mobleylab/blues/branch/master/graph/badge.svg)](https://codecov.io/gh/mobleylab/blues)
+[![Build Status](https://travis-ci.org/MobleyLab/blues.svg?branch=master)](https://travis-ci.org/MobleyLab/blues)
+[![Documentation Status](https://readthedocs.org/projects/mobleylab-blues/badge/?version=stable)](https://mobleylab-blues.readthedocs.io/en/stable/?badge=stable)
+[![codecov](https://codecov.io/gh/MobleyLab/blues/branch/master/graph/badge.svg)](https://codecov.io/gh/MobleyLab/blues)
 [![Anaconda-Server Badge](https://anaconda.org/mobleylab/blues/badges/version.svg)](https://anaconda.org/mobleylab/blues)
  [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
 
@@ -114,8 +114,8 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.1.3](https://doi.org/10.5281/zenodo.1048250): Improvements to simulation logging functionality and parameters for extra propagation.
 - [Version 0.2.0](https://doi.org/10.5281/zenodo.1284568): YAML support, API changes, custom reporters.
 - [Version 0.2.1](https://doi.org/10.5281/zenodo.1288925): Bug fix in alchemical correction term
-- [Version 0.2.2](https://zenodo.org/badge/latestdoi/62096511): Bug fixes for OpenEye tests and restarting from the YAML; enhancements to the Logger and package installation.
-
+- [Version 0.2.2](https://doi.org/10.5281/zenodo.1324415): Bug fixes for OpenEye tests and restarting from the YAML; enhancements to the Logger and package installation.
+- [Version 0.2.3](https://zenodo.org/badge/latestdoi/62096511): Improvements to Travis CI, fix in velocity synicng, and add tests for checking freezing selection.
 
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.
