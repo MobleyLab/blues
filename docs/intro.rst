@@ -21,9 +21,13 @@ Github
 .. image:: https://travis-ci.org/MobleyLab/blues.svg?branch=master
    :target: https://travis-ci.org/MobleyLab/blues
 
-.. image:: https://readthedocs.org/projects/mobleylab-blues/badge/?version=master
-   :target: https://mobleylab-blues.readthedocs.io/en/master/?badge=master
+.. image:: https://readthedocs.org/projects/mobleylab-blues/badge/?version=latest
+   :target: https://mobleylab-blues.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
 
+.. image:: https://codecov.io/gh/MobleyLab/blues/branch/master/graph/badge.svg
+     :target: https://codecov.io/gh/MobleyLab/blues
+     
 .. image:: https://anaconda.org/mobleylab/blues/badges/version.svg
    :target: https://anaconda.org/mobleylab/blues
 
