@@ -48,7 +48,7 @@ source code.
 .. code-block:: bash
 
     git clone https://github.com/MobleyLab/blues.git
-    conda install -c omnia -c conda-forge openmmtool=0.15.0 openmm=7.2.2 numpy cython
+    conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.2.2 numpy cython
     pip install -e .
 
 To validate your BLUES installation run the tests.

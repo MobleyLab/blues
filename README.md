@@ -57,7 +57,7 @@ Install from source (NOT RECOMMENDED)
 git clone git@github.com:MobleyLab/blues.git
 
 # Install some dependencies
-conda install -c omnia -c conda-forge openmmtool=0.15.0 openmm=7.2.2 numpy cython
+conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.2.2 numpy cython
 
 # Install BLUES package from the top directory
 pip install -e .
