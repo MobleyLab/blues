@@ -1298,7 +1298,7 @@ class MonteCarloSimulation(BLUESSimulation):
             self._md_sim.context.setPositions(md_state0['positions'])
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
-    def run(self, nIter, mc_per_iter=1, nstepsMD=None, temperature=300, write_move=False):
+    def run(self, nIter=0, mc_per_iter=0, nstepsMD=0, temperature=300, write_move=False):
         """Function that runs the BLUES engine to iterate over the actions:
         perform proposed move, accepts/rejects move,
         then performs the MD simulation from the accepted or rejected state.
@@ -1328,5 +1328,5 @@ class MonteCarloSimulation(BLUESSimulation):
             for i in range(mc_per_iter):
                 self._syncStatesMDtoNCMC()
                 self._stepMC_()
-                self._acceptRejectMove(write_move, temperature)
+                self._acceptRejectMove(temperature)
             self._stepMD(nstepsMD)
