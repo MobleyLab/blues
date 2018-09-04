@@ -376,7 +376,7 @@ class SystemFactory(object):
             Structure of the system, used for atom selection.
         freeze_selection : str, Default = ":LIG"
             AmberMask selection for the center in which to select atoms for
-            zeroing their massesself.
+            zeroing their masses.
             Defaults to freezing protein backbone atoms.
 
         Returns

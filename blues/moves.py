@@ -152,7 +152,7 @@ class RandomLigandRotationMove(Move):
     Parameters
     ----------
     resname : str
-        String specifying the resiue name of the ligand.
+        String specifying the residue name of the ligand.
     structure: parmed.Structure
         ParmEd Structure object of the relevant system to be moved.
     random_state : integer or numpy.RandomState, optional
@@ -207,7 +207,7 @@ class RandomLigandRotationMove(Move):
         Parameters
         ----------
         resname : str
-            String specifying the resiue name of the ligand.
+            String specifying the residue name of the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the atoms to be moved.
 

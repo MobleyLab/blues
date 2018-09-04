@@ -26,7 +26,7 @@ Latest release:
 * `notebooks` - Jupyter notebooks for testing/development
 
 ## Prerequisites
-BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<=1.1 still works with Python 2.7)
+BLUES is compatible with MacOSX/Linux with Python>=3.5 (blues<=1.1 still works with Python 2.7)
 Install [miniconda](http://conda.pydata.org/miniconda.html) according to your system.
 
 ## Requirements
@@ -39,6 +39,8 @@ conda install -c openeye openeye-toolkits
 ```
 
 ## Installation
+[ReadTheDocs: Installation](https://mobleylab-blues.readthedocs.io/en/latest/installation.html)
+
 Recommended: Install releases from conda
 ```bash
 conda install -c mobleylab blues
@@ -55,7 +57,7 @@ Install from source (NOT RECOMMENDED)
 git clone git@github.com:MobleyLab/blues.git
 
 # Install some dependencies
-conda install -c omnia -c conda-forge openmmtool=0.54.0 openmm=7.2.2 numpy cython
+conda install -c omnia -c conda-forge openmmtool=0.15.0 openmm=7.2.2 numpy cython
 
 # Install BLUES package from the top directory
 pip install -e .
@@ -65,10 +67,9 @@ pip instal -e .[tests]
 pytest -v -s
 ```
 
-## Tutorial
-For a tutorial on BLUES, see the [Jupyter Notebook](https://nbviewer.jupyter.org/github/mobleylab/blues/blob/master/notebooks/BLUES_tutorial.ipynb)
-
 ## Documentation
+For documentation on the BLUES modules see [ReadTheDocs: Modules](https://mobleylab-blues.readthedocs.io/en/latest/module_doc.html)
+For a tutorial on how to use BLUES see [ReadTheDocs: Tutorial](https://mobleylab-blues.readthedocs.io/en/latest/tutorial.html)
 
 ### BLUES using NCMC
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes using the OpenMM simulation package.  One goal for this package is to allow for easy additions of other moves of interest, which will be covered below.

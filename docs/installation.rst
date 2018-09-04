@@ -1,7 +1,7 @@
 Installation
 ==================
 
-BLUES is compatible with MacOSX/Linux with Python 3.5 (blues<1.1 still works with Python 2.7)
+BLUES is compatible with MacOSX/Linux with Python>=3.5 (blues<1.1 still works with Python 2.7)
 
 This is a python tool kit with a few dependencies. We recommend installing
 `miniconda <http://conda.pydata.org/miniconda.html>`_. Then you can create an
