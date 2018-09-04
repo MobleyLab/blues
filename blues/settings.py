@@ -37,13 +37,11 @@ class Settings(object):
         """
         # Parse input parameters from YAML
         try:
-            if type(yaml_config) is str:
-                config = yaml.safe_load(yaml_config)
-            else:
-                with open(yaml_config, 'r') as stream:
-                    config = yaml.safe_load(stream)
-        except FileNotFoundError:
-            raise FileNotFoundError
+            with open(yaml_config, 'r') as stream:
+                config = yaml.safe_load(stream)
+        except IOError as e:
+            print("Unable to open file:", yaml_config)
+            raise e
         except yaml.YAMLError as e:
             yaml_err = 'YAML parsing error in file: {}'.format(yaml_config)
             if hasattr(e, 'problem_mark'):
