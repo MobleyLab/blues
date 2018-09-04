@@ -37,16 +37,11 @@ class Settings(object):
         """
         # Parse input parameters from YAML
         try:
-<<<<<<< HEAD
             if os.path.isfile(yaml_config):
                 with open(yaml_config, 'r') as stream:
                     config = yaml.safe_load(stream)
             else:
                 config = yaml.safe_load(yaml_config)
-=======
-            with open(yaml_config, 'r') as stream:
-                config = yaml.safe_load(stream)
->>>>>>> ab44dcca24f0669ff57793d3fefb4defeb8209cb
         except IOError as e:
             print("Unable to open file:", yaml_config)
             raise e
