@@ -1,50 +1,44 @@
-{% set build_number = '0' %}
-{% set short_version = '0.2.2' %}
-
 package:
   name: blues
-  version: {{ short_version }}
+  version: {{ GIT_DESCRIBE_TAG }}
 
 source:
-  git_rev: master
-  git_url: https://github.com/mobleylab/blues.git
+  path : ../..
 
 build:
-  number: {{ build_number }}
-  noarch: generic
-  preserve_egg_dir: True
-  script: python setup.py install --single-version-externally-managed --record=record.txt
+  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
+  #string: py{{ CONDA_PY }}_{{ environ.get('GIT_BUILD_STR', '') }} # Ex. `py35_5_g6aaba2d`
+  string: py{{ CONDA_PY }}{{ environ.get('GIT_DESCRIBE_HASH', 'ERROR') }}_{{ environ.get('GIT_DESCRIBE_NUMBER', 0) }} #Ex. `py35g6aaba2d_5`
+  script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
 
 requirements:
+  host:
+    - python
+    - setuptools
+    - pip
+
   build:
     - python
     - pytest
     - setuptools
-    - openmmtools <=0.14.0
-    - mdtraj <=1.9.1
-    - openmm <=7.1.1
-    - parmed <=3.0.1
-    - netcdf4 <=1.3.1
+    - openmmtools >=0.15.0
+    - mdtraj
+    - openmm >=7.2.2
+    - parmed
+    - netcdf4
     - pyyaml
-  run:
-    - python
-    - pytest
-    - setuptools
-    - openmmtools <=0.14.0
-    - mdtraj <=1.9.1
-    - openmm <=7.1.1
-    - parmed <=3.0.1
-    - netcdf4 <=1.3.1
-    - pyyaml
-    # dependencies are defined in setup.py
-    # {% for dep in data['install_requires'] %}
-    # - {{ dep.lower() }}
-    # {% endfor %}
+    - pip
 
+  run:
+  {% for package in resolved_packages('build') %}
+    - {{ package }}
+  {% endfor %}
 
 test:
   requires:
     - pytest
+  imports:
+    - blues
 
 about:
   home: https://github.com/mobleylab/blues
