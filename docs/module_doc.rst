@@ -5,6 +5,9 @@ Moves
 --------------------------------------------------------
 .. automodule:: blues.moves
 
+.. uml:: blues.moves
+  :classes:
+
 Move
 ~~~~
 .. autoclass:: Move
@@ -36,6 +39,9 @@ Simulation
 ---------------------------------------------------------
 .. automodule:: blues.simulation
 
+.. uml:: blues.simulation
+  :classes:
+
 SystemFactory
 ~~~~~~~~~~~~~
 .. rubric:: Methods
@@ -65,6 +71,8 @@ Integrators
 -----------------------------------------------------------
 .. automodule:: blues.integrators
   :members:
+.. uml:: blues.integrators
+  :classes:
 
 Utilities
 ---------
@@ -76,8 +84,12 @@ Reporters
 ---------
 .. automodule:: blues.reporters
   :members:
+.. uml:: blues.reporters
+  :classes:
 
 Formats
 -------
 .. automodule:: blues.formats
   :members:
+.. uml:: blues.formats
+  :classes:
