@@ -62,5 +62,5 @@ def sidechain_example(yaml_file):
             output.write("%s\n" % str(value)[1:-1])
 
 
-#ligrot_example(get_data_filename('blues', '../examples/rotmove_cuda.yml'))
+ligrot_example(get_data_filename('blues', '../examples/rotmove_cuda.yml'))
 #sidechain_example(get_data_filename('blues', '../examples/sidechain_cuda.yml'))
