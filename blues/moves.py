@@ -1,70 +1,47 @@
 """
-moves.py: Provides the main Move class which allows definition of moves
+Provides the main Move class which allows definition of moves
 which alter the positions of subsets of atoms in a context during a BLUES
 simulation, in order to increase sampling.
 Also provides functionality for CombinationMove definitions which consist of
 a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
+
 Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
 """
 
+import copy
+import math
+import random
+import sys
+import traceback
+
+import mdtraj
+import numpy
 import parmed
 from simtk import unit
-import mdtraj
-import numpy as np
-import math
-import copy
-import random
-import os
 
-from mdtraj.utils.delay_import import import_
 try:
-    oechem = import_("openeye.oechem")
+    import openeye.oechem as oechem
     if not oechem.OEChemIsLicensed():
-        raise(ImportError("Need License for OEChem!"))
-    else:
-        from openeye.oechem import *
-except Exception as e:
-    openeye_exception_message = str(e)
+        print('ImportError: Need License for OEChem! SideChainMove class will be unavailable.')
+    try:
+        import oeommtools.utils as oeommtools
+    except ImportError:
+        print('ImportError: Could not import oeommtools. SideChainMove class will be unavailable.')
+except ImportError:
+    print('ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.')
+
 
 class Move(object):
-
-    """Move provides methods for calculating properties on the
-    object 'move' (i.e ligand) being perturbed in the NCMC simulation.
-    This is the base Move class.
-    Ex.
-        from blues.ncmc import Model
-        ligand = Model(structure, 'LIG')
-        ligand.calculateProperties()
-    Attributes
-    ----------
+    """This is the base Move class. Move provides methods for calculating properties
+    and applying the move on the set of atoms being perturbed in the NCMC simulation.
     """
 
     def __init__(self):
         """Initialize the Move object
+        Currently empy.
         """
-        self.acceptance_ratio = 1.0
-
-    def reset_iter(self):
-        """Resets relevent attributes between iterations
-        """
-        self.acceptance_ratio = 1.0
-    def move(self, context):
-        """Function that can change the positions of a context.
-        Base class `move()` just returns the same context.
-
-        Parameters
-        ----------
-        context: simtk.openmm.Context object
-            Context containing the positions to be moved.
-        Returns
-        -------
-        context: simtk.openmm.Context object
-            The same input context..
-
-        """
-        return context
 
     def initializeSystem(self, system, integrator):
         """If the system or integrator needs to be modified to perform the move
@@ -73,15 +50,16 @@ class Move(object):
 
         Parameters
         ----------
-        system : simtk.openmm.System object
+        system : openmm.System
             System to be modified.
-        integrator : simtk.openmm.Integrator object
+        integrator : openmm.Integrator
             Integrator to be modified.
+
         Returns
         -------
-        system : simtk.openmm.System object
+        system : openmm.System
             The modified System object.
-        integrator : simtk.openmm.Integrator object
+        integrator : openmm.Integrator
             The modified Integrator object.
 
         """
@@ -96,12 +74,12 @@ class Move(object):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context : openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context: simtk.openmm.Context object
+        context : openmm.Context
             The same input context, but whose context were changed by this function.
 
         """
@@ -114,12 +92,12 @@ class Move(object):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context : openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context: simtk.openmm.Context object
+        context : openmm.Context
             The same input context, but whose context were changed by this function.
 
         """
@@ -134,52 +112,82 @@ class Move(object):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context : openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context: simtk.openmm.Context object
+        context : openmm.Context
             The same input context, but whose context were changed by this function.
 
         """
 
         return context
 
+    def move(self, context):
+        """This method is called at the end of the NCMC portion if the
+        context needs to be checked or modified before performing the move
+        at the halfway point.
+
+        Parameters
+        ----------
+        context : openmm.Context
+            Context containing the positions to be moved.
+
+        Returns
+        -------
+        context : openmm.Context
+            The same input context, but whose context were changed by this function.
+        """
+        return context
+
 
 class RandomLigandRotationMove(Move):
-    """Move that provides methods for calculating properties on the
+    """RandomLightRotationMove that provides methods for calculating properties on the
     object 'model' (i.e ligand) being perturbed in the NCMC simulation.
     Current methods calculate the object's atomic masses and center of masss.
     Calculating the object's center of mass will get the positions
     and total mass.
-    Ex.
-        from blues.move import RandomLigandRotationMove
-        ligand = RandomLigandRotationMove(structure, 'LIG')
-        ligand.resname : string specifying the residue name of the ligand
-        ligand.calculateProperties()
+
+    Parameters
+    ----------
+    resname : str
+        String specifying the residue name of the ligand.
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    random_state : integer or numpy.RandomState, optional
+        The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
+
     Attributes
     ----------
-    ligand.topology : openmm.topology of ligand
-    ligand.atom_indices : list of atom indicies of the ligand.
-    ligand.masses : list of particle masses of the ligand with units.
-    ligand.totalmass : integer of the total mass of the ligand.
-    #Dynamic attributes that must be updated with each iteration
-    ligand.center_of_mass : np.array of calculated center of mass of the ligand
-    ligand.positions : np.array of ligands positions
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    resname : str, default='LIG'
+        The residue name of the ligand or selected atoms to be rotated.
+    topology : openmm.Topology
+        The topology of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of the ligand.
+    masses : list
+        Particle masses of the ligand with units.
+    totalmass : int
+        Total mass of the ligand.
+    center_of_mass : numpy.array
+        Calculated center of mass of the ligand in XYZ coordinates. This should
+        be updated every iteration.
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+
+    Examples
+    --------
+    >>> from blues.move import RandomLigandRotationMove
+    >>> ligand = RandomLigandRotationMove(structure, 'LIG')
+    >>> ligand.resname
+        'LIG'
     """
 
     def __init__(self, structure, resname='LIG', random_state=None):
-        """Initialize the model.
-        Parameters
-        ----------
-        resname : str
-            String specifying the resiue name of the ligand.
-        structure: parmed.Structure
-            ParmEd Structure object of the relevant system to be moved.
-        random_state : integer or numpy.RandomState, optional
-            The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
-        """
         self.structure = structure
         self.resname = resname
         self.random_state = random_state
@@ -190,23 +198,25 @@ class RandomLigandRotationMove(Move):
 
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
-        self.calculateProperties()
+        self._calculateProperties()
 
     def getAtomIndices(self, structure, resname):
         """
         Get atom indices of a ligand from ParmEd Structure.
-        Arguments
-        ---------
+
+        Parameters
+        ----------
         resname : str
-            String specifying the resiue name of the ligand.
+            String specifying the residue name of the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the atoms to be moved.
+
         Returns
         -------
         atom_indices : list of ints
             list of atoms in the coordinate file matching lig_resname
         """
-#       TODO: Add option for resnum to better select residue names
+        # TODO: Add option for resnum to better select residue names
         atom_indices = []
         topology = structure.topology
         for atom in topology.atoms():
@@ -217,55 +227,60 @@ class RandomLigandRotationMove(Move):
     def getMasses(self, topology):
         """
         Returns a list of masses of the specified ligand atoms.
+
         Parameters
         ----------
         topology: parmed.Topology
             ParmEd topology object containing atoms of the system.
+
         Returns
         -------
         masses: 1xn numpy.array * simtk.unit.dalton
             array of masses of len(self.atom_indices), denoting
             the masses of the atoms in self.atom_indices
-        totalmass: float* simtk.unit.dalton
+        totalmass: float * simtk.unit.dalton
             The sum of the mass found in masses
         """
-        masses = unit.Quantity(np.zeros([int(topology.getNumAtoms()),1],np.float32), unit.dalton)
-        for idx,atom in enumerate(topology.atoms()):
+        masses = unit.Quantity(numpy.zeros([int(topology.getNumAtoms()), 1], numpy.float32), unit.dalton)
+        for idx, atom in enumerate(topology.atoms()):
             masses[idx] = atom.element._mass
         totalmass = masses.sum()
         return masses, totalmass
 
     def getCenterOfMass(self, positions, masses):
-        """Returns the calculated center of mass of the ligand as a np.array
+        """Returns the calculated center of mass of the ligand as a numpy.array
+
         Parameters
         ----------
         positions: nx3 numpy array * simtk.unit compatible with simtk.unit.nanometers
             ParmEd positions of the atoms to be moved.
         masses : numpy.array
-            np.array of particle masses
+            numpy.array of particle masses
+
         Returns
         -------
         center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
-            1x3 np.array of the center of mass of the given positions
+            1x3 numpy.array of the center of mass of the given positions
         """
-        #coordinates = np.asarray(positions._value, np.float32)
-        coordinates = np.array(positions._value, np.float32)
-
+        coordinates = numpy.asarray(positions._value, numpy.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
         return center_of_mass
 
-    def calculateProperties(self):
-        """Function to quickly calculate available properties."""
+    def _calculateProperties(self):
+        """Calculate the masses and center of mass for the object. This function
+        is called upon initailization of the class."""
         self.masses, self.totalmass = self.getMasses(self.topology)
         self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
 
     def move(self, context):
         """Function that performs a random rotation about the
         center of mass of the ligand.
+
         Parameters
         ----------
         context: simtk.openmm.Context object
             Context containing the positions to be moved.
+
         Returns
         -------
         context: simtk.openmm.Context object
@@ -281,7 +296,7 @@ class RandomLigandRotationMove(Move):
         rand_quat = mdtraj.utils.uniform_quaternion(size=None, random_state=self.random_state)
         rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
         #multiply lig coordinates by rot matrix and add back COM translation from origin
-        rot_move = np.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
+        rot_move = numpy.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
 
         # Update ligand positions in nc_sim
         for index, atomidx in enumerate(self.atom_indices):
@@ -292,21 +307,162 @@ class RandomLigandRotationMove(Move):
         return context
 
 
+class MoveEngine(object):
+    """MoveEngine provides perturbation functions for the context during the NCMC
+    simulation.
+
+    Parameters
+    ----------
+    moves : blues.move object or list of N blues.move objects
+        Specifies the possible moves to be performed.
+
+    probabilities: list of floats, optional, default=None
+        A list of N probabilities, where probabilities[i] corresponds to the
+        probaility of moves[i] being selected to perform its associated
+        move() method. If None, uniform probabilities are assigned.
+
+    Attributes
+    ----------
+    moves : blues.move or list of N blues.move objects
+        Possible moves to be performed.
+    probabilities : list of floats
+        Normalized probabilities for each move.
+    selected_move : blues.move
+        Selected move to be performed.
+    move_name : str
+        Name of the selected move to be performed
+
+    Examples
+    --------
+    Load a parmed.Structure, list of moves with probabilities, initialize
+    the MoveEngine class, and select a move from our list.
+
+    >>> import parmed
+    >>> from blues.moves import *
+    >>> structure = parmed.load_file('tests/data/eqToluene.prmtop', xyz='tests/data/eqToluene.inpcrd')
+    >>> probabilities = [0.25, 0.75]
+    >>> moves = [SideChainMove(structure, [111]),RandomLigandRotationMove(structure, 'LIG')]
+    >>> mover = MoveEngine(moves, probabilities)
+    >>> mover.moves
+    [<blues.moves.SideChainMove at 0x7f2eaa168470>,
+     <blues.moves.RandomLigandRotationMove at 0x7f2eaaaa51d0>]
+    >>> mover.selectMove()
+    >>> mover.selected_move
+    <blues.moves.RandomLigandRotationMove at 0x7f2eaaaa51d0>
+    """
+
+    def __init__(self, moves, probabilities=None):
+        #make a list from moves if not a list
+        if isinstance(moves, list):
+            self.moves = moves
+        else:
+            self.moves = [moves]
+        #normalize probabilities
+        if probabilities is None:
+            single_prob = 1. / len(self.moves)
+            self.probabilities = [single_prob for x in (self.moves)]
+        else:
+            prob_sum = float(sum(probabilities))
+            self.probabilities = [x / prob_sum for x in probabilities]
+        #if move and probabilitiy lists are different lengths throw error
+        if len(self.moves) != len(self.probabilities):
+            print('moves and probability list lengths need to match')
+            raise IndexError
+        #use index in selecting move
+        self.selected_move = None
+
+    def selectMove(self):
+        """Chooses the move which will be selected for a given NCMC
+        iteration
+        """
+        rand_num = numpy.random.choice(len(self.probabilities), p=self.probabilities)
+        self.selected_move = self.moves[rand_num]
+        self.move_name = self.selected_move.__class__.__name__
+
+    def runEngine(self, context):
+        """Selects a random Move object based on its
+        assigned probability and and performs its move() function
+        on a context.
+
+        Parameters
+        ----------
+        context : openmm.Context
+            OpenMM context whose positions should be moved.
+
+        Returns
+        -------
+        context : openmm.Context
+            OpenMM context whose positions have been moved.
+        """
+        try:
+            new_context = self.selected_move.move(context)
+        except Exception as e:
+            #In case the move isn't properly implemented, print out useful info
+            print('Error: move not implemented correctly, printing traceback:')
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)
+            print(e)
+            raise SystemExit
+
+        return new_context
+
+
+########################
+## UNDER DEVELOPMENT ###
+########################
+
+
 class SideChainMove(Move):
-    """Move that provides methods for:
-        1. calculating the properties needed to rotate a sidechain residue
-        of a structure in the NCMC simulation
-        2. Executing a rotation of a random 'rotatable' bond in the designated sidechain
-        by a random angle of rotation: 'theta'
-        Calculated properties include: backbone atom indicies, atom pointers and indicies
-        of the residue sidechain, bond pointers and indices for rotatable heavy bonds in
-        the sidechain, and atom indices upstream of selected bond
-        The class contains functions to randomly select a bond and angle to be rotated
-        and applies a rotation matrix to the target atoms to update their coordinates"""
+    """**NOTE:** Usage of this class requires a valid OpenEye license.
+
+    SideChainMove provides methods for calculating properties needed to
+    rotate a sidechain residue given a parmed.Structure. Calculated properties
+    include: backbone atom indicies, atom pointers and indicies of the residue
+    sidechain, bond pointers and indices for rotatable heavy bonds in
+    the sidechain, and atom indices upstream of selected bond.
+
+    The class contains functions to randomly select a bond and angle to be rotated
+    and applies a rotation matrix to the target atoms to update their coordinates on the
+    object 'model' (i.e sidechain) being perturbed in the NCMC simulation.
+
+    Parameters
+    ----------
+    structure : parmed.Structure
+        The structure of the entire system to be simulated.
+    residue_list : list of int
+        List of the residue numbers of the sidechains to be rotated.
+    verbose : bool, default=False
+        Enable verbosity to print out detailed information of the rotation.
+    write_move : bool, default=False
+        If True, writes a PDB of the system after rotation.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the entire system to be simulated.
+    molecule : oechem.OEMolecule
+        The OEMolecule containing the sidechain(s) to be rotated.
+    residue_list : list of int
+        List containing the residue numbers of the sidechains to be rotated.
+    all_atoms : list of int
+        List containing the atom indicies of the sidechains to be rotated.
+    rot_atoms : dict
+        Dictionary of residues, bonds and atoms to be rotated
+    rot_bonds : dict of oechem.OEBondBase
+        Dictionary containing the bond pointers of the rotatable bonds.
+    qry_atoms : dict of oechem.OEAtomBase
+        Dictionary containing all the atom pointers (as OpenEye objects) that
+        make up the given residues.
+
+
+    Examples
+    --------
+    >>> from blues.move import SideChainMove
+    >>> sidechain = SideChainMove(structure, [1])
+
+    """
 
     def __init__(self, structure, residue_list, verbose=False, write_move=False):
-        oechem = import_("openeye.oechem")
-        if not oechem.OEChemIsLicensed(): raise(ImportError("Need License for OEChem!"))
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
@@ -317,7 +473,7 @@ class SideChainMove(Move):
         self.write_move = write_move
 
     def _pmdStructureToOEMol(self):
-        oeommtools = import_("oeommtools.utils")
+        """Helper function for converting the parmed structure into an OEMolecule."""
         top = self.structure.topology
         pos = self.structure.positions
         molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
@@ -327,7 +483,20 @@ class SideChainMove(Move):
         return molecule
 
     def getBackboneAtoms(self, molecule):
-        """This function takes a OEGraphMol and returns a list of backbone atoms"""
+        """Takes an OpenEye Molecule, finds the backbone atoms and
+        returns the indicies of the backbone atoms.
+
+        Parameters
+        ----------
+        molecule : oechem.OEMolecule
+            The OEmolecule of the simulated system.
+
+        Returns
+        -------
+        backbone_atoms : list of int
+            List containing the atom indices of the backbone atoms.
+
+        """
 
         backbone_atoms = []
         pred = oechem.OEIsBackboneAtom()
@@ -338,10 +507,29 @@ class SideChainMove(Move):
         return backbone_atoms
 
     def getTargetAtoms(self, molecule, backbone_atoms, residue_list):
-        """This function takes a OEGraphMol PDB structure and a list of residue numbers and
-            generates a dictionary containing all the atom pointers and indicies for the
-            non-backbone, atoms of those target residues, as well as a list of backbone atoms.
-            Note: The atom indicies start at 0 and are thus -1 from the PDB file indicies"""
+        """Takes an OpenEye molecule and a list of residue numbers then
+        generates a dictionary containing all the atom pointers and indicies for the
+        non-backbone, atoms of those target residues, as well as a list of backbone atoms.
+        Note: The atom indicies start at 0 and are thus -1 from the PDB file indicies
+
+        Parameters
+        ----------
+        molecule : oechem.OEMolecule
+            The OEmolecule of the simulated system.
+        backbone_atoms : list of int
+            List containing the atom indices of the backbone atoms.
+        residue_list : list of int
+            List containing the residue numbers of the sidechains to be rotated.
+
+        Returns
+        -------
+        backbone_atoms : list of int
+            List containing the atom indices of the backbone atoms to be rotated.
+        qry_atoms : dict of oechem.OEAtomBase
+            Dictionary containing all the atom pointers (as OpenEye objects) that
+            make up the given residues.
+
+        """
 
         # create and clear dictionary to store atoms that make up residue list
         qry_atoms = {}
@@ -359,7 +547,7 @@ class SideChainMove(Move):
                 # check if the residue number is amongst the list of residues
                 if myres.GetResidueNumber() in residue_list and myres.GetName() != "HOH":
                     # store the atom location in a query atom dict keyed by its atom index
-                    qry_atoms.update({atom : atom.GetIdx()})
+                    qry_atoms.update({atom: atom.GetIdx()})
                     #print('Found atom %s in residue number %i %s'%(atom,myres.GetResidueNumber(),myres.GetName()))
                     if myres not in reslib:
                         reslib.append(myres)
@@ -367,11 +555,26 @@ class SideChainMove(Move):
         return qry_atoms, backbone_atoms
 
     def findHeavyRotBonds(self, pdb_OEMol, qry_atoms):
-        '''This function takes in an OEGraphMol PDB structure as well as a dictionary of atom locations (keys)
-            and atom indicies.  It loops over the query atoms and identifies any heavy bonds associated with each atom.
-            It stores and returns the bond indicies (keys) and the two atom indicies for each bond in a dictionary
-            **Note: atom indicies start at 0, so are offset by 1 compared to pdb)'''
+        """Takes in an OpenEye molecule as well as a dictionary of atom locations (keys)
+        and atom indicies.  It loops over the query atoms and identifies any heavy bonds associated with each atom.
+        It stores and returns the bond indicies (keys) and the two atom indicies for each bond in a dictionary
+        Note: atom indicies start at 0, so are offset by 1 compared to pdb)
 
+        Parameters
+        ----------
+        pdb_OEMol : oechem.OEMolecule
+            The OEmolecule of the simulated system generated from a PDB file.
+        qry_atoms : dict of oechem.OEAtomBase
+            Dictionary containing all the atom pointers (as OpenEye objects) that
+            make up the given residues.
+
+        Returns
+        -------
+        rot_bonds : dict of oechem.OEBondBase
+            Dictionary containing the bond pointers of the rotatable bonds.
+
+
+        """
         # create and clear dictionary to store bond and atom indicies that are rotatable + heavy
         rot_bonds = {}
         rot_bonds.clear()
@@ -383,19 +586,36 @@ class SideChainMove(Move):
                 begatom = bond.GetBgn()
                 endatom = bond.GetEnd()
                 # if begnnning and ending atoms are not Hydrogen, and the bond is rotatable
-                if endatom.GetAtomicNum() >1 and begatom.GetAtomicNum() >1 and bond.IsRotor():
+                if endatom.GetAtomicNum() > 1 and begatom.GetAtomicNum() > 1 and bond.IsRotor():
                     # if the bond has not been added to dictionary already..
                     # (as would happen if one of the atom pairs was previously looped over)
                     if bond not in rot_bonds:
                         #print('Bond number',bond, 'is rotatable, non-terminal, and contains only heavy atoms')
                         # store bond pointer (key) and atom indicies in dictionary if not already there
                         #rot_bonds.update({bond : {'AtomIdx_1' : bond.GetBgnIdx(), 'AtomIdx_2': bond.GetEndIdx()}})
-                        rot_bonds.update({bond : myres.GetResidueNumber()})
+                        rot_bonds.update({bond: myres.GetResidueNumber()})
 
         return rot_bonds
 
     def getRotAtoms(self, rotbonds, molecule, backbone_atoms):
-        """This function identifies and stores neighboring, upstream atoms for a given sidechain bond"""
+        """Function identifies and stores neighboring, upstream atoms for a given sidechain bond.
+
+        Parameters
+        ----------
+        rot_bonds : dict of oechem.OEBondBase
+            Dictionary containing the bond pointers of the rotatable bonds.
+        molecule : oechem.OEMolecule
+            The OEmolecule of the simulated system.
+        backbone_atoms : list of int
+            List containing the atom indices of the backbone atoms.
+
+
+        Returns
+        -------
+        rot_atom_dict : dict of oechem.OEAtomBase
+            Dictionary containing the atom pointers for a given sidechain bond.
+
+        """
         backbone = backbone_atoms
         query_list = []
         idx_list = []
@@ -411,9 +631,9 @@ class SideChainMove(Move):
             ax2 = bond.GetEnd()
 
             if resnum in rot_atom_dict.keys():
-                rot_atom_dict[resnum].update({thisbond : []})
+                rot_atom_dict[resnum].update({thisbond: []})
             else:
-                rot_atom_dict.update({resnum : {thisbond : []}})
+                rot_atom_dict.update({resnum: {thisbond: []}})
 
             idx_list.append(ax1.GetIdx())
             idx_list.append(ax2.GetIdx())
@@ -428,10 +648,11 @@ class SideChainMove(Move):
                 for candidate in checklist:
                     if candidate not in query_list and candidate.GetIdx() not in backbone and candidate != ax2:
                         query_list.append(candidate)
-                        if candidate.GetAtomicNum() >1:
+                        if candidate.GetAtomicNum() > 1:
                             can_nbors = candidate.GetAtoms()
                             for can_nbor in can_nbors:
-                                if can_nbor not in query_list and candidate.GetIdx() not in backbone and candidate != ax2:
+                                if can_nbor not in query_list and candidate.GetIdx(
+                                ) not in backbone and candidate != ax2:
                                     query_list.append(can_nbor)
 
             for atm in query_list:
@@ -439,16 +660,30 @@ class SideChainMove(Move):
                 if y not in idx_list:
                     idx_list.append(y)
 
-            rot_atom_dict[resnum].update({thisbond : list(idx_list)})
+            rot_atom_dict[resnum].update({thisbond: list(idx_list)})
             #print("Moving these atoms:", idx_list)
 
         return rot_atom_dict
 
     def getRotBondAtoms(self):
-        """This function takes in a PDB filename (as a string) and list of residue numbers.  It returns
-            a nested dictionary of rotatable bonds (containing only heavy atoms), that are keyed by residue number,
-            then keyed by bond pointer, containing values of atom indicies [axis1, axis2, atoms to be rotated]
-            **Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies"""
+        """This function is called on class initialization.
+
+        Takes in a PDB filename (as a string) and list of residue numbers.  Returns
+        a nested dictionary of rotatable bonds (containing only heavy atoms), that are keyed by residue number,
+        then keyed by bond pointer, containing values of atom indicies [axis1, axis2, atoms to be rotated]
+        Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies
+
+        Returns
+        -------
+        rot_atoms : dict
+            Dictionary of residues, bonds and atoms to be rotated
+        rot_bonds : dict of oechem.OEBondBase
+            Dictionary containing the bond pointers of the rotatable bonds.
+        qry_atoms : dict of oechem.OEAtomBase
+            Dictionary containing all the atom pointers (as OpenEye objects) that
+            make up the given residues.
+
+        """
         backbone_atoms = self.getBackboneAtoms(self.molecule)
 
         # Generate dictionary containing locations and indicies of heavy residue atoms
@@ -463,55 +698,79 @@ class SideChainMove(Move):
         return rot_atoms, rot_bonds, qry_atoms
 
     def chooseBondandTheta(self):
-        """This function takes a dictionary containing nested dictionary, keyed by res#,
+        """This function is called on class initialization.
+
+        Takes a dictionary containing nested dictionary, keyed by res#,
         then keyed by bond_ptrs, containing a list of atoms to move, randomly selects a bond,
         and generates a random angle (radians).  It returns the atoms associated with the
-        the selected bond, the pointer for the selected bond and the randomly generated angle"""
+        the selected bond, the pointer for the selected bond and the randomly generated angle
+
+
+        Returns
+        -------
+        theta_ran :
+
+        targetatoms :
+
+        res_choice :
+
+        bond_choice :
+
+        """
 
         res_choice = random.choice(list(self.rot_atoms.keys()))
         bond_choice = random.choice(list(self.rot_atoms[res_choice].keys()))
         targetatoms = self.rot_atoms[res_choice][bond_choice]
-        theta_ran = random.random()*2*math.pi-math.pi
+        theta_ran = random.random() * 2 * math.pi
 
         return theta_ran, targetatoms, res_choice, bond_choice
 
     def rotation_matrix(self, axis, theta):
-        """This function returns the rotation matrix associated with counterclockwise rotation
-        about the given axis by theta radians."""
-        axis = np.asarray(axis)
-        axis = axis/math.sqrt(np.dot(axis, axis))
-        a = math.cos(theta/2.0)
-        b, c, d = -axis*math.sin(theta/2.0)
-        aa, bb, cc, dd = a*a, b*b, c*c, d*d
-        bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
-        return np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
-                         [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
-                         [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
+        """Function returns the rotation matrix associated with counterclockwise rotation
+        about the given axis by theta radians.
 
-    def getDihedral(self, positions, atomlist):
-        """This function computes the dihedral angle for the given atoms at the given positions"""
-        top = self.structure.topology
-        traj = mdtraj.Trajectory(np.asarray(positions),top)
-        angle = mdtraj.compute_dihedrals(traj, atomlist)
-        return angle
+        Parameters
+        ----------
+        axis :
 
-    def beforeMove(self, context):
+        theta : float
+            The angle of rotation in radians.
+        """
+        axis = numpy.asarray(axis)
+        axis = axis / math.sqrt(numpy.dot(axis, axis))
+        a = math.cos(theta / 2.0)
+        b, c, d = -axis * math.sin(theta / 2.0)
+        aa, bb, cc, dd = a * a, b * b, c * c, d * d
+        bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
+        return numpy.array([[aa + bb - cc - dd, 2 * (bc + ad),
+                             2 * (bd - ac)], [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
+                            [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
-        self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+    def move(self, context, verbose=False):
+        """Rotates the target atoms around a selected bond by angle theta and updates
+        the atom coordinates in the parmed structure as well as the ncmc context object
 
-        return context
 
-    def move(self, nc_context, verbose=False):
-        """This rotates the target atoms around a selected bond by angle theta and updates
-        the atom coordinates in the parmed structure as well as the ncmc context object"""
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        verbose : bool, default=False
+            Enable verbosity to print out detailed information of the rotation.
 
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
 
         # determine the axis, theta, residue, and bond + atoms to be rotated
-        #theta, target_atoms, res, bond = self.chooseBondandTheta()
-        #print('Rotating bond: %s in resnum: %s by %.2f radians' %(bond, res, theta))
+        theta, target_atoms, res, bond = self.chooseBondandTheta()
+        print('Rotating bond: %s in resnum: %s by %.2f radians' % (bond, res, theta))
 
         #retrieve the current positions
-        initial_positions = nc_context.getState(getPositions=True).getPositions(asNumpy=True)
+        initial_positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         nc_positions = copy.deepcopy(initial_positions)
 
         model = copy.copy(self.structure)
@@ -533,141 +792,63 @@ class SideChainMove(Move):
 
         positions = model.positions
 
-        ##*** to test of rotamer biasing of valine improves acceptance
-        # Retrieve rotamer angle prior to NCMC
-        dihedralatoms = np.array([[0,4,6,8]])
-        dihedralangle = self.getDihedral(self.start_pos, dihedralatoms)
-
-        # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
-        postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
-
-        self.current_bin = True
-    # check if current position plus proposed theta is within distribution
-        # this should also be simplified to use the rotamer checking function (to be written)  described above
-        my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-
-        proposed = (postrelax_dihedralangle - my_theta + math.pi)%(2*math.pi)-math.pi
-
-        print('This is the new proposed dihedral',proposed)
-        print('This is the accepted theta', my_theta)
-        print('This is where it is moving from', postrelax_dihedralangle)
-        print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
-
         # find the rotation axis using the updated positions
-        axis1 = my_target_atoms[0]
-        axis2 = my_target_atoms[1]
-        rot_axis = (positions[axis1] - positions[axis2])/positions.unit
+        axis1 = target_atoms[0]
+        axis2 = target_atoms[1]
+        rot_axis = (positions[axis1] - positions[axis2]) / positions.unit
 
         #calculate the rotation matrix
-        rot_matrix = self.rotation_matrix(rot_axis, my_theta)
+        rot_matrix = self.rotation_matrix(rot_axis, theta)
 
         # apply the rotation matrix to the target atoms
-        for idx, atom in enumerate(my_target_atoms):
+        for idx, atom in enumerate(target_atoms):
 
             my_position = positions[atom]
 
-            if self.verbose: print('The current position for %i is: %s'%(atom, my_position))
+            if self.verbose:
+                print('The current position for %i is: %s' % (atom, my_position))
 
             # find the reduced position (substract out axis)
             red_position = (my_position - model.positions[axis2])._value
             # find the new positions by multiplying by rot matrix
-            new_position = np.dot(rot_matrix, red_position)*positions.unit + positions[axis2]
+            new_position = numpy.dot(rot_matrix, red_position) * positions.unit + positions[axis2]
 
-            if self.verbose: print("The new position should be:",new_position)
+            if self.verbose: print("The new position should be:", new_position)
 
             positions[atom] = new_position
             # Update the parmed model with the new positions
-            model.atoms[atom].xx = new_position[0]/positions.unit
-            model.atoms[atom].xy = new_position[1]/positions.unit
-            model.atoms[atom].xz = new_position[2]/positions.unit
+            model.atoms[atom].xx = new_position[0] / positions.unit
+            model.atoms[atom].xy = new_position[1] / positions.unit
+            model.atoms[atom].xz = new_position[2] / positions.unit
 
             #update the copied ncmc context array with the new positions
-            nc_positions[atom][0] = model.atoms[atom].xx*nc_positions.unit/10
-            nc_positions[atom][1] = model.atoms[atom].xy*nc_positions.unit/10
-            nc_positions[atom][2] = model.atoms[atom].xz*nc_positions.unit/10
+            nc_positions[atom][0] = model.atoms[atom].xx * nc_positions.unit / 10
+            nc_positions[atom][1] = model.atoms[atom].xy * nc_positions.unit / 10
+            nc_positions[atom][2] = model.atoms[atom].xz * nc_positions.unit / 10
 
-            if self.verbose: print('The updated position for this atom is:', model.positions[atom])
+            if self.verbose:
+                print('The updated position for this atom is:', model.positions[atom])
 
         # update the actual ncmc context object with the new positions
-            nc_context.setPositions(nc_positions)
+        context.setPositions(nc_positions)
 
         # update the class structure positions
-            self.structure.positions = model.positions
+        self.structure.positions = model.positions
 
         if self.write_move:
             filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
-            mod_prot = model.save(filename, overwrite = True)
-
-        return nc_context
-
-    def afterMove(self, context):
-        """This method is called at the end of the NCMC portion if the
-        context needs to be checked or modified before performing the move
-        at the halfway point.
-        Parameters
-        ----------
-        context: simtk.openmm.Context object
-            Context containing the positions to be moved.
-        Returns
-        -------
-        context: simtk.openmm.Context object
-            The same input context, but whose context were changed by this function.
-        """
-        post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        indices = np.asarray([[0,4,6,8]])
-        angle = self.getDihedral(post_pos,indices)
-        print("This is the new angle:",angle)
-
-        self.after_pos = post_pos
-
+            mod_prot = model.save(filename, overwrite=True)
         return context
 
 
-class CombinationMove(Move):
-    """Move object that allows Move object moves to be performed according to
-    the order in move_list.
-    To ensure detailed balance, the moves have an equal chance to be performed
-    in listed or reverse order.
-
-    Parameters
-    ----------
-    move_list : list of blues.move.Move-like objects
-    """
-    def __init__(self, move_list):
-        self.move_list = move_list
-
-    def move(self, context):
-        """Performs the move() functions of the Moves in move_list on
-        a context.
-
-        Parameters
-        ----------
-        context: simtk.openmm.Context object
-            Context containing the positions to be moved.
-        Returns
-        -------
-        context: simtk.openmm.Context object
-            The same input context, but whose positions were changed by this function.
-
-        """
-        rand = np.random.random()
-        #to maintain detailed balance this executes both
-        #the forward and reverse order moves with equal probability
-        if rand > 0.5:
-            for single_move in self.move_list:
-                 single_move.move(context)
-        else:
-            for single_move in reverse(self.move_list):
-                 single_move.move(context)
-
-
 class SmartDartMove(RandomLigandRotationMove):
-    """
+    """**WARNING:** This class has not been completely tested. Use at your own risk.
+
     Move object that allows center of mass smart darting moves to be performed on a ligand,
     allowing translations of a ligand between pre-defined regions in space. The
     `SmartDartMove.move()` method translates the ligand to the locations of the ligand
     found in the coord_files. These locations are defined in terms of the basis_particles.
-    These locations are picked with a uniform probability.
+    These locations are picked with a uniform probability. Based on Smart Darting Monte Carlo [smart-dart]_
 
     Parameters
     ----------
@@ -691,19 +872,26 @@ class SmartDartMove(RandomLigandRotationMove):
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
 
-    References:
-    (1) I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
+    References
+    ----------
+    .. [smart-dart] I. Andricioaei, J. E. Straub, and A. F. Voter, J. Chem. Phys. 114, 6994 (2001).
         https://doi.org/10.1063/1.1358861
 
     """
-    def __init__(self, structure, basis_particles, coord_files,
-                 topology=None, dart_radius=0.2*unit.nanometers,
-                 self_dart=False, resname='LIG'):
+
+    def __init__(self,
+                 structure,
+                 basis_particles,
+                 coord_files,
+                 topology=None,
+                 dart_radius=0.2 * unit.nanometers,
+                 self_dart=False,
+                 resname='LIG'):
 
         super(SmartDartMove, self).__init__(structure, resname=resname)
 
         if len(coord_files) < 2:
-            raise ValueError('You should include at least two files in coord_files '+
+            raise ValueError('You should include at least two files in coord_files ' +
                              'in order to benefit from smart darting')
         self.dartboard = []
         self.n_dartboard = []
@@ -722,9 +910,7 @@ class SmartDartMove(RandomLigandRotationMove):
         This adds to the self.n_dartboard, which defines the centers used for smart darting.
 
         Parameters
-        ---------
-        system: simtk.openmm.system
-            Openmm System corresponding to the whole system to smart dart.
+        ----------
         coord_files: list of str
             List containing coordinate files of the whole system for smart darting.
         topology: str, optional, default=None
@@ -748,8 +934,8 @@ class SmartDartMove(RandomLigandRotationMove):
                 temp_md = parmed.load_file(topology, xyz=coord_file)
             #get position values in terms of nanometers
             context_pos = temp_md.positions.in_units_of(unit.nanometers)
-            lig_pos = np.asarray(context_pos._value)[self.atom_indices]*unit.nanometers
-            particle_pos = np.asarray(context_pos._value)[self.basis_particles]*unit.nanometers
+            lig_pos = numpy.asarray(context_pos._value)[self.atom_indices] * unit.nanometers
+            particle_pos = numpy.asarray(context_pos._value)[self.basis_particles] * unit.nanometers
             #calculate center of mass of ligand
             self.calculateProperties()
             center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
@@ -757,15 +943,14 @@ class SmartDartMove(RandomLigandRotationMove):
             new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], center_of_mass)
             #old_coord should be equal to com
             old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
-            np.testing.assert_almost_equal(old_coord._value, center_of_mass._value, decimal=1)
+            numpy.testing.assert_almost_equal(old_coord._value, center_of_mass._value, decimal=1)
             #add the center of mass in euclidian and new basis set (defined by the basis_particles)
             n_dartboard.append(new_coord)
             dartboard.append(old_coord)
         self.n_dartboard = n_dartboard
         self.dartboard = dartboard
 
-
-    def move(self, nc_context):
+    def move(self, context):
         """
         Function for performing smart darting move with darts that
         depend on particle positions in the system.
@@ -785,13 +970,13 @@ class SmartDartMove(RandomLigandRotationMove):
         atom_indices = self.atom_indices
         if len(self.n_dartboard) == 0:
             raise ValueError('No darts are specified. Make sure you use ' +
-                'SmartDartMove.dartsFromParmed() before using the move() function')
-        context = nc_context
+                             'SmartDartMove.dartsFromParmed() before using the move() function')
+
         #get state info from context
         stateinfo = context.getState(True, True, False, True, True, False)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
         #get the ligand positions
-        lig_pos = np.asarray(oldDartPos._value)[self.atom_indices]*unit.nanometers
+        lig_pos = numpy.asarray(oldDartPos._value)[self.atom_indices] * unit.nanometers
         #updates the darting regions based on the current position of the basis particles
         self._findDart(context)
         #find the ligand's current center of mass position
@@ -802,7 +987,7 @@ class SmartDartMove(RandomLigandRotationMove):
 
         #if the center of mass was within one darting region, move the ligand to another region
         if selected_dart != None:
-            newDartPos = np.copy(oldDartPos)
+            newDartPos = numpy.copy(oldDartPos)
             #find the center of mass in the new darting region
             dart_switch = self._reDart(selected_dart, changevec)
             #find the vector that will translate the ligand to the new darting region
@@ -822,14 +1007,15 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         --------
-        com: 1x3 np.array*simtk.unit.nanometers
+        com: 1x3 numpy.array*simtk.unit.nanometers
             Current center of mass coordinates of the ligand.
+
         Returns
         -------
         selected_dart: simtk.unit.nanometers, or None
             The distance of a dart to a center. Returns
             None if the distance is greater than the darting region.
-        changevec: 1x3 np.array*simtk.unit.nanometers,
+        changevec: 1x3 numpy.array*simtk.unit.nanometers,
             The vector from the ligand center of mass
             to the center of a darting region.
 
@@ -842,7 +1028,7 @@ class SmartDartMove(RandomLigandRotationMove):
         #the results to distList
         for dart in self.dartboard:
             diff = com - dart
-            dist = np.sqrt(np.sum((diff)*(diff)))*unit.nanometers
+            dist = numpy.sqrt(numpy.sum((diff) * (diff))) * unit.nanometers
             distList.append(dist)
             diffList.append(diff)
         selected_dart = []
@@ -868,18 +1054,19 @@ class SmartDartMove(RandomLigandRotationMove):
             #TODO can treat cases using appropriate probablility correction
             #see https://doi.org/10.1016/j.patcog.2011.02.006
 
-    def _findDart(self, nc_context):
+    def _findDart(self, context):
         """
         Helper function to dynamically update dart positions based on the current positions
         of the basis particles.
-        Arguments
+
+        Parameters
         ---------
-        nc_context: Context object from simtk.openmm
+        context: Context object from simtk.openmm
             Context from the ncmc simulation.
 
         Returns
         -------
-        dart_list list of 1x3 np.arrays in units.nm
+        dart_list list of 1x3 numpy.arrays in units.nm
             new dart positions calculated from the particle_pairs
             and particle_weights.
 
@@ -889,7 +1076,7 @@ class SmartDartMove(RandomLigandRotationMove):
         #make sure there's an equal number of particle pair lists
         #and particle weight lists
         dart_list = []
-        state_info = nc_context.getState(True, True, False, True, True, False)
+        state_info = context.getState(True, True, False, True, True, False)
         temp_pos = state_info.getPositions(asNumpy=True)
         part1 = temp_pos[basis_particles[0]]
         part2 = temp_pos[basis_particles[1]]
@@ -909,20 +1096,21 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ---------
-        changevec: 1x3 np.array * simtk.unit.nanometers
+        selected_dart :
+        changevec: 1x3 numpy.array * simtk.unit.nanometers
             The vector difference of the ligand center of mass
             to the closest dart center (if within the dart region).
 
 
         Returns
         -------
-        dart_switch: 1x3 np.array * simtk.unit.nanometers
+        dart_switch: 1x3 numpy.array * simtk.unit.nanometers
 
         """
         dartindex = list(range(len(self.dartboard)))
         if self.self_dart == False:
             dartindex.pop(selected_dart)
-        dartindex = np.random.choice(dartindex)
+        dartindex = numpy.random.choice(dartindex)
         dvector = self.dartboard[dartindex]
         dart_switch = dvector + changevec
         return dart_switch
@@ -937,20 +1125,21 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        a: 3x3 np.array
+        a: 3x3 numpy.array
             Defines vectors that will create the new basis.
-        b: 1x3 np.array
+        b: 1x3 numpy.array
             Defines position of particle to be transformed into
             new basis set.
+
         Returns
         -------
-        changed_coord: 1x3 np.array
+        changed_coord: 1x3 numpy.array
             Coordinates of b in new basis.
 
         """
 
-        ainv = np.linalg.inv(a.T)
-        changed_coord = np.dot(ainv,b.T)*unit.nanometers
+        ainv = numpy.linalg.inv(a.T)
+        changed_coord = numpy.dot(ainv, b.T) * unit.nanometers
         return changed_coord
 
     def _undoBasis(self, a, b):
@@ -961,19 +1150,20 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        a: 3x3 np.array
+        a: 3x3 numpy.array
             Defines vectors that defined the new basis.
-        b: 1x3 np.array
+        b: 1x3 numpy.array
             Defines position of particle to be transformed into
             regular basis set.
+
         Returns
         -------
-        changed_coord: 1x3 np.array
+        changed_coord: 1x3 numpy.array
             Coordinates of b in new basis.
         """
 
         a = a.T
-        changed_coord = np.dot(a,b.T)*unit.nanometers
+        changed_coord = numpy.dot(a, b.T) * unit.nanometers
         return changed_coord
 
     def _normalize(self, vector):
@@ -981,16 +1171,17 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        vector: 1xn np.array
+        vector: 1xn numpy.array
             Vector to be normalized.
+
         Returns
         -------
-        unit_vec: 1xn np.array
+        unit_vec: 1xn numpy.array
             Normalized vector.
 
         """
 
-        magnitude = np.sqrt(np.sum(vector*vector))
+        magnitude = numpy.sqrt(numpy.sum(vector * vector))
         unit_vec = vector / magnitude
         return unit_vec
 
@@ -1001,12 +1192,12 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        particle1, particle2, particle3: 1x3 np.array
-            np.array corresponding to a given particle's positions
+        particle1, particle2, particle3: 1x3 numpy.array
+            numpy.array corresponding to a given particle's positions
 
         Returns
         -------
-        vec1, vec2, vec3: 1x3 np.array
+        vec1, vec2, vec3: 1x3 numpy.array
             Basis vectors of the coordinate system defined
             by particles1-3.
 
@@ -1015,8 +1206,8 @@ class SmartDartMove(RandomLigandRotationMove):
         part2 = particle2 - particle1
         part3 = particle3 - particle1
         vec1 = part2
-        vec2= part3
-        vec3 = np.cross(vec1,vec2)*unit.nanometers
+        vec2 = part3
+        vec3 = numpy.cross(vec1, vec2) * unit.nanometers
         return vec1, vec2, vec3
 
     def _findNewCoord(self, particle1, particle2, particle3, center):
@@ -1026,16 +1217,20 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        particle1, particle2, particle3: 1x3 np.array
-            np.array corresponding to a given particle's positions
-        center: 1x3 np.array * simtk.unit compatible with simtk.unit.nanometers
+        particle1, particle2, particle3: 1x3 numpy.array
+            numpy.array corresponding to a given particle's positions
+        center: 1x3 numpy.array * simtk.unit compatible with simtk.unit.nanometers
             Coordinate of the center of mass in the standard basis set.
 
+        Returns
+        -------
+        new_coord : numpy.array
+            Updated coordinates in terms of new basis.
         """
 
         #calculate new basis set
         vec1, vec2, vec3 = self._localCoord(particle1, particle2, particle3)
-        basis_set = np.zeros((3,3))*unit.nanometers
+        basis_set = numpy.zeros((3, 3)) * unit.nanometers
         basis_set[0] = vec1
         basis_set[1] = vec2
         basis_set[2] = vec3
@@ -1053,15 +1248,20 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        particle1, particle2, particle3: 1x3 np.array
-            np.array corresponding to a given particle's positions
-        center: 1x3 np.array * simtk.unit compatible with simtk.unit.nanometers
+        particle1, particle2, particle3: 1x3 numpy.array
+            numpy.array corresponding to a given particle's positions
+        center: 1x3 numpy.array * simtk.unit compatible with simtk.unit.nanometers
             Coordinate of the center of mass in the non-standard basis set.
+
+        Returns
+        -------
+        adjusted_center : numpy.array
+            Corrected coordinates of new center in euclidian coordinates.
 
         """
 
         vec1, vec2, vec3 = self._localCoord(particle1, particle2, particle3)
-        basis_set = np.zeros((3,3))*unit.nanometers
+        basis_set = numpy.zeros((3, 3)) * unit.nanometers
         basis_set[0] = vec1
         basis_set[1] = vec2
         basis_set[2] = vec3
@@ -1070,5 +1270,47 @@ class SmartDartMove(RandomLigandRotationMove):
         old_coord = self._undoBasis(basis_set, center)
         adjusted_center = old_coord + particle1
         return adjusted_center
+
+
+class CombinationMove(Move):
+    """**WARNING:** This class has not been completely tested. Use at your own risk.
+
+    Move object that allows Move object moves to be performed according to
+    the order in move_list. To ensure detailed balance, the moves have an equal
+    chance to be performed in listed or reverse order.
+
+    Parameters
+    ----------
+    moves : list of blues.move.Move
+
+    """
+
+    def __init__(self, moves):
+        self.moves = moves
+
+    def move(self, context):
+        """Performs the move() functions of the Moves in move_list on
+        a context.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
+        rand = numpy.random.random()
+        #to maintain detailed balance this executes both
+        #the forward and reverse order moves with equal probability
+        if rand > 0.5:
+            for single_move in self.move_list:
+                single_move.move(context)
+        else:
+            for single_move in reverse(self.move_list):
+                single_move.move(context)
 
 from blues.moldart.move import MolDartMove

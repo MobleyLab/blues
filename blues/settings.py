@@ -1,11 +1,14 @@
-import os, sys, logging
-from math import ceil, floor
-import numpy as np
+import json
+import logging
+import os
+
 import parmed
-import yaml, json
+import yaml
 from simtk import unit
 from simtk.openmm import app
+
 from blues import reporters, utils
+
 
 class Settings(object):
     """
@@ -17,13 +20,9 @@ class Settings(object):
     yaml_config : filepath to YAML file (or JSON)
     """
 
-
     def __init__(self, config):
         # Parse YAML or YAML docstr into dict
-        if config.endswith('.yaml'):
-            config = Settings.load_yaml(config)
-        elif type(config) is str:
-            config = yaml.safe_load(config)
+        config = Settings.load_yaml(config)
 
         # Parse the config into dict
         if type(config) is dict:
@@ -37,20 +36,24 @@ class Settings(object):
         returned as a dict.
         """
         # Parse input parameters from YAML
-        with open(yaml_config, 'r') as stream:
-            try:
-                config = yaml.safe_load(stream)
-            except FileNotFoundError:
-                raise FileNotFoundError
-            except yaml.YAMLError as e:
-                yaml_err = 'YAML parsing error in file: {}'.format(yaml_config)
-                if hasattr(e, 'problem_mark'):
-                    mark = e.problem_mark
-                    print(yaml_err + '\nError on Line:{} Column:{}' \
-                          .format(mark.line + 1, mark.column + 1))
-                    raise e
+        try:
+            if os.path.isfile(yaml_config):
+                with open(yaml_config, 'r') as stream:
+                    config = yaml.safe_load(stream)
             else:
-                return config
+                config = yaml.safe_load(yaml_config)
+        except IOError as e:
+            print("Unable to open file:", yaml_config)
+            raise e
+        except yaml.YAMLError as e:
+            yaml_err = 'YAML parsing error in file: {}'.format(yaml_config)
+            if hasattr(e, 'problem_mark'):
+                mark = e.problem_mark
+                print(yaml_err + '\nError on Line:{} Column:{}' \
+                      .format(mark.line + 1, mark.column + 1))
+                raise e
+        else:
+            return config
 
     @staticmethod
     def set_Structure(config):
@@ -69,13 +72,19 @@ class Settings(object):
         Reference for parmed.load_Structure *args and **kwargs
         https://parmed.github.io/ParmEd/html/structobj/parmed.formats.registry.load_file.html#parmed.formats.registry.load_file
         """
-        structure = parmed.load_file(**config['structure'])
         if 'restart' in config['structure'].keys():
-            config['Logger'].info('Restarting simulation from {}'.format(restart))
-            restart = parmed.amber.Rst7(restart)
+            rst7 = config['structure']['restart']
+            config['Logger'].info('Restarting simulation from {}'.format(rst7))
+            restart = parmed.amber.Rst7(rst7)
+            config['structure'].pop('restart')
+
+            structure = parmed.load_file(**config['structure'])
             structure.positions = restart.positions
             structure.velocities = restart.velocities
             structure.box = restart.box
+        else:
+            structure = parmed.load_file(**config['structure'])
+
         config['Structure'] = structure
         return config
 
@@ -102,8 +111,15 @@ class Settings(object):
         config (dict) with the logger_level and the file path to store the .log file
         """
         # Initialize root Logger module
-        level = config['logger_level'].upper()
-        outfname = config['outfname']
+        #level = config['logger_level'].upper()
+        level = config['Logger']['level'].upper()
+        stream = config['Logger']['stream']
+
+        if 'filename' in config['Logger'].keys():
+            outfname = config['Logger']['filename']
+        else:
+            outfname = config['outfname']
+
         if level == 'DEBUG':
             # Add verbosity if logging is set to DEBUG
             config['verbose'] = True
@@ -114,8 +130,7 @@ class Settings(object):
             config['system']['verbose'] = False
             config['simulation']['verbose'] = False
         logger_level = eval("logging.%s" % level)
-        logger = reporters.init_logger(
-            logging.getLogger(), logger_level, outfname)
+        logger = reporters.init_logger(logging.getLogger(), logger_level, stream, outfname)
         config['Logger'] = logger
 
         return config
@@ -134,18 +149,19 @@ class Settings(object):
             Force:  unit.kilocalories_per_mole/unit.angstroms**2
         """
         # Default parmed units.
-        default_units = {'nonbondedCutoff': unit.angstroms,
-                    'switchDistance': unit.angstroms,
-                    'implicitSolventKappa': unit.angstroms,
-                    'freeze_distance': unit.angstroms,
-                    'temperature': unit.kelvins,
-                    'hydrogenMass': unit.daltons,
-                    'dt': unit.picoseconds,
-                    'friction': 1 / unit.picoseconds,
-                    'pressure': unit.atmospheres,
-                    'implicitSolventSaltConc': unit.mole / unit.liters,
-                    'weight': unit.kilocalories_per_mole / unit.angstroms**2,
-                    }
+        default_units = {
+            'nonbondedCutoff': unit.angstroms,
+            'switchDistance': unit.angstroms,
+            'implicitSolventKappa': unit.angstroms,
+            'freeze_distance': unit.angstroms,
+            'temperature': unit.kelvins,
+            'hydrogenMass': unit.daltons,
+            'dt': unit.picoseconds,
+            'friction': 1 / unit.picoseconds,
+            'pressure': unit.atmospheres,
+            'implicitSolventSaltConc': unit.mole / unit.liters,
+            'weight': unit.kilocalories_per_mole / unit.angstroms**2,
+        }
 
         # Loop over parameters which require units
         for param, unit_type in default_units.items():
@@ -180,12 +196,10 @@ class Settings(object):
             freeze_keys = ['freeze_center', 'freeze_solvent', 'freeze_selection']
             for sel in freeze_keys:
                 if sel in config['freeze']:
-                    utils.check_amber_selection(config['Structure'],
-                                          config['freeze'][sel])
+                    utils.check_amber_selection(config['Structure'], config['freeze'][sel])
 
         if 'restraints' in config.keys():
-            utils.check_amber_selection(config['Structure'],
-                                  config['restraints']['selection'])
+            utils.check_amber_selection(config['Structure'], config['restraints']['selection'])
 
     @staticmethod
     def set_Apps(config):
@@ -199,11 +213,10 @@ class Settings(object):
 
         # System related parameters that require import from the simtk.openmm.app namesapce
         valid_apps = {
-            'nonbondedMethod': ['NoCutoff', 'CutoffNonPeriodic',
-                                'CutoffPeriodic', 'PME', 'Ewald'],
+            'nonbondedMethod': ['NoCutoff', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME', 'Ewald'],
             'constraints': [None, 'HBonds', 'HAngles', 'AllBonds'],
             'implicitSolvent': ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
-            }
+        }
 
         for method, app_type in valid_apps.items():
             if method in config['system']:
@@ -211,8 +224,8 @@ class Settings(object):
                 try:
                     config['system'][method] = eval("app.%s" % user_input)
                 except:
-                    config['Logger'].exception(
-                        "'{}' was not a valid option for '{}'. Valid options: {}".format(user_input, method, app_type))
+                    config['Logger'].exception("'{}' was not a valid option for '{}'. Valid options: {}".format(
+                        user_input, method, app_type))
         return config
 
     @staticmethod
@@ -222,8 +235,8 @@ class Settings(object):
         for the NCMC simulation.
         """
         ncmc_parameters = utils.calculateNCMCSteps(**config['simulation'])
-        for k,v in ncmc_parameters.items():
-            config['simulation'][k]  = v
+        for k, v in ncmc_parameters.items():
+            config['simulation'][k] = v
         return config
 
     @staticmethod
@@ -262,7 +275,7 @@ class Settings(object):
                     frame_indices = [nstepsNC if x == -1 else x for x in frame_indices]
                     config['ncmc_reporters'][rep]['frame_indices'] = frame_indices
 
-            ncmc_reporter_cfg = reporters.ReporterConfig(outfname+'-ncmc', config['ncmc_reporters'], logger)
+            ncmc_reporter_cfg = reporters.ReporterConfig(outfname + '-ncmc', config['ncmc_reporters'], logger)
             config['ncmc_reporters'] = ncmc_reporter_cfg.makeReporters()
         else:
             logger.warn('Configuration for NCMC reporters were not set.')
@@ -287,7 +300,8 @@ class Settings(object):
             config = Settings.set_Reporters(config)
 
         except Exception as e:
-            config['Logger'].exception(e)
+            print('config', config)
+            #config['Logger'].exception(e)
             raise e
 
         return config
@@ -305,4 +319,4 @@ class Settings(object):
     def asJSON(self, pprint=False):
         if pprint:
             return json.dumps(self.config, sort_keys=True, indent=2, skipkeys=True, default=str)
-        return json.dumps(self.config,  default=str)
+        return json.dumps(self.config, default=str)

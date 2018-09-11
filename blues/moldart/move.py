@@ -12,9 +12,10 @@ import tempfile
 import types
 from blues.moldart.chemcoord import give_cartesian_edit
 from blues.moldart.darts import makeDartDict, checkDart
-from blues.moldart.boresch import add_restraints
+from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
+
 
 class MolDartMove(RandomLigandRotationMove):
     """
@@ -60,11 +61,14 @@ class MolDartMove(RandomLigandRotationMove):
         is different from the the option in Simulation as it takes into account the
         distance from the provided poses and the use of these two should be
         mutually exculsive.
-    restraints: bool, optional, default=True
+    restraints: {'rmsd', 'boresch', None}, optional, default='rmsd'
         Applies restrains so that the ligand remains close to the specified poses
         during the course of the simulation. If this is not used, the probability
         of darting can be greatly diminished, since the ligand can be much more
         mobile in the binding site with it's interactions turned off.
+        'rmsd' specifies the use of RMSD restraints on the selected receptor and ligand atoms,
+        'boresch' specifies the use of boresch-style restraints, and None causes no restraints
+        to be used.
     restrained_receptor_atom: list, optional, default=None
         The three atoms of the receptor to use for boresch style restraints.
         If unspecified uses a random selection through a heuristic process
@@ -86,8 +90,8 @@ class MolDartMove(RandomLigandRotationMove):
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
         transition_matrix=None,
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
-        restraints=True, restrained_receptor_atoms=None,
-        K_r=10, K_angle=10, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        restraints='rmsd', restrained_receptor_atoms=None,
+        K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
@@ -115,11 +119,13 @@ class MolDartMove(RandomLigandRotationMove):
         #if a subset of waters are to be frozen the number is specified here
         self.freeze_waters = freeze_waters
         #if restraints are used to keep ligand within darting regions specified here
-        self.restraints = bool(restraints)
+        self.restraints = restraints
         self.restrained_receptor_atoms = restrained_receptor_atoms
         self.freeze_protein = freeze_protein
         self.K_r = K_r
         self.K_angle = K_angle
+        self.K_RMSD = K_RMSD
+        self.RMSD0 = RMSD0
         self.lambda_restraints = lambda_restraints
 
         #find pdb inputs inputs
@@ -610,18 +616,31 @@ class MolDartMove(RandomLigandRotationMove):
 
         ###
 
-        if self.restraints == True:
+        if self.restraints:
             force_list = new_sys.getForces()
             group_list = list(set([force.getForceGroup() for force in force_list]))
             group_avail = [j for j in list(range(32)) if j not in group_list]
             self.restraint_group = group_avail[0]
 
             old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
+            print('variables', old_int._system_parameters)
+#            print('kwargs', old_int.kwargs)
+            print('kwargs', old_int.int_kwargs)
+
+
+            afunction = dict({'lambda_sterics':'min(1, (1/0.3)*abs(lambda-0.5))',
+                'lambda_electrostatics':'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'
+            })
+            print('alchemical functions', type(afunction))
+            print('alchemical functions', type(afunction.keys()))
+
+            #new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
+            #                                   lambda_restraints=self.lambda_restraints, **old_int.kwargs)
             new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
-                                               lambda_restraints=self.lambda_restraints, **old_int.kwargs)
+                                               lambda_restraints=self.lambda_restraints, **old_int.int_kwargs)
+
             new_int.reset()
             initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
-            self.atom_indices
             for index, pose in enumerate(self.binding_mode_traj):
                 #pose_pos is the positions of the given pose
                 #the ligand positions in this will be used to replace the ligand positions of self.binding_mode_traj[0]
@@ -634,9 +653,13 @@ class MolDartMove(RandomLigandRotationMove):
                 new_pos[self.atom_indices] = pose_pos
                 new_pos= new_pos * unit.nanometers
                 restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.get_values()[:3]]
+                #choose restraint type based on specified parameter
+                restraint_style = {'boresch':add_boresch_restraints, 'rmsd':add_rmsd_restraints}
                 #check which force groups aren't being used and set restraint forces to that
-                new_sys = add_restraints(new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
-                                        self.restrained_receptor_atoms, restraint_lig, self.K_r, self.K_angle)
+
+                new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
+                                        self.restrained_receptor_atoms, restraint_lig,
+                                        K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
 
 
 
@@ -691,7 +714,7 @@ class MolDartMove(RandomLigandRotationMove):
             context.setVelocities(switch_vel)
 
 
-        if self.restraints == True:
+        if self.restraints:
             #if using restraints
             selected_list = self._poseDart(context, self.atom_indices)
 
@@ -733,7 +756,7 @@ class MolDartMove(RandomLigandRotationMove):
             The same input context, but whose context were changed by this function.
 
         """
-        if self.restraints == True:
+        if self.restraints:
             selected_list = self._poseDart(context, self.atom_indices)
             if self.selected_pose not in selected_list:
                 self.acceptance_ratio = 0
@@ -768,7 +791,7 @@ class MolDartMove(RandomLigandRotationMove):
             The same input context, but whose context were changed by this function.
 
         """
-        if self.restraints == True:
+        if self.restraints:
             for i in range(len(self.binding_mode_traj)):
                 context.setParameter('restraint_pose_'+str(i), 0)
         return context
@@ -795,7 +818,7 @@ class MolDartMove(RandomLigandRotationMove):
         oldDartPos = state.getPositions(asNumpy=True)
         selected_list = self._poseDart(context, self.atom_indices)
 
-        if self.restraints == True:
+        if self.restraints:
             self.restraint_correction = 0
             total_pe_restraint1_on = state.getPotentialEnergy()
 
@@ -843,7 +866,7 @@ class MolDartMove(RandomLigandRotationMove):
             # if there is no overlap after the move, acceptance ratio will be 0
 
             #check if new positions overlap when moving
-            if self.restraints == True:
+            if self.restraints:
 
                 state_restraint2_off = context.getState(getEnergy=True)
                 total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
@@ -914,13 +937,15 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
                      nprop,
                      prop_lambda,
                      *args, **kwargs)
-        #self.addGlobalVariable("restraint_energy", 0)
-
         try:
-            pass
-            #self.addGlobalVariable("lambda_restraints", 0)
+            self.addGlobalVariable("restraint_energy", 0)
         except:
             pass
+
+        #try:
+        #    self.addGlobalVariable("lambda_restraints", 0)
+        #except:
+        #    pass
 
 
     def updateRestraints(self):
