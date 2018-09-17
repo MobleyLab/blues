@@ -9,7 +9,6 @@ from blues.moves import RandomLigandRotationMove
 import chemcoord as cc
 import copy
 import tempfile
-import types
 from blues.moldart.chemcoord import give_cartesian_edit
 from blues.moldart.darts import makeDartDict, checkDart
 from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
@@ -164,7 +163,11 @@ class MolDartMove(RandomLigandRotationMove):
                 #        print('bai', bond.GetBgnIdx(), 'eai', bond.GetEndIdx())
                 #        print('order', bond.GetOrder())
                 rigid_atoms = set(ring_atoms + double_bonds)
+                #select all atoms that are bonded to a ring/double bond atom
                 angle_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
+                print('rigid atoms', rigid_atoms)
+                print('angle ring atoms', angle_ring_atoms)
+                #exit()
                 self.dihedral_ring_atoms = angle_ring_atoms
 
             #get the construction table so internal coordinates are consistent between poses
@@ -371,54 +374,33 @@ class MolDartMove(RandomLigandRotationMove):
         if atom_indices == None:
             atom_indices = self.atom_indices
         #choose a random binding pose
-        start = time.clock()
 
-        self.sim_traj.superpose(reference=self.ref_traj,
+        self.sim_traj = self.sim_traj.superpose(reference=self.ref_traj,
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
                             )
-        end = time.clock()
-        print('time1', end - start)
+        self.sim_traj.save('atraj.pdb')
+
         #rand_index = np.random.choice(self.dart_groups, self.transition_matrix[binding_mode_index])
-        start = time.clock()
 
         rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix)
         dart_ratio = self.dart_ratio
         self.acceptance_ratio = self.acceptance_ratio * dart_ratio
-        end = time.clock()
-        print('time2', end - start)
 
 
         #get matching binding mode pose and get rotation/translation to that pose
         #TODO decide on making a copy or always point to same object
-        start = time.clock()
         xyz_ref = copy.deepcopy(self.internal_xyz[0])
-        end = time.clock()
-        print('time3', end-start)
-        start = time.clock()
+        traj_positions = self.sim_traj.openmm_positions(0)
         for index, entry in enumerate(['x', 'y', 'z']):
             for i in range(len(self.atom_indices)):
                 sel_atom = self.atom_indices[i]
                 #set the pandas series with the appropriate data
                 #multiply by 10 since openmm works in nm and cc works in angstroms
-                xyz_ref._frame.at[i, entry] = self.sim_traj.openmm_positions(0)[sel_atom][index]._value*10
-        end = time.clock()
-        print('timea', end-start)
-        start = time.clock()
+                xyz_ref._frame.at[i, entry] = traj_positions[sel_atom][index]._value*10
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
-        end = time.clock()
-        print('timeb', end-start)
-        start = time.clock()
         zmat_diff = xyz_ref.get_zmat(construction_table=self.buildlist)
-        end = time.clock()
-        print('timec', end-start)
-        start = time.clock()
         zmat_traj = copy.deepcopy(xyz_ref.get_zmat(construction_table=self.buildlist))
-        end = time.clock()
-        print('timed', end-start)
-        print('zmat_new', zmat_new)
-        print('zmat_traj', zmat_traj)
-        print('xyz_ref', xyz_ref)
 
         #get appropriate comparision zmat
         zmat_compare = self.internal_zmat[binding_mode_index]
@@ -428,70 +410,40 @@ class MolDartMove(RandomLigandRotationMove):
         #and reference poses and take that into account when darting to the new pose
         change_list = ['dihedral']
         old_list = ['bond', 'angle']
-        start = time.clock()
         if rigid_move == True:
             old_list = change_list + old_list
         else:
 
             zmat_indices = zmat_traj.index.values
-            #get the difference of the trajectory to the dart
- #           zmat_diff._frame.loc[:, change_list].iloc[3:] = zmat_diff._frame.loc[:, change_list].iloc[3:].subtract(zmat_compare._frame.loc[:, change_list].iloc[3:])
-            #zmat_diff._frame.loc[:, change_list].iloc[3:] = zmat_diff._frame.loc[:, change_list].iloc[3:].subtract(zmat_compare._frame.loc[:, change_list].iloc[3:])
-            #zmat_diff._frame.loc[:, change_list] = zmat_diff._frame.loc[:, change_list].subtract(zmat_compare._frame.loc[:, change_list].reindex(self.buildlist))
             changed = (zmat_diff._frame.loc[:, change_list] - zmat_compare._frame.loc[:, change_list]).reindex(zmat_indices)
             abs_bond_diff = zmat_diff._frame.loc[:, 'bond'].iloc[0] - zmat_compare._frame.loc[:, 'bond'].iloc[0]
             abs_angle_diff = zmat_diff._frame.loc[:, 'angle'].iloc[:2] - zmat_compare._frame.loc[:, 'angle'].iloc[:2]
-            print('bond diff', abs_bond_diff)
-            print('angle diff', abs_angle_diff)
 
-
-            print('zmat_compare', zmat_compare)
-            print('changed', changed)
-#            zmat_diff._frame.loc[:, change_list].iloc[3:] = (zmat_diff._frame.loc[:, change_list] - zmat_compare._frame.loc[:, change_list].iloc[3:]).reindex(zmat_indices)
             zmat_diff._frame.loc[:, change_list] = changed
             zmat_diff._frame.loc[(zmat_diff._frame.index.isin([zmat_diff._frame.index[0]])), 'bond'] = abs_bond_diff
             zmat_diff._frame.loc[(zmat_diff._frame.index.isin(zmat_diff._frame.index[:2])), 'angle'] = abs_angle_diff
 
-            print('changed zmat', zmat_diff)
-
-
-
-            #Then add back those changes to the darted pose
             print('zmat_diff', zmat_diff)
-
-            print('zmat_new', zmat_new)
-
-#            zmat_new._frame.loc[:, change_list].iloc[3:] = zmat_new._frame.loc[:, change_list].iloc[3:].add(zmat_diff._frame.loc[:, change_list].iloc[3:])
+            #Then add back those changes to the darted pose
+            print('zmat_new start', zmat_new)
             zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[:, change_list] + zmat_diff._frame.loc[:, change_list]
-            zmat_new._frame.loc[(zmat_new._frame.index.isin([zmat_new._frame.index[0]])), 'bond'] = zmat_new._frame.loc[(zmat_new._frame.index.isin([zmat_new._frame.index[0]])), 'bond'] + zmat_diff._frame.loc[(zmat_diff._frame.index.isin([zmat_diff._frame.index[0]])), 'bond']
-            #zmat_new._frame.loc[(zmat_new._frame.index.isin([zmat_new._frame.index[:2]])), 'angle'] = zmat_new._frame.loc[(zmat_new._frame.index.isin([zmat_new._frame.index[:2]])), 'angle'] + zmat_diff._frame.loc[(zmat_diff._frame.index.isin([zmat_diff._frame.index[:2]])), 'angle']
-            #print('test1', zmat_new._frame.loc[(zmat_new._frame.index.isin([zmat_new._frame.index[:2]])), 'angle'])
-            print('sel index', zmat_new._frame.index[:2])
-            print('test', zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'])
+            zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] = zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] + zmat_diff._frame.loc[zmat_new._frame.index[0], 'bond']
             zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] = zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] + zmat_diff._frame.loc[zmat_diff._frame.index[:2], 'angle']
+            print('zmat_new end', zmat_new)
+            print('angle', zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'])
 
-            print('zmat_new new', zmat_new)
-
-#            for i in change_list:
-#            #add changes from zmat_diff to the darted pose
-#                zmat_new._frame[i] = zmat_diff._frame[i] + zmat_new._frame[i]
-        end = time.clock()
-        print('time5', end-start)
-        print('loc', zmat_new._frame.loc[:, old_list].iloc[3:])
+        #We want to keep the bonds and angles the same between jumps, since they don't really vary
         zmat_new._frame.loc[:, old_list].iloc[3:] = zmat_traj._frame.loc[:, old_list].iloc[3:]
-        #for param in old_list:
-            #We want to keep the bonds and angles the same between jumps
-#            zmat_new._frame[param] = zmat_traj._frame[param]
-        #    zmat_new._frame.loc[param].iloc[3:] = zmat_traj._frame[param].iloc[3:]
 
 
-
+        print('setting dihedrals', zmat_traj._frame.loc[self.dihedral_ring_atoms,['dihedral']].iloc[3:])
         if rigid_ring:
-            zmat_new._frame.loc[self.dihedral_ring_atoms,['dihedral']].iloc[3:] = zmat_traj._frame.loc[self.dihedral_ring_atoms,['dihedral']].iloc[3:]
+            rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
+            print('rigid_dihedrals_atoms', rigid_dihedrals_atoms)
+            #zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:]
+            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
 
- #           for i in self.dihedral_ring_atoms:
- #               #zmat_new._frame.loc[i,'dihedral'] = zmat_traj._frame.loc[i,'dihedral']
- #               zmat_new._frame.loc[self.dihedral_ring_atoms,['dihedral']] = zmat_traj._frame.loc[self.dihedral_ring_atoms,['dihedral']]
+        print('zmat_new end end', zmat_new)
 
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
@@ -507,11 +459,11 @@ class MolDartMove(RandomLigandRotationMove):
             for index, entry in enumerate(['x', 'y', 'z']):
                 sel_atom = self.atom_indices[i]
                 self.sim_traj.xyz[0][:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.)
-        #self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
-        #        ref_atom_indices=self.fit_atoms
-        #        )
+        self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
+                ref_atom_indices=self.fit_atoms
+                )
+        self.sim_traj.save('btraj.pdb')
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
-        print('return')
         return nc_pos, rand_index
 
     def initializeSystem(self, system, integrator):
@@ -604,19 +556,8 @@ class MolDartMove(RandomLigandRotationMove):
             self.restraint_group = group_avail[0]
 
             old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
-            print('variables', old_int._system_parameters)
-#            print('kwargs', old_int.kwargs)
-            print('kwargs', old_int.int_kwargs)
 
 
-            afunction = dict({'lambda_sterics':'min(1, (1/0.3)*abs(lambda-0.5))',
-                'lambda_electrostatics':'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'
-            })
-            print('alchemical functions', type(afunction))
-            print('alchemical functions', type(afunction.keys()))
-
-            #new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
-            #                                   lambda_restraints=self.lambda_restraints, **old_int.kwargs)
             new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
                                                lambda_restraints=self.lambda_restraints, **old_int.int_kwargs)
 
@@ -637,10 +578,20 @@ class MolDartMove(RandomLigandRotationMove):
                 #choose restraint type based on specified parameter
                 restraint_style = {'boresch':add_boresch_restraints, 'rmsd':add_rmsd_restraints}
                 #check which force groups aren't being used and set restraint forces to that
+                if self.restraints == 'boresch':
+                    print('1')
+                    new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
+                                            self.restrained_receptor_atoms, restraint_lig,
+                                            K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
+                elif self.restraints == 'rmsd':
+                    print('2')
+                    #restrain only the heavy atoms
+                    nonheavy_atoms = self.internal_xyz[0]._frame['atom'].str.contains('H')
+                    heavy_atoms = [self.atom_indices[i] for i in range(len(self.atom_indices)) if nonheavy_atoms.iloc[i] == False]
 
-                new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
-                                        self.restrained_receptor_atoms, restraint_lig,
-                                        K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
+                    new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, heavy_atoms, index, self.restraint_group,
+                                            self.restrained_receptor_atoms, restraint_lig,
+                                            K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
 
 
 
