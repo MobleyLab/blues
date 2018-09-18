@@ -292,12 +292,13 @@ class MolDartMove(RandomLigandRotationMove):
 
 
         xyz_ref = copy.deepcopy(self.internal_xyz[0])
+        traj_positions = self.sim_traj.openmm_positions(0)
         for index, entry in enumerate(['x', 'y', 'z']):
             for i in range(len(self.atom_indices)):
                 sel_atom = self.atom_indices[i]
                 #set the pandas series with the appropriate data
                 #multiply by 10 since openmm works in nm and cc works in angstroms
-                xyz_ref._frame.at[i, entry] = self.sim_traj.openmm_positions(0)[sel_atom][index]._value*10
+                xyz_ref._frame.at[i, entry] = traj_positions[sel_atom][index]._value*10
 
         current_zmat = xyz_ref.get_zmat(construction_table=self.buildlist)
         selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
@@ -583,6 +584,14 @@ class MolDartMove(RandomLigandRotationMove):
                     new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
                                             self.restrained_receptor_atoms, restraint_lig,
                                             K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
+                    if 1:
+                        nonheavy_atoms = self.internal_xyz[0]._frame['atom'].str.contains('H')
+                        heavy_atoms = [self.atom_indices[i] for i in range(len(self.atom_indices)) if nonheavy_atoms.iloc[i] == False]
+
+                        new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, heavy_atoms, index, self.restraint_group,
+                                                self.restrained_receptor_atoms, restraint_lig,
+                                                K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
+
                 elif self.restraints == 'rmsd':
                     print('2')
                     #restrain only the heavy atoms
@@ -700,6 +709,8 @@ class MolDartMove(RandomLigandRotationMove):
 
         #take into account the number of possible states at the start/end of this proceudre
         #and factor that into the acceptance criterion
+        else:
+            self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/float(self.num_poses_begin))
 
 
         return context
@@ -745,19 +756,21 @@ class MolDartMove(RandomLigandRotationMove):
             The same input context, but whose positions were changed by this function.
 
         """
+        system = context.getSystem()
+        print('forces present', list(system.getForces()))
         self.moves_attempted += 1
         state = context.getState(getPositions=True, getEnergy=True)
         oldDartPos = state.getPositions(asNumpy=True)
         selected_list = self._poseDart(context, self.atom_indices)
 
         if self.restraints:
-            self.restraint_correction = 0
-            total_pe_restraint1_on = state.getPotentialEnergy()
+#            self.restraint_correction = 0
+#            total_pe_restraint1_on = state.getPotentialEnergy()
 
             context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
-            state_restraint1_off = context.getState(getPositions=True, getEnergy=True)
-            total_pe_restraint1_off = state_restraint1_off.getPotentialEnergy()
-            restraint1_energy = total_pe_restraint1_on - total_pe_restraint1_off
+#            state_restraint1_off = context.getState(getPositions=True, getEnergy=True)
+#            total_pe_restraint1_off = state_restraint1_off.getPotentialEnergy()
+#            restraint1_energy = total_pe_restraint1_on - total_pe_restraint1_off
         else:
             #the move is instantaneous without restraints, so find overlap of darting regions
             #to incorporate later into the acceptance criterion
@@ -790,8 +803,7 @@ class MolDartMove(RandomLigandRotationMove):
             #the acceptance depends on the instantaenous move
             #therefore find the ratio of number of poses before and after
             #TODO: Check if probability order is right
-            #self.num_poses_end = len(overlap_after)
-            #self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/self.num_poses_begin)
+            self.num_poses_end = len(overlap_after)
             #self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end_restraints)/self.num_poses_begin_restraints)
 
             # to maintain detailed balance, check to see the overlap of the start and end darting regions
@@ -800,18 +812,18 @@ class MolDartMove(RandomLigandRotationMove):
             #check if new positions overlap when moving
             if self.restraints:
 
-                state_restraint2_off = context.getState(getEnergy=True)
-                total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
+#                state_restraint2_off = context.getState(getEnergy=True)
+#                total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
                 for i in range(len(self.binding_mode_traj)):
                     context.setParameter('restraint_pose_'+str(i), 0)
 
                 context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
-                state_restraint2_on = context.getState(getEnergy=True)
-                total_pe_restraint2_on = state_restraint2_on.getPotentialEnergy()
-                restraint2_energy = total_pe_restraint2_on - total_pe_restraint2_off
-                restraint_correction = -(restraint2_energy - restraint1_energy)
+#                state_restraint2_on = context.getState(getEnergy=True)
+#                total_pe_restraint2_on = state_restraint2_on.getPotentialEnergy()
+#                restraint2_energy = total_pe_restraint2_on - total_pe_restraint2_off
+#                restraint_correction = -(restraint2_energy - restraint1_energy)
                 #work = context.getIntegrator().getGlobalVariableByName('protocol_work')
-                self.restraint_correction = restraint_correction
+#                self.restraint_correction = restraint_correction
 
         if self.freeze_waters > 0:
             start_state = context.getState(getPositions=True, getVelocities=True)
