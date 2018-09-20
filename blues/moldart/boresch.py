@@ -16,7 +16,7 @@ class BoreschBLUES(Boresch):
                  K_phiA=None, phi_A0=None,
                  K_phiB=None, phi_B0=None,
                  K_phiC=None, phi_C0=None,
-                 standard_state_correction_method='analytical', *args, **kwargs):
+                 *args, **kwargs):
 
         super(BoreschBLUES, self).__init__(restrained_receptor_atoms=restrained_receptor_atoms, restrained_ligand_atoms=restrained_ligand_atoms,
                  K_r=K_r, r_aA0=r_aA0,
@@ -25,7 +25,7 @@ class BoreschBLUES(Boresch):
                  K_phiA=K_phiA, phi_A0=phi_A0,
                  K_phiB=K_phiB, phi_B0=phi_B0,
                  K_phiC=K_phiC, phi_C0=phi_C0,
-                 standard_state_correction_method=standard_state_correction_method, *args, **kwargs)
+                 *args, **kwargs)
         #super(Boresch, self).__init__(*args, **kwargs)
 
 

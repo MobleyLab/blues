@@ -14,7 +14,7 @@ from blues.moldart.darts import makeDartDict, checkDart
 from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
-import time
+import types
 
 class MolDartMove(RandomLigandRotationMove):
     """
@@ -152,22 +152,12 @@ class MolDartMove(RandomLigandRotationMove):
                     for atom in mol.GetAtoms():
                         if atom.IsInRing():
                             ring_atoms.append(atom.GetIdx())
-                    #for bond in mol.GetBonds():
-                    #    print('bond', bond.GetOrder())
                     bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
                     end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
                     double_bonds = bgn_idx + end_idx
-                #    for bond in mol.GetBonds():
-                #        if bond.GetOrder() > 1:
-                #            [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetOrder > 1]
-                #        print('bai', bond.GetBgnIdx(), 'eai', bond.GetEndIdx())
-                #        print('order', bond.GetOrder())
                 rigid_atoms = set(ring_atoms + double_bonds)
                 #select all atoms that are bonded to a ring/double bond atom
                 angle_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
-                print('rigid atoms', rigid_atoms)
-                print('angle ring atoms', angle_ring_atoms)
-                #exit()
                 self.dihedral_ring_atoms = angle_ring_atoms
 
             #get the construction table so internal coordinates are consistent between poses
@@ -219,8 +209,21 @@ class MolDartMove(RandomLigandRotationMove):
     @staticmethod
     def _checkTransitionMatrix(transition_matrix, dart_groups):
         """Checks if transition matrix obeys the proper
-        properties if used in a Monte Carlo scheme"""
+        properties if used in a Monte Carlo scheme
+
+        Parameters
+        ----------
+        transition_matrix: nxn np.array
+            transition matrix where each entry corresponds to the probability of jumping to another state
+        dart_groups: list
+            list containing the number of darts used for darting
+        Returns
+        -------
+        transition_matrix: nxn np.array
+            transitino matrix with the row probabilities normalized.
+        """
         #check if values are non-negative
+
         ltz = np.where(transition_matrix<0)[0]
         if len(ltz)>0:
             raise ValueError('transition_matrix values should all be non-negative')
@@ -390,7 +393,6 @@ class MolDartMove(RandomLigandRotationMove):
 
 
         #get matching binding mode pose and get rotation/translation to that pose
-        #TODO decide on making a copy or always point to same object
         xyz_ref = copy.deepcopy(self.internal_xyz[0])
         traj_positions = self.sim_traj.openmm_positions(0)
         for index, entry in enumerate(['x', 'y', 'z']):
@@ -402,7 +404,6 @@ class MolDartMove(RandomLigandRotationMove):
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         zmat_diff = xyz_ref.get_zmat(construction_table=self.buildlist)
         zmat_traj = copy.deepcopy(xyz_ref.get_zmat(construction_table=self.buildlist))
-
         #get appropriate comparision zmat
         zmat_compare = self.internal_zmat[binding_mode_index]
         #we don't need to change the bonds/dihedrals since they are fast to sample
@@ -411,10 +412,16 @@ class MolDartMove(RandomLigandRotationMove):
         #and reference poses and take that into account when darting to the new pose
         change_list = ['dihedral']
         old_list = ['bond', 'angle']
-        if rigid_move == True:
-            old_list = change_list + old_list
-        else:
 
+        if rigid_ring:
+            rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
+            #zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:]
+            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+
+        if rigid_move:
+            old_list =  old_list + change_list
+
+        else:
             zmat_indices = zmat_traj.index.values
             changed = (zmat_diff._frame.loc[:, change_list] - zmat_compare._frame.loc[:, change_list]).reindex(zmat_indices)
             abs_bond_diff = zmat_diff._frame.loc[:, 'bond'].iloc[0] - zmat_compare._frame.loc[:, 'bond'].iloc[0]
@@ -424,35 +431,115 @@ class MolDartMove(RandomLigandRotationMove):
             zmat_diff._frame.loc[(zmat_diff._frame.index.isin([zmat_diff._frame.index[0]])), 'bond'] = abs_bond_diff
             zmat_diff._frame.loc[(zmat_diff._frame.index.isin(zmat_diff._frame.index[:2])), 'angle'] = abs_angle_diff
 
-            print('zmat_diff', zmat_diff)
             #Then add back those changes to the darted pose
-            print('zmat_new start', zmat_new)
             zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[:, change_list] + zmat_diff._frame.loc[:, change_list]
             zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] = zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] + zmat_diff._frame.loc[zmat_new._frame.index[0], 'bond']
             zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] = zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] + zmat_diff._frame.loc[zmat_diff._frame.index[:2], 'angle']
-            print('zmat_new end', zmat_new)
-            print('angle', zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'])
 
         #We want to keep the bonds and angles the same between jumps, since they don't really vary
-        zmat_new._frame.loc[:, old_list].iloc[3:] = zmat_traj._frame.loc[:, old_list].iloc[3:]
-
-
-        print('setting dihedrals', zmat_traj._frame.loc[self.dihedral_ring_atoms,['dihedral']].iloc[3:])
-        if rigid_ring:
-            rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
-            print('rigid_dihedrals_atoms', rigid_dihedrals_atoms)
-            #zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:]
-            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
-
-        print('zmat_new end end', zmat_new)
+        zmat_new._frame.loc[:, old_list] = zmat_traj._frame.loc[:, old_list]
 
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
+        def findCentralAngle(buildlist):
+            connection_list = []
+            index_list = [0,1,2]
+            for i in buildlist.index.get_values()[:3]:
+                connection_list.append(buildlist['b'][i])
+            #count the number of bonds to the first buildatom
+            counts = connection_list.count(self.buildlist.index.get_values()[0])
+            #if 2 then the first atom is the center atom
+            if counts == 2:
+                center_index = 0
+            #otherwise the second atom is the center atom
+            else:
+                center_index = 1
+            index_list.pop(center_index)
+            vector_list = []
+            for index in index_list:
+                vector_list.append([index, center_index])
+            return vector_list
+        def normalize_vectors(dart_array, ref_array, vector_list):
+            ref1 = ref_array[vector_list[0][0]] - ref_array[vector_list[0][1]]
+            ref2 = ref_array[vector_list[1][0]] - ref_array[vector_list[1][1]]
+            dart1 = dart_array[vector_list[0][0]] - dart_array[vector_list[0][1]]
+            dart2 = dart_array[vector_list[1][0]] - dart_array[vector_list[1][1]]
+            normal1 = dart1/np.linalg.norm(dart1) * np.linalg.norm(ref1)
+            normal2 = dart2/np.linalg.norm(dart2) * np.linalg.norm(ref2)
+            centered_dart = np.tile(dart_array[vector_list[0][1]], (3,1))
+            centered_dart[vector_list[0][0]] = normal1 + centered_dart[vector_list[0][0]]
+            centered_dart[vector_list[1][0]] = normal2 + centered_dart[vector_list[1][0]]
+            return centered_dart
+        def test_angle(dart_three, vector_list):
+            angle1 = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+            angle2 = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+            dart_angle = angle1.dot(angle2) / (np.linalg.norm(angle1) * np.linalg.norm(angle2))
+            return np.degrees(np.arccos(dart_angle))
+        def angle_calc(angle1, angle2):
+            angle = np.arccos(angle1.dot(angle2) / ( np.linalg.norm(angle1) * np.linalg.norm(angle2) ) )
+            degrees = np.degrees(angle)
+            return degrees
+        def calc_angle(vec1, vec2):
+            angle = np.arccos(vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+            return angle
+
+
+
+        #the third atom listed isn't guaranteed to be the center atom (to calculate angles)
+        #so we first have to check the build list to see the atom order
+        vector_list = findCentralAngle(self.buildlist)
+        #find translation differences in positions of first two atoms to reference structure
+        #find the appropriate rotation to transform the structure back
+        #repeat for second bond
+        #get first 3 new moldart positions, apply same series of rotation/translations
+        sim_three = np.zeros((3,3))
+        ref_three = np.zeros((3,3))
+        dart_three = np.zeros((3,3))
+        dart_ref = np.zeros((3,3))
+
+        for i in range(3):
+            sim_three[i] = self.sim_traj.xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
+            self.buildlist.index.get_values()[i]
+            ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
+            dart_three[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
+            dart_ref[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
+
+        change_three = np.copy(sim_three)
+        vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
+        vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
+
+        #calculate rotation from ref pos to sim pos
+        #change angle of one vector
+        ref_angle = self.internal_zmat[binding_mode_index]._frame['angle'][self.buildlist.index.get_values()[2]]
+        ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=True)
+        ad_vec = ad_vec / np.linalg.norm(ad_vec) * self.internal_zmat[binding_mode_index]._frame['bond'][self.buildlist.index.get_values()[2]]/10.
+        #apply changed vector to center coordinate to get new position of first particle
+
+        nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * self.internal_zmat[binding_mode_index]._frame['bond'][self.buildlist.index.get_values()[2]]/10.
+        change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
+        change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
+        rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
+        #perform the same angle change on new coordinate
+        centroid_orig = dart_three[vector_list[0][1]]
+        #perform rotation
+        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+        vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
+        vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
+
+        #adjust the angle manually because the first three atom positions are directly
+        #translated from the reference without angle adjustments
+        new_angle = zmat_new['angle'][self.buildlist.index[2]]
+        ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(new_angle), maintain_magnitude=False)
+        ###
+        ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
+        nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
+        dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
+        dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
+
         #get xyz from internal coordinates
-        #zmat_new.give_cartesian_edit = types.MethodType(give_cartesian_edit, zmat_new)
-        xyz_new = (zmat_new.get_cartesian()).sort_index()
-        print('xyz_new', xyz_new)
+        zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
+        xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
         xyz_ref.to_xyz('aref.xyz')
         xyz_new.to_xyz('anew.xyz')
 
@@ -487,8 +574,8 @@ class MolDartMove(RandomLigandRotationMove):
             The modified Integrator object.
 
         """
-        structure = self.structure
 
+        structure = self.structure
         new_sys = system
         old_int = integrator
         # added water portion to freeze waters further than the freeze_waters closest waters
@@ -580,11 +667,10 @@ class MolDartMove(RandomLigandRotationMove):
                 restraint_style = {'boresch':add_boresch_restraints, 'rmsd':add_rmsd_restraints}
                 #check which force groups aren't being used and set restraint forces to that
                 if self.restraints == 'boresch':
-                    print('1')
                     new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
                                             self.restrained_receptor_atoms, restraint_lig,
                                             K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
-                    if 1:
+                    if 0:
                         nonheavy_atoms = self.internal_xyz[0]._frame['atom'].str.contains('H')
                         heavy_atoms = [self.atom_indices[i] for i in range(len(self.atom_indices)) if nonheavy_atoms.iloc[i] == False]
 
@@ -593,7 +679,6 @@ class MolDartMove(RandomLigandRotationMove):
                                                 K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
 
                 elif self.restraints == 'rmsd':
-                    print('2')
                     #restrain only the heavy atoms
                     nonheavy_atoms = self.internal_xyz[0]._frame['atom'].str.contains('H')
                     heavy_atoms = [self.atom_indices[i] for i in range(len(self.atom_indices)) if nonheavy_atoms.iloc[i] == False]
@@ -603,10 +688,8 @@ class MolDartMove(RandomLigandRotationMove):
                                             K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
 
 
-
         else:
             new_int = old_int
-
         return new_sys, new_int
 
 
@@ -757,20 +840,13 @@ class MolDartMove(RandomLigandRotationMove):
 
         """
         system = context.getSystem()
-        print('forces present', list(system.getForces()))
         self.moves_attempted += 1
         state = context.getState(getPositions=True, getEnergy=True)
         oldDartPos = state.getPositions(asNumpy=True)
         selected_list = self._poseDart(context, self.atom_indices)
 
         if self.restraints:
-#            self.restraint_correction = 0
-#            total_pe_restraint1_on = state.getPotentialEnergy()
-
             context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
-#            state_restraint1_off = context.getState(getPositions=True, getEnergy=True)
-#            total_pe_restraint1_off = state_restraint1_off.getPotentialEnergy()
-#            restraint1_energy = total_pe_restraint1_on - total_pe_restraint1_off
         else:
             #the move is instantaneous without restraints, so find overlap of darting regions
             #to incorporate later into the acceptance criterion
@@ -785,7 +861,6 @@ class MolDartMove(RandomLigandRotationMove):
             self.selected_pose = np.random.choice(selected_list, replace=False)
             self.times_within_dart += 1
 
-            #use _moldRedart instead
             #calculate changes in angle/dihedral compared to reference
             #apply angle/dihedral changes to new pose
             #translate new pose to center of first molecule
@@ -802,28 +877,16 @@ class MolDartMove(RandomLigandRotationMove):
             overlap_after = self._poseDart(context, self.atom_indices)
             #the acceptance depends on the instantaenous move
             #therefore find the ratio of number of poses before and after
-            #TODO: Check if probability order is right
             self.num_poses_end = len(overlap_after)
-            #self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end_restraints)/self.num_poses_begin_restraints)
 
             # to maintain detailed balance, check to see the overlap of the start and end darting regions
             # if there is no overlap after the move, acceptance ratio will be 0
 
             #check if new positions overlap when moving
             if self.restraints:
-
-#                state_restraint2_off = context.getState(getEnergy=True)
-#                total_pe_restraint2_off = state_restraint2_off.getPotentialEnergy()
                 for i in range(len(self.binding_mode_traj)):
                     context.setParameter('restraint_pose_'+str(i), 0)
-
                 context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
-#                state_restraint2_on = context.getState(getEnergy=True)
-#                total_pe_restraint2_on = state_restraint2_on.getPotentialEnergy()
-#                restraint2_energy = total_pe_restraint2_on - total_pe_restraint2_off
-#                restraint_correction = -(restraint2_energy - restraint1_energy)
-                #work = context.getIntegrator().getGlobalVariableByName('protocol_work')
-#                self.restraint_correction = restraint_correction
 
         if self.freeze_waters > 0:
             start_state = context.getState(getPositions=True, getVelocities=True)
@@ -885,11 +948,6 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
             self.addGlobalVariable("restraint_energy", 0)
         except:
             pass
-
-        #try:
-        #    self.addGlobalVariable("lambda_restraints", 0)
-        #except:
-        #    pass
 
 
     def updateRestraints(self):
