@@ -3,7 +3,9 @@
 BLUES
 """
 # Add imports here
-from blues import moves, engine, ncmc_switching, simulation, utils, reporters, moldart
+from blues import integrators, moves, reporters, settings, simulation, utils
+#from blues import integrators, moves, reporters, settings, simulation, utils, moldart
+
 
 # Handle versioneer
 from ._version import get_versions

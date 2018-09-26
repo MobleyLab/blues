@@ -383,8 +383,6 @@ class MolDartMove(RandomLigandRotationMove):
                             atom_indices=self.fit_atoms,
                             ref_atom_indices=self.fit_atoms
                             )
-        self.sim_traj.save('atraj.pdb')
-
         #rand_index = np.random.choice(self.dart_groups, self.transition_matrix[binding_mode_index])
 
         rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix)
@@ -540,8 +538,6 @@ class MolDartMove(RandomLigandRotationMove):
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
-        xyz_ref.to_xyz('aref.xyz')
-        xyz_new.to_xyz('anew.xyz')
 
         for i in range(len(self.atom_indices)):
             for index, entry in enumerate(['x', 'y', 'z']):
@@ -550,7 +546,6 @@ class MolDartMove(RandomLigandRotationMove):
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
                 ref_atom_indices=self.fit_atoms
                 )
-        self.sim_traj.save('btraj.pdb')
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
         return nc_pos, rand_index
 
