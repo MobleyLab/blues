@@ -191,7 +191,6 @@ class RandomLigandRotationMove(Move):
 
     def __init__(self, structure, resname='LIG', random_state=None):
         super(RandomLigandRotationMove, self).__init__()
-
         self.structure = structure
         if isinstance(resname, str):
             self.resname = [resname]
@@ -466,7 +465,6 @@ class SideChainMove(Move):
     --------
     >>> from blues.move import SideChainMove
     >>> sidechain = SideChainMove(structure, [1])
-
     """
 
     def __init__(self, structure, residue_list, verbose=False, write_move=False):
@@ -756,7 +754,6 @@ class SideChainMove(Move):
     def move(self, context, verbose=False):
         """Rotates the target atoms around a selected bond by angle theta and updates
         the atom coordinates in the parmed structure as well as the ncmc context object
-
 
         Parameters
         ----------

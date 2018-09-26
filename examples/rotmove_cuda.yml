@@ -1,17 +1,20 @@
-# YAML configuration for simulating divaline in vacuum
+# YAML configuration for simulating toluene bound to T4 lysozyme
+# Atoms 5 angstroms away from the ligand are frozen
 # Simulation on a CUDA device with index 0
 # NVT simulation with Hydrogen Mass Repartioning + 4fs timesteps
-# 5 BLUES iterations (sidechain move proposals), 1000 steps of NCMC and MD per iteration
+# 5 BLUES iterations (random rotational move proposals), 1000 steps of NCMC and MD per iteration
 # MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
 # NCMC Reporters: NetCDF (stores protocol work at 1st, mid, and last frame) and speed for benchmarking
 
-output_dir: vacDivaline-test
-outfname: vacDivaline
-logger_level: info
+output_dir: .
+outfname: t4-toluene
+logger:
+  level: info
+  stream: True
 
 structure:
-  filename: tests/data/vacDivaline.prmtop
-  xyz: tests/data/vacDivaline.inpcrd
+  filename: tests/data/eqToluene.prmtop
+  xyz: tests/data/eqToluene.inpcrd
 
 system:
   nonbondedMethod: PME
@@ -36,6 +39,11 @@ system:
     annihilate_electrostatics : True
     annihilate_sterics : False
 
+freeze:
+  freeze_center: ':LIG'
+  freeze_solvent: ':WAT, NA, Cl-'
+  freeze_distance: 5 * angstroms
+
 simulation:
   platform: CUDA
   properties:
@@ -44,9 +52,9 @@ simulation:
   dt: 0.004 * picoseconds
   friction: 1 * 1/picoseconds
   temperature: 300 * kelvin
-  nIter: 5
-  nstepsMD: 1000
-  nstepsNC: 1000
+  nIter: 5000
+  nstepsMD: 10000
+  nstepsNC: 10000
   #Defauilt
   nprop: 1
   propLambda: 0.3
@@ -57,18 +65,19 @@ simulation:
   # nprop: 4 nstepsNC: 1000, 7000, 8000, 14000, 15000, 21000, 22000
   # nprop: 5 nstepsNC: 9000, 13000, 17000
   ##################################################################
-  
+
+
 md_reporters:
   state:
-    reportInterval: 250
+    reportInterval: 2500
   traj_netcdf:
-    reportInterval: 250
+    reportInterval: 2500
   restart:
-    reportInterval: 1000
+    reportInterval: 10000 #nstepsMD
   stream:
     title: md
-    reportInterval: 250
-    totalSteps: 5000
+    reportInterval: 2500
+    totalSteps: 5000000 #nIter * nstepsMD
     step: True
     speed: True
     progress: True
@@ -82,8 +91,8 @@ ncmc_reporters:
     protocolWork: True
   stream:
     title: ncmc
-    reportInterval: 100
-    totalSteps: 5000
+    reportInterval: 2000
+    totalSteps: 5000000 #nIter * nstepsNC
     step: True
     speed: True
     progress: True
