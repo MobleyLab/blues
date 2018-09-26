@@ -6,6 +6,7 @@ channels:
   - omnia
   - openeye
   - conda-forge
+  - sgill2
 
 dependencies:
   - python >=3.5
