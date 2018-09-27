@@ -11,8 +11,8 @@ import numpy as np
 from blues.moldart.darts import makeDartDict, checkDart
 
 class DartSetupTester(unittest.TestCase):
-    def __init__():
-        setup()
+    def __init__(self):
+        self.setup()
     def setup(self):
         pdb_files = [ [utils.get_data_filename('blues', 'tests/data/posA.pdb')], [utils.get_data_filename('blues', 'tests/data/posB.pdb')]]
         prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')
@@ -96,7 +96,7 @@ class DartSetupTester(unittest.TestCase):
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
-        
+
         #if transition_matrix is None:
         #    self.transition_matrix = np.ones((len(pdb_files), len(pdb_files)))
         #    np.fill_diagonal(self.transition_matrix, 0)
@@ -110,9 +110,6 @@ class DartSetupTester(unittest.TestCase):
     def test_makeDartDict(self):
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
         print(self.darts)
-    def test_stuff(self):
-        self.setup()
-        print(self.buildlist)
 if __name__ == "__main__":
         unittest.main()
 
