@@ -11,7 +11,8 @@ import numpy as np
 from blues.moldart.darts import makeDartDict, checkDart
 
 class DartSetupTester(unittest.TestCase):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super(DartSetupTester, self).__init__(*args, **kwargs)
         self.setup()
     def setup(self):
         pdb_files = [ [utils.get_data_filename('blues', 'tests/data/posA.pdb')], [utils.get_data_filename('blues', 'tests/data/posB.pdb')]]
@@ -108,8 +109,9 @@ class DartSetupTester(unittest.TestCase):
         #if np.shape(self.transition_matrix) != (len(pdb_files), len(pdb_files)):
         #    raise ValueError('Transition matrix should be an nxn matrix, where n is the length of pdb_files')
     def test_makeDartDict(self):
+        """Tests if the dart made are expected"""
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
-        print(self.darts)
+        assert np.isclose(64.41, self.darts['rotation'][0])
 if __name__ == "__main__":
         unittest.main()
 
