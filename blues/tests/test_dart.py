@@ -1,10 +1,8 @@
 from __future__ import print_function
-from blues.moves import MolDartMove
-from blues.engine import MoveEngine
+from blues.moves import MolDartMove, MoveEngine
 from blues import utils
 from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
 from blues.settings import Settings
-from blues.engine import MoveEngine
 import parmed
 import mdtraj as md
 from simtk import unit
