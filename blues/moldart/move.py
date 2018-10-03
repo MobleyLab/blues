@@ -295,13 +295,8 @@ class MolDartMove(RandomLigandRotationMove):
 
 
         xyz_ref = copy.deepcopy(self.internal_xyz[0])
-        traj_positions = self.sim_traj.openmm_positions(0)
-        for index, entry in enumerate(['x', 'y', 'z']):
-            for i in range(len(self.atom_indices)):
-                sel_atom = self.atom_indices[i]
-                #set the pandas series with the appropriate data
-                #multiply by 10 since openmm works in nm and cc works in angstroms
-                xyz_ref._frame.at[i, entry] = traj_positions[sel_atom][index]._value*10
+        traj_positions = self.sim_traj.xyz[0]
+        xyz_ref._frame.loc[:, ['x', 'y', 'z']] = traj_positions[self.atom_indices]*10
 
         current_zmat = xyz_ref.get_zmat(construction_table=self.buildlist)
         selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
@@ -392,13 +387,8 @@ class MolDartMove(RandomLigandRotationMove):
 
         #get matching binding mode pose and get rotation/translation to that pose
         xyz_ref = copy.deepcopy(self.internal_xyz[0])
-        traj_positions = self.sim_traj.openmm_positions(0)
-        for index, entry in enumerate(['x', 'y', 'z']):
-            for i in range(len(self.atom_indices)):
-                sel_atom = self.atom_indices[i]
-                #set the pandas series with the appropriate data
-                #multiply by 10 since openmm works in nm and cc works in angstroms
-                xyz_ref._frame.at[i, entry] = traj_positions[sel_atom][index]._value*10
+        traj_positions = self.sim_traj.xyz[0]
+        xyz_ref._frame.loc[:, ['x', 'y', 'z']] = traj_positions[self.atom_indices]*10
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         zmat_diff = xyz_ref.get_zmat(construction_table=self.buildlist)
         zmat_traj = copy.deepcopy(xyz_ref.get_zmat(construction_table=self.buildlist))
@@ -413,7 +403,6 @@ class MolDartMove(RandomLigandRotationMove):
 
         if rigid_ring:
             rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
-            #zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']].iloc[3:]
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
 
         if rigid_move:
@@ -491,17 +480,13 @@ class MolDartMove(RandomLigandRotationMove):
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
         #get first 3 new moldart positions, apply same series of rotation/translations
-        sim_three = np.zeros((3,3))
-        ref_three = np.zeros((3,3))
-        dart_three = np.zeros((3,3))
-        dart_ref = np.zeros((3,3))
+        #start_indices = atom_indices[self.buildlist.index.get_values()[:3]]
+        start_indices = [atom_indices[i] for i in self.buildlist.index.get_values()[:3]]
 
-        for i in range(3):
-            sim_three[i] = self.sim_traj.xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
-            self.buildlist.index.get_values()[i]
-            ref_three[i] = binding_mode_pos[binding_mode_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
-            dart_three[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
-            dart_ref[i] = binding_mode_pos[rand_index].xyz[0][atom_indices[self.buildlist.index.get_values()[i]]]
+        sim_three = self.sim_traj.xyz[0][start_indices]
+        ref_three  = binding_mode_pos[binding_mode_index].xyz[0][start_indices]
+        dart_three = binding_mode_pos[rand_index].xyz[0][start_indices]
+        dart_ref = binding_mode_pos[rand_index].xyz[0][start_indices]
 
         change_three = np.copy(sim_three)
         vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
@@ -538,11 +523,7 @@ class MolDartMove(RandomLigandRotationMove):
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
-
-        for i in range(len(self.atom_indices)):
-            for index, entry in enumerate(['x', 'y', 'z']):
-                sel_atom = self.atom_indices[i]
-                self.sim_traj.xyz[0][:,index][sel_atom] = (xyz_new._frame[entry][i] / 10.)
+        self.sim_traj.xyz[0][self.atom_indices] = xyz_new._frame.loc[:, ['x', 'y', 'z']].get_values() / 10.
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
                 ref_atom_indices=self.fit_atoms
                 )
@@ -665,13 +646,6 @@ class MolDartMove(RandomLigandRotationMove):
                     new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
                                             self.restrained_receptor_atoms, restraint_lig,
                                             K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
-                    if 0:
-                        nonheavy_atoms = self.internal_xyz[0]._frame['atom'].str.contains('H')
-                        heavy_atoms = [self.atom_indices[i] for i in range(len(self.atom_indices)) if nonheavy_atoms.iloc[i] == False]
-
-                        new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, heavy_atoms, index, self.restraint_group,
-                                                self.restrained_receptor_atoms, restraint_lig,
-                                                K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
 
                 elif self.restraints == 'rmsd':
                     #restrain only the heavy atoms
@@ -834,7 +808,6 @@ class MolDartMove(RandomLigandRotationMove):
             The same input context, but whose positions were changed by this function.
 
         """
-        system = context.getSystem()
         self.moves_attempted += 1
         state = context.getState(getPositions=True, getEnergy=True)
         oldDartPos = state.getPositions(asNumpy=True)

@@ -113,10 +113,12 @@ def adjust_angle(a,b, radians, maintain_magnitude=True):
     if maintain_magnitude == True:
         mag_a = np.linalg.norm(a)
         c = c / np.linalg.norm(c) * mag_a
+    else:
+        c = c / np.linalg.norm(c)
     return c
 
 
-def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison_index, construction_table, bond_compare=True, rigid_move=False, ):
+def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison_index, construction_table, bond_compare=True, rigid_move=False):
     """
     Helper function to choose a random pose and determine the vector
     that would translate the current particles to that dart center
@@ -202,24 +204,15 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     #find the appropriate rotation to transform the structure back
     #repeat for second bond
     #get first 3 new moldart positions, apply same series of rotation/translations
-    sim_three = np.zeros((3,3))
-    ref_three = np.zeros((3,3))
-    dart_three = np.zeros((3,3))
-    dart_ref = np.zeros((3,3))
-    for i in range(3):
-        sim_three[i] = binding_mode_pos[binding_mode_index][construction_table.index[i]]
-        construction_table.index.values[i]
-        #TODO: change this to get data from Cartesian class
-        ref_three[i] = binding_mode_pos[comparison_index][construction_table.index.values[i]]
-
-        dart_three[i] = binding_mode_pos[comparison_index][construction_table.index.values[i]]
-        dart_ref[i] = binding_mode_pos[comparison_index][construction_table.index.values[i]]
+    build_indices = construction_table.index.values[:3]
+    sim_three = binding_mode_pos[binding_mode_index][build_indices]
+    ref_three = binding_mode_pos[comparison_index][build_indices]
+    dart_three = binding_mode_pos[comparison_index][build_indices]
+    #dart_ref = binding_mode_pos[comparison_index][build_indices]
 
     change_three = np.copy(sim_three)
     vec1_sim = sim_three[vector_list[0][0]] - sim_three[vector_list[0][1]]
     vec2_sim = sim_three[vector_list[1][0]] - sim_three[vector_list[1][1]]
-    vec1_ref = ref_three[vector_list[0][0]] - ref_three[vector_list[0][1]]
-
 
     #calculate rotation from ref pos to sim pos
 
@@ -229,7 +222,6 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
     ###
     ref_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.values[2]]
 
-    angle_diff = ref_angle - np.degrees(calc_angle(vec1_sim, vec2_sim))
     ad_vec = adjust_angle(vec1_sim, vec2_sim, np.radians(ref_angle), maintain_magnitude=False)
     ad_vec = ad_vec / np.linalg.norm(ad_vec) * internal_zmat[binding_mode_index]._frame['bond'][construction_table.index.values[2]]/10.
     #apply changed vector to center coordinate to get new position of first particle
@@ -244,25 +236,6 @@ def dartRotTrans(binding_mode_pos, internal_zmat, binding_mode_index, comparison
 
     dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
 
-    #TODO CONTINUE FROM HERE
-    #perform the same angle change on new coordinate
-    #centroid_orig = dart_three[vector_list[0][1]]
-    #perform rotation
-    ####
-    vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
-    vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-    dart_angle = internal_zmat[comparison_index]._frame['angle'][construction_table.index.values[2]]
-    angle_change = dart_angle - angle_diff
-
-    for i, vectors in enumerate([sim_three, ref_three, dart_three]):
-        test_angle(vectors, vector_list)
-    #get xyz from internal coordinates
-
-    #TODO make sure to sort new xyz
-
-    #overlay new xyz onto the first atom of
-            #TODO from friday: set units for xyz_first_pos and then go about doing the rotation to reorient the molecule after moving
     rot_angle = np.rad2deg(np.arccos(( (np.trace(rot_mat)-1) )/2.0 ) )
     trans_dist = np.linalg.norm(centroid)
     return rot_angle, trans_dist
-    #use rot and translation to dart to another pose
