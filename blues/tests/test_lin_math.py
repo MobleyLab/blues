@@ -37,7 +37,7 @@ def test_rigid_transform_3D():
     #the chosen centroids should be the first entry of each array
     assert np.array_equal(tri1[0], tri_return[2])
     assert np.array_equal(tri2[0], tri_return[3])
-    rot_mat, trans = getRotTrans(tri1, tri2)
+    rot_mat, trans = getRotTrans(tri1, tri2, 0)
     assert np.array_equal(rot_mat, tri_return[0])
     assert np.array_equal(trans, tri_return[-1])
 
