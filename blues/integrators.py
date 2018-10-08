@@ -90,6 +90,26 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     - An NCMC algorithm with Metropolized integrator:
         splitting="O { V R H R V } O"
 
+    Changing how the sterics and electrostatics are distributed
+
+    40% electrostatics, 60% sterics (Default)
+    >>> alchemical_functions = {lambda_sterics:'min(1, (1/0.3)abs(lambda-0.5))',
+    >>> lambda_electrostatics:'step(0.2-lambda) - 1/0.2lambdastep(0.2-lambda) + 1/0.2(lambda-0.8)*step(lambda-0.8)'}
+    >>> AlchemicalExternalLangevinIntegrator(alchemical_functions=alchemical_functions)
+
+    65% electrostatics, 35% sterics
+    >>> alchemical_functions = {lambda_sterics:'min(1, (1/0.175)abs(lambda-0.5)',
+    >>> lambda_electrostatics:'step(0.325-lambda) - 1/0.325lambda step(0.325-lambda) + 1/0.325(lambda-0.675)*step(lambda-0.675)'}
+    >>> AlchemicalExternalLangevinIntegrator(alchemical_functions=alchemical_functions)
+
+    90% electrostatics, 10% sterics, with 5 propogation steps per lambda increase/decrease in the electrostatic region
+    >>> alchemical_functions = {lambda_sterics:'min(1, (1/0.05)abs(lambda-0.5)',
+    >>> lambda_electrostatics:'step(0.45-lambda) - 1/0.45lambdastep(0.45-lambda) + 1/0.45(lambda-0.55)*step(lambda-0.55)'}
+    >>> AlchemicalExternalLangevinIntegrator(alchemical_functions=alchemical_functions, nprop=5, propRegion='electrostatics')
+
+
+
+
 
     References
     ----------
