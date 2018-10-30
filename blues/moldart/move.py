@@ -148,17 +148,37 @@ class MolDartMove(RandomLigandRotationMove):
                 ifs = oechem.oemolistream()
                 ifs.open(fname)
                 double_bonds = []
+                h_list = []
                 for mol in ifs.GetOEGraphMols():
+                    oechem.OEFindRingAtomsAndBonds(mol)
                     for atom in mol.GetAtoms():
                         if atom.IsInRing():
+                        #if not atom.IsRotor():
                             ring_atoms.append(atom.GetIdx())
-                    bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
-                    end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
+                        if atom.IsHydrogen():
+                            h_list.append(atom.GetIdx())
+                    #bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
+                    bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetEndIdx() in ring_atoms]
+                    end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetBgnIdx() in ring_atoms]
+                    #end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
                     double_bonds = bgn_idx + end_idx
-                rigid_atoms = set(ring_atoms + double_bonds)
+                print('double_bonds', set(double_bonds))
+                #rigid_atoms = set(ring_atoms + double_bonds)
+                rigid_atoms = ring_atoms
+                #rigid_atoms = ring_atoms
                 #select all atoms that are bonded to a ring/double bond atom
                 angle_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
-                self.dihedral_ring_atoms = angle_ring_atoms
+                for mol in ifs.GetOEGraphMols():
+                    for atom in mol.GetAtoms():
+                        if atom.IsHydrogen():
+                            h_list.append(atom.GetIdx())
+                self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
+                print('h_list', h_list) 
+                self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
+                print('stuck atoms', self.dihedral_ring_atoms)
+                self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
+                #self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if i not in [9,13]]
+
 
             #get the construction table so internal coordinates are consistent between poses
 
@@ -400,7 +420,7 @@ class MolDartMove(RandomLigandRotationMove):
         #and reference poses and take that into account when darting to the new pose
         change_list = ['dihedral']
         old_list = ['bond', 'angle']
-
+        print('old zmat', zmat_traj)
         if rigid_ring:
             rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
@@ -419,12 +439,18 @@ class MolDartMove(RandomLigandRotationMove):
             zmat_diff._frame.loc[(zmat_diff._frame.index.isin(zmat_diff._frame.index[:2])), 'angle'] = abs_angle_diff
 
             #Then add back those changes to the darted pose
-            zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[:, change_list] + zmat_diff._frame.loc[:, change_list]
+            #zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[:, change_list] + zmat_diff._frame.loc[:, change_list]
+            zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[:, change_list] 
             zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] = zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] + zmat_diff._frame.loc[zmat_new._frame.index[0], 'bond']
             zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] = zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] + zmat_diff._frame.loc[zmat_diff._frame.index[:2], 'angle']
 
         #We want to keep the bonds and angles the same between jumps, since they don't really vary
         zmat_new._frame.loc[:, old_list] = zmat_traj._frame.loc[:, old_list]
+        #added 
+        if rigid_ring:
+            rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
+            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+
 
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
@@ -522,6 +548,8 @@ class MolDartMove(RandomLigandRotationMove):
 
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
+
+        print('new zmat', zmat_new)
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
         self.sim_traj.xyz[0][self.atom_indices] = xyz_new._frame.loc[:, ['x', 'y', 'z']].get_values() / 10.
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
@@ -567,7 +595,7 @@ class MolDartMove(RandomLigandRotationMove):
                     self.water_residues.append(water_mol)
             water_oxygens = [i[0] for i in self.water_residues]
             #portion to calculate ligand com
-            self.calculateProperties()
+            self._calculateProperties()
             self.water_oxygens = [i[0] for i in self.water_residues]
             positions = np.array(structure.positions.value_in_unit(unit.nanometers))*unit.nanometers
             lig_pos = positions[self.atom_indices]
@@ -710,7 +738,7 @@ class MolDartMove(RandomLigandRotationMove):
         if self.restraints:
             #if using restraints
             selected_list = self._poseDart(context, self.atom_indices)
-
+            print('selected_list', selected_list)
             if len(selected_list) >= 1:
                 self.selected_pose = np.random.choice(selected_list, replace=False)
                 self.dart_begin = self.selected_pose
