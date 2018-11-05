@@ -1126,6 +1126,7 @@ class BLUESSimulation(object):
         """
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
         randnum = math.log(np.random.random())
+        acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
 
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
@@ -1133,8 +1134,21 @@ class BLUESSimulation(object):
             logger.debug(
                 'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
             work_ncmc = work_ncmc + correction_factor
+        if acceptance_ratio == 0:
+            self.reject += 1
+            logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum))
+            # If reject move, do nothing,
+            # NCMC simulation be updated from MD Simulation next iteration.
+            # Potential energy should be from last MD step in the previous iteration
+            md_state0 = self.stateTable['md']['state0']
+            md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
+            if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
+                logger.error(
+                    'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
+                    % (md_state0['potential_energy'], md_PE))
+                sys.exit(1)
 
-        if work_ncmc > randnum:
+        elif work_ncmc + math.log(acceptance_ratio) > randnum:
             self.accept += 1
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum))
 
@@ -1287,8 +1301,13 @@ class MonteCarloSimulation(BLUESSimulation):
         work_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (
             -1.0 / self._ncmc_sim.context._integrator.kT)
         randnum = math.log(np.random.random())
+        acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
+        if acceptance_ratio == 0:
+            self.reject += 1
+            logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum))
+            self._md_sim.context.setPositions(md_state0['positions'])
 
-        if work_mc > randnum:
+        elif work_mc + math.log(acceptance_ratio) > randnum:
             self.accept += 1
             logger.info('MC MOVE ACCEPTED: work_mc {} > randnum {}'.format(work_mc, randnum))
             self._md_sim.context.setPositions(md_state1['positions'])
