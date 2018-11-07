@@ -14,7 +14,6 @@ from blues.moldart.darts import makeDartDict, checkDart
 from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
-import types
 
 class MolDartMove(RandomLigandRotationMove):
     """
@@ -89,8 +88,8 @@ class MolDartMove(RandomLigandRotationMove):
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
         transition_matrix=None,
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
-        restraints='rmsd', restrained_receptor_atoms=None,
-        K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        restraints='boresch', restrained_receptor_atoms=None,
+        K_r=5, K_angle=5, K_RMSD=0.6, RMSD0=2, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
@@ -567,7 +566,7 @@ class MolDartMove(RandomLigandRotationMove):
                     self.water_residues.append(water_mol)
             water_oxygens = [i[0] for i in self.water_residues]
             #portion to calculate ligand com
-            self.calculateProperties()
+            self._calculateProperties()
             self.water_oxygens = [i[0] for i in self.water_residues]
             positions = np.array(structure.positions.value_in_unit(unit.nanometers))*unit.nanometers
             lig_pos = positions[self.atom_indices]
