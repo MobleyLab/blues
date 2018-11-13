@@ -32,6 +32,14 @@ Under Development
 .. autoclass:: CombinationMove
   :members:
 
+Molecular Darting
+~~~~~~~~~~~~~~~~~
+
+.. automodule:: blues.moldart
+
+.. autoclass:: blues.moldart.move.MolDartMove
+  :members:
+
 Simulation
 ---------------------------------------------------------
 .. automodule:: blues.simulation
