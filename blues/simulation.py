@@ -903,6 +903,7 @@ class BLUESSimulation(object):
 
         stateinfo = {}
         state = context.getState(**state_keys)
+        stateinfo['state'] = state
         stateinfo['positions'] = state.getPositions(asNumpy=True)
         stateinfo['velocities'] = state.getVelocities(asNumpy=True)
         stateinfo['potential_energy'] = state.getPotentialEnergy()
@@ -1034,7 +1035,7 @@ class BLUESSimulation(object):
         self._setStateTable('md', 'state0', md_state0)
 
         # Sync MD state to the NCMC context
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+        self._ncmc_sim.context.setState(md_state0['state'])
 
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
         """Advance the NCMC simulation.
@@ -1106,7 +1107,7 @@ class BLUESSimulation(object):
         ncmc_state1_PE = ncmc_state1['potential_energy']
 
         # Set the box_vectors and positions in the alchemical simulation to after the proposed move.
-        self._alch_sim.context = self.setContextFromState(self._alch_sim.context, ncmc_state1, velocities=False)
+        self._alch_sim.context.setState(ncmc_state1['state'])
 
         # Retrieve potential_energy for alch correction
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
@@ -1140,7 +1141,8 @@ class BLUESSimulation(object):
 
             # If accept move, sync NCMC state to MD context
             ncmc_state1 = self.stateTable['ncmc']['state1']
-            self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
+            # We reinitialize the velocities later
+            self._md_sim.context.setState(ncmc_state1['state'])
 
             if write_move:
                 utils.saveSimulationFrame(self._md_sim, '{}acc-it{}.pdb'.format(self._config['outfname'],
