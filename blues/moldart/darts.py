@@ -263,7 +263,6 @@ def createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage):
         else:
             last_repeat[key] = {0}-{0}
 
-
     for idx, i in list(zip(dihedral_df.index.tolist(), dihedral_df['atomnum'])):
         #updates posedart_dict with overlaps of poses for each dart
         posedart_copy = compareDihedral(internal_mat, atom_index=i, diff_spread=dihedral_df['diff'].loc[idx]/2.0, posedart_dict=posedart_dict)
@@ -750,7 +749,7 @@ def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
 
 
 
-def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=7.5):
+def makeDartDictOld(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=7.5):
     """
     Makes the dictionary of darting regions used as the basis for darting,
     attempting to make a set of dihedral darts that separate the given poses.
@@ -813,6 +812,73 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     #get rotation/translation diff matrix
     #start with dihedral, loop over diffs and check overlap
 
+def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=5.5, order=['translation', 'dihedral',  'rotation']):
+    """
+    Makes the dictionary of darting regions used as the basis for darting,
+    attempting to make a set of dihedral darts that separate the given poses.
+    If all the poses are not separated at this point, translational darts are made,
+    and if the remaining poses are not separated, then rotational darts are created.
+
+
+    Parameters
+    ----------
+    internal_mat: list of Chemcoord.Zmatrixs
+        list of zmats that are to be separated using this function
+    pos_list: list
+        list of ligand positions
+    construction_table: Chemcoord construction_table object
+        The construction table used to make the internal_zmat.
+    dihedral_cutoff: float
+        Minimum cutoff to use for the dihedrals.
+
+    Returns
+    -------
+    dart_storage: dict
+        Dict containing the darts associated with `rotation`, `translation` and `dihedral`
+        keys that refer to the size of the given dart, if not empty
+    """
+    #make diff dict
+    def createDarts(function_type, internal_mat, dihedral_df, trans_mat, rot_mat, distance_cutoff, posedart_dict, dart_storage):
+        if function_type == 'translation':
+            return createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage, distance_cutoff=distance_cutoff)
+        elif function_type == 'rotation':
+            return createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
+        elif function_type == 'dihedral':
+            return createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
+
+    dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
+    posedart_dict = {'pose_'+str(posnum):{}  for posnum, value in enumerate(internal_mat)}
+
+    for key, value in iteritems(posedart_dict):
+        value['bond'] = {}
+        value['angle'] = {}
+        value['dihedral'] = {}
+        value['rotation'] = None
+        value['translation'] = None
+        try:
+            for atomnum in dihedral_df['atomnum']:
+                value['dihedral'][atomnum] = []
+        except TypeError:
+            pass
+
+
+    dart_storage = {'bond':{}, 'angle':{}, 'dihedral':{}, 'translation':[], 'rotation':[]}
+    dart_boolean = False
+    rot_mat, trans_mat = getRotTransMatrices(internal_mat, pos_list, construction_table)
+
+    for darttype in order:
+        if not dart_boolean:
+            dart_storage, posedart_dict, dart_boolean = createDarts(darttype, internal_mat, dihedral_df, trans_mat, rot_mat, distance_cutoff, posedart_dict, dart_storage)
+
+    if not dart_boolean:
+        raise ValueError('Current settings do not separate out all poses')
+    #dart_storage, posedart_dict, dart_boolean = createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
+    for key in ['rotation', 'translation']:
+        if len(dart_storage[key]) > 0:
+            dart_storage[key][0] = dart_storage[key][0] - dart_storage[key][0] / 10.0
+    return dart_storage
+
+
 
 def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_table, dart_storage):
     """Checks whether a given position/zmatrix (given by current_pos and current_zmat)
@@ -868,6 +934,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
 
         dihedral_output = {}
         dihedral_atoms = list(dart_storage['dihedral'].keys())
+        print('dart_stroage keys', dart_storage['dihedral'].keys())
 
         if len(dihedral_atoms) > 0:
             for atom_index in dihedral_atoms:
@@ -877,19 +944,21 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                 for posenum, zmat in enumerate(internal_mat):
                     comparison = zmat['dihedral'].loc[atom_index]
                     dihedral_diff = abs(current_dihedral - comparison)
+                    #print('di_compare ', ' compare:', comparison, ' current:', current_dihedral, ' difference:', dihedral_diff, ' dart:', np.rad2deg(dart_storage['dihedral'][atom_index]), ' atom_index:', atom_index)
 
 
                     if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]):
                         dihedral_output[atom_index].append(posenum)
 
 
-            dihedral_list = []
-            for entry in dihedral_output.values():
-                if entry:
-                    dihedral_list.append(*entry)
-            return dihedral_list
-        else:
-            return None
+
+            dihedral_list = [set(i) for i in dihedral_output.values()]
+            dihedral_list = list(set.intersection(*dihedral_list))
+            if len(dihedral_list) > 0:
+                return dihedral_list
+            else:
+                return None
+
     combo_list = [current_pos] + pos_list
     combo_zmat = [current_zmat] + internal_mat
 
@@ -900,8 +969,10 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     dihedral_output = compareDihedral(current_zmat, internal_mat, dart_storage)
 
     combined_comparison = [set(i) for i in [dihedral_output, rot_list, trans_list] if i is not None]
-    set_output = list(set.intersection(*combined_comparison))
-
+    try:
+        set_output = list(set.intersection(*combined_comparison))
+    except TypeError:
+        set_output = []
     return set_output
 
 
