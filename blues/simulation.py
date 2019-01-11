@@ -1138,17 +1138,13 @@ class BLUESSimulation(object):
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
             correction_factor = self._computeAlchemicalCorrection()
-            logger.info('correction_factor {}'.format(correction_factor))
-            logger.debug(
-                'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
-            logger.info('correction_factor not factored in debug {}'.format(correction_factor))
             logger.info('md context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._md_sim.context)))
             logger.info('ncmc context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._ncmc_sim.context)))
             logger.info('alch context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._alch_sim.context)))
 
 
 
-            #work_ncmc = work_ncmc + correction_factor
+            work_ncmc = work_ncmc + correction_factor
         if acceptance_ratio == 0:
             self.reject += 1
             logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum))

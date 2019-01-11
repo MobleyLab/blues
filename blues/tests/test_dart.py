@@ -120,7 +120,8 @@ class DartTester(unittest.TestCase):
                                           fit_atoms=fit_atoms,
                                           restraints=False,
                                           restrained_receptor_atoms=[622, 2592, 2425],
-                                          rigid_move=False
+                                          rigid_move=False,
+                                          rigid_darts='rigid_darts'
                                           )
 
         # Initialize object that proposes moves.
