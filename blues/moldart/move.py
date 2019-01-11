@@ -10,10 +10,11 @@ import chemcoord as cc
 import copy
 import tempfile
 from blues.moldart.chemcoord import give_cartesian_edit
-from blues.moldart.darts import makeDartDict, checkDart
+from blues.moldart.darts import makeDartDict, checkDart, makeDihedralDifferenceDf
 from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
+import types
 
 class MolDartMove(RandomLigandRotationMove):
     """
@@ -48,6 +49,18 @@ class MolDartMove(RandomLigandRotationMove):
         If True, will ignore internal coordinate changes while darting
         and will effectively perform a rigid body rotation between darts
         instead.
+    rigid_darts: {None, 'rigid_darts', 'rigid_ring', 'rigid_molecule'}, default=None
+        Chooses how to handle the dihedrals of the molecule when darting.
+            `rigid_ring`will rigidfy any dihedrals of molecules that are bonded to
+            either a double bonded or ring atom, which are otherwise extremely
+            senstive to these dihedral changes.
+            `rigid_molecule will ignore internal coordinate changes while darting
+            and will effectively perform a rigid body rotation between darts
+            instead.
+            `rigid_darts` will only move bonds that exhibit significant deviations
+            that are non-ring atoms.
+            If None then all dihedrals will be darted according to the difference
+            between the current pose and the selected pose.
     freeze_waters: int, optional, default=0
         The number of waters to set the mass to 0. If this value is non-zero,
         this sets all waters besides the nearest freeze_waters waters from the ligand
@@ -87,9 +100,10 @@ class MolDartMove(RandomLigandRotationMove):
     """
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
         transition_matrix=None,
+        rigid_darts=None,
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints='boresch', restrained_receptor_atoms=None,
-        K_r=5, K_angle=5, K_RMSD=0.6, RMSD0=2, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
@@ -103,8 +117,9 @@ class MolDartMove(RandomLigandRotationMove):
         #chemcoord internal zmatrix representation of the ligand atoms
         self.internal_zmat = []
         self.buildlist = None
-        self.rigid_move = bool(rigid_move)
-        self.rigid_ring = bool(rigid_ring)
+        self.rigid_darts = rigid_darts
+        #self.rigid_move = bool(rigid_move)
+        #self.rigid_ring = bool(rigid_ring)
         #ref traj is the reference md trajectory used for superposition
         self.ref_traj = None
         #sim ref corresponds to the simulation positions
@@ -141,23 +156,34 @@ class MolDartMove(RandomLigandRotationMove):
             xtraj.close()
             xyz = cc.Cartesian.read_xyz(fname)
             self.buildlist = xyz.get_construction_table()
-            if self.rigid_ring:
+            if self.rigid_darts is not None:
                 ring_atoms = []
                 from openeye import oechem
                 ifs = oechem.oemolistream()
                 ifs.open(fname)
-                double_bonds = []
+                #double_bonds = []
+                h_list = []
                 for mol in ifs.GetOEGraphMols():
+                    oechem.OEFindRingAtomsAndBonds(mol)
                     for atom in mol.GetAtoms():
                         if atom.IsInRing():
+                        #if not atom.IsRotor():
                             ring_atoms.append(atom.GetIdx())
-                    bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
-                    end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetOrder() > 1]
-                    double_bonds = bgn_idx + end_idx
-                rigid_atoms = set(ring_atoms + double_bonds)
+                        if atom.IsHydrogen():
+                            h_list.append(atom.GetIdx())
+                    #bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetEndIdx() in ring_atoms]
+                    #end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetBgnIdx() in ring_atoms]
+                rigid_atoms = ring_atoms
                 #select all atoms that are bonded to a ring/double bond atom
                 angle_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
-                self.dihedral_ring_atoms = angle_ring_atoms
+                for mol in ifs.GetOEGraphMols():
+                    for atom in mol.GetAtoms():
+                        if atom.IsHydrogen():
+                            h_list.append(atom.GetIdx())
+                self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
+                self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
+                self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
+
 
             #get the construction table so internal coordinates are consistent between poses
 
@@ -175,7 +201,10 @@ class MolDartMove(RandomLigandRotationMove):
         for j, pdb_file in enumerate(pdb_files):
             traj = copy.deepcopy(self.ref_traj)
             pdb_traj = md.load(pdb_file)[0]
-            traj.xyz[0][:num_atoms] = pdb_traj.xyz[0]
+            num_atoms_traj = traj.n_atoms
+            num_atoms_pdb = pdb_traj.n_atoms
+            num_atoms = min(num_atoms_traj, num_atoms_pdb)
+            traj.xyz[0][:num_atoms] = pdb_traj.xyz[0][:num_atoms]
             traj.superpose(reference=ref_traj, atom_indices=fit_atoms,
                 ref_atom_indices=fit_atoms
                 )
@@ -204,6 +233,17 @@ class MolDartMove(RandomLigandRotationMove):
         self.transition_matrix = self.transition_matrix / row_sums[:, np.newaxis]
         if np.shape(self.transition_matrix) != (len(pdb_files), len(pdb_files)):
             raise ValueError('Transition matrix should be an nxn matrix, where n is the length of pdb_files')
+        #get values that differ significantly
+        dihedral_diff_df = makeDihedralDifferenceDf(self.internal_zmat)
+        #find which atoms experience signficant changes and allow those to change while darting, other parts of the molecule stay the same
+        if self.rigid_darts is not None:
+            #find the bonded atoms that are not part of the dihedral ri
+#            core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values if i not in self.dihedral_ring_atoms]))
+            core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values]))
+
+            self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
+            print('only_darts_dihedrals ', self.only_darts_dihedrals)
+
 
     @staticmethod
     def _checkTransitionMatrix(transition_matrix, dart_groups):
@@ -340,7 +380,7 @@ class MolDartMove(RandomLigandRotationMove):
         acceptance_ratio = float(prob_reverse)/prob_forward
         return rand_index, acceptance_ratio
 
-    def _moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, rigid_ring=False, rigid_move=False):
+    def _moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, rigid_darts):
         """
         Helper function to choose a random pose and determine the vector
         that would translate the current particles to that dart center
@@ -399,12 +439,16 @@ class MolDartMove(RandomLigandRotationMove):
         #and reference poses and take that into account when darting to the new pose
         change_list = ['dihedral']
         old_list = ['bond', 'angle']
-
-        if rigid_ring:
+        if rigid_darts == 'rigid_ring':
             rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+        elif rigid_darts == 'rigid_darts':
+            #rigid_dihedrals_atoms = [i for i in self.only_darts_dihedrals if i in zmat_new._frame.index[3:]]
+            rigid_dihedrals_atoms = [i for i in zmat_new._frame.index if i not in self.only_darts_dihedrals]
 
-        if rigid_move:
+            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+
+        if rigid_darts == 'rigid_molecule':
             old_list =  old_list + change_list
 
         else:
@@ -418,12 +462,21 @@ class MolDartMove(RandomLigandRotationMove):
             zmat_diff._frame.loc[(zmat_diff._frame.index.isin(zmat_diff._frame.index[:2])), 'angle'] = abs_angle_diff
 
             #Then add back those changes to the darted pose
-            zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[:, change_list] + zmat_diff._frame.loc[:, change_list]
+            zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[:, change_list]
             zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] = zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] + zmat_diff._frame.loc[zmat_new._frame.index[0], 'bond']
             zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] = zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] + zmat_diff._frame.loc[zmat_diff._frame.index[:2], 'angle']
 
         #We want to keep the bonds and angles the same between jumps, since they don't really vary
         zmat_new._frame.loc[:, old_list] = zmat_traj._frame.loc[:, old_list]
+        #added
+        if rigid_darts == 'rigid_ring':
+            rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
+            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+        elif rigid_darts == 'rigid_darts':
+            rigid_dihedrals_atoms = [i for i in zmat_new._frame.index if i not in self.only_darts_dihedrals]
+
+            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+
 
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
@@ -521,7 +574,10 @@ class MolDartMove(RandomLigandRotationMove):
 
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
+
+#        xyz_new = (zmat_new.give_cartesian_edit(start_coord=sim_three*10.)).sort_index()
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
+
         self.sim_traj.xyz[0][self.atom_indices] = xyz_new._frame.loc[:, ['x', 'y', 'z']].get_values() / 10.
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
                 ref_atom_indices=self.fit_atoms
@@ -709,7 +765,6 @@ class MolDartMove(RandomLigandRotationMove):
         if self.restraints:
             #if using restraints
             selected_list = self._poseDart(context, self.atom_indices)
-
             if len(selected_list) >= 1:
                 self.selected_pose = np.random.choice(selected_list, replace=False)
                 self.dart_begin = self.selected_pose
@@ -837,7 +892,7 @@ class MolDartMove(RandomLigandRotationMove):
                                             binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=self.selected_pose,
                                             nc_pos=oldDartPos,
-                                            rigid_ring=self.rigid_ring, rigid_move=self.rigid_move)
+                                            rigid_darts=self.rigid_darts)
 
             self.selected_pose = darted_pose
             context.setPositions(new_pos)
