@@ -1138,9 +1138,9 @@ class BLUESSimulation(object):
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
             correction_factor = self._computeAlchemicalCorrection()
-            logger.info('md context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._md_sim.context)))
-            logger.info('ncmc context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._ncmc_sim.context)))
-            logger.info('alch context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._alch_sim.context)))
+            #logger.info('md context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._md_sim.context)))
+            #logger.info('ncmc context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._ncmc_sim.context)))
+            #logger.info('alch context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._alch_sim.context)))
 
 
 
