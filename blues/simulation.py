@@ -699,6 +699,19 @@ class SimulationFactory(object):
         #During NCMC simulation, lambda parameters are controlled by function dict below
         # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
         # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
+        processed_functions = {}
+        #get function names to add
+        tab_functions = {}
+        for k, v in alchemical_functions.items():
+            if isinstance(v, list):
+                tab_function_name = k+'_fn'
+                tab_function = utils.spreadLambdaProtocol(v, nstepsNC)
+                tab_functions[tab_function_name] = tab_function
+
+                processed_functions[k] = ('%s(step)') % (tab_function_name)
+            else:
+                processed_functions[k] = v
+
         ncmc_integrator = AlchemicalExternalLangevinIntegrator(
             alchemical_functions=alchemical_functions,
             splitting=splitting,
@@ -707,6 +720,9 @@ class SimulationFactory(object):
             timestep=dt,
             nprop=nprop,
             prop_lambda=propLambda)
+        for k, v in tab_functions.items():
+            ncmc_integrator.addTabulatedFunction0(k, v)
+
         return ncmc_integrator
 
     @classmethod

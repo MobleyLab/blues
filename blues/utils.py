@@ -13,6 +13,9 @@ from platform import uname
 
 import parmed
 from simtk import openmm, unit
+from scipy.interpolate import interp1d
+import numpy as np
+from simtk.openmm.openmm import Discrete1DFunction
 
 logger = logging.getLogger(__name__)
 
