@@ -235,8 +235,6 @@ class SideChainMove(object):
         qry_atoms = {}
         qry_atoms.clear()
 
-        reslib = []
-
         print('Searching residue list for atoms...')
         # loop through all the atoms in the PDB OEGraphMol structure
         for atom in molecule.GetAtoms():
@@ -249,21 +247,18 @@ class SideChainMove(object):
                     # store the atom location in a query atom dict keyed by its atom index
                     qry_atoms.update({atom : atom.GetIdx()})
                     print('Found atom %s in residue number %i %s'%(atom,myres.GetResidueNumber(),myres.GetName()))
-                    if myres not in reslib:
-                        reslib.append(myres)
+
         print('\n')
         return qry_atoms, backbone_atoms
 
     def findHeavyRotBonds(self, pdb_OEMol, qry_atoms):
-        '''This function takes in an OEGraphMol PDB structure as well as a dictionary of atom locations (keys)
-            and atom indicies.  It loops over the query atoms and identifies any heavy bonds associated with each atom.
-            It stores and returns the bond indicies (keys) and the two atom indicies for each bond in a dictionary
-            **Note: atom indicies start at 0, so are offset by 1 compared to pdb)'''
+        '''This function takes in an OEGraphMol PDB structure as well as a dictionary of atom locations (keys) and atom indicies.  It loops over the query atoms and identifies any heavy bonds associated with each atom.
+            It stores and returns a dictionary of bond pointers (keys) and residue indices'''
 
         # Call this function to find atoms and bonds
         OEFindRingAtomsAndBonds(pdb_OEMol)
 
-        # create and clear dictionary to store bond and atom indicies that are rotatable + heavy
+        # create and clear dictionary to store bond and residue idx
         rot_bonds = {}
         rot_bonds.clear()
 
@@ -278,17 +273,10 @@ class SideChainMove(object):
                     # if the bond has not been added to dictionary already..
                     # (as would happen if one of the atom pairs was previously looped over)
                     if bond not in rot_bonds:
-                        # print the bond index
                         print('Bond number',bond, 'is rotatable, non-terminal, and contains only heavy atoms')
-                        # store bond pointer (key) and atom indicies in dictionary if not already there
-                        #rot_bonds.update({bond : {'AtomIdx_1' : bond.GetBgnIdx(), 'AtomIdx_2': bond.GetEndIdx()}})
+                        # store bond pointer (key) and resid in dictionary
                         rot_bonds.update({bond : myres.GetResidueNumber()})
-
-        # Return dictionary with bond atom indicies keyed by bond index
-
         return rot_bonds
-
-    #gets the atoms that are connected "upstream" of each rotbond
 
     def getRotAtoms(self, rotbonds, molecule, backbone_atoms):
         '''This function identifies and stores neighboring, upstream atoms for a given sidechain bond'''
@@ -302,23 +290,18 @@ class SideChainMove(object):
             idx_list.clear()
             query_list.clear()
             resnum = (rotbonds[bond])
-            thisbond = bond
             ax1 = bond.GetBgn()
             ax2 = bond.GetEnd()
 
             if resnum in rot_atom_dict.keys():
-                rot_atom_dict[resnum].update({thisbond : []})
+                chi = len(rot_atom_dict[resnum]['chis'].keys())+1
+                rot_atom_dict[resnum]['chis'].update({chi:{'bond_ptr':bond,'atms2mv':[],\
+                    'dihed_atms':[],'bin_pref':[]}})
             else:
-                rot_atom_dict.update({resnum : {thisbond : []}})
-
-            idx_list.append(ax1.GetIdx())
-            idx_list.append(ax2.GetIdx())
-
-            # add axis atoms to query atom_list
-            #if ax1 not in query_list and ax1.GetIdx() not in backbone:
-            #    query_list.append(ax1)
-            #if ax2 not in query_list and ax2.GetIdx() not in backbone:
-            #    query_list.append(ax2)
+                chi = 1
+                res = OEAtomGetResidue(ax2)
+                residue_name = res.GetName()
+                rot_atom_dict.update({resnum : {'res_name': residue_name,'chis':{chi:\{'bond_ptr':bond,'atms2mv':[],'dihed_atms':[],'bin_pref':[]}}}})
 
             if ax1 not in query_list and ax1.GetIdx() not in backbone_atoms:
                 query_list.append(ax1)
@@ -328,21 +311,23 @@ class SideChainMove(object):
             for atom in query_list:
                 checklist = atom.GetAtoms()
                 for candidate in checklist:
-                    if candidate not in query_list and candidate.GetIdx() not in backbone and candidate != ax2:
+                    if candidate not in query_list and candidate.GetIdx() not in backbone:
                         query_list.append(candidate)
                         if candidate.GetAtomicNum() >1:
                             can_nbors = candidate.GetAtoms()
                             for can_nbor in can_nbors:
-                                if can_nbor not in query_list and candidate.GetIdx() not in backbone and candidate != ax2:
+                                if can_nbor not in query_list and candidate.GetIdx() not in backbone:
                                     query_list.append(can_nbor)
 
             for atm in query_list:
                 y = atm.GetIdx()
-                if y not in idx_list:
-                    idx_list.append(y)
-
-            rot_atom_dict[resnum].update({thisbond : list(idx_list)})
-            print("Moving these atoms:", idx_list)
+                idx_list.append(y)
+            
+            if ax2.GetIdx() not in idx_list:
+                idx_list.insert(0,ax2.GetIdx())
+            
+            rot_atom_dict[resnum]['chis'][chi]['atms2mv'] = list(idx_list)
+            if verbose: print("Moving these atoms:", idx_list)
 
         return rot_atom_dict
 
