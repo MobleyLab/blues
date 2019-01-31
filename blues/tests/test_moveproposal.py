@@ -20,6 +20,7 @@ class MoveEngineTester(unittest.TestCase):
                 'nIter' : 10, 'nstepsNC' : 10, 'nstepsMD' : 50,
                 'nonbondedMethod' : 'PME', 'nonbondedCutoff': 10, 'constraints': 'HBonds',
                 'trajectory_interval' : 10, 'reporter_interval' : 10,
+                'outfname' : 'moveproposal-test',
                 'platform' : None,
                 'verbose' : False }
 
@@ -33,7 +34,7 @@ class MoveEngineTester(unittest.TestCase):
         sims = SimulationFactory(structure, self.engine, **self.opt)
         system = sims.generateSystem(structure, **self.opt)
         alch_system = sims.generateAlchSystem(system, self.atom_indices)
-        self.nc_sim = sims.generateSimFromStruct(structure, alch_system, ncmc=True, **self.opt)
+        self.nc_sim = sims.generateSimFromStruct(structure, self.engine, alch_system, ncmc=True, **self.opt)
 
         self.initial_positions = self.nc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 

@@ -1,6 +1,6 @@
 package:
   name: blues
-  version: 0.0.3
+  version: 0.1.3
 
 source:
   path: ../..
@@ -10,7 +10,6 @@ build:
   script: python setup.py install
 
 requirements:
-  # Packages required to build the package.
   build:
     - python
     - pytest
@@ -26,6 +25,7 @@ requirements:
     - openmmtools
     - mdtraj >=1.8.0
     - openmm >=7.1.0rc1
+    - parmed
 
 test:
   requires:
