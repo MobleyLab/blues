@@ -459,7 +459,7 @@ class Simulation(object):
             log_ncmc = log_ncmc + correction_factor
 
         if self.move_engine.moves[self.move_engine.selected_move].bin_boolean == False:
-            print("Bin Boolean false")
+            print("Bin Boolean false: dihedral angle departed from target bin during NCMC move")
 
         if log_ncmc > randnum and self.move_engine.moves[self.move_engine.selected_move].bin_boolean:
             self.accept += 1
@@ -492,6 +492,9 @@ class Simulation(object):
                 #Attempt anything related to the move before protocol is performed
                 if nc_step == 0:
                     self.nc_context = self.move_engine.moves[self.move_engine.selected_move].beforeMove(self.nc_context)
+                    ### adding this line for sidechain moves. NCMC protocol is only executed when there are eligible bonds
+                    if self.move_engine.moves[self.move_engine.selected_move].make_NCMC_move == False:
+                        break
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if self.movestep == nc_step:
@@ -560,29 +563,6 @@ class Simulation(object):
             values = [nc_step, speed, self.accept, self.current_iter]
             self.log.info('\t\t'.join(str(v) for v in values))
 
-    def evalDihedral(self, positions):
-        topology = mdtraj.Topology.from_openmm(self.md_sim.topology)
-        traj = mdtraj.Trajectory(np.asarray(positions),topology)
-        #traj.xyz = np.asarray(positions)
-        indices = np.array([[1735,1737,1739,1741]])
-        dihedralangle = mdtraj.compute_dihedrals(traj, indices)
-        if -1.3 <= dihedralangle <= -0.9:
-            eval = True
-        elif -3.14159 <= dihedralangle <= -2.94159:
-            eval = True
-        elif 0.9 <= dihedralangle <= 1.3:
-            eval = True
-        elif 2.94159 <= dihedralangle <= 3.14159:
-            eval = True
-        else:
-            eval = False
-        if eval == False:
-            print("no ncmc --> dihedral not ok")
-        if eval == True:
-            print("Dihedral ok --> NCMC proceed")
-            print("In the simulation.py script, this is the dihedral angle %f" %(dihedralangle))
-        return(eval)
-
     def run(self, nIter=100):
         """Function that runs the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
@@ -597,11 +577,9 @@ class Simulation(object):
         while self.move_ct <= nIter:
             self.current_iter = int(self.move_ct)
             positions = self.nc_context.getState(getPositions=True).getPositions(asNumpy=True)
-            if self.evalDihedral(positions):
-            #for n in range(int(nIter)):
-                #self.current_iter = int(n)
-                self.setStateConditions()
-                self.simulateNCMC(**self.opt)
+            self.setStateConditions()
+            self.simulateNCMC(**self.opt)
+            if self.move_engine.moves[self.move_engine.selected_move].make_NCMC_move == True:
                 self.acceptRejectNCMC(**self.opt)
                 self.move_ct += 1
             self.simulateMD(**self.opt)
