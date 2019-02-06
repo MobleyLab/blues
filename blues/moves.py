@@ -19,6 +19,13 @@ import copy
 import random
 import os
 from openeye.oechem import *
+import yaml
+from mdtraj.geometry.dihedral import (indices_chi2,
+                                      indices_chi3,
+                                      indices_chi1,
+                                      indices_chi4,
+                                      indices_chi5)
+
 
 
 class Move(object):
@@ -98,7 +105,7 @@ class Move(object):
         """
         return context
 
-    def _error(self, context):
+    def _error(self, context):        
         """This method is called if running during NCMC portion results
         in an error. This allows portions of the context, such as the
         context parameters that would not be fixed by just reverting the
@@ -163,6 +170,9 @@ class RandomLigandRotationMove(Move):
 
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
+        ## adding placeholder values for random ligand moves (always true for these moves) vs biased sidechain KB
+        self.make_NCMC_move = True
+        self.bin_boolean = True
 
     def getAtomIndices(self, structure, resname):
         """
@@ -282,10 +292,11 @@ class SideChainMove(Move):
         The class contains functions to randomly select a bond and angle to be rotated
         and applies a rotation matrix to the target atoms to update their coordinates"""
 
-    def __init__(self, structure, residue_list):
+    def __init__(self, structure, residue_list, bias_range=15):
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
+        self.bias_range = bias_range
         self.all_atoms = [atom.index for atom in self.structure.topology.atoms()]
         self.rot_atoms, self.rot_bonds, self.qry_atoms = self.getRotBondAtoms()
         self.atom_indices = self.rot_atoms
@@ -389,12 +400,16 @@ class SideChainMove(Move):
                 chi = 1
                 res = OEAtomGetResidue(ax2)
                 residue_name = res.GetName()
-                rot_atom_dict.update({resnum : {'res_name': residue_name,'chis':{chi:\{'bond_ptr':bond,'atms2mv':[],'dihed_atms':[],'bin_pref':[]}}}})
+                rot_atom_dict.update({resnum : {'res_name': residue_name,'chis':{chi:\
+                        {'bond_ptr':bond,'atms2mv':[],'dihed_atms':[],'bin_pref':[]}}}})
 
             if ax1 not in query_list and ax1.GetIdx() not in backbone_atoms:
                 query_list.append(ax1)
             if ax2 not in query_list and ax2.GetIdx() not in backbone_atoms:
                 query_list.append(ax2)
+
+            idx_list.append(ax2.GetIdx())
+            idx_list.append(ax1.GetIdx())
 
             for atom in query_list:
                 checklist = atom.GetAtoms()
@@ -409,21 +424,81 @@ class SideChainMove(Move):
 
             for atm in query_list:
                 y = atm.GetIdx()
-                idx_list.append(y)
-            
-            if ax2.GetIdx() not in idx_list:
-                idx_list.insert(0,ax2.GetIdx())
-            
+                if y not in idx_list:
+                    idx_list.append(y)
+
             rot_atom_dict[resnum]['chis'][chi]['atms2mv'] = list(idx_list)
-            if verbose: print("Moving these atoms:", idx_list)
 
         return rot_atom_dict
 
-    def getRotBondAtoms(self):
+
+    def getDihedral(self, positions, atomlist):
+        """This function computes the dihedral angle for the given atoms at the given positions"""
+        top = self.structure.topology
+        traj = mdtraj.Trajectory(np.asarray(positions),top)
+        angle = mdtraj.compute_dihedrals(traj, atomlist)
+        return angle
+
+    def normalize_angles(ang_rad):
+        '''This function takes in an angle in radians, wraps it so it falls between 0 and 2pi and returns the
+            angle.'''
+        normalized_angle = (ang_rad+2*math.pi)%(2*math.pi)
+        return(normalized_angle)
+
+    def is_in_bin(self,test_angle,bin_center):
+        '''This function takes in a test_angle, a bin_center and a bias_range and checks if the test_angle
+        falls within the bounds of the bin_center +/- the bias_window.  All values are input in degrees.'''
+        #define upper and lower bin boundaries
+        lower = bin_center/180*math.pi - self.bias_range/180*math.pi
+        upper = bin_center/180*math.pi + self.bias_range/180*math.pi
+
+        #normalize all input values to 0 to 2pi
+        n = normalize_angles(test_angle)
+        upper = normalize_angles(upper)
+        lower = normalize_angles(lower)
+        if verbose: print(n,upper,lower)
+
+        # check if value in bin
+        if n <= upper and n > lower:
+            outcome = True
+        else: outcome = False
+        if verbose: print(outcome)
+
+        return outcome
+
+    def getDihedralIndices(self,axis1,axis2):
         """This function takes in a PDB filename (as a string) and list of residue numbers.  It returns
-            a nested dictionary of rotatable bonds (containing only heavy atoms), that are keyed by residue number,
-            then keyed by bond pointer, containing values of atom indicies [axis1, axis2, atoms to be rotated]
+        a nested dictionary of rotatable bonds (containing only heavy atoms), that are keyed by residue number,
+        then keyed by bond pointer, containing values of atom indicies [axis1, axis2, atoms to be rotated]
+        **Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies"""
+        top = mdtraj.Topology.from_openmm(self.structure.topology)
+        #top = struct.topology
+        #top = mdtraj.load(self.molecule.topology).topology
+        indices = indices_chi1(top).tolist()+indices_chi2(top).tolist()+indices_chi3(top).tolist()\
+        +indices_chi4(top).tolist()+indices_chi5(top).tolist()
+        dihed = []
+        for list in indices:
+            if axis1==list[1] and axis2==list[2]:
+                dihed = list
+                break
+        return dihed
+
+
+    def getRotBondAtoms(self):
+        """This function takes in a structure and list of residue numbers.  It returns
+            a nested dictionary of rotatable bonds (containing only heavy atoms), that are keyed by residue
+            number in the structure that follows:
+            {residue#:{'resname':XXX,'chis':{X:{'bond_ptr':X,'atms2mv':[X,X,X...],'dihed_atms':[X,X,X,X],
+            'bin_pref':[X,X,X]}....}...},
+            where 'resname' is the 3-letter amino acid name, 'chis' is a number (1-5) that describes the
+            position of the rotatable bond in the sidechain, 'bond_ptr' is an OpenEye pointer that references
+            the rotatable bond,'atms2mv' is a list of all the atom indices for the upstream atoms that move
+            if the bond is rotated,'dihed_atms' is a list of 4 atom indices which comprise the dihedral angle
+            of the rotatable bond, and 'bin_pref' is a list of degree values pulled from the rotpref.yaml file
+            for which that particular chi angle has been observed to populate (usually 'bin_pref'contains 1-3
+            values depending on the sidechain and associated chi).
             **Note: The atom indicies start at 0, and are offset by -1 from the PDB file indicies"""
+
         backbone_atoms = self.getBackboneAtoms(self.molecule)
 
         # Generate dictionary containing locations and indicies of heavy residue atoms
@@ -435,20 +510,69 @@ class SideChainMove(Move):
 
         # Generate dictionary of residues, bonds and atoms to be rotated
         rot_atoms = self.getRotAtoms(rot_bonds, self.molecule, backbone_atoms)
+
+        # Read in yaml file
+        rot_pref = yaml.load(open('rotpref.yaml'))
+        # Restructure dictionary and populate atms2mv and bin_pref
+        for residx in rot_atoms.keys():
+            resname = rot_atoms[residx]['res_name']
+            for chi in rot_atoms[residx]['chis']:
+                atom1=rot_atoms[residx]['chis'][chi]['atms2mv'][0]
+                atom2=rot_atoms[residx]['chis'][chi]['atms2mv'][1]
+                atoms = self.getDihedralIndices(atom1,atom2)
+                if chi == 5 and resname == 'ARG':
+                    print('Arginine chi5 detected. Atom indices assigned based on numbers')
+                    atoms = [atom1-3, atom1, atom2, atom2+1]
+                rot_atoms[residx]['chis'][chi]['dihed_atms'] = atoms
+                rot_atoms[residx]['chis'][chi]['bin_pref'] = rot_pref[resname][chi]
+
         return rot_atoms, rot_bonds, qry_atoms
 
-    def chooseBondandTheta(self):
-        """This function takes a dictionary containing nested dictionary, keyed by res#,
-        then keyed by bond_ptrs, containing a list of atoms to move, randomly selects a bond,
-        and generates a random angle (radians).  It returns the atoms associated with the
-        the selected bond, the pointer for the selected bond and the randomly generated angle"""
+    def chooseBond(self,positions):
+        bonds_in_bins = []
 
-        res_choice = random.choice(list(self.rot_atoms.keys()))
-        bond_choice = random.choice(list(self.rot_atoms[res_choice].keys()))
-        targetatoms = self.rot_atoms[res_choice][bond_choice]
-        theta_ran = random.random()*2*math.pi-math.pi
+        for residx in self.rot_atoms.keys():
+            resname = self.rot_atoms[residx]['res_name']
+            for chi in self.rot_atoms[residx]['chis']:
+                dihed_atoms = [self.rot_atoms[residx]['chis'][chi]['dihed_atms']]
+                curr_angle = self.getDihedral(positions,dihed_atms)
+                bin_ct=0
+                for bin in self.rot_atoms[residx]['chis'][chi]['bin_pref']:
+                    bin_ct+=1
+                    if is_in_bin(curr_angle,bin,self.bias_range):
+                        bin_idx = bin_ct-1
+                        bonds_in_bins.append([(self.rot_atoms[residx]['chis'][chi]),curr_angle[0][0],bin_idx])
+                        break
 
-        return theta_ran, targetatoms, res_choice, bond_choice
+        print("\nThere are %i bonds that fall within the biasing bins: %s\n"%(len(bonds_in_bins),bonds_in_bins))
+
+
+        try:
+            bond_choice = random.choice(bonds_in_bins)
+            print("The bond randomly chosen to rotate is:\n",bond_choice)
+        except:
+            print("No rotatable bonds are within range for rotation for biased NCMC sidechain\
+                      \move proposal. Proceed with additional round of MD.")
+            bond_choice = False
+
+        return bond_choice
+
+    def chooseTheta(self,bond_choice):
+        moveok = False
+        while moveok == False:
+            theta_ran = random.random()*2*math.pi-math.pi
+            new_ang = theta_ran + bond_choice[1]
+            for bin in bond_choice[0]['bin_pref']:
+                if bin == bond_choice[0]['bin_pref'][bond_choice[2]]:
+                    continue
+                elif is_in_bin(new_ang,bin,self.bias_range):
+                    conv = new_ang*180/math.pi
+                    print("Your theta is %.2f and your new angle is %.2f or %.2f."%(theta_ran,new_ang,conv))
+                    print("You started in bin [%i] and are proposing move to bin [%i]"%(bond_choice[0]['bin_pref'][bond_choice[2]],bin))
+                    new_bin = bin
+                    moveok = True
+                    break
+        return theta_ran, new_bin
 
     def rotation_matrix(self, axis, theta):
         """This function returns the rotation matrix associated with counterclockwise rotation
@@ -463,17 +587,10 @@ class SideChainMove(Move):
                          [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
-    def getDihedral(self, positions, atomlist):
-        """This function computes the dihedral angle for the given atoms at the given positions"""
-        top = self.structure.topology
-        traj = mdtraj.Trajectory(np.asarray(positions),top)
-        angle = mdtraj.compute_dihedrals(traj, atomlist)
-        return angle
-
     def beforeMove(self, context):
 
         self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-
+        
         return context
 
     def move(self, nc_context, verbose=False):
@@ -490,6 +607,7 @@ class SideChainMove(Move):
         nc_positions = copy.deepcopy(initial_positions)
 
         model = copy.copy(self.structure)
+        #start = self.beforeMove()
 
         # set the parmed model to the same coordinates as the context
         for idx, atom in enumerate(self.all_atoms):
@@ -507,67 +625,30 @@ class SideChainMove(Move):
                 print(nc_positions[atom], model.positions[atom])
 
         positions = model.positions
-
-        ##*** to test of rotamer biasing of valine improves acceptance
-        # Retrieve rotamer angle prior to NCMC
-        dihedralatoms = np.array([[1735,1737,1739,1741]])
-        dihedralangle = self.getDihedral(self.start_pos, dihedralatoms)
-        print("In the moves.py script, this is the current dihedral angle:", dihedralangle)
-
-        # Retrieve rotamer angle immediately prior to filp (midway in NCMC)
-        postrelax_dihedralangle = self.getDihedral(initial_positions, dihedralatoms)
-
-        self.current_bin = True
-
-        # Classify starting angle
-        if -1.3 <= dihedralangle <= -0.9:
-            current_rot = 'm60'
-        elif -3.14159 <= dihedralangle <= -2.94159:
-            current_rot = 'mp180'
-        elif 0.9 <= dihedralangle <= 1.3:
-            current_rot = 'p60'
-        elif 2.94159 <= dihedralangle <= 3.14159:
-            current_rot = 'mp180'
+        
+        #Pick a bond to rotate (by identifying which bond dihedrals fall within biasing regions)
+        selected_bond = self.chooseBond(self.start_pos)
+ 
+        if not selected_bond:
+            self.make_NCMC_move = False
         else:
-            self.current_bin = False
-            print("Starting rotamer state not ok for NCMC")
-        # check if current position plus proposed theta is within distribution
-        # this should also be simplified to use the rotamer checking function (to be written)  described above
-        my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-        moveOK = False
+            self.make_NCMC_move = True
+            new_theta, self.target_bin = self.chooseTheta(selected_bond)
+            self.dihed_atoms = selected_bond[0]['dihed_atms']
+            axis1 = self.dihed_atoms[1]
+            axis2 = self.dihed_atoms[2]
 
-        proposed = (postrelax_dihedralangle - my_theta + math.pi)%(2*math.pi)-math.pi
-
-        while moveOK == False:
-            if -1.3 <= proposed <= -0.9 and current_rot != 'm60':
-                moveOK = True
-            elif -3.14159 <= proposed <= -2.94159 and current_rot != 'mp180':
-                moveOK = True
-            elif 0.9 <= proposed <= 1.3 and current_rot != 'p60':
-                moveOK = True
-            elif 2.94159 <= proposed <= 3.14159 and current_rot != 'mp180':
-                moveOK = True
-            else:
-                if verbose: print("Proposed theta rejected",my_theta)
-                my_theta, my_target_atoms, my_res, my_bond = self.chooseBondandTheta()
-                proposed = (postrelax_dihedralangle - my_theta + math.pi)%(2*math.pi)-math.pi
-                moveOK = False
-
-        print('This is the new proposed dihedral',proposed)
-        print('This is the accepted theta', my_theta)
-        print('This is where it is moving from', postrelax_dihedralangle)
-        if moveOK:
-            print('\nRotating %s in %s by %.2f radians' %(my_bond, my_res, my_theta))
-            # find the rotation axis using the updated positions
-            axis1 = my_target_atoms[0]
-            axis2 = my_target_atoms[1]
             rot_axis = (positions[axis1] - positions[axis2])/positions.unit
+            
+            #Adjust theta to account for repositioning during NCMC relaxation
+            post_relax_dihed = self.getDihedral(initial_positions,self.dihed_atoms)
+            theta_adj = selected_bond[1] - post_relax_dihed + new_theta
 
             #calculate the rotation matrix
-            rot_matrix = self.rotation_matrix(rot_axis, my_theta)
+            rot_matrix = self.rotation_matrix(rot_axis, theta_adj)
 
             # apply the rotation matrix to the target atoms
-            for idx, atom in enumerate(my_target_atoms):
+            for idx, atom in enumerate(selected_bond[0]['atms2mv']):
 
                 my_position = positions[atom]
 
@@ -613,7 +694,7 @@ class SideChainMove(Move):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context: simtk.openmm.Context object:
             Context containing the positions to be moved.
 
         Returns
@@ -623,29 +704,10 @@ class SideChainMove(Move):
 
         """
         post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        indices = np.asarray([[1735,1737,1739,1741]])
-        angle = self.getDihedral(post_pos,indices)
-        print("This is the new angle:",angle)
-        if -1.3 <= angle <= -0.9:
-            bin = True
-            print("final bin ok")
-        elif -3.14159 <= angle <= -2.94159:
-            bin = True
-        elif 0.9 <= angle <= 1.3:
-            bin = True
-            print("final bin ok")
-        elif 2.94159 <= angle <= 3.14159:
-            bin = True
-            print("final bin ok")
-        else:
-            bin = False
-            print("final bin not ok")
-
-        if self.current_bin == False:
-            bin = False
-
-        self.after_pos = post_pos
-        self.bin_boolean = bin
+        final_angle = self.getDihedral(post_pos,self.dihed_atoms)
+        if self.is_in_bin(final_angle,self.target_bin):
+            self.bin_boolean = True
+        else: self.bin_boolean = False
 
         return context
 
