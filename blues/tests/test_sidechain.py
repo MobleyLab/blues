@@ -32,7 +32,8 @@ class SideChainTester(unittest.TestCase):
 
     def test_getRotBondAtoms(self):
 
-        vals = [v for v in self.sidechain.rot_atoms[1].values()][0]
+        vals = [v for v in self.sidechain.rot_atoms[1]['chis'][1]['atms2mv']]
+        print(vals)
         self.assertEqual(len(vals), 11)
         #Ensure it selects 1 rotatable bond in Valine
         self.assertEqual(len(self.sidechain.rot_bonds), 1)
@@ -43,7 +44,8 @@ class SideChainTester(unittest.TestCase):
 
 
         nc_context = simulations.nc.context
-        self.sidechain.move(nc_context, verbose=False)
+        self.sidechain.beforeMove(nc_context)
+        self.sidechain.move(nc_context, verbose=True)
 
 if __name__ == "__main__":
         unittest.main()
