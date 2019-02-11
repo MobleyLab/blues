@@ -401,19 +401,15 @@ class SideChainMove(Move):
                 residue_name = res.GetName()
                 rot_atom_dict.update({resnum : {'res_name': residue_name,'chis':{chi:\
                         {'bond_ptr':bond,'atms2mv':[],'dihed_atms':[],'bin_pref':[]}}}})
-            
+
             if ax1 not in query_list and ax1.GetIdx() not in backbone_atoms:
                 query_list.append(ax1)
             if ax2 not in query_list and ax2.GetIdx() not in backbone_atoms:
                 query_list.append(ax2)
 
-            if ax1.GetIdx() > ax2.GetIdx():
-                idx_list.append(ax2.GetIdx())
-                idx_list.append(ax1.GetIdx())
-            else:
-                idx_list.append(ax1.GetIdx())
-                idx_list.append(ax2.GetIdx())
-            
+            idx_list.append(ax2.GetIdx())
+            idx_list.append(ax1.GetIdx())
+
             for atom in query_list:
                 checklist = atom.GetAtoms()
                 for candidate in checklist:
@@ -442,7 +438,7 @@ class SideChainMove(Move):
         angle = mdtraj.compute_dihedrals(traj, atomlist)
         return angle
 
-    def normalize_angles(self,ang_rad):
+    def normalize_angles(ang_rad):
         '''This function takes in an angle in radians, wraps it so it falls between 0 and 2pi and returns the
             angle.'''
         normalized_angle = (ang_rad+2*math.pi)%(2*math.pi)
@@ -456,14 +452,16 @@ class SideChainMove(Move):
         upper = bin_center/180*math.pi + self.bias_range/180*math.pi
 
         #normalize all input values to 0 to 2pi
-        n = self.normalize_angles(test_angle)
-        upper = self.normalize_angles(upper)
-        lower = self.normalize_angles(lower)
+        n = normalize_angles(test_angle)
+        upper = normalize_angles(upper)
+        lower = normalize_angles(lower)
+        if verbose: print(n,upper,lower)
 
         # check if value in bin
         if n <= upper and n > lower:
             outcome = True
         else: outcome = False
+        if verbose: print(outcome)
 
         return outcome
 
@@ -536,11 +534,11 @@ class SideChainMove(Move):
             resname = self.rot_atoms[residx]['res_name']
             for chi in self.rot_atoms[residx]['chis']:
                 dihed_atoms = [self.rot_atoms[residx]['chis'][chi]['dihed_atms']]
-                curr_angle = self.getDihedral(positions,dihed_atoms)
+                curr_angle = self.getDihedral(positions,dihed_atms)
                 bin_ct=0
                 for bin in self.rot_atoms[residx]['chis'][chi]['bin_pref']:
                     bin_ct+=1
-                    if self.is_in_bin(curr_angle,bin):
+                    if is_in_bin(curr_angle,bin,self.bias_range):
                         bin_idx = bin_ct-1
                         bonds_in_bins.append([(self.rot_atoms[residx]['chis'][chi]),curr_angle[0][0],bin_idx])
                         break
@@ -566,7 +564,7 @@ class SideChainMove(Move):
             for bin in bond_choice[0]['bin_pref']:
                 if bin == bond_choice[0]['bin_pref'][bond_choice[2]]:
                     continue
-                elif self.is_in_bin(new_ang,bin):
+                elif is_in_bin(new_ang,bin,self.bias_range):
                     conv = new_ang*180/math.pi
                     print("Your theta is %.2f and your new angle is %.2f or %.2f."%(theta_ran,new_ang,conv))
                     print("You started in bin [%i] and are proposing move to bin [%i]"%(bond_choice[0]['bin_pref'][bond_choice[2]],bin))
@@ -635,9 +633,9 @@ class SideChainMove(Move):
         else:
             self.make_NCMC_move = True
             new_theta, self.target_bin = self.chooseTheta(selected_bond)
-            self.dihed_atoms = [selected_bond[0]['dihed_atms']]
-            axis1 = self.dihed_atoms[0][1]
-            axis2 = self.dihed_atoms[0][2]
+            self.dihed_atoms = selected_bond[0]['dihed_atms']
+            axis1 = self.dihed_atoms[1]
+            axis2 = self.dihed_atoms[2]
 
             rot_axis = (positions[axis1] - positions[axis2])/positions.unit
             
@@ -684,7 +682,7 @@ class SideChainMove(Move):
 
 
             if verbose:
-                filename = 'sc_move_%s_%s.pdb' % (axis1, axis2)
+                filename = 'sc_move_%s_%s_%s.pdb' % (my_res, axis1, axis2)
                 mod_prot = model.save(filename, overwrite = True)
         return nc_context
 
