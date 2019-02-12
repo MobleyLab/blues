@@ -60,13 +60,15 @@ class SideChainTester(unittest.TestCase):
         self.simulations = SimulationFactory(self.systems, self.engine, self.cfg)
 
     def test_getRotBondAtoms(self):
-        vals = [v for v in self.sidechain.rot_atoms[1].values()][0]
+        vals = [v for v in self.sidechain.rot_atoms[1]['chis'][1]['atms2mv']]
         assert len(vals) == 11
         #Ensure it selects 1 rotatable bond in Valine
         assert len(self.sidechain.rot_bonds) == 1
 
     def test_sidechain_move(self):
-        atom_indices = [v for v in self.sidechain.rot_atoms[1].values()][0]
+        atom_indices = [v for v in self.sidechain.rot_atoms[1]['chis'][1]['atms2mv']]
+        before_context = self.simulations.ncmc.context
+        dobefore = self.sidechain.beforeMove(before_context)
         before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
             asNumpy=True)[atom_indices, :]
         self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)

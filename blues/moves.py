@@ -683,7 +683,7 @@ class SideChainMove(Move):
     def getDihedral(self, positions, atomlist):
         """This function computes the dihedral angle for the given atoms at the given positions"""
         top = self.structure.topology
-        traj = mdtraj.Trajectory(np.asarray(positions),top)
+        traj = mdtraj.Trajectory(numpy.asarray(positions),top)
         angle = mdtraj.compute_dihedrals(traj, atomlist)
         return angle
 
@@ -767,7 +767,6 @@ class SideChainMove(Move):
             for chi in rot_atoms[residx]['chis']:
                 atom1=rot_atoms[residx]['chis'][chi]['atms2mv'][0]
                 atom2=rot_atoms[residx]['chis'][chi]['atms2mv'][1]
-                print(atom1,atom2)
                 atoms = self.getDihedralIndices(atom1,atom2)
                 if chi == 5 and resname == 'ARG':
                     print('Arginine chi5 detected. Atom indices assigned based on numbers')
@@ -784,7 +783,6 @@ class SideChainMove(Move):
             resname = self.rot_atoms[residx]['res_name']
             for chi in self.rot_atoms[residx]['chis']:
                 dihed_atoms = [self.rot_atoms[residx]['chis'][chi]['dihed_atms']]
-                print(dihed_atoms)
                 curr_angle = self.getDihedral(positions,dihed_atoms)
                 bin_ct=0
                 for bin in self.rot_atoms[residx]['chis'][chi]['bin_pref']:
@@ -913,6 +911,8 @@ class SideChainMove(Move):
 
             #calculate the rotation matrix
             rot_matrix = self.rotation_matrix(rot_axis, theta_adj)
+
+            target_atoms = selected_bond[0]['atms2mv'] 
 
             # apply the rotation matrix to the target atoms
             for idx, atom in enumerate(target_atoms):
