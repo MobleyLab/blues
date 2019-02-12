@@ -1068,7 +1068,8 @@ class BLUESSimulation(object):
                 #Attempt anything related to the move before protocol is performed
                 if not step:
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
-
+                    if self.move_engine.moves[self.move_engine.selected_move].make_NCMC_move == False:
+                        break
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
                 if step == moveStep:
@@ -1134,7 +1135,11 @@ class BLUESSimulation(object):
                 'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
             work_ncmc = work_ncmc + correction_factor
 
-        if work_ncmc > randnum:
+        #added for sidechain biasing
+        if self.move_engine.moves[self.move_engine.selected_move].bin_boolean == False:
+            print("Bin Boolean false: dihedral angle departed from target bin during NCMC move")
+
+        if work_ncmc > randnum and self.move_engine.moves[self.move_engine.selected_move].bin_boolean:
             self.accept += 1
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum))
 
@@ -1244,8 +1249,9 @@ class BLUESSimulation(object):
             logger.info('BLUES Iteration: %s' % N)
             self._syncStatesMDtoNCMC()
             self._stepNCMC(nstepsNC, moveStep)
-            self._acceptRejectMove(write_move)
-            self._resetSimulations(temperature)
+            if self.move_engine.moves[self.move_engine.selected_move].make_NCMC_move == True:
+                self._acceptRejectMove(write_move)
+                self._resetSimulations(temperature)
             self._stepMD(nstepsMD)
 
         # END OF NITER
