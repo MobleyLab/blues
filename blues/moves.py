@@ -760,7 +760,9 @@ class SideChainMove(Move):
         rot_atoms = self.getRotAtoms(rot_bonds, self.molecule, backbone_atoms)
 
         # Read in yaml file
-        rot_pref = yaml.load(open('rotpref.yaml'))
+        rotfile = open('rotpref.yaml',"r")
+        rot_pref = yaml.load(rotfile)
+        #rot_pref = yaml.load(open('rotpref.yaml'))
         # Restructure dictionary and populate atms2mv and bin_pref
         for residx in rot_atoms.keys():
             resname = rot_atoms[residx]['res_name']
@@ -773,7 +775,7 @@ class SideChainMove(Move):
                     atoms = [atom1-3, atom1, atom2, atom2+1]
                 rot_atoms[residx]['chis'][chi]['dihed_atms'] = atoms
                 rot_atoms[residx]['chis'][chi]['bin_pref'] = rot_pref[resname][chi]
-
+        rotfile.close()
         return rot_atoms, rot_bonds, qry_atoms
 
     def chooseBond(self,positions):
@@ -792,7 +794,7 @@ class SideChainMove(Move):
                         bonds_in_bins.append([(self.rot_atoms[residx]['chis'][chi]),curr_angle[0][0],bin_idx])
                         break
 
-        print("\nThere are %i bonds that fall within the biasing bins: %s\n"%(len(bonds_in_bins),bonds_in_bins))
+        print("\nThere are %i bonds that fall within the biasing bins:"%(len(bonds_in_bins)))
 
 
         try:
@@ -896,22 +898,15 @@ class SideChainMove(Move):
         positions = model.positions
 
         if self.selected_bond:
-            self.make_NCMC_move = True
-            print("choosing new bond")
             new_theta, self.target_bin = self.chooseTheta(self.selected_bond)
             self.dihed_atoms = [self.selected_bond[0]['dihed_atms']]
-            print("Dihed atoms:",self.dihed_atoms)
-            print("Dihed before NCMC relax:",self.selected_bond[1])
             axis1 = self.dihed_atoms[0][1]
             axis2 = self.dihed_atoms[0][2]
-            print("Rot Axis:",axis1,axis2)
             rot_axis = (positions[axis1] - positions[axis2])/positions.unit
 
             #Adjust theta to account for repositioning during NCMC relaxation
             post_relax_dihed = self.getDihedral(initial_positions,self.dihed_atoms)
             theta_adj = self.selected_bond[1] - post_relax_dihed + new_theta
-            print("Dihed at halfway before move:",post_relax_dihed)
-            print("Adjusted theta:",theta_adj)
             #calculate the rotation matrix
             rot_matrix = self.rotation_matrix(rot_axis, -theta_adj)
 
@@ -946,7 +941,6 @@ class SideChainMove(Move):
                 if self.verbose:
                     print('The updated position for this atom is:', model.positions[atom])
 
-            print("Dihed after rot:",self.getDihedral(nc_positions,self.dihed_atoms))
             # update the actual ncmc context object with the new positions
             context.setPositions(nc_positions)
 
@@ -982,8 +976,6 @@ class SideChainMove(Move):
             self.bin_boolean = True
         else:
             self.bin_boolean = False
-            print(final_angle)
-            print(self.target_bin)
 
         return context
 
