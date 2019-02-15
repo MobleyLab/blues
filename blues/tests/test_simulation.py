@@ -75,6 +75,21 @@ def system(structure, system_cfg):
 
 
 class NoRandomLigandRotation(RandomLigandRotationMove):
+    def __init__(self, structure, resname='LIG'):
+        print('type structure', type(structure), structure)
+        super(NoRandomLigandRotation, self).__init__(structure, resname)
+        self.before = False
+        self.after= False
+        self.acceptance_ratio = 1
+    def beforeMove(self, context):
+        if self.before:
+            self.acceptance_ratio = 0
+        return context
+    def afterMove(self, context):
+        if self.after:
+            self.acceptance_ratio = 0
+        return context
+
     def move(self, context):
         return context
 
@@ -490,7 +505,13 @@ class TestBLUESSimulation(object):
         pos_compare = np.not_equal(before_iter, after_iter).all()
         assert pos_compare
 
-    def test_blues_simulationRunPython(self, systems, simulations, engine, tmpdir, sim_cfg):
+    @pytest.mark.parametrize('before,after', [
+        (True, False),
+        (False, True),
+        (True, True),
+        (False, False)
+        ])
+    def test_blues_simulationRunPython(self, systems, simulations, engine, tmpdir, sim_cfg, before, after):
         print('Testing BLUESSimulation.run() from pure python')
         md_rep_cfg = {
             'stream': {
@@ -519,6 +540,10 @@ class TestBLUESSimulation(object):
 
         md_reporters = ReporterConfig(tmpdir.join('tol-test'), md_rep_cfg).makeReporters()
         ncmc_reporters = ReporterConfig(tmpdir.join('tol-test-ncmc'), ncmc_rep_cfg).makeReporters()
+
+        engine.moves[0].acceptance_ratio = 1
+        engine.moves[0].before = before
+        engine.moves[0].after = after
 
         simulations = SimulationFactory(
             systems, engine, sim_cfg, md_reporters=md_reporters, ncmc_reporters=ncmc_reporters)
