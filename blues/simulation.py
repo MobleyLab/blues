@@ -1305,8 +1305,14 @@ class MonteCarloSimulation(BLUESSimulation):
         work_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (
             -1.0 / self._ncmc_sim.context._integrator.kT)
         randnum = math.log(np.random.random())
+        acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
 
-        if work_mc > randnum:
+        if np.isclose(0, acceptance_ratio):
+            self.reject += 1
+            logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum))
+            self._md_sim.context.setPositions(md_state0['positions'])
+
+        elif work_mc > randnum:
             self.accept += 1
             logger.info('MC MOVE ACCEPTED: work_mc {} > randnum {}'.format(work_mc, randnum))
             self._md_sim.context.setPositions(md_state1['positions'])
