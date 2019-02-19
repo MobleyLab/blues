@@ -760,9 +760,8 @@ class SideChainMove(Move):
         rot_atoms = self.getRotAtoms(rot_bonds, self.molecule, backbone_atoms)
 
         # Read in yaml file
-        rotfile = open('rotpref.yaml',"r")
+        rotfile = open('rotpref.yml',"r")
         rot_pref = yaml.load(rotfile)
-        #rot_pref = yaml.load(open('rotpref.yaml'))
         # Restructure dictionary and populate atms2mv and bin_pref
         for residx in rot_atoms.keys():
             resname = rot_atoms[residx]['res_name']
