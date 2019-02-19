@@ -1152,13 +1152,6 @@ class BLUESSimulation(object):
                 'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
             work_ncmc = work_ncmc + correction_factor
 
-<<<<<<< HEAD
-        #added for sidechain biasing
-        if self._move_engine.moves[0].bin_boolean == False:
-            print("Bin Boolean false: dihedral angle departed from target bin during NCMC move")
-
-        if work_ncmc > randnum and self._move_engine.moves[0].bin_boolean == True:
-=======
         if np.isclose(0, acceptance_ratio):
             print('accept probablility', acceptance_ratio)
             logger.info('NCMC MOVE REJECTED: acceptance_ratio for the selected move is 0; work_ncmc {}'.format(work_ncmc))
@@ -1167,7 +1160,6 @@ class BLUESSimulation(object):
 
 
         elif work_ncmc + math.log(acceptance_ratio) > randnum:
->>>>>>> 9ec3cd636136559ab2065d5ab51d0efdaa4714bb
             self.accept += 1
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum))
 

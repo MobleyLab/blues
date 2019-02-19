@@ -208,8 +208,6 @@ class RandomLigandRotationMove(Move):
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
         ## adding placeholder values for random ligand moves (always true for these moves) vs biased sidechain KB
-        self.make_NCMC_move = True
-        self.bin_boolean = True
 
         self._calculateProperties()
 
@@ -849,10 +847,8 @@ class SideChainMove(Move):
 
         self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         self.selected_bond = self.chooseBond(self.start_pos)
-        if self.selected_bond:
-            self.make_NCMC_move = True
-        else:
-            self.make_NCMC_move = False
+        if not self.selected_bond:
+            self.acceptance_ratio = 0
 
         return context
 
@@ -973,10 +969,8 @@ class SideChainMove(Move):
         """
         post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
         final_angle = self.getDihedral(post_pos,self.dihed_atoms)
-        if self.is_in_bin(final_angle,self.target_bin):
-            self.bin_boolean = True
-        else:
-            self.bin_boolean = False
+        if not self.is_in_bin(final_angle,self.target_bin):
+            self.acceptance_ratio = False
 
         return context
 
