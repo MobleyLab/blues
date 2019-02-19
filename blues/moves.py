@@ -49,6 +49,7 @@ class Move(object):
         """Initialize the Move object
         Currently empy.
         """
+        self.acceptance_ratio = 1
 
     def initializeSystem(self, system, integrator):
         """If the system or integrator needs to be modified to perform the move
@@ -195,6 +196,7 @@ class RandomLigandRotationMove(Move):
     """
 
     def __init__(self, structure, resname='LIG', random_state=None):
+        super(RandomLigandRotationMove, self).__init__()
         self.structure = structure
         self.resname = resname
         self.random_state = random_state

@@ -1062,38 +1062,41 @@ class BLUESSimulation(object):
         self._ncmc_sim.currentIter = self.currentIter
         move_engine.selectMove()
 
-        lastStep = nstepsNC - 1
-        for step in range(int(nstepsNC)):
-            try:
-                #Attempt anything related to the move before protocol is performed
-                if not step:
-                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
-                    if self._move_engine.moves[0].make_NCMC_move == False:
-                        print("NCMC move false")
-                        break
-                # Attempt selected MoveEngine Move at the halfway point
-                #to ensure protocol is symmetric
-                if step == moveStep:
-                    if hasattr(logger, 'report'):
-                        logger.info = logger.report
-                    #Do move
-                    logger.info('Performing %s...' % move_engine.move_name)
-                    self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+        #Attempt anything related to the move before protocol is performed
+        self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
+        acceptance_ratio = move_engine.selected_move.acceptance_ratio
+        #check if acceptance_ratio is non-zero, if so perform integration
+        if not np.isclose(0, acceptance_ratio):
 
-                # Do 1 NCMC step with the integrator
-                self._ncmc_sim.step(1)
+            for step in range(int(nstepsNC)):
+                try:
+                    # Attempt selected MoveEngine Move at the halfway point
+                    #to ensure protocol is symmetric
+                    if step == moveStep:
+                        if hasattr(logger, 'report'):
+                            logger.info = logger.report
+                        #Do move
+                        logger.info('Performing %s...' % move_engine.move_name)
+                        self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+                        if np.isclose(0, acceptance_ratio):
+                            break
 
-                #Attempt anything related to the move after protocol is performed
-                if step == lastStep:
-                    self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+                    # Do 1 NCMC step with the integrator
+                    self._ncmc_sim.step(1)
 
-            except Exception as e:
-                logger.error(e)
-                move_engine.selected_move._error(self._ncmc_sim.context)
-                break
+                except Exception as e:
+                    logger.error(e)
+                    move_engine.selected_move._error(self._ncmc_sim.context)
+                    break
+            #Attempt anything related to the move after protocol is performed
+            self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+
+        else:
+            logger.info('move acceptance_ratio is 0; skipping integration')
 
         # ncmc_state1 stores the state AFTER a proposed move.
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
+
         self._setStateTable('ncmc', 'state1', ncmc_state1)
 
     def _computeAlchemicalCorrection(self):
@@ -1116,6 +1119,18 @@ class BLUESSimulation(object):
             -1.0 / self._ncmc_sim.context._integrator.kT)
 
         return correction_factor
+    def _checkPEConsistencyOnRejection(self):
+        """Checks wheter the potential energy is the same as the last MD iteration if a move is rejected
+        (it should be)
+        """
+        md_state0 = self.stateTable['md']['state0']
+        md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
+        if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
+            logger.error(
+                'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
+                % (md_state0['potential_energy'], md_PE))
+            sys.exit(1)
+
 
     def _acceptRejectMove(self, write_move=False):
         """Choose to accept or reject the proposed move based
@@ -1128,6 +1143,7 @@ class BLUESSimulation(object):
         """
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
         randnum = math.log(np.random.random())
+        acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
 
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
@@ -1136,11 +1152,22 @@ class BLUESSimulation(object):
                 'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
             work_ncmc = work_ncmc + correction_factor
 
+<<<<<<< HEAD
         #added for sidechain biasing
         if self._move_engine.moves[0].bin_boolean == False:
             print("Bin Boolean false: dihedral angle departed from target bin during NCMC move")
 
         if work_ncmc > randnum and self._move_engine.moves[0].bin_boolean == True:
+=======
+        if np.isclose(0, acceptance_ratio):
+            print('accept probablility', acceptance_ratio)
+            logger.info('NCMC MOVE REJECTED: acceptance_ratio for the selected move is 0; work_ncmc {}'.format(work_ncmc))
+            self._checkPEConsistencyOnRejection()
+
+
+
+        elif work_ncmc + math.log(acceptance_ratio) > randnum:
+>>>>>>> 9ec3cd636136559ab2065d5ab51d0efdaa4714bb
             self.accept += 1
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum))
 
@@ -1158,15 +1185,8 @@ class BLUESSimulation(object):
 
             # If reject move, do nothing,
             # NCMC simulation be updated from MD Simulation next iteration.
-
             # Potential energy should be from last MD step in the previous iteration
-            md_state0 = self.stateTable['md']['state0']
-            md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
-            if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
-                logger.error(
-                    'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
-                    % (md_state0['potential_energy'], md_PE))
-                sys.exit(1)
+            self._checkPEConsistencyOnRejection()
 
     def _resetSimulations(self, temperature=None):
         """At the end of each iteration:
@@ -1294,8 +1314,14 @@ class MonteCarloSimulation(BLUESSimulation):
         work_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (
             -1.0 / self._ncmc_sim.context._integrator.kT)
         randnum = math.log(np.random.random())
+        acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
 
-        if work_mc > randnum:
+        if np.isclose(0, acceptance_ratio):
+            self.reject += 1
+            logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum))
+            self._md_sim.context.setPositions(md_state0['positions'])
+
+        elif work_mc > randnum:
             self.accept += 1
             logger.info('MC MOVE ACCEPTED: work_mc {} > randnum {}'.format(work_mc, randnum))
             self._md_sim.context.setPositions(md_state1['positions'])
