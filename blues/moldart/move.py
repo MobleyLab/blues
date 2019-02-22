@@ -14,7 +14,6 @@ from blues.moldart.darts import makeDartDict, checkDart, makeDihedralDifferenceD
 from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
-import types
 
 class MolDartMove(RandomLigandRotationMove):
     """
@@ -34,6 +33,9 @@ class MolDartMove(RandomLigandRotationMove):
         with the darting procedure.
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
+    dart_region_order: list of str, default=['translation', 'dihedral',  'rotation']
+        List corresponding to the order the darts separating poses should be
+        constructed in.
     transition_matrix: None or nxn numpy.array, optional, default=None
         The transition matrix to define transition probabilities between darts.
         If None, this assumes a uniform transition matrix with the self transition
@@ -100,9 +102,10 @@ class MolDartMove(RandomLigandRotationMove):
     """
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
         transition_matrix=None,
-        rigid_darts=None,
+        dart_region_order = ['translation', 'dihedral',  'rotation'],
+        rigid_darts='rigid_darts',
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
-        restraints='boresch', restrained_receptor_atoms=None,
+        restraints=None, restrained_receptor_atoms=None,
         K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
         ):
         super(MolDartMove, self).__init__(structure, resname)
@@ -180,8 +183,8 @@ class MolDartMove(RandomLigandRotationMove):
                     for atom in mol.GetAtoms():
                         if atom.IsHydrogen():
                             h_list.append(atom.GetIdx())
-                self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
-                self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
+                #self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
+                #self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
                 self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
 
 
@@ -203,6 +206,8 @@ class MolDartMove(RandomLigandRotationMove):
             pdb_traj = md.load(pdb_file)[0]
             num_atoms_traj = traj.n_atoms
             num_atoms_pdb = pdb_traj.n_atoms
+            #this assumes the ligand follows immeditely after the protein
+            #to handle the case when no solvent is present
             num_atoms = min(num_atoms_traj, num_atoms_pdb)
             traj.xyz[0][:num_atoms] = pdb_traj.xyz[0][:num_atoms]
             traj.superpose(reference=ref_traj, atom_indices=fit_atoms,
@@ -222,7 +227,7 @@ class MolDartMove(RandomLigandRotationMove):
         self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
-        self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
+        self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist, dart_region_order)
         if transition_matrix is None:
             self.transition_matrix = np.ones((len(pdb_files), len(pdb_files)))
             np.fill_diagonal(self.transition_matrix, 0)
@@ -239,6 +244,9 @@ class MolDartMove(RandomLigandRotationMove):
         if self.rigid_darts is not None:
             #find the bonded atoms that are not part of the dihedral ri
 #            core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values if i not in self.dihedral_ring_atoms]))
+            print('dihedral_diff_df', dihedral_diff_df['atomnum'].values)
+            print('self.buildlist', self.buildlist)
+
             core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values]))
 
             self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
