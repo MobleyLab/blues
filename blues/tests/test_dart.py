@@ -246,7 +246,7 @@ class BoreschRestraintTester(unittest.TestCase):
                                           fit_atoms=fit_atoms,
                                           restraints='boresch',
                                           #restraints=None,
-
+                                          rigid_darts=None,
                                           restrained_receptor_atoms=[1605, 1735, 1837],
                                           )
         system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}

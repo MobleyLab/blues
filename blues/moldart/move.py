@@ -150,44 +150,46 @@ class MolDartMove(RandomLigandRotationMove):
         self.dart_groups = list(range(len(pdb_files)))
         #chemcoords reads in xyz files only, so we need to use mdtraj
         #to get the ligand coordinates in an xyz file
-        with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
-            fname = t.name
-            traj = md.load(pdb_files[0]).atom_slice(self.atom_indices)
-            xtraj = XYZTrajectoryFile(filename=fname, mode='w')
-            xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
-                        types=[i.element.symbol for i in traj.top.atoms] )
-            xtraj.close()
-            xyz = cc.Cartesian.read_xyz(fname)
-            self.buildlist = xyz.get_construction_table()
-            if self.rigid_darts is not None:
-                ring_atoms = []
-                from openeye import oechem
-                ifs = oechem.oemolistream()
-                ifs.open(fname)
-                #double_bonds = []
-                h_list = []
-                for mol in ifs.GetOEGraphMols():
-                    oechem.OEFindRingAtomsAndBonds(mol)
-                    for atom in mol.GetAtoms():
-                        if atom.IsInRing():
-                        #if not atom.IsRotor():
-                            ring_atoms.append(atom.GetIdx())
-                        if atom.IsHydrogen():
-                            h_list.append(atom.GetIdx())
-                    #bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetEndIdx() in ring_atoms]
-                    #end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetBgnIdx() in ring_atoms]
-                rigid_atoms = ring_atoms
-                #select all atoms that are bonded to a ring/double bond atom
-                angle_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
-                for mol in ifs.GetOEGraphMols():
-                    for atom in mol.GetAtoms():
-                        if atom.IsHydrogen():
-                            h_list.append(atom.GetIdx())
-                #self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
-                #self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
-                self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
-
-
+        if 0:
+            with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
+                fname = t.name
+                traj = md.load(pdb_files[0]).atom_slice(self.atom_indices)
+                xtraj = XYZTrajectoryFile(filename=fname, mode='w')
+                xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
+                            types=[i.element.symbol for i in traj.top.atoms] )
+                xtraj.close()
+                xyz = cc.Cartesian.read_xyz(fname)
+                self.buildlist = xyz.get_construction_table()
+                if self.rigid_darts is not None:
+                    ring_atoms = []
+                    from openeye import oechem
+                    ifs = oechem.oemolistream()
+                    ifs.open(fname)
+                    #double_bonds = []
+                    h_list = []
+                    for mol in ifs.GetOEGraphMols():
+                        oechem.OEFindRingAtomsAndBonds(mol)
+                        for atom in mol.GetAtoms():
+                            if atom.IsInRing():
+                            #if not atom.IsRotor():
+                                ring_atoms.append(atom.GetIdx())
+                            if atom.IsHydrogen():
+                                h_list.append(atom.GetIdx())
+                        #bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetEndIdx() in ring_atoms]
+                        #end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetBgnIdx() in ring_atoms]
+                    rigid_atoms = ring_atoms
+                    #select all atoms that are bonded to a ring/double bond atom
+                    angle_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
+                    for mol in ifs.GetOEGraphMols():
+                        for atom in mol.GetAtoms():
+                            if atom.IsHydrogen():
+                                h_list.append(atom.GetIdx())
+                    #self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
+                    #self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
+                    self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
+        else:
+            self.buildlist = self._createBuildlist(pdb_files, self.atom_indices)
+            self.dihedral_ring_atoms = self._findDihedralRingAtoms(pdb_files, atom_indices=self.atom_indices, rigid_darts=self.rigid_darts)
             #get the construction table so internal coordinates are consistent between poses
 
 
@@ -201,33 +203,38 @@ class MolDartMove(RandomLigandRotationMove):
         num_atoms = ref_traj.n_atoms
         self.ref_traj = copy.deepcopy(struct_traj)
         #add the trajectory and xyz coordinates to a list
-        for j, pdb_file in enumerate(pdb_files):
-            traj = copy.deepcopy(self.ref_traj)
-            pdb_traj = md.load(pdb_file)[0]
-            num_atoms_traj = traj.n_atoms
-            num_atoms_pdb = pdb_traj.n_atoms
-            #this assumes the ligand follows immeditely after the protein
-            #to handle the case when no solvent is present
-            num_atoms = min(num_atoms_traj, num_atoms_pdb)
-            traj.xyz[0][:num_atoms] = pdb_traj.xyz[0][:num_atoms]
-            traj.superpose(reference=ref_traj, atom_indices=fit_atoms,
-                ref_atom_indices=fit_atoms
-                )
-            self.binding_mode_traj.append(copy.deepcopy(traj))
-            #get internal representation
-            self.internal_xyz.append(copy.deepcopy(xyz))
-            #take the xyz coordinates from the poses and update
-            #the chemcoords cartesian xyz class to match
-            for index, entry in enumerate(['x', 'y', 'z']):
-                for i in range(len(self.atom_indices)):
-                    sel_atom = self.atom_indices[i]
-                    self.internal_xyz[j]._frame.at[i, entry] = self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10
-            self.internal_zmat.append(self.internal_xyz[j].get_zmat(construction_table=self.buildlist))
-        #set the binding_mode_pos by taking the self.atom_indices indices
-        self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
+        if 0:
+            for j, pdb_file in enumerate(pdb_files):
+                traj = copy.deepcopy(self.ref_traj)
+                pdb_traj = md.load(pdb_file)[0]
+                num_atoms_traj = traj.n_atoms
+                num_atoms_pdb = pdb_traj.n_atoms
+                #this assumes the ligand follows immeditely after the protein
+                #to handle the case when no solvent is present
+                num_atoms = min(num_atoms_traj, num_atoms_pdb)
+                traj.xyz[0][:num_atoms] = pdb_traj.xyz[0][:num_atoms]
+                traj.superpose(reference=ref_traj, atom_indices=fit_atoms,
+                    ref_atom_indices=fit_atoms
+                    )
+                self.binding_mode_traj.append(copy.deepcopy(traj))
+                #get internal representation
+                self.internal_xyz.append(copy.deepcopy(xyz))
+                #take the xyz coordinates from the poses and update
+                #the chemcoords cartesian xyz class to match
+                for index, entry in enumerate(['x', 'y', 'z']):
+                    for i in range(len(self.atom_indices)):
+                        sel_atom = self.atom_indices[i]
+                        self.internal_xyz[j]._frame.at[i, entry] = self.binding_mode_traj[j].xyz[0][:,index][sel_atom]*10
+                self.internal_zmat.append(self.internal_xyz[j].get_zmat(construction_table=self.buildlist))
+            #set the binding_mode_pos by taking the self.atom_indices indices
+            self.binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
+        else:
+            self.internal_xyz, self.internal_zmat, self.binding_mode_pos, self.binding_mode_traj = self._createZmat(pdb_files, atom_indices=self.atom_indices, reference_traj=ref_traj)
+
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
-        self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist, dart_region_order)
+
+        self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist, order=dart_region_order)
         if transition_matrix is None:
             self.transition_matrix = np.ones((len(pdb_files), len(pdb_files)))
             np.fill_diagonal(self.transition_matrix, 0)
@@ -252,6 +259,150 @@ class MolDartMove(RandomLigandRotationMove):
             self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
             print('only_darts_dihedrals ', self.only_darts_dihedrals)
 
+    @classmethod
+    def _createZmat(cls, structure_files, atom_indices, topology=None, reference_traj=None, fit_atoms=None):
+        """
+        Takes a list of structure files and creates xyz and Zmat representations for each of those
+        structures using chemcoord and mdtraj
+
+        Parameters
+        ----------
+        structure_files: list of str
+            List corresponding to the path of the structures to create representations of.
+        atom_indices: list of ints
+            The atom indices of the ligand in the structure files.
+        topology: str, optional, default=None
+            Path of topology file, if structure_files doesn't contain topology information.
+        reference_traj: mdtraj.Trajectory or str, optional, default=None
+            Trajectory object, or path to file, containing the reference system to superpose to. If None then
+            no fitting occurs.
+        fit_atoms: list, optional, default=None
+            List of atom indices to be used in fitting the structure_files positions to the
+            reference trajectory (if reference_traj is not None)
+
+        Returns
+        -------
+        internal_xyz: list of pandas.Dataframe
+        internal_zmat: list of pandas.Dataframe
+        binding_mode_pos: list of np.arrays
+            np.arrays corresponding to the positions of the ligand
+        binding_mode_traj: list of md.Trajectory
+            List of md.Trajectory objects corresponding to the whole system
+        """
+        #portion to get xyz
+        buildlist = cls._createBuildlist(structure_files, atom_indices)
+        if topology is not None:
+            traj = md.load(structure_files[0], top=topology).atom_slice(atom_indices)
+        else:
+            traj = md.load(structure_files[0]).atom_slice(atom_indices)
+
+        with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
+            fname = t.name
+            xtraj = XYZTrajectoryFile(filename=fname, mode='w')
+            xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
+                        types=[i.element.symbol for i in traj.top.atoms] )
+            xtraj.close()
+            xyz = cc.Cartesian.read_xyz(fname)
+        internal_xyz = []
+        internal_zmat = []
+        binding_mode_traj = []
+        #add the trajectory and xyz coordinates to a list
+        if isinstance(reference_traj, str):
+            try:
+                reference_traj = md.load(reference_traj, topology=topology)
+            except TypeError:
+                reference_traj = md.load(reference_traj)
+        for j, pdb_file in enumerate(structure_files):
+            if reference_traj:
+                num_atoms = reference_traj.n_atoms
+                traj = md.load(pdb_file)[0]
+                num_atoms_pdb = traj.n_atoms
+                num_atoms_traj = reference_traj.n_atoms
+                num_atoms = min(num_atoms_traj, num_atoms_pdb)
+                traj.atom_slice(range(num_atoms), inplace=True)
+                traj.superpose(reference=reference_traj, atom_indices=fit_atoms,
+                    ref_atom_indices=fit_atoms
+                    )
+            else:
+                traj = md.load(pdb_file)
+
+            binding_mode_traj.append(copy.deepcopy(traj))
+            #get internal representation
+            internal_xyz.append(copy.deepcopy(xyz))
+            #take the xyz coordinates from the poses and update
+            #the chemcoords cartesian xyz class to match
+            for index, entry in enumerate(['x', 'y', 'z']):
+                for i in range(len(atom_indices)):
+                    sel_atom = atom_indices[i]
+                    internal_xyz[j]._frame.at[i, entry] = binding_mode_traj[j].xyz[0][:,index][sel_atom]*10
+            internal_zmat.append(internal_xyz[j].get_zmat(construction_table=buildlist))
+        #set the binding_mode_pos by taking the self.atom_indices indices
+        #convert nanometers into meters (to be compatible with chemcoord, which uses angstroms)
+        binding_mode_pos = [np.asarray(atraj.xyz[0])[atom_indices]*10.0 for atraj in binding_mode_traj]
+        return internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj
+
+    @classmethod
+    def _createBuildlist(cls, structure_files, atom_indices):
+        with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
+            fname = t.name
+            traj = md.load(structure_files[0]).atom_slice(atom_indices)
+            xtraj = XYZTrajectoryFile(filename=fname, mode='w')
+            xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
+                        types=[i.element.symbol for i in traj.top.atoms] )
+            xtraj.close()
+            xyz = cc.Cartesian.read_xyz(fname)
+            buildlist = xyz.get_construction_table()
+            return buildlist
+
+    @classmethod
+    def _getDarts(cls, structure_files, atom_indices, topology=None, reference_traj=None, fit_atoms=None):
+        internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
+                    atom_indices=atom_indices,
+                    topology=None,
+                    reference_traj=reference_traj,
+                    fit_atoms=fit_atoms)
+        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices)
+        darts = makeDartDict(internal_zmat, binding_mode_pos, buildlist)
+        return darts
+
+    @classmethod
+    def _findDihedralRingAtoms(cls, structure_files, atom_indices, rigid_darts=False):
+        buildlist = cls._createBuildlist(structure_files, atom_indices)
+        if rigid_darts is not None:
+            with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
+                fname = t.name
+                traj = md.load(structure_files[0]).atom_slice(atom_indices)
+                xtraj = XYZTrajectoryFile(filename=fname, mode='w')
+                xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
+                            types=[i.element.symbol for i in traj.top.atoms] )
+
+                ring_atoms = []
+                from openeye import oechem
+                ifs = oechem.oemolistream()
+                ifs.open(fname)
+                #double_bonds = []
+                h_list = []
+                for mol in ifs.GetOEGraphMols():
+                    oechem.OEFindRingAtomsAndBonds(mol)
+                    for atom in mol.GetAtoms():
+                        if atom.IsInRing():
+                        #if not atom.IsRotor():
+                            ring_atoms.append(atom.GetIdx())
+                        if atom.IsHydrogen():
+                            h_list.append(atom.GetIdx())
+                #bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetEndIdx() in ring_atoms]
+                #end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetBgnIdx() in ring_atoms]
+            rigid_atoms = ring_atoms
+            #select all atoms that are bonded to a ring/double bond atom
+            angle_ring_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] in rigid_atoms]
+            for mol in ifs.GetOEGraphMols():
+                for atom in mol.GetAtoms():
+                    if atom.IsHydrogen():
+                        h_list.append(atom.GetIdx())
+            #self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
+            #self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
+            dihedral_ring_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] in rigid_atoms]
+            return dihedral_ring_atoms
 
     @staticmethod
     def _checkTransitionMatrix(transition_matrix, dart_groups):

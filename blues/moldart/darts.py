@@ -79,6 +79,7 @@ def makeStorageFrame(dataframe, num_poses):
 
 
 def makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=0.3):
+    print('dihedral_cutoff test', dihedral_cutoff)
     if dihedral_cutoff < 0:
         raise ValueError('Negative dihedral_cutoff distance does not make sense. Please specify a positive cutoff.')
     diff_dict = {}
@@ -845,7 +846,6 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
             return createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
         elif function_type == 'dihedral':
             return createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
-
     dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
     posedart_dict = {'pose_'+str(posnum):{}  for posnum, value in enumerate(internal_mat)}
 
@@ -934,7 +934,6 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
 
         dihedral_output = {}
         dihedral_atoms = list(dart_storage['dihedral'].keys())
-        print('dart_stroage keys', dart_storage['dihedral'].keys())
 
         if len(dihedral_atoms) > 0:
             for atom_index in dihedral_atoms:
@@ -944,7 +943,6 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                 for posenum, zmat in enumerate(internal_mat):
                     comparison = zmat['dihedral'].loc[atom_index]
                     dihedral_diff = abs(current_dihedral - comparison)
-                    #print('di_compare ', ' compare:', comparison, ' current:', current_dihedral, ' difference:', dihedral_diff, ' dart:', np.rad2deg(dart_storage['dihedral'][atom_index]), ' atom_index:', atom_index)
 
 
                     if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]):
