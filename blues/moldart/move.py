@@ -355,14 +355,41 @@ class MolDartMove(RandomLigandRotationMove):
             return buildlist
 
     @classmethod
-    def _getDarts(cls, structure_files, atom_indices, topology=None, reference_traj=None, fit_atoms=None):
+    def _getDarts(cls, structure_files, atom_indices, topology=None, reference_traj=None, fit_atoms=None, order=['translation', 'dihedral',  'rotation']):
+        """
+        Parameters
+        ----------
+        structure_files: list of str
+            List corresponding to the path of the structures to create representations of.
+        atom_indices: list of ints
+            The atom indices of the ligand in the structure files.
+        topology: str, optional, default=None
+            Path of topology file, if structure_files doesn't contain topology information.
+        reference_traj: mdtraj.Trajectory or str, optional, default=None
+            Trajectory object, or path to file, containing the reference system to superpose to. If None then
+            no fitting occurs.
+        fit_atoms: list, optional, default=None
+            List of atom indices to be used in fitting the structure_files positions to the
+            reference trajectory (if reference_traj is not None)
+        order: list of strs, optional, default=['translation', 'dihedral', 'rotation']
+            The order in which to construct the darting regions. Darting regions will be made sequentially.the
+            If all the poses are separated by the darting regions at any point in this process, then no additional
+            regions will be made (so order matters).
+
+        Returns
+        -------
+        dart_storage: dict
+            Dict containing the darts associated with `rotation`, `translation` and `dihedral`
+            keys that refer to the size of the given dart, if not empty
+
+        """
         internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
                     atom_indices=atom_indices,
                     topology=None,
                     reference_traj=reference_traj,
                     fit_atoms=fit_atoms)
         buildlist = MolDartMove._createBuildlist(structure_files, atom_indices)
-        darts = makeDartDict(internal_zmat, binding_mode_pos, buildlist)
+        darts = makeDartDict(internal_zmat, binding_mode_pos, buildlist, order=order)
         return darts
 
     @classmethod
