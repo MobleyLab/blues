@@ -367,7 +367,7 @@ class MolDartMove(RandomLigandRotationMove):
             Path of topology file, if structure_files doesn't contain topology information.
         reference_traj: mdtraj.Trajectory or str, optional, default=None
             Trajectory object, or path to file, containing the reference system to superpose to. If None then
-            no fitting occurs.
+            trajectories are fitted to the first structure in structure_files.
         fit_atoms: list, optional, default=None
             List of atom indices to be used in fitting the structure_files positions to the
             reference trajectory (if reference_traj is not None)
@@ -383,6 +383,11 @@ class MolDartMove(RandomLigandRotationMove):
             keys that refer to the size of the given dart, if not empty
 
         """
+        if reference_traj is None:
+            try:
+                reference_traj = md.load(structure_files[0], topology=topology)
+            except TypeError:
+                reference_traj = md.load(structure_files[0])
         internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
                     atom_indices=atom_indices,
                     topology=None,
@@ -391,6 +396,74 @@ class MolDartMove(RandomLigandRotationMove):
         buildlist = MolDartMove._createBuildlist(structure_files, atom_indices)
         darts = makeDartDict(internal_zmat, binding_mode_pos, buildlist, order=order)
         return darts
+
+    @classmethod
+    def _checkTrajectoryDarts(cls, structure_files, atom_indices, traj_files, darts, topology=None, reference_traj=None, fit_atoms=None):
+        """
+        Parameters
+        ----------
+        structure_files: list of str
+            List corresponding to the path of the structures to create representations of.
+        atom_indices: list of ints
+            The atom indices of the ligand in the structure files.
+        topology: str, optional, default=None
+            Path of topology file, if structure_files doesn't contain topology information.
+        reference_traj: mdtraj.Trajectory or str, optional, default=None
+            Trajectory object, or path to file, containing the reference system to superpose to. If None then
+            trajectories are fitted to the first structure in structure_files.
+        fit_atoms: list, optional, default=None
+            List of atom indices to be used in fitting the structure_files positions to the
+            reference trajectory (if reference_traj is not None)
+
+        Returns
+        -------
+        all_darts: list of lists
+            List containing a list of ints for each traj_files item. Each int corresponds to a frame of that trajectory if it matches
+            a pose from the poses specified in structure_files
+
+        """
+        if reference_traj is None:
+            try:
+                reference_traj = md.load(structure_files[0], topology=topology)
+            except TypeError:
+                reference_traj = md.load(structure_files[0])
+        else:
+            if isinstance(reference_traj, str):
+                try:
+                    reference_traj = md.load(reference_traj, topology=topology)
+                except TypeError:
+                    reference_traj = md.load(reference_traj)
+        internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
+                    atom_indices=atom_indices,
+                    topology=None,
+                    reference_traj=reference_traj,
+                    fit_atoms=fit_atoms)
+        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices)
+        temp_xyz = copy.deepcopy(internal_xyz[0])
+        all_darts = []
+        for traj in traj_files:
+            try:
+                traj = md.load(traj, topology=topology)
+            except TypeError:
+                traj = md.load(traj)
+            traj.superpose(reference=reference_traj,
+                atom_indices=fit_atoms)
+            traj_frames = []
+            for frame in range(traj.n_frames):
+                temp_xyz._frame.loc[:, ['x', 'y', 'z']] = traj.xyz[frame][atom_indices]*10
+                temp_zmat = temp_xyz.get_zmat(construction_table=buildlist)
+                poses = checkDart(internal_zmat, current_pos=traj.xyz[frame][atom_indices]*10,
+
+                    current_zmat=temp_zmat, pos_list=binding_mode_pos,
+                    construction_table=buildlist,
+                    dart_storage=darts
+                    )
+                traj_frames.append(poses)
+            all_darts.append(traj_frames)
+
+        return all_darts
+
+
 
     @classmethod
     def _findDihedralRingAtoms(cls, structure_files, atom_indices, rigid_darts=False):

@@ -834,7 +834,7 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     order: list of strs, optional, default=['translation', 'dihedral', 'rotation']
         The order in which to construct the darting regions. Darting regions will be made sequentially.the
         If all the poses are separated by the darting regions at any point in this process, then no additional
-         regions will be made (so order matters).
+        regions will be made (so order matters).
 
     Returns
     -------
@@ -906,7 +906,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         keys that refer to the size of the given dart, if not empty.
     Returns:
     set_output: list
-        List of overlapping dart regions. REturns an empty list of there's no overlap.
+        List of overlapping dart regions. Returns an empty list of there's no overlap.
 
     """
     def createTranslationDarts(internal_mat, trans_mat, dart_storage):
