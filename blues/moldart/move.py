@@ -342,10 +342,14 @@ class MolDartMove(RandomLigandRotationMove):
         return internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj
 
     @classmethod
-    def _createBuildlist(cls, structure_files, atom_indices):
+    def _createBuildlist(cls, structure_files, atom_indices, topology=None):
+
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
             fname = t.name
-            traj = md.load(structure_files[0]).atom_slice(atom_indices)
+            try:
+                traj = md.load(structure_files[0], topology=topology).atom_slice(atom_indices)
+            except:
+                traj = md.load(structure_files[0]).atom_slice(atom_indices)
             xtraj = XYZTrajectoryFile(filename=fname, mode='w')
             xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
                         types=[i.element.symbol for i in traj.top.atoms] )
@@ -393,7 +397,7 @@ class MolDartMove(RandomLigandRotationMove):
                     topology=None,
                     reference_traj=reference_traj,
                     fit_atoms=fit_atoms)
-        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices)
+        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
         darts = makeDartDict(internal_zmat, binding_mode_pos, buildlist, order=order)
         return darts
 
@@ -438,7 +442,7 @@ class MolDartMove(RandomLigandRotationMove):
                     topology=None,
                     reference_traj=reference_traj,
                     fit_atoms=fit_atoms)
-        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices)
+        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
         temp_xyz = copy.deepcopy(internal_xyz[0])
         all_darts = []
         for traj in traj_files:
