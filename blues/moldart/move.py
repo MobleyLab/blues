@@ -260,6 +260,14 @@ class MolDartMove(RandomLigandRotationMove):
             print('only_darts_dihedrals ', self.only_darts_dihedrals)
 
     @classmethod
+    def _loadfiles(cls, structure_files, topology):
+        try:
+            traj = md.load(structure_files, top=topology)
+        except TypeError:
+            traj = md.load(structure_files)
+
+        return traj
+    @classmethod
     def _createZmat(cls, structure_files, atom_indices, topology=None, reference_traj=None, fit_atoms=None):
         """
         Takes a list of structure files and creates xyz and Zmat representations for each of those
@@ -290,16 +298,13 @@ class MolDartMove(RandomLigandRotationMove):
             List of md.Trajectory objects corresponding to the whole system
         """
         #portion to get xyz
-        buildlist = cls._createBuildlist(structure_files, atom_indices)
-        if topology is not None:
-            traj = md.load(structure_files[0], top=topology).atom_slice(atom_indices)
-        else:
-            traj = md.load(structure_files[0]).atom_slice(atom_indices)
+        buildlist = cls._createBuildlist(structure_files, atom_indices, topology=topology)
+        traj = cls._loadfiles(structure_files[0], topology).atom_slice(atom_indices)
 
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
             fname = t.name
             xtraj = XYZTrajectoryFile(filename=fname, mode='w')
-            xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
+            xtraj.write(xyz=in_units_of(traj.xyz[0], traj._distance_unit, xtraj.distance_unit),
                         types=[i.element.symbol for i in traj.top.atoms] )
             xtraj.close()
             xyz = cc.Cartesian.read_xyz(fname)
@@ -308,14 +313,12 @@ class MolDartMove(RandomLigandRotationMove):
         binding_mode_traj = []
         #add the trajectory and xyz coordinates to a list
         if isinstance(reference_traj, str):
-            try:
-                reference_traj = md.load(reference_traj, topology=topology)
-            except TypeError:
-                reference_traj = md.load(reference_traj)
+            reference_traj = cls._loadfiles(reference_traj, topology)
         for j, pdb_file in enumerate(structure_files):
             if reference_traj:
                 num_atoms = reference_traj.n_atoms
-                traj = md.load(pdb_file)[0]
+                traj = cls._loadfiles(pdb_file, topology=topology)[0]
+                #traj = md.load(pdb_file)[0]
                 num_atoms_pdb = traj.n_atoms
                 num_atoms_traj = reference_traj.n_atoms
                 num_atoms = min(num_atoms_traj, num_atoms_pdb)
@@ -346,12 +349,11 @@ class MolDartMove(RandomLigandRotationMove):
 
         with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
             fname = t.name
-            try:
-                traj = md.load(structure_files[0], topology=topology).atom_slice(atom_indices)
-            except:
-                traj = md.load(structure_files[0]).atom_slice(atom_indices)
+            print('topology', topology)
+            traj = cls._loadfiles(structure_files[0], topology).atom_slice(atom_indices)
+            print(traj.xyz)
             xtraj = XYZTrajectoryFile(filename=fname, mode='w')
-            xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
+            xtraj.write(xyz=in_units_of(traj.xyz[0], traj._distance_unit, xtraj.distance_unit),
                         types=[i.element.symbol for i in traj.top.atoms] )
             xtraj.close()
             xyz = cc.Cartesian.read_xyz(fname)
@@ -388,13 +390,10 @@ class MolDartMove(RandomLigandRotationMove):
 
         """
         if reference_traj is None:
-            try:
-                reference_traj = md.load(structure_files[0], topology=topology)
-            except TypeError:
-                reference_traj = md.load(structure_files[0])
+            reference_traj = cls._loadfiles(structure_files[0], topology)
         internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
                     atom_indices=atom_indices,
-                    topology=None,
+                    topology=topology,
                     reference_traj=reference_traj,
                     fit_atoms=fit_atoms)
         buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
@@ -427,29 +426,21 @@ class MolDartMove(RandomLigandRotationMove):
 
         """
         if reference_traj is None:
-            try:
-                reference_traj = md.load(structure_files[0], topology=topology)
-            except TypeError:
-                reference_traj = md.load(structure_files[0])
+            reference_traj = cls._loadfiles(structure_files[0], topology)
         else:
             if isinstance(reference_traj, str):
-                try:
-                    reference_traj = md.load(reference_traj, topology=topology)
-                except TypeError:
-                    reference_traj = md.load(reference_traj)
+                reference_traj = cls._loadfiles(reference_traj, topology)
+
         internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
                     atom_indices=atom_indices,
-                    topology=None,
+                    topology=topology,
                     reference_traj=reference_traj,
                     fit_atoms=fit_atoms)
         buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
         temp_xyz = copy.deepcopy(internal_xyz[0])
         all_darts = []
         for traj in traj_files:
-            try:
-                traj = md.load(traj, topology=topology)
-            except TypeError:
-                traj = md.load(traj)
+            traj = cls._loadfiles(traj, topology)
             traj.superpose(reference=reference_traj,
                 atom_indices=fit_atoms)
             traj_frames = []
