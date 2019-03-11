@@ -338,6 +338,7 @@ class MolDartMove(RandomLigandRotationMove):
                 for i in range(len(atom_indices)):
                     sel_atom = atom_indices[i]
                     internal_xyz[j]._frame.at[i, entry] = binding_mode_traj[j].xyz[0][:,index][sel_atom]*10
+            print('internal_xyz', internal_xyz)
             internal_zmat.append(internal_xyz[j].get_zmat(construction_table=buildlist))
         #set the binding_mode_pos by taking the self.atom_indices indices
         #convert nanometers into meters (to be compatible with chemcoord, which uses angstroms)
@@ -447,8 +448,7 @@ class MolDartMove(RandomLigandRotationMove):
             for frame in range(traj.n_frames):
                 temp_xyz._frame.loc[:, ['x', 'y', 'z']] = traj.xyz[frame][atom_indices]*10
                 temp_zmat = temp_xyz.get_zmat(construction_table=buildlist)
-                poses = checkDart(internal_zmat, current_pos=traj.xyz[frame][atom_indices]*10,
-
+                poses = checkDart(internal_zmat, current_pos=(np.array(traj.openmm_positions(frame)._value))[atom_indices]*10,
                     current_zmat=temp_zmat, pos_list=binding_mode_pos,
                     construction_table=buildlist,
                     dart_storage=darts

@@ -426,7 +426,7 @@ def getRotTransMatrices(internal_mat, pos_list, construction_table):
         #only be nan if due to rounding error due to no rotation
             rot_storage[zindex[0], zindex[1]] = 0
         else:
-            rot_storage[zindex[0], zindex[1]] = temp_rot*9./10.
+            rot_storage[zindex[0], zindex[1]] = temp_rot
 
         trans_storage[zindex[0], zindex[1]] = temp_trans
         trans_storage = symmetrize(trans_storage)/ 2.0
@@ -879,7 +879,9 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     #dart_storage, posedart_dict, dart_boolean = createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
     for key in ['rotation', 'translation']:
         if len(dart_storage[key]) > 0:
-            dart_storage[key][0] = dart_storage[key][0] - dart_storage[key][0] / 10.0
+            #dart_storage[key][0] = dart_storage[key][0] - dart_storage[key][0] / 10.0
+            dart_storage[key][0] = dart_storage[key][0] * 0.75
+
     return dart_storage
 
 
@@ -928,6 +930,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
             num_poses = np.shape(rot_mat)[0]
             rot_list = [rot_mat[0,j] for j in range(1, num_poses)]
             rot_list = [j for j,i in enumerate(rot_list) if i < rot_cutoff]
+            print('rot_cutoff', rot_cutoff, rot_list)
             return rot_list
         else:
             return None
@@ -965,6 +968,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     combo_zmat = [current_zmat] + internal_mat
 
     rot_mat, trans_mat = getRotTransMatrices(combo_zmat, combo_list, construction_table)
+    print('rot_mat', rot_mat)
     trans_list = createTranslationDarts(combo_zmat, trans_mat, dart_storage)
 
     rot_list = compareRotation(rot_mat, combo_zmat, dart_storage)
