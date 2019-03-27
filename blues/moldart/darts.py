@@ -521,22 +521,30 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
     #rotation_present = True
     last_repeat = {}
     unison_dict = {}
-    for key, pose in iteritems(posedart_dict):
-        #trans_overlap_list = [set(pose['translation'])]
-        #rot_overlap_list = [set(pose['rotation'])]
-        #overlap_list = di_overlap_list+trans_overlap_list+rot_overlap_list
-        try:
-            di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
-            #if there's no overlaps then this will fail
-            if len(di_overlap_list) > 0:
-                unison = set.intersection(*di_overlap_list)
-            else:
-                last_repeat[key] = 0
-        except AttributeError:
-            unison = set([])
-            last_repeat[key] = None
-            dihedral_present = False
+    #loop over all poses
 
+    for key, pose in iteritems(posedart_dict):
+        if not pose['dihedral']:
+            dihedral_present = False
+            last_repeat[key] = None
+
+    if dihedral_present == True:
+
+        for key, pose in iteritems(posedart_dict):
+            #trans_overlap_list = [set(pose['translation'])]
+            #rot_overlap_list = [set(pose['rotation'])]
+            #overlap_list = di_overlap_list+trans_overlap_list+rot_overlap_list
+            try:
+                di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
+                #if there's no overlaps then this will fail
+                if len(di_overlap_list) > 0:
+                    unison = set.intersection(*di_overlap_list)
+                else:
+                    last_repeat[key] = 0
+            except AttributeError:
+                unison = set([])
+                last_repeat[key] = None
+                dihedral_present = False
     trans_indices = np.triu_indices(len(internal_mat))
     trans_list = sorted([trans_mat[i,j] for i,j in zip(trans_indices[0], trans_indices[1])], reverse=True)
 
@@ -555,11 +563,12 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
             for key, pose in iteritems(posedart_copy):
                 if dihedral_present == True:
                     di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
+                    di_overlap_list = None
+
                 else:
                     di_overlap_list = None
                 trans_overlap_list = [set(pose['translation'])]
                 overlap_list = addSet([di_overlap_list, trans_overlap_list])
-
                 try:
                     #if there's no overlaps then this will fail
                     unison = set.intersection(*overlap_list)
@@ -575,12 +584,11 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
                     posedart_dict = copy.deepcopy(posedart_copy)
                     #TODO decide if it should be in angles or radians
                     dart_storage['translation'] = [trans_diff]
-                    last_repeat[key] = len(unison)
+                    last_repeat[key] = len(unison) + 1
 
                 elif len(unison) == 0:
                     print('selected internal coordinates separate all poses')
                 else:
-                    print('unison', len(unison), 'internal mat', len(internal_mat))
                     pass
 
             dboolean = 0
@@ -650,26 +658,32 @@ def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
     last_repeat = {}
     unison_dict = {}
     for key, pose in iteritems(posedart_dict):
-        try:
-            di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
-        except AttributeError:
-            di_overlap_list = None
+        if not pose['dihedral']:
             dihedral_present = False
-        if pose['translation'] is None:
-            trans_overlap_list = None
-            translation_present = False
-
-        else:
-            trans_overlap_list = [set(pose['translation'])]
-
-        overlap_list = addSet([di_overlap_list, trans_overlap_list])
-        if overlap_list is None:
             last_repeat[key] = None
-        elif len(overlap_list) > 0:
-            unison = set.intersection(*overlap_list)
-            last_repeat[key] = len(unison)
-        else:
-            last_repeat[key] = {0}-{0}
+    if dihedral_present == True:
+
+        for key, pose in iteritems(posedart_dict):
+            try:
+                di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
+            except AttributeError:
+                di_overlap_list = None
+                dihedral_present = False
+            if pose['translation'] is None:
+                trans_overlap_list = None
+                translation_present = False
+
+            else:
+                trans_overlap_list = [set(pose['translation'])]
+
+            overlap_list = addSet([di_overlap_list, trans_overlap_list])
+            if overlap_list is None:
+                last_repeat[key] = None
+            elif len(overlap_list) > 0:
+                unison = set.intersection(*overlap_list)
+                last_repeat[key] = len(unison)
+            else:
+                last_repeat[key] = {0}-{0}
 
     #need to know how many regions are separated to see if adding translational darts improve things
     rot_indices = np.triu_indices(len(internal_mat))
@@ -850,7 +864,9 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
             return createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
         elif function_type == 'dihedral':
             return createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
-    dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
+    #dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
+    dihedral_df = None
+
     posedart_dict = {'pose_'+str(posnum):{}  for posnum, value in enumerate(internal_mat)}
 
     for key, value in iteritems(posedart_dict):
@@ -872,6 +888,8 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
 
     for darttype in order:
         if not dart_boolean:
+            if darttype == 'dihedral':
+                dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
             dart_storage, posedart_dict, dart_boolean = createDarts(darttype, internal_mat, dihedral_df, trans_mat, rot_mat, distance_cutoff, posedart_dict, dart_storage)
 
     if not dart_boolean:
@@ -968,7 +986,6 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     combo_zmat = [current_zmat] + internal_mat
 
     rot_mat, trans_mat = getRotTransMatrices(combo_zmat, combo_list, construction_table)
-    print('rot_mat', rot_mat)
     trans_list = createTranslationDarts(combo_zmat, trans_mat, dart_storage)
 
     rot_list = compareRotation(rot_mat, combo_zmat, dart_storage)
