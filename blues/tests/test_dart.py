@@ -144,8 +144,7 @@ class DartTester(unittest.TestCase):
         self.blues._md_sim.context.setPositions(end_pos)
         begin_compare = self.ligand.move(self.blues._md_sim.context).getState(getPositions=True).getPositions(asNumpy=True)
         #check that the reverse of the move gives the same positions
-        assert np.allclose(begin_compare._value, begin_traj.openmm_positions(0)._value, rtol=1, atol=1)
-
+        assert np.allclose(begin_compare._value, begin_traj.openmm_positions(0)._value, rtol=0.001, atol=0.001)
 
     def test_checkTransitionMatrix(self):
         """Check that the transition matrix accounts for the change in the acceptance ratio correctly"""
@@ -247,6 +246,7 @@ class BoreschRestraintTester(unittest.TestCase):
                                           restraints='boresch',
                                           #restraints=None,
                                           rigid_darts=None,
+                                          dart_region_order=['rotation'],
                                           restrained_receptor_atoms=[1605, 1735, 1837],
                                           )
         system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
@@ -361,8 +361,9 @@ class DartSetupTester(unittest.TestCase):
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist)
         print('darts', self.darts)
         print('rotation', self.darts['rotation'])
-        assert np.isclose(64.41, self.darts['rotation'][0])
+        assert np.isclose(71.567, self.darts['rotation'][0])
 
 
 if __name__ == "__main__":
         unittest.main()
+

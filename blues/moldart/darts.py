@@ -519,7 +519,7 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
     #many poses those darts separate
 
     dihedral_present = True
-    #rotation_present = True
+    rotation_present = True
     last_repeat = {}
     unison_dict = {}
     #loop over all poses
@@ -529,23 +529,31 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
             dihedral_present = False
             last_repeat[key] = None
 
-    if dihedral_present == True:
-
         for key, pose in iteritems(posedart_dict):
-            #trans_overlap_list = [set(pose['translation'])]
-            #rot_overlap_list = [set(pose['rotation'])]
-            #overlap_list = di_overlap_list+trans_overlap_list+rot_overlap_list
-            try:
-                di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
-                #if there's no overlaps then this will fail
-                if len(di_overlap_list) > 0:
-                    unison = set.intersection(*di_overlap_list)
-                else:
-                    last_repeat[key] = 0
-            except AttributeError:
-                unison = set([])
+            if dihedral_present == True:
+
+                try:
+                    di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
+                except AttributeError:
+                    di_overlap_list = None
+                    dihedral_present = False
+            else:
+                di_overlap_list = None
+            if pose['rotation'] is None:
+                trans_overlap_list = None
+                rotation_present = False
+
+            else:
+                trans_overlap_list = [set(pose['translation'])]
+
+            overlap_list = addSet([di_overlap_list, trans_overlap_list])
+            if overlap_list is None:
                 last_repeat[key] = None
-                dihedral_present = False
+            elif len(overlap_list) > 0:
+                unison = set.intersection(*overlap_list)
+                last_repeat[key] = len(unison)
+            else:
+                last_repeat[key] = {0}-{0}
     trans_indices = np.triu_indices(len(internal_mat))
     trans_list = sorted([trans_mat[i,j] for i,j in zip(trans_indices[0], trans_indices[1])], reverse=True)
 
@@ -568,8 +576,12 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
 
                 else:
                     di_overlap_list = None
+                if rotation_present == True:
+                    rot_overlap_list = [set(pose['rotation'])]
+                else:
+                    rot_overlap_list = None
                 trans_overlap_list = [set(pose['translation'])]
-                overlap_list = addSet([di_overlap_list, trans_overlap_list])
+                overlap_list = addSet([di_overlap_list, trans_overlap_list, rot_overlap_list])
                 try:
                     #if there's no overlaps then this will fail
                     unison = set.intersection(*overlap_list)
@@ -659,18 +671,21 @@ def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
     translation_present = True
     last_repeat = {}
     unison_dict = {}
+    di_overlap_list = None
+    trans_overlap_list = None
     for key, pose in iteritems(posedart_dict):
         if not pose['dihedral']:
             dihedral_present = False
             last_repeat[key] = None
-    if dihedral_present == True:
 
         for key, pose in iteritems(posedart_dict):
-            try:
-                di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
-            except AttributeError:
-                di_overlap_list = None
-                dihedral_present = False
+            if dihedral_present == True:
+
+                try:
+                    di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
+                except AttributeError:
+                    di_overlap_list = None
+                    dihedral_present = False
             if pose['translation'] is None:
                 trans_overlap_list = None
                 translation_present = False
@@ -1022,5 +1037,4 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     except TypeError:
         set_output = []
     return set_output
-
 
