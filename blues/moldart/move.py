@@ -1288,3 +1288,4 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
             self.addComputeGlobal("prop", "1")
 
             self.endBlock()#
+

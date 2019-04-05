@@ -894,7 +894,6 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
             set_overlap.append
             for key, value in iteritems(posevalue):
                 if key == 'dihedral' and value:
-                    print('value', value)
                     for key1, value1 in iteritems(value):
                         if value1:
                             set_overlap.append(value1)
@@ -944,7 +943,6 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     #dart_storage, posedart_dict, dart_boolean = createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
     for key in ['rotation', 'translation']:
         if len(dart_storage[key]) > 0:
-            #dart_storage[key][0] = dart_storage[key][0] - dart_storage[key][0] / 10.0
             dart_storage[key][0] = dart_storage[key][0] * dart_buffer
 
     return dart_storage
@@ -1044,8 +1042,4 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
     except TypeError:
         set_output = []
     return set_output
-
-
-
-
 
