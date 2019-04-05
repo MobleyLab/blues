@@ -428,6 +428,8 @@ class MolDartMove(RandomLigandRotationMove):
             a pose from the poses specified in structure_files
 
         """
+        if not isinstance(traj_files, list):
+            traj_files = [traj_files]
         if reference_traj is None:
             reference_traj = cls._loadfiles(structure_files[0], topology)
         else:
@@ -443,6 +445,7 @@ class MolDartMove(RandomLigandRotationMove):
         temp_xyz = copy.deepcopy(internal_xyz[0])
         all_darts = []
         for traj in traj_files:
+            print('traj', traj)
             traj = cls._loadfiles(traj, topology)
             traj.superpose(reference=reference_traj,
                 atom_indices=fit_atoms)
