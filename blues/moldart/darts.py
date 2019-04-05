@@ -519,7 +519,7 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
     #many poses those darts separate
 
     dihedral_present = True
-    #rotation_present = True
+    rotation_present = True
     last_repeat = {}
     unison_dict = {}
     #loop over all poses
@@ -529,23 +529,31 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
             dihedral_present = False
             last_repeat[key] = None
 
-    if dihedral_present == True:
-
         for key, pose in iteritems(posedart_dict):
-            #trans_overlap_list = [set(pose['translation'])]
-            #rot_overlap_list = [set(pose['rotation'])]
-            #overlap_list = di_overlap_list+trans_overlap_list+rot_overlap_list
-            try:
-                di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
-                #if there's no overlaps then this will fail
-                if len(di_overlap_list) > 0:
-                    unison = set.intersection(*di_overlap_list)
-                else:
-                    last_repeat[key] = 0
-            except AttributeError:
-                unison = set([])
+            if dihedral_present == True:
+
+                try:
+                    di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
+                except AttributeError:
+                    di_overlap_list = None
+                    dihedral_present = False
+            else:
+                di_overlap_list = None
+            if pose['rotation'] is None:
+                trans_overlap_list = None
+                rotation_present = False
+
+            else:
+                trans_overlap_list = [set(pose['translation'])]
+
+            overlap_list = addSet([di_overlap_list, trans_overlap_list])
+            if overlap_list is None:
                 last_repeat[key] = None
-                dihedral_present = False
+            elif len(overlap_list) > 0:
+                unison = set.intersection(*overlap_list)
+                last_repeat[key] = len(unison)
+            else:
+                last_repeat[key] = {0}-{0}
     trans_indices = np.triu_indices(len(internal_mat))
     trans_list = sorted([trans_mat[i,j] for i,j in zip(trans_indices[0], trans_indices[1])], reverse=True)
 
@@ -568,8 +576,12 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
 
                 else:
                     di_overlap_list = None
+                if rotation_present == True:
+                    rot_overlap_list = [set(pose['rotation'])]
+                else:
+                    rot_overlap_list = None
                 trans_overlap_list = [set(pose['translation'])]
-                overlap_list = addSet([di_overlap_list, trans_overlap_list])
+                overlap_list = addSet([di_overlap_list, trans_overlap_list, rot_overlap_list])
                 try:
                     #if there's no overlaps then this will fail
                     unison = set.intersection(*overlap_list)
@@ -617,7 +629,7 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
 
     return dart_storage, posedart_dict, False
 
-def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
+def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage, rotation_cutoff=29.0):
     """Finds rotational darts that increase separation between the darts, accounting
     for the darts already present in dart_storage
 
@@ -659,18 +671,21 @@ def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
     translation_present = True
     last_repeat = {}
     unison_dict = {}
+    di_overlap_list = None
+    trans_overlap_list = None
     for key, pose in iteritems(posedart_dict):
         if not pose['dihedral']:
             dihedral_present = False
             last_repeat[key] = None
-    if dihedral_present == True:
 
         for key, pose in iteritems(posedart_dict):
-            try:
-                di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
-            except AttributeError:
-                di_overlap_list = None
-                dihedral_present = False
+            if dihedral_present == True:
+
+                try:
+                    di_overlap_list = [set(oi) for oi in list(pose['dihedral'].values()) if len(oi) > 0 ]
+                except AttributeError:
+                    di_overlap_list = None
+                    dihedral_present = False
             if pose['translation'] is None:
                 trans_overlap_list = None
                 translation_present = False
@@ -693,7 +708,7 @@ def createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage):
     #this removes distances less than 0.1 from being used in finding a dart
     #change if really small translational darts are desired
     #without this then dart sizes of 0 can be accepted, which don't make sense
-    rot_list = [i for i in rot_list if i >= 30.0]
+    rot_list = [i for i in rot_list if i >= rotation_cutoff]
     for rot_diff in rot_list:
 
         #updates posedart_dict with overlaps of poses for each dart
@@ -829,7 +844,7 @@ def makeDartDictOld(internal_mat, pos_list, construction_table, dihedral_cutoff=
     #get rotation/translation diff matrix
     #start with dihedral, loop over diffs and check overlap
 
-def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=5.5, order=['translation', 'dihedral',  'rotation']):
+def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=5.5, rotation_cutoff=29.0, dart_buffer=0.9, order=['translation', 'dihedral',  'rotation']):
     """
     Makes the dictionary of darting regions used as the basis for darting,
     attempting to make a set of dihedral darts that separate the given poses.
@@ -845,8 +860,14 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
         list of ligand positions
     construction_table: Chemcoord construction_table object
         The construction table used to make the internal_zmat.
-    dihedral_cutoff: float
-        Minimum cutoff to use for the dihedrals.
+    dihedral_cutoff: float, optional, default=0.5
+        Minimum cutoff to use for the dihedral dart cutoffs (in radians).
+    distance_cutoff: float, optional, default=5.5
+        Minimum cutoff to use for the translational cutoffs
+    rotation_cutoff: float, optional, default=29.0
+        Minimum cutoff to use for the rotation dart cutoffs (in degrees).
+    dart_buffer: float, optional, default=0.9
+        Specifies how much further to reduce the translational and rotational darting regions so that the chance of overlap is reduced.
     order: list of strs, optional, default=['translation', 'dihedral', 'rotation']
         The order in which to construct the darting regions. Darting regions will be made sequentially.the
         If all the poses are separated by the darting regions at any point in this process, then no additional
@@ -863,7 +884,7 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
         if function_type == 'translation':
             return createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage, distance_cutoff=distance_cutoff)
         elif function_type == 'rotation':
-            return createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage)
+            return createRotationDarts(internal_mat, rot_mat, posedart_dict, dart_storage, rotation_cutoff=rotation_cutoff)
         elif function_type == 'dihedral':
             return createDihedralDarts(internal_mat, dihedral_df, posedart_dict, dart_storage)
     def checkOverlap(posedart_dict):
@@ -872,7 +893,8 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
             set_overlap = []
             set_overlap.append
             for key, value in iteritems(posevalue):
-                if key == 'dihedral':
+                if key == 'dihedral' and value:
+                    print('value', value)
                     for key1, value1 in iteritems(value):
                         if value1:
                             set_overlap.append(value1)
@@ -923,7 +945,7 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
     for key in ['rotation', 'translation']:
         if len(dart_storage[key]) > 0:
             #dart_storage[key][0] = dart_storage[key][0] - dart_storage[key][0] / 10.0
-            dart_storage[key][0] = dart_storage[key][0] * 0.9
+            dart_storage[key][0] = dart_storage[key][0] * dart_buffer
 
     return dart_storage
 
