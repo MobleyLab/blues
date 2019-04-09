@@ -33,6 +33,13 @@ class MolDartMove(RandomLigandRotationMove):
         with the darting procedure.
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
+    dihedral_cutoff: float, optional, default=0.5
+        Minimum cutoff to use for the dihedral dart cutoffs (in radians).
+    distance_cutoff: float, optional, default=5.5
+        Minimum cutoff to use for the translational cutoffs
+    rotation_cutoff: float, optional, default=29.0
+        Minimum cutoff to use for the rotation dart cutoffs (in degrees).
+    dart_buffer: float, optional, default=0.9
     dart_region_order: list of str, default=['translation', 'dihedral',  'rotation']
         List corresponding to the order the darts separating poses should be
         constructed in.
@@ -102,6 +109,7 @@ class MolDartMove(RandomLigandRotationMove):
     """
     def __init__(self, structure, pdb_files, fit_atoms, resname='LIG',
         transition_matrix=None,
+         dihedral_cutoff=0.5, distance_cutoff=5.5, rotation_cutoff=29.0, dart_buffer=0.9,
         dart_region_order = ['translation', 'dihedral',  'rotation'],
         rigid_darts='rigid_darts',
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
@@ -234,7 +242,9 @@ class MolDartMove(RandomLigandRotationMove):
         self.sim_traj = copy.deepcopy(self.binding_mode_traj[0])
         self.sim_ref = copy.deepcopy(self.binding_mode_traj[0])
 
-        self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist, order=dart_region_order)
+        self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist,
+                                dihedral_cutoff=dihedral_cutoff, distance_cutoff=distance_cutoff,
+                                rotation_cutoff=rotation_cutoff, dart_buffer=dart_buffer, order=dart_region_order)
         if transition_matrix is None:
             self.transition_matrix = np.ones((len(pdb_files), len(pdb_files)))
             np.fill_diagonal(self.transition_matrix, 0)
