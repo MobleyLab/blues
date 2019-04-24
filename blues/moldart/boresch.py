@@ -104,7 +104,7 @@ class RMSDBlues(RMSD):
         self._check_parameters_defined()
 
         # Merge receptor and ligand atoms in a single array for easy manipulation.
-        restrained_atoms = self.restrained_receptor_atoms + self.restrained_ligand_atoms
+        restrained_atoms = list(set(self.restrained_receptor_atoms + self.restrained_ligand_atoms))
 
         # Create RMSDForce CV for all restrained atoms
         rmsd_cv = openmm.RMSDForce(self.reference_sampler_state.positions, restrained_atoms)
