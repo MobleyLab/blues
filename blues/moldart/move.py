@@ -936,7 +936,10 @@ class MolDartMove(RandomLigandRotationMove):
                         system.setParticleMass(atom, 0*unit.daltons)
 
         ###
-
+        if 1:
+            from blues.moldart.rigid import createRigidBodies
+            new_sys = createRigidBodies(new_sys,  self.sim_traj.openmm_positions(0), [self.atom_indices])
+            #exit()
         if self.restraints:
             force_list = new_sys.getForces()
             group_list = list(set([force.getForceGroup() for force in force_list]))
