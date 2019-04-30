@@ -80,7 +80,6 @@ def makeStorageFrame(dataframe, num_poses):
 
 def removeRedundancy(posedart_input):
     posedart_dict = posedart_input['pose_overlap']
-
     def getOverlaps(posedart_dict):
         set_overlap = {}
 #        for pose, value in iteritems(posedart_dict['pose_overlap']):
@@ -93,7 +92,10 @@ def removeRedundancy(posedart_input):
                         pose_overlap_list.append(value2)
                 elif (darttype == 'rotation' or darttype =='translation') and value1 != None:
                     pose_overlap_list.append(value1)
-            set_overlap[pose] = set.intersection(*[set(i) for i in pose_overlap_list])
+            if len(pose_overlap_list) > 0:
+                set_overlap[pose] = set.intersection(*[set(i) for i in pose_overlap_list])
+            else:
+                set_overlap[pose] = set()
         return set_overlap
 
 
@@ -115,27 +117,28 @@ def removeRedundancy(posedart_input):
                         pose_overlap_list.append(value2)
                 elif (darttype == 'rotation' or darttype =='translation') and value1 != None:
                     pose_overlap_list.append(value1)
-            set_overlap = set.intersection(*[set(i) for i in pose_overlap_list])
+            #set_overlap = set.intersection(*[set(i) for i in pose_overlap_list])
 
         posedart_iteration = copy.deepcopy(posedart_dict)
         pop_list = []
-        for i in dihedral_key_list:
-            posedart_iteration1 = copy.deepcopy(posedart_iteration)
-            overlap = getOverlaps(posedart_iteration1)
-            for pose, value in iteritems(posedart_iteration1):
-                for darttype, value1 in iteritems(value):
-                    if darttype == 'dihedral':
-                        posedart_iteration1[pose][darttype].pop(i)
+        if len(dihedral_key_list) > 1:
+            for i in dihedral_key_list:
+                posedart_iteration1 = copy.deepcopy(posedart_iteration)
+                overlap = getOverlaps(posedart_iteration1)
+                for pose, value in iteritems(posedart_iteration1):
+                    for darttype, value1 in iteritems(value):
+                        if darttype == 'dihedral':
+                            posedart_iteration1[pose][darttype].pop(i)
 
-            overlap = getOverlaps(posedart_iteration1)
-            overlap_boolean = True
-            for value, k in iteritems(overlap):
-                if len(k) > 0:
-                    overlap_boolean = False
-            if overlap_boolean:
-                pop_list.append(i)
-                posedart_iteration = copy.deepcopy(posedart_iteration1)
-            posedart_iteration1 = copy.deepcopy(posedart_iteration)
+                overlap = getOverlaps(posedart_iteration1)
+                overlap_boolean = True
+                for value, k in iteritems(overlap):
+                    if len(k) > 0:
+                        overlap_boolean = False
+                if overlap_boolean:
+                    pop_list.append(i)
+                    posedart_iteration = copy.deepcopy(posedart_iteration1)
+                posedart_iteration1 = copy.deepcopy(posedart_iteration)
         for dihedral in pop_list:
             posedart_input['dihedral'].pop(dihedral)
         posedart_input['pose_overlap'] = posedart_iteration
@@ -231,7 +234,6 @@ def compareDihedral(internal_mat, atom_index, diff_spread, posedart_dict, inRadi
     for key, value in iteritems(posedart_copy):
         overlap_list = []
         for key1, value1 in iteritems(value):
-            #print('value', value1)
             if key1 == 'dihedral':
                 for key2, value2 in iteritems(value1):
 
@@ -243,11 +245,11 @@ def compareDihedral(internal_mat, atom_index, diff_spread, posedart_dict, inRadi
             else:
                 if value1:
                     overlap_list.append(value1)
-        #print('before', overlap_list)
         overlap_list = [i for i in overlap_list if len(i) > 0 ]
-        set_intersection = [set(i) for i in overlap_list]
-        #print('after', set_intersection)
-        set_list[key] = set.intersection(*[set(i) for i in overlap_list])
+        if len(overlap_list) > 0:
+            set_list[key] = set.intersection(*[set(i) for i in overlap_list])
+        else:
+            set_list[key] = set()
 
     return posedart_copy
 
@@ -986,11 +988,9 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
                 elif isinstance(value, list):
                     set_overlap.append(value)
             set_overlap = [set(i) for i in set_overlap]
-            print('set_overlap', set.intersection(*set_overlap))
             set_overlap_output[posekey] = set_overlap
             for pose in set_overlap_output.keys():
                 print('pose', pose, posedart_dict[pose])
-        print('set_overlap', set_overlap)
 
 
     #dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
@@ -1020,8 +1020,6 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
             if darttype == 'dihedral':
                 dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
             dart_storage, posedart_dict, dart_boolean = createDarts(darttype, internal_mat, dihedral_df, trans_mat, rot_mat, distance_cutoff, posedart_dict, dart_storage)
-            print('dart_storage after ', darttype)
-            print(dart_storage)
     if not dart_boolean:
         checkOverlap(posedart_dict)
         raise ValueError('Current settings do not separate out all poses. Current separation', posedart_dict, dart_storage)
