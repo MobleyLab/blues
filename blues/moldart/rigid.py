@@ -144,3 +144,4 @@ def createRigidBodies(system, positions, bodies):
                 rhs = np.array((positions[i]-positions[vsiteParticles[0]]).value_in_unit(unit.nanometer))
                 weights = lin.solve(matrix, rhs)
                 system.setVirtualSite(i, mm.OutOfPlaneSite(vsiteParticles[0], vsiteParticles[1], vsiteParticles[2], weights[0], weights[1], weights[2]))
+    return system
