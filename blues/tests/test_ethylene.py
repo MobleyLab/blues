@@ -35,7 +35,7 @@ def runEthyleneTest(N):
         'dt': 1 * unit.femtoseconds,
         'friction': 1 / unit.picoseconds,
         'temperature': 200 * unit.kelvin,
-        'nIter': 250,
+        'nIter': 500,
         'nstepsMD': 20,
         'nstepsNC': 20,
         'propSteps': 20,
