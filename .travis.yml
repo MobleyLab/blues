@@ -19,16 +19,16 @@ env:
 matrix:
   include:
     # Extra includes for OSX since python language is not available by default on OSX
+    #- os: osx
+    #  language: generic
+    #  env:
+    #      - CONDA_PY="35"
+    #      - PYTHON_VER="3.5"
     - os: osx
       language: generic
       env:
-          - CONDA_PY="35"
-          - PYTHON_VER="3.5"
-    - os: osx
-      language: generic
-      env:
-          - CONDA_PY="36"
-          - PYTHON_VER="3.6"
+          - CONDA_PY="37"
+          - PYTHON_VER="3.7"
 
     - os: linux
       python: 3.5
@@ -40,6 +40,11 @@ matrix:
       env:
           - CONDA_PY="36"
           - PYTHON_VER="3.6"
+    - os: linux
+      python: 3.7
+      env:
+          - CONDA_PY="37"
+          - PYTHON_VER="3.7"
 
 
 before_install:
@@ -73,9 +78,6 @@ install:
 
     # Install pip only modules
   - pip install codecov
-
-  - if [ "$TRAVIS_OS_NAME" == "osx"]; then conda install -c anaconda gcc; fi
-  - conda info gcc
 
   # Install OpenEye dependencies
   #  Use beta version for partial bond orders
