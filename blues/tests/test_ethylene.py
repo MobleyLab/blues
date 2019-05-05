@@ -35,7 +35,7 @@ def runEthyleneTest(N):
         'dt': 1 * unit.femtoseconds,
         'friction': 1 / unit.picoseconds,
         'temperature': 200 * unit.kelvin,
-        'nIter': 1000,
+        'nIter': 100,
         'nstepsMD': 20,
         'nstepsNC': 20,
         'propSteps': 20,
@@ -138,11 +138,11 @@ def graphConvergence(dist, n_points=10):
 
 
 def test_runEthyleneRepeats():
-    [runEthyleneTest(i) for i in range(15)]
+    [runEthyleneTest(i) for i in range(5)]
 
 
 def test_runAnalysis():
-    outfnames = ['ethylene-test_%s.nc' % i for i in range(15)]
+    outfnames = ['ethylene-test_%s.nc' % i for i in range(5)]
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     trajs = [md.load(traj, top=structure_pdb) for traj in outfnames]
     dists = []
@@ -158,6 +158,6 @@ def test_runAnalysis():
     errs = np.asarray(errs)
     avg_freq = np.mean(freqs, axis=0)
     avg_err = np.mean(errs, axis=0)
-    print(avg_freq, avg_err)
-    check = np.allclose(avg_freq, populations, rtol=avg_err[0], atol=0)
+    print(avg_freq, avg_err, np.absolute(avg_freq - populations))
+    check = np.allclose(avg_freq, populations, atol=avg_err)
     assert check == True
