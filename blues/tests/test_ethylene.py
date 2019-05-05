@@ -35,7 +35,7 @@ def runEthyleneTest(N):
         'dt': 1 * unit.femtoseconds,
         'friction': 1 / unit.picoseconds,
         'temperature': 200 * unit.kelvin,
-        'nIter': 1000,
+        'nIter': 500,
         'nstepsMD': 20,
         'nstepsNC': 20,
         'propSteps': 20,
@@ -137,11 +137,11 @@ def graphConvergence(dist, n_points=10):
 
 
 def test_runEthyleneRepeats():
-    [runEthyleneTest(i) for i in range(10)]
+    [runEthyleneTest(i) for i in range(20)]
 
 
 def test_runAnalysis():
-    outfnames = ['ethylene-test_%s.nc' % i for i in range(10)]
+    outfnames = ['ethylene-test_%s.nc' % i for i in range(20)]
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     trajs = [md.load(traj, top=structure_pdb) for traj in outfnames]
     dists = []
