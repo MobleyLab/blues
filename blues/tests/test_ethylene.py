@@ -73,11 +73,12 @@ def runEthyleneTest(N):
     alch_integrator.setRandomNumberSeed(seed)
 
     alch_system = SystemFactory.generateAlchSystem(system, alchemical_atoms)
-    ncmc_integrator = AlchemicalExternalLangevinIntegrator(nsteps_neq=sim_cfg['nstepsNC'],
-                                                           alchemical_functions=alchemical_functions,
-                                                           splitting="H V R O R V H",
-                                                           temperature=sim_cfg['temperature'],
-                                                           timestep=sim_cfg['dt'])
+    ncmc_integrator = AlchemicalExternalLangevinIntegrator(
+        nsteps_neq=sim_cfg['nstepsNC'],
+        alchemical_functions=alchemical_functions,
+        splitting="H V R O R V H",
+        temperature=sim_cfg['temperature'],
+        timestep=sim_cfg['dt'])
     # ncmc_integrator.setRandomNumberSeed(seed)
 
     # Pack our systems into a single object
@@ -137,11 +138,11 @@ def graphConvergence(dist, n_points=10):
 
 
 def test_runEthyleneRepeats():
-    [runEthyleneTest(i) for i in range(20)]
+    [runEthyleneTest(i) for i in range(15)]
 
 
 def test_runAnalysis():
-    outfnames = ['ethylene-test_%s.nc' % i for i in range(20)]
+    outfnames = ['ethylene-test_%s.nc' % i for i in range(15)]
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     trajs = [md.load(traj, top=structure_pdb) for traj in outfnames]
     dists = []
