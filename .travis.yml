@@ -74,6 +74,9 @@ install:
     # Install pip only modules
   - pip install codecov
 
+  - if [ "$TRAVIS_OS_NAME" == "osx"]; then conda install -c anaconda gcc; fi
+  - conda info gcc
+
   # Install OpenEye dependencies
   #  Use beta version for partial bond orders
   - conda install -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
