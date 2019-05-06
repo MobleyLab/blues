@@ -8,6 +8,7 @@ Contributors: Nathan M. Lim, David L. Mobley
 import logging
 import os
 import sys
+import numpy as np
 from math import ceil, floor
 from platform import uname
 
@@ -15,6 +16,48 @@ import parmed
 from simtk import openmm, unit
 
 logger = logging.getLogger(__name__)
+
+def getMasses(atom_subset, topology):
+    """
+    Returns a list of masses of the specified ligand atoms.
+    Parameters
+    ----------
+    topology: parmed.Topology
+       ParmEd topology object containing atoms of the system.
+    Returns
+    -------
+    masses: 1xn numpy.array * simtk.unit.dalton
+       array of masses of len(self.atom_indices), denoting
+       the masses of the atoms in self.atom_indices
+    totalmass: float * simtk.unit.dalton
+       The sum of the mass found in masses
+    """
+    if isinstance(atom_subset, slice):
+       atoms = list(topology.atoms())[atom_subset]
+    else:
+       atoms = [ list(topology.atoms())[i] for i in atom_subset]
+    masses = unit.Quantity(np.zeros([int(len(atoms)), 1], np.float32), unit.dalton)
+    for idx, atom in enumerate(atoms):
+       masses[idx] = atom.element._mass
+    totalmass = masses.sum()
+    return masses, totalmass
+
+def getCenterOfMass(positions, masses):
+    """Returns the calculated center of mass of the ligand as a numpy.array
+    Parameters
+    ----------
+    positions: nx3 numpy array * simtk.unit compatible with simtk.unit.nanometers
+       ParmEd positions of the atoms to be moved.
+    masses : numpy.array
+       numpy.array of particle masses
+    Returns
+    -------
+    center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
+       1x3 numpy.array of the center of mass of the given positions
+    """
+    coordinates = np.asarray(positions._value, np.float32)
+    center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
+    return center_of_mass
 
 
 def saveSimulationFrame(simulation, outfname):
