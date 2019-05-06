@@ -25,6 +25,7 @@ requirements:
     - mdtraj
     - openmm >=7.2.2
     - parmed
+    - pymbar
     - netcdf4
     - pyyaml
     - pip

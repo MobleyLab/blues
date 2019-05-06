@@ -1,0 +1,116 @@
+<?xml version="1.0" ?>
+<System openmmVersion="7.3" type="System" version="1">
+	<PeriodicBoxVectors>
+		<A x="2" y="0" z="0"/>
+		<B x="0" y="2" z="0"/>
+		<C x="0" y="0" z="2"/>
+	</PeriodicBoxVectors>
+	<Particles>
+		<Particle mass="0"/>
+		<Particle mass="0"/>
+		<Particle mass="12.01"/>
+		<Particle mass="12.01"/>
+		<Particle mass="1.008"/>
+		<Particle mass="1.008"/>
+		<Particle mass="1.008"/>
+		<Particle mass="1.008"/>
+	</Particles>
+	<Constraints>
+		<Constraint d=".10879000000000001" p1="2" p2="4"/>
+		<Constraint d=".10879000000000001" p1="2" p2="5"/>
+		<Constraint d=".10879000000000001" p1="3" p2="6"/>
+		<Constraint d=".10879000000000001" p1="3" p2="7"/>
+	</Constraints>
+	<Forces>
+		<Force forceGroup="0" type="HarmonicBondForce" usesPeriodic="0" version="2">
+			<Bonds>
+				<Bond d=".13343000000000002" k="476473.92000000004" p1="2" p2="3"/>
+				<Bond d=".10879000000000001" k="287106.08" p1="2" p2="4"/>
+				<Bond d=".10879000000000001" k="287106.08" p1="2" p2="5"/>
+				<Bond d=".10879000000000001" k="287106.08" p1="3" p2="6"/>
+				<Bond d=".10879000000000001" k="287106.08" p1="3" p2="7"/>
+			</Bonds>
+		</Force>
+		<Force forceGroup="1" type="HarmonicAngleForce" usesPeriodic="0" version="2">
+			<Angles>
+				<Angle a="2.10190092" k="417.14480000000003" p1="2" p2="3" p3="6"/>
+				<Angle a="2.10190092" k="417.14480000000003" p1="2" p2="3" p3="7"/>
+				<Angle a="2.10190092" k="417.14480000000003" p1="3" p2="2" p3="4"/>
+				<Angle a="2.10190092" k="417.14480000000003" p1="3" p2="2" p3="5"/>
+				<Angle a="2.04029077" k="318.90448000000004" p1="4" p2="2" p3="5"/>
+				<Angle a="2.04029077" k="318.90448000000004" p1="6" p2="3" p3="7"/>
+			</Angles>
+		</Force>
+		<Force forceGroup="2" type="PeriodicTorsionForce" usesPeriodic="0" version="2">
+			<Torsions>
+				<Torsion k="27.823600000000003" p1="4" p2="2" p3="3" p4="6" periodicity="2" phase="3.141594"/>
+				<Torsion k="27.823600000000003" p1="4" p2="2" p3="3" p4="7" periodicity="2" phase="3.141594"/>
+				<Torsion k="27.823600000000003" p1="5" p2="2" p3="3" p4="6" periodicity="2" phase="3.141594"/>
+				<Torsion k="27.823600000000003" p1="5" p2="2" p3="3" p4="7" periodicity="2" phase="3.141594"/>
+			</Torsions>
+		</Force>
+		<Force cutoff="1" energy="q/(r^2) + 4*epsilon*((sigma/r)^12-(sigma/r)^6); sigma=0.5*(sigma1+sigma2)*lambda_sterics; epsilon=sqrt(epsilon1*epsilon2)*lambda_electrostatics; q = lambda_charge*(q1*q2)" forceGroup="0" method="0" switchingDistance="-1" type="CustomNonbondedForce" useLongRangeCorrection="0" useSwitchingFunction="0" version="2">
+			<PerParticleParameters>
+				<Parameter name="sigma"/>
+				<Parameter name="epsilon"/>
+				<Parameter name="q"/>
+				<Parameter name="lambda_on"/>
+			</PerParticleParameters>
+			<GlobalParameters>
+				<Parameter default="1" name="lambda_sterics"/>
+				<Parameter default="1" name="lambda_electrostatics"/>
+				<Parameter default="1" name="lambda_charge"/>
+			</GlobalParameters>
+			<EnergyParameterDerivatives/>
+			<Particles>
+				<Particle param1=".324999852378" param2=".71128" param3="-.2" param4="10"/>
+				<Particle param1=".324999852378" param2=".71128" param3="-.5" param4="10"/>
+				<Particle param1=".40796034095337974" param2=".35982400053705343" param3="0" param4="0"/>
+				<Particle param1=".40796034095337974" param2=".35982400053705343" param3="0" param4="0"/>
+				<Particle param1=".31195709504821023" param2=".06276000026869927" param3="1" param4="0"/>
+				<Particle param1=".31195709504821023" param2=".06276000026869927" param3="1" param4="0"/>
+				<Particle param1=".31195709504821023" param2=".06276000026869927" param3="0" param4="0"/>
+				<Particle param1=".31195709504821023" param2=".06276000026869927" param3="0" param4="0"/>
+			</Particles>
+			<Exclusions/>
+			<Functions/>
+			<InteractionGroups>
+				<InteractionGroup>
+					<Set1>
+						<Particle index="0"/>
+						<Particle index="1"/>
+					</Set1>
+					<Set2>
+						<Particle index="2"/>
+						<Particle index="3"/>
+						<Particle index="4"/>
+						<Particle index="5"/>
+						<Particle index="6"/>
+						<Particle index="7"/>
+					</Set2>
+				</InteractionGroup>
+			</InteractionGroups>
+		</Force>
+		<Force energy="0.5*k*distance(g1,g2)^2" forceGroup="0" groups="2" type="CustomCentroidBondForce" usesPeriodic="0" version="3">
+			<PerBondParameters>
+				<Parameter name="k"/>
+			</PerBondParameters>
+			<GlobalParameters/>
+			<EnergyParameterDerivatives/>
+			<Groups>
+				<Group>
+					<Particle p="0" weight="1"/>
+					<Particle p="1" weight="1"/>
+				</Group>
+				<Group>
+					<Particle p="2"/>
+					<Particle p="3"/>
+				</Group>
+			</Groups>
+			<Bonds>
+				<Bond g1="0" g2="1" param1="100000"/>
+			</Bonds>
+			<Functions/>
+		</Force>
+	</Forces>
+</System>
