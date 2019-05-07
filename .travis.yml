@@ -102,7 +102,7 @@ script:
 
 after_success:
   - codecov
-  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
+  - test $TRAVIS_BRANCH = "master" && conda install conda-build && conda install anaconda-client && chmod +x  ./devtools/conda-recipe/conda_upload.sh
 
 before_deploy:
   # Set up git user name and tag this commit
