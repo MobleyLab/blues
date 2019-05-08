@@ -849,7 +849,8 @@ class SideChainMove(Move):
         self.selected_bond = self.chooseBond(self.start_pos)
         if not self.selected_bond:
             self.acceptance_ratio = 0
-
+        else:
+            self.acceptance_ratio = 1
         return context
 
     def move(self, context, verbose=True):

@@ -1262,9 +1262,8 @@ class BLUESSimulation(object):
             logger.info('BLUES Iteration: %s' % N)
             self._syncStatesMDtoNCMC()
             self._stepNCMC(nstepsNC, moveStep)
-            if self._move_engine.moves[0].make_NCMC_move == True:
-                self._acceptRejectMove(write_move)
-                self._resetSimulations(temperature)
+            self._acceptRejectMove(write_move)
+            self._resetSimulations(temperature)
             self._stepMD(nstepsMD)
 
         # END OF NITER
