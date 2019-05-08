@@ -9,6 +9,9 @@ from simtk import openmm, unit
 from simtk.openmm import app
 import numpy as np
 
+#logger = logging.getLogger("blues.simulation")
+#logger.setLevel(logging.INFO)
+
 
 @pytest.fixture(scope='session')
 def system_cfg():
@@ -372,7 +375,7 @@ class TestBLUESSimulation(object):
         assert np.not_equal(pos0, pos).any()
 
     def test_printSimulationTiming(self, blues_sim, caplog):
-        caplog.set_level(logging.INFO)
+        caplog.set_level(logging.INFO, logger="blues.simulation")
         blues_sim._printSimulationTiming()
         assert 'Total BLUES Simulation Time' in caplog.text
         #assert 'Total Force Evaluations' in caplog.text
@@ -541,12 +544,11 @@ class TestBLUESSimulation(object):
         md_reporters = ReporterConfig(tmpdir.join('tol-test'), md_rep_cfg).makeReporters()
         ncmc_reporters = ReporterConfig(tmpdir.join('tol-test-ncmc'), ncmc_rep_cfg).makeReporters()
 
-        engine.moves[0].acceptance_ratio = 1
-        engine.moves[0].before = before
-        engine.moves[0].after = after
-
-        simulations = SimulationFactory(
-            systems, engine, sim_cfg, md_reporters=md_reporters, ncmc_reporters=ncmc_reporters)
+        simulations = SimulationFactory(systems,
+                                        engine,
+                                        sim_cfg,
+                                        md_reporters=md_reporters,
+                                        ncmc_reporters=ncmc_reporters)
 
         blues = BLUESSimulation(simulations)
         blues._md_sim.minimizeEnergy()

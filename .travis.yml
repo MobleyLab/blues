@@ -1,4 +1,4 @@
-dist: trusty
+dist: xenial
 sudo: false
 language: python
 
@@ -19,16 +19,21 @@ env:
 matrix:
   include:
     # Extra includes for OSX since python language is not available by default on OSX
-    - os: osx
-      language: generic
-      env:
-          - CONDA_PY="35"
-          - PYTHON_VER="3.5"
-    - os: osx
-      language: generic
-      env:
-          - CONDA_PY="36"
-          - PYTHON_VER="3.6"
+    #- os: osx
+    #  language: generic
+    #  env:
+    #      - CONDA_PY="35"
+    #      - PYTHON_VER="3.5"
+    #- os: osx
+    #  language: generic
+    #  env:
+    #      - CONDA_PY="36"
+    #      - PYTHON_VER="3.6"
+    #- os: osx
+    #  language: generic
+    #  env:
+    #      - CONDA_PY="37"
+    #      - PYTHON_VER="3.7"
 
     - os: linux
       python: 3.5
@@ -40,6 +45,11 @@ matrix:
       env:
           - CONDA_PY="36"
           - PYTHON_VER="3.6"
+    - os: linux
+      python: 3.7
+      env:
+          - CONDA_PY="37"
+          - PYTHON_VER="3.7"
 
 
 before_install:
@@ -70,9 +80,9 @@ install:
   - echo ${PYTHON_VER} ${CONDA_PY}
   - conda create -n ${CONDA_ENV} python=${PYTHON_VER} pip pytest pytest-cov conda-verify
   - conda activate ${CONDA_ENV}
-
     # Install pip only modules
   - pip install codecov
+
 
   # Install OpenEye dependencies
   #  Use beta version for partial bond orders
@@ -92,7 +102,7 @@ script:
 
 after_success:
   - codecov
-  - test $TRAVIS_BRANCH = "master" && chmod +x  ./devtools/conda-recipe/conda_upload.sh
+  - test $TRAVIS_BRANCH = "master" && conda install conda-build && conda install anaconda-client && chmod +x  ./devtools/conda-recipe/conda_upload.sh
 
 before_deploy:
   # Set up git user name and tag this commit
