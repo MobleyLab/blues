@@ -4,7 +4,7 @@ import fnmatch
 import logging
 import os
 from blues import utils
-from blues.simulation import SystemFactory, SimulationFactory, BLUESSampler
+from blues.simulation import SystemFactory, BLUESSampler
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues.moves import RandomLigandRotationMove, ReportLangevinDynamicsMove
 from blues.reporters import (BLUESStateDataStorage, NetCDF4Storage, ReporterConfig, init_logger)
@@ -43,14 +43,29 @@ def runEthyleneTest(N):
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     structure = parmed.load_file(structure_pdb)
 
+    nc_reporter = NetCDF4Storage(filename+'_MD.nc', reportInterval)
+    state_reporter = BLUESStateDataStorage(logger, reportInterval,
+                                           title='md',
+                                           step=True,
+                                           speed=True,
+                                           totalSteps=int(n_steps*nIter))
+    nc_reporter1 = NetCDF4Storage(filename+'_NCMC.nc', reportInterval)
+    state_reporter1 = BLUESStateDataStorage(logger, reportInterval,
+                                           title='ncmc',
+                                           step=True,
+                                           speed=True,
+                                           totalSteps=int(n_steps*nIter))
+
     # Iniitialize our Move set
     rot_move = RandomLigandRotationMove(timestep,
                                          n_steps,
                                          atom_subset=alchemical_atoms,
-                                         context_cache=context_cache)
+                                         context_cache=context_cache,
+                                       reporters=[nc_reporter1, state_reporter1])
     langevin_move = ReportLangevinDynamicsMove(timestep, collision_rate, n_steps,
                                          reassign_velocities=True,
-                                        context_cache=context_cache)
+                                         context_cache=context_cache,
+                                         reporters=[nc_reporter, state_reporter])
 
     # Load our OpenMM System and create Integrator
     system_xml = utils.get_data_filename('blues', 'tests/data/ethylene_system.xml')
@@ -60,12 +75,6 @@ def runEthyleneTest(N):
 
     thermodynamic_state = ThermodynamicState(system=system, temperature=temperature)
     sampler_state = SamplerState(positions=structure.positions.in_units_of(unit.nanometers))
-    nc_reporter = NetCDF4Storage(filename+'.nc', reportInterval)
-    state_reporter = BLUESStateDataStorage(logger, reportInterval,
-                                           title='md',
-                                           step=True,
-                                           speed=True,
-                                           totalSteps=int(n_steps*nIter))
 
     sampler = BLUESSampler(alchemical_atoms,
                       thermodynamic_state,
@@ -73,9 +82,7 @@ def runEthyleneTest(N):
                       ncmc_move=rot_move,
                       dynamics_move=langevin_move,
                       platform=None,
-                      reporter=[state_reporter, nc_reporter],
                       topology=structure.topology)
-
     sampler.run(nIter)
 
 
@@ -117,7 +124,7 @@ def test_runEthyleneRepeats():
 
 
 def test_runAnalysis():
-    outfnames = ['ethylene-test_%s.nc' % i for i in range(5)]
+    outfnames = ['ethylene-test_%s_MD.nc' % i for i in range(5)]
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     trajs = [md.load(traj, top=structure_pdb) for traj in outfnames]
     dists = []

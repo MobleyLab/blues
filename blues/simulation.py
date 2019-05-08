@@ -482,126 +482,6 @@ class SystemFactory(object):
         system = utils.zero_masses(system, freeze_idx)
         return system
 
-
-class SimulationFactory(object):
-    """SimulationFactory is used to generate the 3 required OpenMM Simulation
-    objects (MD, NCMC, ALCH) required for the BLUES run. This class can take a
-    list of reporters for the MD or NCMC simulation in the arguments
-    `md_reporters` or `ncmc_reporters`.
-
-    Parameters
-    ----------
-    systems : blues.simulation.SystemFactory object
-        The object containing the MD and alchemical openmm.Systems
-    move_engine : blues.moves.MoveEngine object
-        MoveEngine object which contains the list of moves performed
-        in the NCMC simulation.
-    config : dict
-        Simulation parameters which include:
-        nIter, nstepsNC, nstepsMD, nprop, propLambda, temperature, dt, propSteps, write_move
-    md_reporters : (optional) list of Reporter objects for the MD openmm.Simulation
-    ncmc_reporters : (optional) list of Reporter objects for the NCMC openmm.Simulation
-
-    Examples
-    --------
-    Load Parmed Structure from our input files, select the move type,
-    initialize the MoveEngine, and generate the openmm systems.
-
-    >>> structure = parmed.load_file('eqToluene.prmtop', xyz='eqToluene.inpcrd')
-    >>> ligand = RandomLigandRotationMove(structure, 'LIG')
-    >>> ligand_mover = MoveEngine(ligand)
-    >>> systems = SystemFactory(structure, ligand.atom_indices, config['system'])
-
-    Now, we can generate the Simulations from our openmm Systems using the
-    SimulationFactory class. If a configuration is provided at on initialization,
-    it will call `generateSimulationSet()` for convenience. Otherwise, the class can be
-    instantiated like a normal python class.
-
-
-    Below is an example of initializing the class like a normal python object.
-
-    >>> simulations = SimulationFactory(systems, ligand_mover)
-    >>> hasattr(simulations, 'md')
-    False
-    >>> hasattr(simulations, 'ncmc')
-    False
-
-
-    Below, we provide a dict for configuring the Simulations and then
-    generate them by calling `simulations.generateSimulationSet()`. The MD/NCMC
-    simulation objects can be accessed separately as class attributes.
-
-    >>> sim_cfg = { 'platform': 'OpenCL',
-                'properties' : { 'OpenCLPrecision': 'single',
-                                 'OpenCLDeviceIndex' : 2},
-                'nprop' : 1,
-                'propLambda' : 0.3,
-                'dt' : 0.001 * unit.picoseconds,
-                'friction' : 1 * 1/unit.picoseconds,
-                'temperature' : 100 * unit.kelvin,
-                'nIter': 1,
-                'nstepsMD': 10,
-                'nstepsNC': 10,}
-    >>> simulations.generateSimulationSet(sim_cfg)
-    >>> hasattr(simulations, 'md')
-    True
-    >>> hasattr(simulations, 'ncmc')
-    True
-
-
-    After generating the Simulations, attach your own reporters by providing
-    the reporters in a list. Be sure to attach to either the MD or NCMC simulation.
-
-    >>> from simtk.openmm.app import StateDataReporter
-    >>> md_reporters = [ StateDataReporter('test.log', 5) ]
-    >>> ncmc_reporters = [ StateDataReporter('test-ncmc.log', 5) ]
-    >>> simulations.md = simulations.attachReporters( simulations.md, md_reporters)
-    >>> simulations.ncmc = simulations.attachReporters( simulations.ncmc, ncmc_reporters)
-
-    Alternatively, you can pass the configuration dict and list of reporters
-    upon class initialization. This will do all of the above for convenience.
-
-    >>> simulations = SimulationFactory(systems, ligand_mover, sim_cfg,
-                                        md_reporters, ncmc_reporters)
-    >>> print(simulations)
-    >>> print(simulations.md)
-    >>> print(simulations.ncmc)
-    <blues.simulation.SimulationFactory object at 0x7f461b7a8b00>
-    <simtk.openmm.app.simulation.Simulation object at 0x7f461b7a8780>
-    <simtk.openmm.app.simulation.Simulation object at 0x7f461b7a87b8>
-    >>> print(simulations.md.reporters)
-    >>> print(simulations.ncmc.reporters)
-    [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cac8>]
-    [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cb70>]
-
-    """
-
-    def __init__(self, systems, move_engine, config=None, md_reporters=None, ncmc_reporters=None):
-        #Hide these properties since they exist on the SystemsFactory object
-        self._structure = systems.structure
-        self._system = systems.md
-        self._alch_system = systems.alch
-        #Atom indicies from move_engine
-        #TODO: change atom_indices selection for multiple regions
-        self._atom_indices = move_engine.moves[0].atom_indices
-        self._move_engine = move_engine
-        self.config = config
-
-        #If parameters for generating the openmm.Simulation are given, make them.
-        if self.config:
-            try:
-                self.generateSimulationSet()
-            except Exception as e:
-                logger.exception(e)
-                raise e
-
-        if md_reporters:
-            self._md_reporters = md_reporters
-            self.md = SimulationFactory.attachReporters(self.md, self._md_reporters)
-        if ncmc_reporters:
-            self._ncmc_reporters = ncmc_reporters
-            self.ncmc = SimulationFactory.attachReporters(self.ncmc, self._ncmc_reporters)
-
     @classmethod
     def addBarostat(cls, system, temperature=300 * unit.kelvin, pressure=1 * unit.atmospheres, frequency=25, **kwargs):
         """
@@ -628,190 +508,6 @@ class SimulationFactory(object):
         system.addForce(openmm.MonteCarloBarostat(pressure, temperature, frequency))
         return system
 
-    @classmethod
-    def generateIntegrator(cls, temperature=300 * unit.kelvin, dt=0.002 * unit.picoseconds, friction=1, **kwargs):
-        """
-        Generates a LangevinIntegrator for the Simulations.
-
-        Parameters
-        ----------
-        temperature : float, default=300
-            temperature (Kelvin) to be simulated at.
-        friction: float, default=1
-            friction coefficient which couples to the heat bath, measured in 1/ps
-        dt: int, configional, default=0.002
-            The timestep of the integrator to use (in ps).
-
-        Returns
-        -------
-        integrator : openmm.LangevinIntegrator
-            The LangevinIntegrator object intended for the System.
-        """
-        integrator = openmm.LangevinIntegrator(temperature, friction, dt)
-        return integrator
-
-    @classmethod
-    def generateNCMCIntegrator(
-            cls,
-            nstepsNC=None,
-            alchemical_functions={
-                'lambda_sterics':
-                'min(1, (1/0.3)*abs(lambda-0.5))',
-                'lambda_electrostatics':
-                'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'
-            },
-            splitting="H V R O R V H",
-            temperature=300 * unit.kelvin,
-            dt=0.002 * unit.picoseconds,
-            nprop=1,
-            propLambda=0.3,
-            **kwargs):
-        """
-        Generates the AlchemicalExternalLangevinIntegrator using openmmtools.
-
-        Parameters
-        -----------
-        nstepsNC : int
-            The number of NCMC relaxation steps to use.
-        alchemical_functions : dict
-            default = `{'lambda_sterics' : 'min(1, (1/0.3)*abs(lambda-0.5))', lambda_electrostatics' : 'step(0.2-lambda) - 1/0.2*lambda*step(0.2-lambda) + 1/0.2*(lambda-0.8)*step(lambda-0.8)'}`
-            key : value pairs such as "global_parameter" : function_of_lambda where function_of_lambda is a Lepton-compatible string that depends on the variable "lambda".
-        splitting : string, default: "H V R O R V H"
-            Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option, which increments the global parameter `lambda` by 1/nsteps_neq for each step. Forces are only used in V-step. Handle multiple force groups by appending the force group index to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces. ( will cause metropolization, and must be followed later by a ).
-        temperature : float, default=300
-            temperature (Kelvin) to be simulated at.
-        dt: int, optional, default=0.002
-            The timestep of the integrator to use (in ps).
-        nprop : int (Default: 1)
-            Controls the number of propagation steps to add in the lambda
-            region defined by `propLambda`
-        propLambda: float, optional, default=0.3
-            The range which additional propogation steps are added,
-            defined by [0.5-propLambda, 0.5+propLambda].
-
-        Returns
-        -------
-        ncmc_integrator : blues.integrator.AlchemicalExternalLangevinIntegrator
-            The NCMC integrator for the alchemical process in the NCMC simulation.
-        """
-        #During NCMC simulation, lambda parameters are controlled by function dict below
-        # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
-        # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
-        ncmc_integrator = AlchemicalExternalLangevinIntegrator(
-            alchemical_functions=alchemical_functions,
-            splitting=splitting,
-            temperature=temperature,
-            nsteps_neq=nstepsNC,
-            timestep=dt,
-            nprop=nprop,
-            prop_lambda=propLambda)
-        return ncmc_integrator
-
-    @classmethod
-    def generateSimFromStruct(cls, structure, system, integrator, platform=None, properties={}, **kwargs):
-        """Generate the OpenMM Simulation objects from a given parmed.Structure()
-
-        Parameters
-        ----------
-        structure : parmed.Structure
-            ParmEd Structure object of the entire system to be simulated.
-        system : openmm.System
-            The OpenMM System object corresponding to the reference system.
-        integrator : openmm.Integrator
-            The OpenMM Integrator object for the simulation.
-        platform : str, default = None
-            Valid choices: 'Auto', 'OpenCL', 'CUDA'
-            If None is specified, the fastest available platform will be used.
-
-        Returns
-        -------
-        simulation : openmm.Simulation
-            The generated OpenMM Simulation from the parmed.Structure, openmm.System,
-            amd the integrator.
-        """
-        #Specifying platform properties here used for local development.
-        if platform is None:
-            #Use the fastest available platform
-            simulation = app.Simulation(structure.topology, system, integrator)
-        else:
-            platform = openmm.Platform.getPlatformByName(platform)
-            #Make sure key/values are strings
-            properties = {str(k): str(v) for k, v in properties.items()}
-            simulation = app.Simulation(structure.topology, system, integrator, platform, properties)
-
-        # Set initial positions/velocities
-        if structure.box_vectors:
-            simulation.context.setPeriodicBoxVectors(*structure.box_vectors)
-        simulation.context.setPositions(structure.positions)
-        simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
-
-        return simulation
-
-    @staticmethod
-    def attachReporters(simulation, reporter_list):
-        """Attach the list of reporters to the Simulation object
-
-        Parameters
-        ----------
-        simulation : openmm.Simulation
-            The Simulation object to attach reporters to.
-        reporter_list : list of openmm Reporeters
-            The list of reporters to attach to the OpenMM Simulation.
-
-        Returns
-        -------
-        simulation : openmm.Simulation
-            The Simulation object with the reporters attached.
-
-        """
-        for rep in reporter_list:
-            simulation.reporters.append(rep)
-        return simulation
-
-    def generateSimulationSet(self, config=None):
-        """Generates the 3 OpenMM Simulation objects.
-
-        Parameters
-        ----------
-        config : dict
-            Dictionary of parameters for configuring the OpenMM Simulations
-        """
-        if not config: config = self.config
-
-        #Construct MD Integrator and Simulation
-        self.integrator = self.generateIntegrator(**config)
-
-        #Check for pressure parameter to set simulation to NPT
-        if 'pressure' in config.keys():
-            self._system = self.addBarostat(self._system, **config)
-            logger.warning(
-                'NCMC simulation will NOT have pressure control. NCMC will use pressure from last MD state.')
-        else:
-            logger.info('MD simulation will be {} NVT.'.format(config['temperature']))
-        self.md = self.generateSimFromStruct(self._structure, self._system, self.integrator, **config)
-
-        #Alchemical Simulation is used for computing correction term from MD simulation.
-        alch_integrator = self.generateIntegrator(**config)
-        self.alch = self.generateSimFromStruct(self._structure, self._system, alch_integrator, **config)
-
-        #If the moveStep hasn't been calculated, recheck the NCMC steps.
-        if 'moveStep' not in config.keys():
-            logger.warning('Did not find `moveStep` in configuration. Checking NCMC paramters')
-            ncmc_parameters = utils.calculateNCMCSteps(**config)
-            for k, v in ncmc_parameters.items():
-                config[k] = v
-            self.config = config
-
-        #Construct NCMC Integrator and Simulation
-        self.ncmc_integrator = self.generateNCMCIntegrator(**config)
-
-        #Initialize the Move Engine with the Alchemical System and NCMC Integrator
-        for move in self._move_engine.moves:
-            self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
-        self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **config)
-        utils.print_host_info(self.ncmc)
-
-
 class BLUESSampler(object):
     def __init__(self,
                  atom_subset=None,
@@ -820,8 +516,6 @@ class BLUESSampler(object):
                  dynamics_move=None,
                  ncmc_move=None,
                  platform=None,
-                 reporter=None,
-                 storage=None,
                  topology=None,
                  verbose=False):
         """
@@ -864,9 +558,6 @@ class BLUESSampler(object):
         self.verbose = verbose
         self.platform = platform
 
-        # For writing trajectory files
-        self.reporter = reporter
-
     def _get_alchemical_state(self, thermodynamic_state):
         alch_system = SystemFactory.generateAlchSystem(thermodynamic_state.get_system(), self.atom_subset)
         alch_state = alchemy.AlchemicalState.from_system(alch_system)
@@ -876,19 +567,15 @@ class BLUESSampler(object):
 
         return alch_thermodynamic_state
 
-    def _simualteMC(self, thermodynamic_state):
-        self.ncmc_move.initial_energy = thermodynamic
 
     def _acceptRejectMove(self):
         # Create MD context with the final positions from NCMC simulation
-        context_cache = cache.global_context_cache
         integrator = self.dynamics_move._get_integrator(self.thermodynamic_state)
-        context, integrator = context_cache.get_context(self.thermodynamic_state, integrator)
+        context, integrator = self.dynamics_move.context_cache.get_context(self.thermodynamic_state, integrator)
         self.sampler_state.apply_to_context(context, ignore_velocities=True)
         alch_energy = self.thermodynamic_state.reduced_potential(context)
 
-        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy -
-                             self.ncmc_move.final_energy)
+        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy - self.ncmc_move.final_energy)
         logp_accept = self.ncmc_move.logp_accept
         randnum = math.log(np.random.random())
         #print("logP {} + corr {}".format(logp_accept, correction_factor))
@@ -904,6 +591,13 @@ class BLUESSampler(object):
             # Restore original positions.
             self.sampler_state.positions = self.ncmc_move.initial_positions
 
+    def equil(self, n_iterations=1):
+        self.dynamics_move.totalSteps = int(self.dynamics_move.n_steps*n_iterations)
+        # Set initial conditions by running 1 iteration of MD first
+        for iteration in range(n_iterations):
+            self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state)
+        self.dynamics_move.currentStep = 0
+        self.iteration +=1
 
     def run(self, n_iterations=1):
         """
@@ -913,22 +607,26 @@ class BLUESSampler(object):
         niterations : int, optional, default=1
             Number of iterations to run the sampler for.
         """
-        # Set initial conditions by running 1 iteration of MD first
-        if self.iteration == 0:
-            self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state, self.reporter)
+        self.ncmc_move.totalSteps = int(self.ncmc_move.n_steps*n_iterations)
+        self.dynamics_move.totalSteps = int(self.dynamics_move.n_steps*n_iterations)
 
+        if self.iteration == 0:
+            # Set initial conditions by running 1 iteration of MD first
+            self.equil(1)
+
+        self.iteration = 0
         for iteration in range(n_iterations):
             if self.verbose:
                 print("." * 80)
-                print("MCMC sampler iteration %d" % self.iteration)
+                print("BLUES Sampler iteration %d" % self.iteration)
 
             #print('NCMC Simulation')
-            self.ncmc_move.apply(self.alch_thermodynamic_state, self.sampler_state, self.reporter)
+            self.ncmc_move.apply(self.alch_thermodynamic_state, self.sampler_state)
 
             self._acceptRejectMove()
 
             #print('MD Simulation')
-            self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state, self.reporter)
+            self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state)
 
             # Increment iteration count
             self.iteration += 1
@@ -936,9 +634,8 @@ class BLUESSampler(object):
             if self.verbose:
                 print("." * 80)
 
-        logger.info('n_accepted', self.n_accepted)
-        logger.info('iteration', self.iteration)
-
+        #print('n_accepted', self.n_accepted)
+        #print('iteration', self.iteration)
 
 # class BLUESSimulation(object):
 #     """BLUESSimulation class provides methods to execute the NCMC+MD

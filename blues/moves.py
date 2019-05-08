@@ -13,7 +13,7 @@ from simtk import openmm, unit
 from openmmtools import alchemy
 from openmmtools.states import SamplerState, ThermodynamicState, CompoundThermodynamicState
 from blues.integrators import AlchemicalExternalLangevinIntegrator
-from openmmtools.mcmc import LangevinDynamicsMove, MetropolizedMove
+from openmmtools.mcmc import LangevinDynamicsMove, MCMCMove
 from blues.simulation import SystemFactory
 from blues import utils
 
@@ -50,12 +50,12 @@ except ImportError:
     print('ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.')
 
 
-class MetropolizedNCMCMove(MetropolizedMove):
+class NCMCMove(MCMCMove):
     """This is the base Move class. Move provides methods for calculating properties
     and applying the move on the set of atoms being perturbed in the NCMC simulation.
     """
 
-    def __init__(self, timestep, n_steps, atom_subset=None, context_cache=None):
+    def __init__(self, timestep, n_steps, atom_subset=None, context_cache=None, reporters=[]):
         self.timestep = timestep
         self.n_steps = n_steps
         self.n_accepted = 0
@@ -68,6 +68,8 @@ class MetropolizedNCMCMove(MetropolizedMove):
         self.proposed_positions = None
         self.atom_subset = atom_subset
         self.context_cache = context_cache
+        self.currentStep = 0
+        self.reporters = reporters
 
     @property
     def statistics(self):
@@ -101,7 +103,6 @@ class MetropolizedNCMCMove(MetropolizedMove):
                                          enforcePeriodicBox=thermodynamic_state.is_periodic)
 
         self.initial_positions = context_state.getPositions()
-        #self.initial_energy = context_state.getPotentialEnergy()
         self.initial_energy = thermodynamic_state.reduced_potential(context)
 
     def _after_integration(self, context, thermodynamic_state):
@@ -117,7 +118,6 @@ class MetropolizedNCMCMove(MetropolizedMove):
 
 
         self.final_positions = context_state.getPositions()
-        #self.final_energy = context_state.getPotentialEnergy()
         self.final_energy = thermodynamic_state.reduced_potential(context)
         self.logp_accept = context._integrator.getLogAcceptanceProbability(context)
 
@@ -136,7 +136,7 @@ class MetropolizedNCMCMove(MetropolizedMove):
             nprop=1,
             prop_lambda=0.3)
 
-    def apply(self, thermodynamic_state, sampler_state, reporters):
+    def apply(self, thermodynamic_state, sampler_state):
         """Apply a metropolized move to the sampler state.
 
         Total number of acceptances and proposed move are updated.
@@ -161,7 +161,6 @@ class MetropolizedNCMCMove(MetropolizedMove):
         # Create context
         context, integrator = context_cache.get_context(thermodynamic_state, integrator)
 
-
         # Compute initial energy. We don't need to set velocities to compute the potential.
         # TODO assume sampler_state.potential_energy is the correct potential if not None?
         sampler_state.apply_to_context(context, ignore_velocities=True)
@@ -169,21 +168,50 @@ class MetropolizedNCMCMove(MetropolizedMove):
 
         self._before_integration(context, thermodynamic_state)
 
-
         try:
-            # Run dynamics
-            #NML: Do in 1 steps for debugging
-            rotation_step = int(self.n_steps / 2)
-            for n in range(1, self.n_steps + 1):
-                integrator.step(1)
+            nextReport = [None]*len(self.reporters)
+            endStep = self.currentStep + self.n_steps
+            while self.currentStep < endStep:
+                nextSteps = endStep-self.currentStep
+                anyReport = False
+                for i, reporter in enumerate(self.reporters):
+                    nextReport[i] = reporter.describeNextReport(self)
+                    if nextReport[i][0] > 0 and nextReport[i][0] <= nextSteps:
+                        nextSteps = nextReport[i][0]
+                        anyReport = True
 
-                if n == rotation_step:
+                stepsToGo = nextSteps
+                while stepsToGo > 10:
+                    integrator.step(10)
+                    stepsToGo -= 10
+                integrator.step(stepsToGo)
+                self.currentStep += stepsToGo
+
+                alch_lambda = integrator.getGlobalVariableByName('lambda')
+                if alch_lambda == 0.5:
                     # Propose perturbed positions. Modifying the reference changes the sampler state.
+                    #print('Proposing move at lambda = %s...' %alch_lambda)
                     sampler_state.update_from_context(context)
                     proposed_positions = self._propose_positions(sampler_state.positions[self.atom_subset])
                     # Compute the energy of the proposed positions.
                     sampler_state.positions[self.atom_subset] = proposed_positions
                     sampler_state.apply_to_context(context)
+
+                if anyReport:
+                    context_state = context.getState(
+                         getPositions=True,
+                         getVelocities=True,
+                         getEnergy=True,
+                         enforcePeriodicBox=thermodynamic_state.is_periodic)
+
+                    context_state.currentStep = self.currentStep
+                    context_state.system = thermodynamic_state.get_system()
+
+                    reports = []
+                    for reporter, report in zip(self.reporters, nextReport):
+                        reports.append((reporter,report))
+                    for reporter, next in reports:
+                         reporter.report(context_state, integrator)
 
 
         except Exception as e:
@@ -196,16 +224,14 @@ class MetropolizedNCMCMove(MetropolizedMove):
                 getVelocities=True,
                 getEnergy=True,
                 enforcePeriodicBox=thermodynamic_state.is_periodic)
-            # Update everything but the collective variables from the State object
-            sampler_state.update_from_context(
-                context_state, ignore_collective_variables=True, ignore_velocities=True)
-            # Update only the collective variables from the Context
-            sampler_state.update_from_context(
-                context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
-
 
         self._after_integration(context, thermodynamic_state)
-
+        # Update everything but the collective variables from the State object
+        sampler_state.update_from_context(
+            context_state, ignore_collective_variables=True, ignore_velocities=True)
+        # Update only the collective variables from the Context
+        sampler_state.update_from_context(
+            context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
 
     @abc.abstractmethod
     def _propose_positions(self, positions):
@@ -228,6 +254,22 @@ class MetropolizedNCMCMove(MetropolizedMove):
         pass
 
 class ReportLangevinDynamicsMove(LangevinDynamicsMove):
+
+    def __init__(self,
+        timestep=1.0*unit.femtosecond,
+        collision_rate=10.0/unit.picoseconds,
+        n_steps=1000,
+        reassign_velocities=False,
+        reporters=None,
+        **kwargs):
+        super(ReportLangevinDynamicsMove, self).__init__(self,**kwargs)
+        self.n_steps = n_steps
+        self.resassign_velocities = reassign_velocities
+        self.timestep = timestep
+        self.collision_rate = collision_rate
+        self.currentStep = 0
+        self.reporters = reporters
+
     def _before_integration(self, context, thermodynamic_state):
         """Execute code after Context creation and before integration."""
         context_state = context.getState(getPositions=True,
@@ -236,8 +278,9 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                                          enforcePeriodicBox=thermodynamic_state.is_periodic)
 
         self.initial_positions = context_state.getPositions()
-        #self.initial_energy = context_state.getPotentialEnergy()
         self.initial_energy = thermodynamic_state.reduced_potential(context)
+        self._usesPBC = thermodynamic_state.is_periodic
+
 
     def _after_integration(self, context, thermodynamic_state):
         """Execute code after integration.
@@ -252,10 +295,9 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
 
 
         self.final_positions = context_state.getPositions()
-        #self.final_energy = context_state.getPotentialEnergy()
         self.final_energy = thermodynamic_state.reduced_potential(context)
 
-    def apply(self, thermodynamic_state, sampler_state, reporters):
+    def apply(self, thermodynamic_state, sampler_state):
         """Propagate the state through the integrator.
 
         This updates the SamplerState after the integration. It also logs
@@ -297,27 +339,45 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
         self._before_integration(context, thermodynamic_state)
 
         try:
-            # Run dynamics.
-            for n in range(1, self.n_steps + 1):
-                integrator.step(1)
+            nextReport = [None]*len(self.reporters)
+            endStep = self.currentStep + self.n_steps
+            while self.currentStep < endStep:
+                nextSteps = endStep-self.currentStep
+                anyReport = False
+                for i, reporter in enumerate(self.reporters):
+                    nextReport[i] = reporter.describeNextReport(self)
+                    if nextReport[i][0] > 0 and nextReport[i][0] <= nextSteps:
+                        nextSteps = nextReport[i][0]
+                        anyReport = True
 
-                if n % reporters[0]._reportInterval == 0:
+                stepsToGo = nextSteps
+                while stepsToGo > 10:
+                    integrator.step(10)
+                    stepsToGo -= 10
+                integrator.step(stepsToGo)
+                self.currentStep += stepsToGo
+
+                if anyReport:
+                    reports = []
                     context_state = context.getState(
-                        getPositions=True,
-                        getVelocities=True,
-                        getEnergy=True,
-                        enforcePeriodicBox=thermodynamic_state.is_periodic)
-                    context_state.currentStep = n
-                    context_state.system = thermodynamic_state.system
-                    for reporter in reporters:
-                        reporter.report(context_state, integrator)
+                         getPositions=True,
+                         getVelocities=True,
+                         getEnergy=True,
+                         enforcePeriodicBox=thermodynamic_state.is_periodic)
 
-        except Exception as e:
-            print(e)
+                    context_state.currentStep = self.currentStep
+                    context_state.system = thermodynamic_state.get_system()
+
+                    for reporter, report in zip(self.reporters, nextReport):
+                        reports.append((reporter,report))
+                    for reporter, next in reports:
+                         reporter.report(context_state, integrator)
+
+        except Exception:
+            #print(e)
+            traceback.print_exc()
             # Catches particle positions becoming nan during integration.
         else:
-
-
             # We get also velocities here even if we don't need them because we
             # will recycle this State to update the sampler state object. This
             # way we won't need a second call to Context.getState().
@@ -327,8 +387,8 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                 getEnergy=True,
                 enforcePeriodicBox=thermodynamic_state.is_periodic)
 
-            # Check for NaNs in energies.
-            potential_energy = context_state.getPotentialEnergy()
+        # Subclasses can read here info from the context to update internal statistics.
+        self._after_integration(context, thermodynamic_state)
 
         # Updated sampler state.
         # This is an optimization around the fact that Collective Variables are not a part of the State,
@@ -343,10 +403,9 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                                           ignore_velocities=True,
                                           ignore_collective_variables=False)
 
-        # Subclasses can read here info from the context to update internal statistics.
-        self._after_integration(context, thermodynamic_state)
 
-class RandomLigandRotationMove(MetropolizedNCMCMove):
+
+class RandomLigandRotationMove(NCMCMove):
     def _before_integration(self, context, thermodynamic_state):
         super(RandomLigandRotationMove, self)._before_integration(context, thermodynamic_state)
         masses, totalmass = utils.getMasses(self.atom_subset, thermodynamic_state.topology)
