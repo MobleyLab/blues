@@ -66,7 +66,7 @@ def atomidx_to_atomlist(structure, mask_idx):
             atom_list.append(structure.atoms[i])
     logger.debug('\nFreezing {}'.format(atom_list))
     return atom_list
-    
+
 def getMasses(atom_subset, topology):
     """
     Returns a list of masses of the specified ligand atoms.
@@ -105,8 +105,13 @@ def getCenterOfMass(positions, masses):
     center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
        1x3 numpy.array of the center of mass of the given positions
     """
-    coordinates = np.asarray(positions._value, np.float32)
-    center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
+    if isinstance(positions, unit.Quantity):
+        coordinates = np.asarray(positions._value, np.float32)
+        pos_unit = positions.unit
+    else:
+        coordinates = np.asarray(positions, np.float32)
+        pos_unit = unit.angstroms
+    center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * pos_unit
     return center_of_mass
 
 

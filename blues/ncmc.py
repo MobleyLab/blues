@@ -426,6 +426,9 @@ class RandomLigandRotationMove(NCMCMove):
         return proposed_positions
 
 
+# =============================================================================
+# NCMC+MD (BLUES) SAMPLER
+# =============================================================================
 class BLUESSampler(object):
     """BLUESSampler runs the NCMC+MD hybrid simulation.
 
