@@ -17,6 +17,56 @@ from simtk import openmm, unit
 
 logger = logging.getLogger(__name__)
 
+def amber_selection_to_atomidx(structure, selection):
+    """
+    Converts AmberMask selection [amber-syntax]_ to list of atom indices.
+
+    Parameters
+    ----------
+    structure : parmed.Structure()
+        Structure of the system, used for atom selection.
+    selection : str
+        AmberMask selection that gets converted to a list of atom indices.
+
+    Returns
+    -------
+    mask_idx : list of int
+        List of atom indices.
+
+    References
+    ----------
+    .. [amber-syntax] J. Swails, ParmEd Documentation (2015). http://parmed.github.io/ParmEd/html/amber.html#amber-mask-syntax
+
+    """
+    mask = parmed.amber.AmberMask(structure, str(selection))
+    mask_idx = [i for i in mask.Selected()]
+    return mask_idx
+
+
+def atomidx_to_atomlist(structure, mask_idx):
+    """
+    Goes through the structure and matches the previously selected atom
+    indices to the atom type.
+
+    Parameters
+    ----------
+    structure : parmed.Structure()
+        Structure of the system, used for atom selection.
+    mask_idx : list of int
+        List of atom indices.
+
+    Returns
+    -------
+    atom_list : list of atoms
+        The atoms that were previously selected in mask_idx.
+    """
+    atom_list = []
+    for i, at in enumerate(structure.atoms):
+        if i in mask_idx:
+            atom_list.append(structure.atoms[i])
+    logger.debug('\nFreezing {}'.format(atom_list))
+    return atom_list
+    
 def getMasses(atom_subset, topology):
     """
     Returns a list of masses of the specified ligand atoms.
