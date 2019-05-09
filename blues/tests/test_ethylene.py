@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 #logger = init_logger(logger, level=logging.INFO, stream=True)
 seed = np.random.randint(low=1, high=5000)
 
-def runEthyleneTest(N):
-    filename = 'ethylene-test_%s' % N
+def runEthyleneTest(dir, N):
+    filename = dir.join('ethylene-test_%s' % N)
     print('Running %s...' % filename)
 
     # Set Simulation parameters
@@ -85,6 +85,8 @@ def runEthyleneTest(N):
                       topology=structure.topology)
     sampler.run(nIter)
 
+    return filename
+
 
 def getPopulations(traj):
     dist = md.compute_distances(traj, [[0, 2]])
@@ -119,14 +121,12 @@ def graphConvergence(dist, n_points=10):
     return bin_err_arr[-1, :]
 
 
-def test_runEthyleneRepeats():
-    [runEthyleneTest(i) for i in range(5)]
+def test_runEthyleneRepeats(tmpdir):
+    dir = tmpdir.mkdir("tmp")
+    outfnames = [runEthyleneTest(dir,N=i) for i in range(5)]
 
-
-def test_runAnalysis():
-    outfnames = ['ethylene-test_%s_MD.nc' % i for i in range(5)]
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
-    trajs = [md.load(traj, top=structure_pdb) for traj in outfnames]
+    trajs = [md.load('%s_MD.nc' % traj, top=structure_pdb) for traj in outfnames]
     dists = []
     freqs = []
     errs = []
