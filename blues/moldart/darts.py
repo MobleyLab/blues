@@ -1113,16 +1113,19 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
 
     combo_list = [current_pos] + pos_list
     combo_zmat = [current_zmat] + internal_mat
-
-    rot_mat, trans_mat = getRotTransMatrices(combo_zmat, combo_list, construction_table)
-    trans_list = createTranslationDarts(combo_zmat, trans_mat, dart_storage)
-
-    rot_list = compareRotation(rot_mat, combo_zmat, dart_storage)
-    dihedral_output = compareDihedral(current_zmat, internal_mat, dart_storage)
-    combined_comparison = [set(i) for i in [dihedral_output, rot_list, trans_list] if i is not None]
     try:
-        set_output = list(set.intersection(*combined_comparison))
-    except TypeError:
+        rot_mat, trans_mat = getRotTransMatrices(combo_zmat, combo_list, construction_table)
+        trans_list = createTranslationDarts(combo_zmat, trans_mat, dart_storage)
+
+        rot_list = compareRotation(rot_mat, combo_zmat, dart_storage)
+        dihedral_output = compareDihedral(current_zmat, internal_mat, dart_storage)
+        combined_comparison = [set(i) for i in [dihedral_output, rot_list, trans_list] if i is not None]
+        try:
+            set_output = list(set.intersection(*combined_comparison))
+        except TypeError:
+            set_output = []
+    except:
+        print('svd not converged')
         set_output = []
     return set_output
 

@@ -823,7 +823,12 @@ class MolDartMove(RandomLigandRotationMove):
         nvec2_sim = vec2_sim / np.linalg.norm(vec2_sim) * self.internal_zmat[binding_mode_index]._frame['bond'][self.buildlist.index.get_values()[2]]/10.
         change_three[vector_list[0][0]] = sim_three[vector_list[0][1]] + ad_vec
         change_three[vector_list[1][0]] = sim_three[vector_list[0][1]] + nvec2_sim
-        rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
+        try:
+            rot_mat, centroid = getRotTrans(change_three, ref_three, center=vector_list[0][1])
+        except:
+            rot_mat = np.identity((3,3))
+            centroid = copy.deepcopy(dart_three)
+            self.acceptance_ratio = 0
         #perform the same angle change on new coordinate
         centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
