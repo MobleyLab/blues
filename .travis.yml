@@ -9,7 +9,7 @@ branches:
 env:
   global:
     - ORGNAME="omnia"
-    - USERNAME="mobleylab"
+    - USERNAME="nathanmlim"
     - PKG_NAME="blues"
     - RELEASE=false
     #- RELEASE=false

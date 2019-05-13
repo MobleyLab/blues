@@ -42,6 +42,6 @@ test:
     - blues
 
 about:
-  home: https://github.com/mobleylab/blues
+  home: https://github.com/nathanmlim/blues
   license: MIT
   license_file: LICENSE
