@@ -1209,7 +1209,8 @@ class MolDartMove(RandomLigandRotationMove):
             context.setPositions(switch_pos)
             context.setVelocities(switch_vel)
         if 1:
-            resetRigidBodies(context.getSystem(), new_pos, self.real_particles, self.vsiteParticles, self.constraint_list, self.atom_indices)
+            after_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+            resetRigidBodies(context.getSystem(), after_pos, self.real_particles, self.vsiteParticles, self.constraint_list, self.atom_indices)
             context.reinitialize(preserveState=True)
         return context
 
