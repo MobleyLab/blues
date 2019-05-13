@@ -1,6 +1,7 @@
 package:
   name: blues
-  version: {{ GIT_DESCRIBE_TAG }}
+  version: 0.2.5
+  #version: {{ GIT_DESCRIBE_TAG }}
 
 source:
   path : ../..
