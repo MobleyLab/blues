@@ -14,6 +14,7 @@ from blues.moldart.darts import makeDartDict, checkDart, makeDihedralDifferenceD
 from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
+from blues.moldart.rigid import createRigidBodies, resetRigidBodies
 
 class MolDartMove(RandomLigandRotationMove):
     """
@@ -942,8 +943,7 @@ class MolDartMove(RandomLigandRotationMove):
 
         ###
         if 1:
-            from blues.moldart.rigid import createRigidBodies
-            new_sys = createRigidBodies(new_sys,  self.sim_traj.openmm_positions(0), [self.atom_indices])
+            new_sys, self.real_particles, self.vsiteParticles, self.constraint_list = createRigidBodies(new_sys,  self.sim_traj.openmm_positions(0), [self.atom_indices])
             #exit()
         if self.restraints:
             force_list = new_sys.getForces()
@@ -1208,7 +1208,9 @@ class MolDartMove(RandomLigandRotationMove):
                         switch_vel[new_water[j]] = start_vel[old_water[j]]
             context.setPositions(switch_pos)
             context.setVelocities(switch_vel)
-
+        if 1:
+            resetRigidBodies(context.getSystem(), new_pos, self.real_particles, self.vsiteParticles, self.constraint_list, self.atom_indices)
+            context.reinitialize(preserveState=True)
         return context
 
 class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator):

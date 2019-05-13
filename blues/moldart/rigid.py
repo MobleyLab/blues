@@ -106,7 +106,7 @@ def createRigidBodies(system, positions, bodies):
                     break
 
         # Set particle masses.
-
+        constraint_list = []
         for i, m in zip(realParticles, realParticleMasses):
             system.setParticleMass(i, m)
 
@@ -115,7 +115,9 @@ def createRigidBodies(system, positions, bodies):
         for p1, p2 in combinations(realParticles, 2):
             distance = unit.norm(positions[p1]-positions[p2])
             key = (min(p1, p2), max(p1, p2))
+            index = system.getNumConstraints()
             system.addConstraint(p1, p2, distance)
+            constraint_list.append([index, p1, p2, distance])
 
         # Select which three particles to use for defining virtual sites.
 
@@ -144,4 +146,69 @@ def createRigidBodies(system, positions, bodies):
                 rhs = np.array((positions[i]-positions[vsiteParticles[0]]).value_in_unit(unit.nanometer))
                 weights = lin.solve(matrix, rhs)
                 system.setVirtualSite(i, mm.OutOfPlaneSite(vsiteParticles[0], vsiteParticles[1], vsiteParticles[2], weights[0], weights[1], weights[2]))
-    return system
+
+    return system, realParticles, vsiteParticles, constraint_list
+
+def resetRigidBodies(system, positions, realParticles, vsiteParticles, constraint_list, particles):
+    """Modify a System to turn specified sets of particles into rigid bodies.
+
+    For every rigid body, four particles are selected as "real" particles whose positions are integrated.
+    Constraints are added between them to make them move as a rigid body.  All other particles in the body
+    are then turned into virtual sites whose positions are computed based on the "real" particles.
+
+    Because virtual sites are massless, the mass properties of the rigid bodies will be slightly different
+    from the corresponding sets of particles in the original system.  The masses of the non-virtual particles
+    are chosen to guarantee that the total mass and center of mass of each rigid body exactly match those of
+    the original particles.  The moment of inertia will be similar to that of the original particles, but
+    not identical.
+
+    Care is needed when using constraints, since virtual particles cannot participate in constraints.  If the
+    input system includes any constraints, this function will automatically remove ones that connect two
+    particles in the same rigid body.  But if there is a constraint beween a particle in a rigid body and
+    another particle not in that body, it will likely lead to an exception when you try to create a context.
+
+    Parameters:
+     - system (System) the System to modify
+     - positions (list) the positions of all particles in the system
+     - bodies (list) each element of this list defines one rigid body.  Each element should itself be a list
+       of the indices of all particles that make up that rigid body.
+    """
+    # Remove any constraints involving particles in rigid bodies.
+
+        # Add constraints between the real particles.
+    
+    for aitem in constraint_list:
+        for index, p1, p2, oldistance in constraint_list:
+            distance = unit.norm(positions[p1]-positions[p2])
+            key = (min(p1, p2), max(p1, p2))
+            system.setConstraintParameters(index, p1, p2, distance)
+        #constraint_list.append([p1, p2, distance])
+
+    # Select which three particles to use for defining virtual sites.
+
+    bestNorm = 0
+    for p1, p2, p3 in combinations(realParticles, 3):
+        d12 = (positions[p2]-positions[p1]).value_in_unit(unit.nanometer)
+        d13 = (positions[p3]-positions[p1]).value_in_unit(unit.nanometer)
+        crossNorm = unit.norm((d12[1]*d13[2]-d12[2]*d13[1], d12[2]*d13[0]-d12[0]*d13[2], d12[0]*d13[1]-d12[1]*d13[0]))
+        if crossNorm > bestNorm:
+            bestNorm = crossNorm
+            vsiteParticles = (p1, p2, p3)
+
+    # Create virtual sites.
+
+    d12 = (positions[vsiteParticles[1]]-positions[vsiteParticles[0]]).value_in_unit(unit.nanometer)
+    d13 = (positions[vsiteParticles[2]]-positions[vsiteParticles[0]]).value_in_unit(unit.nanometer)
+    cross = mm.Vec3(d12[1]*d13[2]-d12[2]*d13[1], d12[2]*d13[0]-d12[0]*d13[2], d12[0]*d13[1]-d12[1]*d13[0])
+    matrix = np.zeros((3, 3))
+    for i in range(3):
+        matrix[i][0] = d12[i]
+        matrix[i][1] = d13[i]
+        matrix[i][2] = cross[i]
+    for i in particles:
+        if i not in realParticles:
+            system.setParticleMass(i, 0)
+            rhs = np.array((positions[i]-positions[vsiteParticles[0]]).value_in_unit(unit.nanometer))
+            weights = lin.solve(matrix, rhs)
+            system.setVirtualSite(i, mm.OutOfPlaneSite(vsiteParticles[0], vsiteParticles[1], vsiteParticles[2], weights[0], weights[1], weights[2]))
+    return system, constraint_list
