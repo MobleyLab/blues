@@ -115,7 +115,10 @@ class MolDartMove(RandomLigandRotationMove):
         rigid_darts='rigid_darts',
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=None, restrained_receptor_atoms=None,
-        K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2, lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2,
+        rigid_body=False,
+        centroid_darting=True,
+        lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
@@ -152,6 +155,8 @@ class MolDartMove(RandomLigandRotationMove):
         self.K_RMSD = K_RMSD
         self.RMSD0 = RMSD0
         self.lambda_restraints = lambda_restraints
+        self.rigid_body = rigid_body
+        self.centroid_darting = centroid_darting
 
         #find pdb inputs inputs
         if len(pdb_files) <= 1:
@@ -833,7 +838,8 @@ class MolDartMove(RandomLigandRotationMove):
         #perform the same angle change on new coordinate
         centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
-        dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+        if self.centroid_darting:
+            dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
         vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
 
@@ -942,7 +948,7 @@ class MolDartMove(RandomLigandRotationMove):
                         system.setParticleMass(atom, 0*unit.daltons)
 
         ###
-        if 1:
+        if self.rigid_body:
             new_sys, self.real_particles, self.vsiteParticles, self.constraint_list = createRigidBodies(new_sys,  self.sim_traj.openmm_positions(0), [self.atom_indices])
             #exit()
         if self.restraints:
@@ -1058,7 +1064,7 @@ class MolDartMove(RandomLigandRotationMove):
                 self.acceptance_ratio = 0
         else:
             pass
-        if 1:
+        if self.rigid_body:
             after_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
             resetRigidBodies(context.getSystem(), after_pos, self.real_particles, self.vsiteParticles, self.constraint_list, self.atom_indices)
             context.reinitialize(preserveState=True)
@@ -1213,7 +1219,7 @@ class MolDartMove(RandomLigandRotationMove):
                         switch_vel[new_water[j]] = start_vel[old_water[j]]
             context.setPositions(switch_pos)
             context.setVelocities(switch_vel)
-        if 1:
+        if self.rigid_body:
             after_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
             resetRigidBodies(context.getSystem(), after_pos, self.real_particles, self.vsiteParticles, self.constraint_list, self.atom_indices)
             context.reinitialize(preserveState=True)
