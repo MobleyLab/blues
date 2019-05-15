@@ -115,6 +115,7 @@ class MolDartMove(RandomLigandRotationMove):
         rigid_darts='rigid_darts',
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=None, restrained_receptor_atoms=None,
+        receptor_cutoff=0.5,
         K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2,
         rigid_body=False,
         centroid_darting=True,
@@ -122,6 +123,19 @@ class MolDartMove(RandomLigandRotationMove):
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
+        self.trajs = [md.load(traj) for traj in pdb_files]
+        self.restrained_receptor_atoms = []
+        if restrained_receptor_atoms is None:
+            for traj in self.trajs:
+                ca_atoms = traj.top.select('name CA and protein')
+                receptor_atoms = md.compute_neighbors(traj, cutoff=receptor_cutoff, query_indices=self.atom_indices, haystack_indices=ca_atoms)
+                self.restrained_receptor_atoms.append(receptor_atoms)
+        elif all(isinstance(item, int) for item in restrained_receptor_atoms):
+            self.restrained_receptor_atoms = [restrained_receptor_atoms for i in range(len(pdb_files))]
+
+        elif all(isinstance(item, list) for item in restrained_receptor_atoms) and len(restrained_receptor_atoms) == len(pdb_files):
+            self.restrained_receptor_atoms = restrained_receptor_atoms
+            #exit()
         self.binding_mode_traj = []
         #positions of only the ligand atoms
         self.binding_mode_pos = []
@@ -148,7 +162,6 @@ class MolDartMove(RandomLigandRotationMove):
         self.freeze_waters = freeze_waters
         #if restraints are used to keep ligand within darting regions specified here
         self.restraints = restraints
-        self.restrained_receptor_atoms = restrained_receptor_atoms
         self.freeze_protein = freeze_protein
         self.K_r = K_r
         self.K_angle = K_angle
@@ -982,7 +995,7 @@ class MolDartMove(RandomLigandRotationMove):
                 #check which force groups aren't being used and set restraint forces to that
                 if self.restraints == 'boresch':
                     new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
-                                            self.restrained_receptor_atoms, restraint_lig,
+                                            self.restrained_receptor_atoms[index], restraint_lig,
                                             K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
 
                 elif self.restraints == 'rmsd':
@@ -991,7 +1004,7 @@ class MolDartMove(RandomLigandRotationMove):
                     heavy_atoms = [self.atom_indices[i] for i in range(len(self.atom_indices)) if nonheavy_atoms.iloc[i] == False]
 
                     new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, heavy_atoms, index, self.restraint_group,
-                                            self.restrained_receptor_atoms, restraint_lig,
+                                            self.restrained_receptor_atoms[index], restraint_lig,
                                             K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
 
 
