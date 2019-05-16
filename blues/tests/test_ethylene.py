@@ -9,7 +9,7 @@ from openmmtools.states import SamplerState, ThermodynamicState
 from simtk import openmm, unit
 
 from blues import utils
-from blues.reporters import BLUESStateDataStorage, NetCDF4Storage
+from blues.storage import BLUESStateDataStorage, NetCDF4Storage
 from blues.ncmc import RandomLigandRotationMove, ReportLangevinDynamicsMove, BLUESSampler
 
 logger = logging.getLogger(__name__)

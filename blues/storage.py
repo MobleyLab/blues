@@ -12,7 +12,6 @@ from parmed.geometry import box_vectors_to_lengths_and_angles
 from simtk.openmm import app
 
 import blues._version
-import blues.reporters
 from blues.formats import *
 
 
@@ -246,6 +245,7 @@ class ReporterConfig:
 #     REPORTERS      #
 ######################
 
+
 class NetCDF4Storage(parmed.openmm.reporters.NetCDFReporter):
     """
     Class to read or write NetCDF trajectory files
@@ -383,6 +383,7 @@ class NetCDF4Storage(parmed.openmm.reporters.NetCDFReporter):
         # Now it's time to add the time.
         self._out.add_time(context_state.getTime().value_in_unit(u.picosecond))
 
+
 class BLUESStateDataStorage(app.StateDataReporter):
     """StateDataReporter outputs information about a simulation, such as energy and temperature, to a file. To use it, create a StateDataReporter, then add it to the Simulation's list of reporters.  The set of data to write is configurable using boolean flags passed to the constructor.  By default the data is written in comma-separated-value (CSV) format, but you can specify a different separator to use. Inherited from `openmm.app.StateDataReporter`
 
@@ -468,9 +469,9 @@ class BLUESStateDataStorage(app.StateDataReporter):
                  protocolWork=False,
                  alchemicalLambda=False,
                  currentIter=False):
-        super(BLUESStateDataStorage, self).__init__(
-            file, reportInterval, step, time, potentialEnergy, kineticEnergy, totalEnergy, temperature, volume,
-            density, progress, remainingTime, speed, elapsedTime, separator, systemMass, totalSteps)
+        super(BLUESStateDataStorage, self).__init__(file, reportInterval, step, time, potentialEnergy, kineticEnergy,
+                                                    totalEnergy, temperature, volume, density, progress, remainingTime,
+                                                    speed, elapsedTime, separator, systemMass, totalSteps)
         self.log = self._out
         self.title = title
 
@@ -520,7 +521,7 @@ class BLUESStateDataStorage(app.StateDataReporter):
             # Compute the number of degrees of freedom.
             dof = 0
             for i in range(system.getNumParticles()):
-                if system.getParticleMass(i) > 0*unit.dalton:
+                if system.getParticleMass(i) > 0 * unit.dalton:
                     dof += 3
             dof -= system.getNumConstraints()
             if any(type(system.getForce(i)) == mm.CMMotionRemover for i in range(system.getNumForces())):
@@ -529,11 +530,11 @@ class BLUESStateDataStorage(app.StateDataReporter):
         if self._density:
             if self._totalMass is None:
                 # Compute the total system mass.
-                self._totalMass = 0*unit.dalton
+                self._totalMass = 0 * unit.dalton
                 for i in range(system.getNumParticles()):
                     self._totalMass += system.getParticleMass(i)
             elif not unit.is_quantity(self._totalMass):
-                self._totalMass = self._totalMass*unit.dalton
+                self._totalMass = self._totalMass * unit.dalton
 
     def report(self, context_state, integrator):
         """Generate a report.
@@ -581,7 +582,8 @@ class BLUESStateDataStorage(app.StateDataReporter):
          - state (State) The current state of the simulation
         """
         if self._needEnergy:
-            energy = (context_state.getKineticEnergy()+context_state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole)
+            energy = (context_state.getKineticEnergy() + context_state.getPotentialEnergy()).value_in_unit(
+                unit.kilojoules_per_mole)
             if math.isnan(energy):
                 raise ValueError('Energy is NaN')
             if math.isinf(energy):
@@ -630,11 +632,12 @@ class BLUESStateDataStorage(app.StateDataReporter):
         if self._kineticEnergy:
             values.append(context_state.getKineticEnergy().value_in_unit(unit.kilojoules_per_mole))
         if self._totalEnergy:
-            values.append(
-                (context_state.getKineticEnergy() + context_state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole))
+            values.append((context_state.getKineticEnergy() + context_state.getPotentialEnergy()).value_in_unit(
+                unit.kilojoules_per_mole))
         if self._temperature:
             values.append(
-                (2 * context_state.getKineticEnergy() / (self._dof * unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin))
+                (2 * context_state.getKineticEnergy() / (self._dof * unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(
+                    unit.kelvin))
         if self._volume:
             values.append(volume.value_in_unit(unit.nanometer**3))
         if self._density:
