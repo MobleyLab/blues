@@ -105,6 +105,26 @@ def generateAlchSystem(system,
     alch_system = factory.create_alchemical_system(system, alch_region)
     return alch_system
 
+def zero_masses(system, atomList=None):
+    """
+    Zeroes the masses of specified atoms to constrain certain degrees of freedom.
+
+    Arguments
+    ---------
+    system : penmm.System
+        system to zero masses
+    atomList : list of ints
+        atom indicies to zero masses
+
+    Returns
+    -------
+    system : openmm.System
+        The modified system with massless atoms.
+
+    """
+    for index in (atomList):
+        system.setParticleMass(index, 0 * unit.daltons)
+    return system
 
 def restrain_positions(structure, system, selection="(@CA,C,N)", weight=5.0, **kwargs):
     """Apply positional restraints to atoms in the openmm.System by the given parmed selection [amber-syntax]_.
@@ -175,7 +195,7 @@ def freeze_atoms(structure, system, freeze_selection=":LIG", **kwargs):
     logger.info("Freezing selection '{}' ({} atoms) on {}".format(freeze_selection, len(mask_idx), system))
 
     utils.atomidx_to_atomlist(structure, mask_idx)
-    system = utils.zero_masses(system, mask_idx)
+    system = zero_masses(system, mask_idx)
     return system
 
 
@@ -263,7 +283,7 @@ def freeze_radius(
                                                                         freeze_center, system))
 
     utils.atomidx_to_atomlist(structure, freeze_idx)
-    system = utils.zero_masses(system, freeze_idx)
+    system = zero_masses(system, freeze_idx)
     return system
 
 

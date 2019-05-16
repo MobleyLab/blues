@@ -1,8 +1,12 @@
 import pytest
 import parmed
 import fnmatch
+import numpy
+from openmmtools.cache import ContextCache
+from openmmtools.states import ThermodynamicState
 from blues.systemfactories import *
 from simtk.openmm import app
+from simtk import unit
 
 
 @pytest.fixture(scope='session')
@@ -23,12 +27,67 @@ def tol_atom_indices(structure):
     atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
     return atom_indices
 
-
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def system(structure, system_cfg):
     system = structure.createSystem(**system_cfg)
     return system
 
+@pytest.fixture(scope='function')
+def context(system, structure):
+    context_cache = ContextCache()
+    thermodynamic_state = ThermodynamicState(system, 300*unit.kelvin)
+    context, integrator = context_cache.get_context(thermodynamic_state)
+    context.setPositions(structure.positions)
+    return context
+
+### Utils ###
+def test_amber_atom_selections(structure, tol_atom_indices):
+    atom_indices = utils.amber_selection_to_atomidx(structure, ':LIG')
+
+    print('Testing AMBER selection parser')
+    assert isinstance(atom_indices, list)
+    assert len(atom_indices) == len(tol_atom_indices)
+
+def test_amber_selection_check(structure, caplog):
+    print('Testing AMBER selection check')
+    assert True == utils.check_amber_selection(structure, ':LIG')
+    assert True == utils.check_amber_selection(structure, '@1')
+    assert False == utils.check_amber_selection(structure, ':XYZ')
+    assert False == utils.check_amber_selection(structure, '@999')
+
+def test_atomidx_to_atomlist(structure, tol_atom_indices):
+    print('Testing atoms from AMBER selection with parmed.Structure')
+    atom_list = utils.atomidx_to_atomlist(structure, tol_atom_indices)
+    atom_selection = [structure.atoms[i] for i in tol_atom_indices]
+    assert atom_selection == atom_list
+
+def test_get_masses(structure, tol_atom_indices):
+    print('Testing get masses from a Topology')
+    masses, totalmass = utils.getMasses(tol_atom_indices, structure.topology)
+    total = numpy.sum(numpy.vstack(masses))
+    assert total == totalmass._value
+
+def test_get_center_of_mass(structure, tol_atom_indices):
+    print('Testing get center of mass')
+    masses, totalmass = utils.getMasses(tol_atom_indices, structure.topology)
+    coordinates = numpy.array(structure.positions._value, numpy.float32)[tol_atom_indices]
+    com = utils.getCenterOfMass(coordinates, masses)
+    assert len(com) == 3
+
+def test_print_host_info(context, caplog):
+    print('Testing Host Printout')
+    with caplog.at_level(logging.INFO):
+        utils.print_host_info(context)
+        assert 'version' in caplog.text
+
+def test_saveContextFrame(context, structure, caplog):
+    print('Testing Save Context Frame')
+    filename = 'testContext.pdb'
+    with caplog.at_level(logging.INFO):
+        utils.saveContextFrame(context, structure.topology, filename)
+        assert 'Saving Frame to' in caplog.text
+
+### SystemFactories ###
 
 def test_generateAlchSystem(structure, system, tol_atom_indices):
     # Create the OpenMM system
@@ -60,6 +119,15 @@ def test_restrain_postions(structure, system):
     # Check that it has added the CustomExternalForce
     assert isinstance(restr[-1], openmm.CustomExternalForce)
 
+def test_zero_masses(system, tol_atom_indices):
+    print('Testing zero masses')
+    masses = [system.getParticleMass(i)._value for i in tol_atom_indices]
+    massless_system = zero_masses(system, tol_atom_indices)
+    massless = [massless_system.getParticleMass(i)._value for i in tol_atom_indices]
+
+    # Check that masses have been zeroed
+    assert massless != masses
+    assert all(m == 0 for m in massless)
 
 def test_freeze_atoms(structure, system, tol_atom_indices):
     print('Testing freeze_atoms')

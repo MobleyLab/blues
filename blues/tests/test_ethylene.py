@@ -24,7 +24,7 @@ def runEthyleneTest(dir, N):
     collision_rate = 1 / unit.picoseconds
     timestep = 1.0 * unit.femtoseconds
     n_steps = 20
-    nIter = 250
+    nIter = 100
     reportInterval = 5
     alchemical_atoms = [2, 3, 4, 5, 6, 7]
     context_cache = cache.ContextCache()
