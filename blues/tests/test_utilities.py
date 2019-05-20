@@ -139,12 +139,13 @@ def test_freeze_atoms(structure, system, tol_atom_indices):
     assert massless != masses
     assert all(m == 0 for m in massless)
 
-def test_freeze_radius(system_cfg):
+
+def test_freeze_radius(structure, system_cfg, caplog):
     print('Testing freeze_radius')
-    freeze_cfg = {'freeze_center': ':LIG', 'freeze_solvent': ':Cl-', 'freeze_distance': 3.0 * unit.angstroms}
+    freeze_cfg = {'freeze_center': ':LIG', 'freeze_solvent': ':Cl-', 'freeze_distance': 100.0 * unit.angstroms}
     # Setup toluene-T4 lysozyme system
-    prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
-    inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
+    prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')
+    inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
     structure = parmed.load_file(prmtop, xyz=inpcrd)
     atom_indices = utils.atomIndexfromTop('LIG', structure.topology)
     system = structure.createSystem(**system_cfg)
@@ -167,6 +168,32 @@ def test_freeze_radius(system_cfg):
     freeze_idx = set(range(system.getNumParticles())) - set(site_idx)
     massless = [frzn_sys.getParticleMass(i)._value for i in freeze_idx]
     assert all(m == 0 for m in massless)
+
+    # Check number of frozen atoms is equal to center
+    system = structure.createSystem(**system_cfg)
+    with caplog.at_level(logging.ERROR):
+         frzn_all = freeze_radius(structure, system, freeze_solvent=':WAT', freeze_distance=1*unit.angstrom)
+         assert 'ERROR' in caplog.text
+
+    # Check all frozen error
+    system = structure.createSystem(**system_cfg)
+    with caplog.at_level(logging.ERROR):
+         frzn_all = freeze_radius(structure, system, freeze_solvent=':WAT', freeze_distance=0*unit.angstrom)
+         assert 'ERROR' in caplog.text
+
+    # Check freeze threshold error
+    system = structure.createSystem(**system_cfg)
+    with caplog.at_level(logging.ERROR):
+         frzn_all = freeze_radius(structure, system, freeze_solvent=':WAT', freeze_distance=2*unit.angstrom)
+         assert 'ERROR' in caplog.text
+
+    # Check freeze threshold error
+    system = structure.createSystem(**system_cfg)
+    with caplog.at_level(logging.WARNING):
+         frzn_sys = freeze_radius(structure, system, freeze_solvent=':Cl-', freeze_distance=20*unit.angstrom)
+         assert 'WARNING' in caplog.text
+
+
 
 def test_addBarostat(system):
     print('Testing MonteCarloBarostat')
