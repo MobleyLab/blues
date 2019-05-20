@@ -249,7 +249,7 @@ def print_host_info(context):
     # OpenMM platform information
     mmver = openmm.version.version
     mmplat = context.getPlatform()
-    msg = 'OpenMM({}) simulation generated for {} platform\n'.format(mmver, mmplat.getName())
+    msg = 'OpenMM({}) Context generated for {} platform\n'.format(mmver, mmplat.getName())
 
     # Host information
     for k, v in uname()._asdict().items():
@@ -259,7 +259,7 @@ def print_host_info(context):
     for prop in mmplat.getPropertyNames():
         val = mmplat.getPropertyValue(context, prop)
         msg += '{} = {} \n'.format(prop, val)
-    logger.info(msg)
+    print(msg)
 
 
 def get_data_filename(package_root, relative_path):

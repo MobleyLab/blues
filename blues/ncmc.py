@@ -318,7 +318,6 @@ class NCMCMove(MCMCMove):
                 alch_lambda = integrator.getGlobalVariableByName('lambda')
                 if alch_lambda == 0.5:
                     # Propose perturbed positions. Modifying the reference changes the sampler state.
-                    # print('Proposing move at lambda = %s...' %alch_lambda)
                     sampler_state.update_from_context(context)
                     proposed_positions = self._propose_positions(sampler_state.positions[self.atom_subset])
                     # Compute the energy of the proposed positions.
