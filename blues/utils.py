@@ -261,63 +261,6 @@ def print_host_info(context):
         msg += '{} = {} \n'.format(prop, val)
     logger.info(msg)
 
-def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
-    """
-    Calculates the number of NCMC switching steps.
-
-    Parameters
-    ----------
-    nstepsNC : int
-        The number of NCMC switching steps
-    nprop : int, default=1
-        The number of propagation steps per NCMC switching steps
-    propLambda : float, default=0.3
-        The lambda values in which additional propagation steps will be added
-        or 0.5 +/- propLambda. If 0.3, this will add propgation steps at lambda
-        values 0.2 to 0.8.
-
-    """
-    ncmc_parameters = {}
-    # Make sure provided NCMC steps is even.
-    if (nstepsNC % 2) != 0:
-        rounded_val = nstepsNC & ~1
-        msg = 'nstepsNC=%i must be even for symmetric protocol.' % (nstepsNC)
-        if rounded_val:
-            logger.warning(msg + ' Setting to nstepsNC=%i' % rounded_val)
-            nstepsNC = rounded_val
-        else:
-            logger.error(msg)
-            sys.exit(1)
-    # Calculate the total number of lambda switching steps
-    lambdaSteps = nstepsNC / (2 * (nprop * propLambda + 0.5 - propLambda))
-    if int(lambdaSteps) % 2 == 0:
-        lambdaSteps = int(lambdaSteps)
-    else:
-        lambdaSteps = int(lambdaSteps) + 1
-
-    # Calculate number of lambda steps inside/outside region with extra propgation steps
-    in_portion = (propLambda) * lambdaSteps
-    out_portion = (0.5 - propLambda) * lambdaSteps
-    in_prop = int(nprop * (2 * floor(in_portion)))
-    out_prop = int((2 * ceil(out_portion)))
-    propSteps = int(in_prop + out_prop)
-
-    if propSteps != nstepsNC:
-        logger.warn("nstepsNC=%s is incompatible with prop_lambda=%s and nprop=%s." % (nstepsNC, propLambda, nprop))
-        logger.warn("Changing NCMC protocol to %s lambda switching within %s total propagation steps." % (lambdaSteps,
-                                                                                                          propSteps))
-        nstepsNC = lambdaSteps
-
-    moveStep = int(nstepsNC / 2)
-    ncmc_parameters = {
-        'nstepsNC': nstepsNC,
-        'propSteps': propSteps,
-        'moveStep': moveStep,
-        'nprop': nprop,
-        'propLambda': propLambda
-    }
-
-    return ncmc_parameters
 
 def get_data_filename(package_root, relative_path):
     """Get the full path to one of the reference files in testsystems.
