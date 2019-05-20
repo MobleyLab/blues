@@ -120,7 +120,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                     integrator.step(10)
                     stepsToGo -= 10
                 integrator.step(stepsToGo)
-                self.currentStep += stepsToGo
+                self.currentStep += nextSteps
 
                 if anyReport:
                     reports = []
@@ -313,7 +313,7 @@ class NCMCMove(MCMCMove):
                     integrator.step(10)
                     stepsToGo -= 10
                 integrator.step(stepsToGo)
-                self.currentStep += stepsToGo
+                self.currentStep += nextSteps
 
                 alch_lambda = integrator.getGlobalVariableByName('lambda')
                 if alch_lambda == 0.5:
