@@ -87,12 +87,9 @@ install:
   #  Use beta version for partial bond orders
   - conda install -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
   - conda install -q -c openeye/label/Orion -c omnia oeommtools packmol
-  - conda info oeommtools
-  - conda info numexpr=2.6.6
 
   # Build and install package
-  - conda build --python=${PYTHON_VER} devtools/conda-recipe
-  - conda info blues
+  - conda build -q --python=${PYTHON_VER} devtools/conda-recipe
   - conda install --use-local -q ${PKG_NAME}
   - conda list
 
