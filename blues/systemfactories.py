@@ -243,41 +243,32 @@ def freeze_radius(
     site_idx = utils.amber_selection_to_atomidx(structure, selection)
     # Invert that selection to freeze everything but the binding site.
     freeze_idx = set(range(N_atoms)) - set(site_idx)
+    center_idx = utils.amber_selection_to_atomidx(structure, freeze_center)
+
+    freeze_threshold = 0.90
+    freeze_warning = 0.75
+    freeze_ratio = len(freeze_idx) / N_atoms
+
+    # Ensure that the freeze selection is larger than the center selection of atoms
+    if len(site_idx) == len(center_idx):
+        err = "%i unfrozen atoms is equal to the number of atoms used as the selection center '%s' (%i atoms). Check your atom selection." % (len(site_idx), freeze_center, len(center_idx))
+        logger.error(err)
 
     # Check if freeze selection has selected all atoms
-    if len(freeze_idx) == N_atoms:
+    elif len(freeze_idx) == N_atoms:
         err = 'All %i atoms appear to be selected for freezing. Check your atom selection.' % len(freeze_idx)
         logger.error(err)
-        sys.exit(1)
 
-    freeze_threshold = 0.98
-    if len(freeze_idx) / N_atoms == freeze_threshold:
+    elif freeze_ratio >= freeze_threshold:
         err = '%.0f%% of your system appears to be selected for freezing. Check your atom selection' % (
             100 * freeze_threshold)
         logger.error(err)
-        sys.exit(1)
 
-    # Ensure that the freeze selection is larger than the center selection of atoms
-    center_idx = utils.amber_selection_to_atomidx(structure, freeze_center)
-    if len(site_idx) <= len(center_idx):
-        err = "%i unfrozen atoms is less than (or equal to) the number of atoms used as the selection center '%s' (%i atoms). Check your atom selection." % (len(site_idx), freeze_center, len(center_idx))
-        logger.error(err)
-        sys.exit(1)
-
-    freeze_warning = 0.80
-    if len(freeze_idx) / N_atoms == freeze_warning:
+    elif freeze_warning <= freeze_ratio <= freeze_threshold:
         warn = '%.0f%% of your system appears to be selected for freezing. This may cause unexpected behaviors.' % (
-            100 * freeze_warning)
-        logger.warm(warn)
-        sys.exit(1)
+            100 * freeze_ratio)
+        logger.warning(warn)
 
-    # Ensure that the freeze selection is larger than the center selection point
-    center_idx = utils.amber_selection_to_atomidx(structure, freeze_center)
-    if len(site_idx) <= len(center_idx):
-        err = "%i unfrozen atoms is less than (or equal to) the number of atoms from the selection center '%s' (%i atoms). Check your atom selection." % (
-            len(site_idx), freeze_center, len(center_idx))
-        logger.error(err)
-        sys.exit(1)
 
     logger.info("Freezing {} atoms {} Angstroms from '{}' on {}".format(len(freeze_idx), freeze_distance,
                                                                         freeze_center, system))
