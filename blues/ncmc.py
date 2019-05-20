@@ -14,6 +14,7 @@ from simtk import unit
 from blues import utils
 from blues.integrators import AlchemicalExternalLangevinIntegrator
 from blues.systemfactories import generateAlchSystem
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                  collision_rate=10.0 / unit.picoseconds,
                  n_steps=1000,
                  reassign_velocities=False,
-                 reporters=None,
+                 reporters=[],
                  **kwargs):
         super(ReportLangevinDynamicsMove, self).__init__(self, **kwargs)
         self.n_steps = n_steps
@@ -47,7 +48,6 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
             getVelocities=True,
             getEnergy=True,
             enforcePeriodicBox=thermodynamic_state.is_periodic)
-
         self.initial_positions = context_state.getPositions()
         self.initial_energy = thermodynamic_state.reduced_potential(context)
         self._usesPBC = thermodynamic_state.is_periodic
@@ -140,7 +140,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
 
         except Exception as e:
             print(e)
-            # traceback.print_exc()
+            traceback.print_exc()
             # Catches particle positions becoming nan during integration.
         else:
             # We get also velocities here even if we don't need them because we
@@ -152,21 +152,21 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                 getEnergy=True,
                 enforcePeriodicBox=thermodynamic_state.is_periodic)
 
-        # Subclasses can read here info from the context to update internal statistics.
-        self._after_integration(context, thermodynamic_state)
+            # Subclasses can read here info from the context to update internal statistics.
+            self._after_integration(context, thermodynamic_state)
 
-        # Updated sampler state.
-        # This is an optimization around the fact that Collective Variables are not a part of the State,
-        # but are a part of the Context. We do this call twice to minimize duplicating information fetched from
-        # the State.
-        # Update everything but the collective variables from the State object
-        sampler_state.update_from_context(context_state,
-                                          ignore_collective_variables=True)
-        # Update only the collective variables from the Context
-        sampler_state.update_from_context(context,
-                                          ignore_positions=True,
-                                          ignore_velocities=True,
-                                          ignore_collective_variables=False)
+            # Updated sampler state.
+            # This is an optimization around the fact that Collective Variables are not a part of the State,
+            # but are a part of the Context. We do this call twice to minimize duplicating information fetched from
+            # the State.
+            # Update everything but the collective variables from the State object
+            sampler_state.update_from_context(context_state,
+                                              ignore_collective_variables=True)
+            # Update only the collective variables from the Context
+            sampler_state.update_from_context(context,
+                                              ignore_positions=True,
+                                              ignore_velocities=True,
+                                              ignore_collective_variables=False)
 
 
 class NCMCMove(MCMCMove):
@@ -187,9 +187,9 @@ class NCMCMove(MCMCMove):
         self.n_accepted = 0
         self.n_proposed = 0
         self.logp_accept = 0
-        self.initial_energy = None
+        self.initial_energy = 0
         self.initial_positions = None
-        self.final_energy = None
+        self.final_energy = 0
         self.final_positions = None
         self.proposed_positions = None
         self.atom_subset = atom_subset
@@ -351,16 +351,16 @@ class NCMCMove(MCMCMove):
                 getEnergy=True,
                 enforcePeriodicBox=thermodynamic_state.is_periodic)
 
-        self._after_integration(context, thermodynamic_state)
-        # Update everything but the collective variables from the State object
-        sampler_state.update_from_context(context_state,
-                                          ignore_collective_variables=True,
-                                          ignore_velocities=True)
-        # Update only the collective variables from the Context
-        sampler_state.update_from_context(context,
-                                          ignore_positions=True,
-                                          ignore_velocities=True,
-                                          ignore_collective_variables=False)
+            self._after_integration(context, thermodynamic_state)
+            # Update everything but the collective variables from the State object
+            sampler_state.update_from_context(context_state,
+                                              ignore_collective_variables=True,
+                                              ignore_velocities=True)
+            # Update only the collective variables from the Context
+            sampler_state.update_from_context(context,
+                                              ignore_positions=True,
+                                              ignore_velocities=True,
+                                              ignore_collective_variables=False)
 
     @abc.abstractmethod
     def _propose_positions(self, positions):

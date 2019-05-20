@@ -2,6 +2,7 @@ import pytest
 import parmed
 import fnmatch
 import numpy
+import os
 from openmmtools.cache import ContextCache
 from openmmtools.states import ThermodynamicState
 from blues.systemfactories import *
@@ -80,13 +81,16 @@ def test_print_host_info(context, caplog):
         utils.print_host_info(context)
         assert 'version' in caplog.text
 
-def test_saveContextFrame(context, structure, caplog):
+def test_saveContextFrame(context, structure, caplog, tmpdir):
     print('Testing Save Context Frame')
     filename = 'testContext.pdb'
     with caplog.at_level(logging.INFO):
         utils.saveContextFrame(context, structure.topology, filename)
         assert 'Saving Frame to' in caplog.text
-
+    exists = os.path.isfile('testContext.pdb')
+    assert exists == True
+    if exists:
+        os.remove(filename)
 ### SystemFactories ###
 
 def test_generateAlchSystem(structure, system, tol_atom_indices):

@@ -10,10 +10,13 @@ from mdtraj.utils import unitcell
 from parmed import unit as u
 from parmed.geometry import box_vectors_to_lengths_and_angles
 from simtk.openmm import app
+from simtk import openmm
+import math
 
 import blues._version
 from blues.formats import *
-
+VELUNIT = u.angstrom / u.picosecond
+FRCUNIT = u.kilocalorie_per_mole / u.angstrom
 
 def _check_mode(m, modes):
     """
@@ -62,11 +65,11 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
         methodName = levelName.lower()
 
     if hasattr(logging, levelName):
-        logging.warn('{} already defined in logging module'.format(levelName))
+        logging.warning('{} already defined in logging module'.format(levelName))
     if hasattr(logging, methodName):
-        logging.warn('{} already defined in logging module'.format(methodName))
+        logging.warning('{} already defined in logging module'.format(methodName))
     if hasattr(logging.getLoggerClass(), methodName):
-        logging.warn('{} already defined in logger class'.format(methodName))
+        logging.warning('{} already defined in logger class'.format(methodName))
 
     # This method was inspired by the answers to Stack Overflow post
     # http://stackoverflow.com/q/2183233/2988730, especially
@@ -92,7 +95,7 @@ def init_logger(logger, level=logging.INFO, stream=True, outfname=time.strftime(
     logger : logging.getLogger()
         The root logger object if it has been created already.
     level : logging.<LEVEL>
-        Valid options for <LEVEL> would be DEBUG, INFO, WARNING, ERROR, CRITICAL.
+        Valid options for <LEVEL> would be DEBUG, INFO, warningING, ERROR, CRITICAL.
     stream : bool, default = True
         If True, the logger will also stream information to sys.stdout as well
         as the output file.
@@ -407,7 +410,7 @@ class BLUESStateDataStorage(app.StateDataReporter):
                 if system.getParticleMass(i) > 0 * unit.dalton:
                     dof += 3
             dof -= system.getNumConstraints()
-            if any(type(system.getForce(i)) == mm.CMMotionRemover for i in range(system.getNumForces())):
+            if any(type(system.getForce(i)) == openmm.CMMotionRemover for i in range(system.getNumForces())):
                 dof -= 3
             self._dof = dof
         if self._density:
