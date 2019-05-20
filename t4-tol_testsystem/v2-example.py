@@ -81,6 +81,7 @@ state_reporter1 = BLUESStateDataStorage(logger,
                                         step=True,
                                         speed=True,
                                         progress=True,
+                                        remainingTime=True,
                                         totalSteps=int(n_steps * nIter))
 
 # Iniitialize our Move set

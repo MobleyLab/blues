@@ -259,7 +259,7 @@ def print_host_info(context):
     for prop in mmplat.getPropertyNames():
         val = mmplat.getPropertyValue(context, prop)
         msg += '{} = {} \n'.format(prop, val)
-    print(msg)
+    logger.info(msg)
 
 
 def get_data_filename(package_root, relative_path):
