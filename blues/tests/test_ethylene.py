@@ -9,7 +9,7 @@ from openmmtools.states import SamplerState, ThermodynamicState
 from simtk import openmm, unit
 
 from blues import utils
-from blues.reporters import BLUESStateDataStorage, NetCDF4Storage
+from blues.storage import BLUESStateDataStorage, NetCDF4Storage
 from blues.ncmc import RandomLigandRotationMove, ReportLangevinDynamicsMove, BLUESSampler
 
 logger = logging.getLogger(__name__)
@@ -27,39 +27,34 @@ def runEthyleneTest(dir, N):
     nIter = 100
     reportInterval = 5
     alchemical_atoms = [2, 3, 4, 5, 6, 7]
-    context_cache = cache.ContextCache()
+    platform = openmm.Platform.getPlatformByName('CPU')
+    context_cache = cache.ContextCache(platform)
 
     # Load a Parmed Structure for the Topology and create our openmm.Simulation
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     structure = parmed.load_file(structure_pdb)
 
     nc_reporter = NetCDF4Storage(filename + '_MD.nc', reportInterval)
-    state_reporter = BLUESStateDataStorage(logger,
-                                           reportInterval,
-                                           title='md',
-                                           step=True,
-                                           speed=True,
-                                           totalSteps=int(n_steps * nIter))
+    state_reporter = BLUESStateDataStorage(
+        logger, reportInterval, title='md', step=True, speed=True, totalSteps=int(n_steps * nIter))
     nc_reporter1 = NetCDF4Storage(filename + '_NCMC.nc', reportInterval)
-    state_reporter1 = BLUESStateDataStorage(logger,
-                                            reportInterval,
-                                            title='ncmc',
-                                            step=True,
-                                            speed=True,
-                                            totalSteps=int(n_steps * nIter))
+    state_reporter1 = BLUESStateDataStorage(
+        logger, reportInterval, title='ncmc', step=True, speed=True, totalSteps=int(n_steps * nIter))
 
     # Iniitialize our Move set
-    rot_move = RandomLigandRotationMove(timestep,
-                                        n_steps,
-                                        atom_subset=alchemical_atoms,
-                                        context_cache=context_cache,
-                                        reporters=[nc_reporter1, state_reporter1])
-    langevin_move = ReportLangevinDynamicsMove(timestep,
-                                               collision_rate,
-                                               n_steps,
-                                               reassign_velocities=True,
-                                               context_cache=context_cache,
-                                               reporters=[nc_reporter, state_reporter])
+    rot_move = RandomLigandRotationMove(
+        timestep,
+        n_steps,
+        atom_subset=alchemical_atoms,
+        context_cache=context_cache,
+        reporters=[nc_reporter1, state_reporter1])
+    langevin_move = ReportLangevinDynamicsMove(
+        timestep,
+        collision_rate,
+        n_steps,
+        reassign_velocities=True,
+        context_cache=context_cache,
+        reporters=[nc_reporter, state_reporter])
 
     # Load our OpenMM System and create Integrator
     system_xml = utils.get_data_filename('blues', 'tests/data/ethylene_system.xml')
@@ -70,13 +65,14 @@ def runEthyleneTest(dir, N):
     thermodynamic_state = ThermodynamicState(system=system, temperature=temperature)
     sampler_state = SamplerState(positions=structure.positions.in_units_of(unit.nanometers))
 
-    sampler = BLUESSampler(atom_subset=alchemical_atoms,
-                           thermodynamic_state=thermodynamic_state,
-                           sampler_state=sampler_state,
-                           ncmc_move=rot_move,
-                           dynamics_move=langevin_move,
-                           platform=None,
-                           topology=structure.topology)
+    sampler = BLUESSampler(
+        atom_subset=alchemical_atoms,
+        thermodynamic_state=thermodynamic_state,
+        sampler_state=sampler_state,
+        ncmc_move=rot_move,
+        dynamics_move=langevin_move,
+        platform=None,
+        topology=structure.topology)
     sampler.run(nIter)
 
     return filename
