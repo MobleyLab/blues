@@ -36,11 +36,6 @@ matrix:
     #      - PYTHON_VER="3.7"
 
     - os: linux
-      python: 3.5
-      env:
-          - CONDA_PY="35"
-          - PYTHON_VER="3.5"
-    - os: linux
       python: 3.6
       env:
           - CONDA_PY="36"
