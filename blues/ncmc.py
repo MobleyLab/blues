@@ -20,26 +20,136 @@ logger = logging.getLogger(__name__)
 
 
 class ReportLangevinDynamicsMove(LangevinDynamicsMove):
-    """Run Langevin Dynamics and store coordinates.
+    """Langevin dynamics segment as a (pseudo) Monte Carlo move.
 
-    This class modiefies the base class so that coordinates are stored at the
-    desired intervals.
+    This move class allows the attachment of a reporter for storing the data from running this segment of dynamics. This move assigns a velocity from the Maxwell-Boltzmann distribution and executes a number of Maxwell-Boltzmann steps to propagate dynamics. This is not a *true* Monte Carlo move, in that the generation of the correct distribution is only exact in the limit of infinitely small timestep; in other words, the discretization error is assumed to be negligible. Use HybridMonteCarloMove instead to ensure the exact distribution is generated.
+
+    .. warning::
+        No Metropolization is used to ensure the correct phase space
+        distribution is sampled. This means that timestep-dependent errors
+        will remain uncorrected, and are amplified with larger timesteps.
+        Use this move at your own risk!
+
+    Parameters
+    ----------
+    n_steps : int, optional
+        The number of integration timesteps to take each time the
+        move is applied (default is 1000).
+    timestep : simtk.unit.Quantity, optional
+        The timestep to use for Langevin integration
+        (time units, default is 1*simtk.unit.femtosecond).
+    collision_rate : simtk.unit.Quantity, optional
+        The collision rate with fictitious bath particles
+        (1/time units, default is 10/simtk.unit.picoseconds).
+    reassign_velocities : bool, optional
+        If True, the velocities will be reassigned from the Maxwell-Boltzmann
+        distribution at the beginning of the move (default is False).
+    context_cache : openmmtools.cache.ContextCache, optional
+        The ContextCache to use for Context creation. If None, the global cache
+        openmmtools.cache.global_context_cache is used (default is None).
+    reporters : list
+        A list of the storage classes inteded for reporting the simulation data.
+        This can be either blues.storage.(NetCDF4Storage/BLUESStateDataStorage).
+
+    Attributes
+    ----------
+    n_steps : int
+        The number of integration timesteps to take each time the move
+        is applied.
+    timestep : simtk.unit.Quantity
+        The timestep to use for Langevin integration (time units).
+    collision_rate : simtk.unit.Quantity
+        The collision rate with fictitious bath particles (1/time units).
+    reassign_velocities : bool
+        If True, the velocities will be reassigned from the Maxwell-Boltzmann
+        distribution at the beginning of the move.
+    context_cache : openmmtools.cache.ContextCache
+        The ContextCache to use for Context creation. If None, the global
+        cache openmmtools.cache.global_context_cache is used.
+    reporters : list
+        A list of the storage classes inteded for reporting the simulation data.
+        This can be either blues.storage.(NetCDF4Storage/BLUESStateDataStorage).
+
+    Examples
+    --------
+    First we need to create the thermodynamic state and the sampler
+    state to propagate. Here we create an alanine dipeptide system
+    in vacuum.
+
+    >>> from simtk import unit
+    >>> from openmmtools import testsystems
+    >>> from openmmtools.states import SamplerState, ThermodynamicState
+    >>> test = testsystems.AlanineDipeptideVacuum()
+    >>> sampler_state = SamplerState(positions=test.positions)
+    >>> thermodynamic_state = ThermodynamicState(system=test.system, temperature=298*unit.kelvin)
+
+    Create reporters for storing our simulation data.
+
+    >>> from blues.storage import NetCDF4Storage, BLUESStateDataStorage
+    nc_storage = NetCDF4Storage('test-md.nc',
+                                reportInterval=5,
+                                crds=True, vels=True, frcs=True)
+    state_storage = BLUESStateDataStorage('test.log',
+                                          reportInterval=5,
+                                          step=True, time=True,
+                                          potentialEnergy=True,
+                                          kineticEnergy=True,
+                                          totalEnergy=True,
+                                          temperature=True,
+                                          volume=True,
+                                          density=True,
+                                          progress=True,
+                                          remainingTime=True,
+                                          speed=True,
+                                          elapsedTime=True,
+                                          systemMass=True,
+                                          totalSteps=10)
+
+    Create a Langevin move with default parameters
+
+    >>> move = ReportLangevinDynamicsMove()
+
+    or create a Langevin move with specified parameters.
+
+    >>> move = ReportLangevinDynamicsMove(timestep=0.5*unit.femtoseconds,
+                                          collision_rate=20.0/unit.picoseconds, n_steps=10,
+                                          reporters=[nc_storage, state_storage])
+
+    Perform one update of the sampler state. The sampler state is updated
+    with the new state.
+
+    >>> move.apply(thermodynamic_state, sampler_state)
+    >>> np.allclose(sampler_state.positions, test.positions)
+    False
+
+    The same move can be applied to a different state, here an ideal gas.
+
+    >>> test = testsystems.IdealGas()
+    >>> sampler_state = SamplerState(positions=test.positions)
+    >>> thermodynamic_state = ThermodynamicState(system=test.system,
+    ...                                          temperature=298*unit.kelvin)
+    >>> move.apply(thermodynamic_state, sampler_state)
+    >>> np.allclose(sampler_state.positions, test.positions)
+    False
+
     """
 
     def __init__(self,
+                 n_steps=1000,
                  timestep=1.0 * unit.femtosecond,
                  collision_rate=10.0 / unit.picoseconds,
-                 n_steps=1000,
                  reassign_velocities=False,
+                 context_cache=None
                  reporters=[],
                  **kwargs):
         super(ReportLangevinDynamicsMove, self).__init__(self, **kwargs)
         self.n_steps = n_steps
-        self.resassign_velocities = reassign_velocities
         self.timestep = timestep
         self.collision_rate = collision_rate
+        self.resassign_velocities = reassign_velocities
+        self.context_cache = context_cache
+        self.reporters = list(reporters)
         self.currentStep = 0
-        self.reporters = reporters
 
     def _before_integration(self, context, thermodynamic_state):
         """Execute code after Context creation and before integration."""
@@ -70,8 +180,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
     def apply(self, thermodynamic_state, sampler_state):
         """Propagate the state through the integrator.
 
-        This updates the SamplerState after the integration. It also logs
-        benchmarking information through the utils.Timer class.
+        This updates the SamplerState after the integration.
 
         Parameters
         ----------
@@ -170,20 +279,63 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
 
 
 class NCMCMove(MCMCMove):
-    """Base Move class.
+    """A general NCMC move that applies an alchemical integrator.
 
-    Move provides methods for calculating properties and applying the move
-    on the set of atoms being perturbed in the NCMC simulation.
+    This class is intended to be inherited by NCMCMoves that need to alchemically modify and perturb part of the system. The child class has to implement the _propose_positions method. Reporters can be attached to report
+    data from the NCMC part of the simulation.
+
+    You can decide to override _before_integration() and _after_integration()
+    to execute some code at specific points of the workflow, for example to
+    read data from the Context before the it is destroyed.
+
+    Parameters
+    ----------
+    n_steps : int, optional
+        The number of integration timesteps to take each time the
+        move is applied (default is 1000).
+    timestep : simtk.unit.Quantity, optional
+        The timestep to use for Langevin integration
+        (time units, default is 1*simtk.unit.femtosecond).
+    atom_subset : slice or list of int, optional
+        If specified, the move is applied only to those atoms specified by these
+        indices. If None, the move is applied to all atoms (default is None).
+    context_cache : openmmtools.cache.ContextCache, optional
+        The ContextCache to use for Context creation. If None, the global cache
+        openmmtools.cache.global_context_cache is used (default is None).
+    reporters : list
+        A list of the storage classes inteded for reporting the simulation data.
+        This can be either blues.storage.(NetCDF4Storage/BLUESStateDataStorage).
+
+    Attributes
+    ----------
+    n_steps : int
+        The number of integration timesteps to take each time the move
+        is applied.
+    timestep : simtk.unit.Quantity
+        The timestep to use for Langevin integration (time units).
+    atom_subset : slice or list of int, optional
+        If specified, the move is applied only to those atoms specified by these
+        indices. If None, the move is applied to all atoms (default is None).
+    context_cache : openmmtools.cache.ContextCache
+        The ContextCache to use for Context creation. If None, the global
+        cache openmmtools.cache.global_context_cache is used.
+    reporters : list
+        A list of the storage classes inteded for reporting the simulation data.
+        This can be either blues.storage.(NetCDF4Storage/BLUESStateDataStorage).
     """
 
     def __init__(self,
-                 timestep,
                  n_steps,
+                 timestep,
                  atom_subset=None,
                  context_cache=None,
                  reporters=[]):
         self.timestep = timestep
         self.n_steps = n_steps
+        self.atom_subset = atom_subset
+        self.context_cache = context_cache
+        self.reporters = list(reporters)
+
         self.n_accepted = 0
         self.n_proposed = 0
         self.logp_accept = 0
@@ -192,10 +344,8 @@ class NCMCMove(MCMCMove):
         self.final_energy = 0
         self.final_positions = None
         self.proposed_positions = None
-        self.atom_subset = atom_subset
-        self.context_cache = context_cache
         self.currentStep = 0
-        self.reporters = reporters
+
 
     @property
     def statistics(self):
@@ -383,9 +533,109 @@ class NCMCMove(MCMCMove):
 
 
 class RandomLigandRotationMove(NCMCMove):
-    """Propose a random rotation about the center of mass.
+    """An NCMC move which proposes random rotations.
 
-    This class will propose a random rotation about the ligand's center of mass.
+    This class will propose a random rotation (as a rigid body) using the center of mass of the selected atoms. This class does not metropolize the proposed moves. Reporters can be attached to record the ncmc simulation data, mostly useful for debugging by storing coordinates of the proposed moves or monitoring the ncmc simulation progression by attaching a state reporter.
+
+    Parameters
+    ----------
+    n_steps : int, optional
+        The number of integration timesteps to take each time the
+        move is applied (default is 1000).
+    timestep : simtk.unit.Quantity, optional
+        The timestep to use for Langevin integration
+        (time units, default is 1*simtk.unit.femtosecond).
+    atom_subset : slice or list of int, optional
+        If specified, the move is applied only to those atoms specified by these
+        indices. If None, the move is applied to all atoms (default is None).
+    context_cache : openmmtools.cache.ContextCache, optional
+        The ContextCache to use for Context creation. If None, the global cache
+        openmmtools.cache.global_context_cache is used (default is None).
+    reporters : list
+        A list of the storage classes inteded for reporting the simulation data.
+        This can be either blues.storage.(NetCDF4Storage/BLUESStateDataStorage).
+
+    Attributes
+    ----------
+    n_steps : int
+        The number of integration timesteps to take each time the move
+        is applied.
+    timestep : simtk.unit.Quantity
+        The timestep to use for Langevin integration (time units).
+    atom_subset : slice or list of int, optional
+        If specified, the move is applied only to those atoms specified by these
+        indices. If None, the move is applied to all atoms (default is None).
+    context_cache : openmmtools.cache.ContextCache
+        The ContextCache to use for Context creation. If None, the global
+        cache openmmtools.cache.global_context_cache is used.
+    reporters : list
+        A list of the storage classes inteded for reporting the simulation data.
+        This can be either blues.storage.(NetCDF4Storage/BLUESStateDataStorage).
+
+    Examples
+    --------
+    First we need to create the thermodynamic state, alchemical thermodynamic state,  and the sampler state to propagate. Here we create a toy system of a charged ethylene molecule in between two charged particles.
+
+    >>> from simtk import unit
+    >>> from openmmtools import testsystems, alchemy
+    >>> from openmmtools.states import SamplerState, ThermodynamicState
+    >>> from blues.systemfactories import generateAlchSystem
+    >>> from blues import utils
+
+    >>> structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
+    >>> structure = parmed.load_file(structure_pdb)
+    >>> system_xml = utils.get_data_filename('blues', 'tests/data/ethylene_system.xml')
+        with open(system_xml, 'r') as infile:
+            xml = infile.read()
+            system = openmm.XmlSerializer.deserialize(xml)
+    >>> thermodynamic_state = ThermodynamicState(system=system, temperature=200*unit.kelvin)
+    >>> sampler_state = SamplerState(positions=structure.positions.in_units_of(unit.nanometers))
+    >>> alchemical_atoms = [2, 3, 4, 5, 6, 7]
+    >>> alch_system = generateAlchSystem(thermodynamic_state.get_system(), alchemical_atoms)
+    >>> alch_state = alchemy.AlchemicalState.from_system(alch_system)
+    >>> alch_thermodynamic_state = ThermodynamicState(
+            alch_system, thermodynamic_state.temperature)
+    >>> alch_thermodynamic_state = CompoundThermodynamicState(
+            alch_thermodynamic_state, composable_states=[alch_state])
+
+    Create reporters for storing our ncmc simulation data.
+
+    >>> from blues.storage import NetCDF4Storage, BLUESStateDataStorage
+    nc_storage = NetCDF4Storage('test-ncmc.nc',
+                                reportInterval=5,
+                                crds=True, vels=True, frcs=True,
+                                protocolWork=True, alchemicalLambda=True)
+    state_storage = BLUESStateDataStorage('test-ncmc.log',
+                                          reportInterval=5,
+                                          step=True, time=True,
+                                          potentialEnergy=True,
+                                          kineticEnergy=True,
+                                          totalEnergy=True,
+                                          temperature=True,
+                                          volume=True,
+                                          density=True,
+                                          progress=True,
+                                          remainingTime=True,
+                                          speed=True,
+                                          elapsedTime=True,
+                                          systemMass=True,
+                                          totalSteps=10,
+                                          protocolWork=True,
+                                          alchemicalLambda=True)
+
+    Create a RandomLigandRotationMove move
+
+    >>> rot_move = RandomLigandRotationMove(n_steps=5,
+                                            timestep=1*unit.femtoseconds,
+                                            atom_subset=alchemical_atoms,
+                                            reporters=[nc_storage, state_storage])
+
+    Perform one update of the sampler state. The sampler state is updated
+    with the new state.
+
+    >>> move.apply(thermodynamic_state, sampler_state)
+    >>> np.allclose(sampler_state.positions, structure.positions)
+    False
     """
 
     def _before_integration(self, context, thermodynamic_state):
@@ -431,7 +681,7 @@ class RandomLigandRotationMove(NCMCMove):
 class BLUESSampler(object):
     """BLUESSampler runs the NCMC+MD hybrid simulation.
 
-    This class will have a descriptive text added.
+    This class ties together the two moves classes to execute the NCMC+MD hybrid simulation. One move class is intended to carry out traditional MD and the other is intended carry out the NCMC move proposals which performs the alchemical transformation to given atom subset. This class handles proper metropolization of the NCMC move proposals, while correcting for the switch in integrators.
     """
 
     def __init__(self,
@@ -448,14 +698,20 @@ class BLUESSampler(object):
 
         Parameters
         ----------
+        atom_subset : slice or list of int, optional
+            If specified, the move is applied only to those atoms specified by these indices. If None, the move is applied to all atoms (default is None).
         thermodynamic_state : ThermodynamicState
             The thermodynamic state to simulate
+        alch_thermodynamic_state : CompoundThermodynamicState, optional
+            The alchemical thermodynamic state to simulate. If None, one is generated from the thermodynamic state using the default alchemical parameters.
         sampler_state : SamplerState
             The initial sampler state to simulate from.
-        platform : simtk.openmm.Platform, optional, default=None
-            If specified, this platform will be used
-        ncfile : netCDF4.Dataset, optional, default=None
-            NetCDF storage file.
+        dynamics_move : ReportLangevinDynamicsMove
+            The move class which propagates traditional dynamics.
+        ncmc_move : NCMCMove
+            The NCMCMove class which proposes perturbations to the selected atoms.
+        topology : openmm.Topology
+            A Topology of the system to be simulated.
         """
         if thermodynamic_state is None:
             raise Exception("'thermodynamic_state' must be specified")
@@ -482,9 +738,6 @@ class BLUESSampler(object):
         self.accept = False
         self.iteration = 0
         self.n_accepted = 0
-
-        self.verbose = verbose
-        self.platform = platform
 
     def _get_alchemical_state(self, thermodynamic_state):
         alch_system = generateAlchSystem(thermodynamic_state.get_system(),
