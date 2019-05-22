@@ -71,7 +71,6 @@ def runEthyleneTest(dir, N):
         sampler_state=sampler_state,
         ncmc_move=rot_move,
         dynamics_move=langevin_move,
-        platform=None,
         topology=structure.topology)
     sampler.run(nIter)
 
