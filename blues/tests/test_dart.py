@@ -111,7 +111,9 @@ class DartTester(unittest.TestCase):
         self.struct = parmed.load_file(prmtop, xyz=inpcrd)
         pdb_files = [ [utils.get_data_filename('blues', 'tests/data/VA68.pdb')], [utils.get_data_filename('blues', 'tests/data/VAn68.pdb')]]
 
-        fit_atoms = [0, 4, 16, 18, 20, 26]
+        #fit_atoms = [0, 4, 16, 18, 20, 26]
+        fit_atoms = [[0, 4, 16, 18, 20, 26], [0, 4, 16, 18, 20, 26]]
+
         system_cfg = { 'nonbondedMethod': app.NoCutoff, 'constraints': app.HBonds}
         self.systems = SystemFactory(self.struct, list(range(29)), system_cfg)
 
@@ -119,7 +121,7 @@ class DartTester(unittest.TestCase):
                                           pdb_files=pdb_files,
                                           fit_atoms=fit_atoms,
                                           restraints=False,
-                                          restrained_receptor_atoms=[622, 2592, 2425],
+                                          #restrained_receptor_atoms=[622, 2592, 2425],
                                           rigid_move=False,
                                           rigid_darts='rigid_darts'
                                           )

@@ -136,11 +136,24 @@ class MolDartMove(RandomLigandRotationMove):
         elif all(isinstance(item, list) for item in restrained_receptor_atoms) and len(restrained_receptor_atoms) == len(pdb_files):
             self.restrained_receptor_atoms = restrained_receptor_atoms
             #exit()
+        self.restrained_receptor_atoms = None
         self.binding_mode_traj = []
         #positions of only the ligand atoms
         self.binding_mode_pos = []
         #fit atoms are the atom indices which should be fit to to remove rot/trans changes
         self.fit_atoms = fit_atoms
+        if 0:
+            if fit_atoms is None:
+                for traj in self.trajs:
+                    ca_atoms = traj.top.select('name CA and protein')
+                    receptor_atoms = md.compute_neighbors(traj, cutoff=receptor_cutoff, query_indices=self.atom_indices, haystack_indices=ca_atoms)
+                    self.fit_atoms.append(receptor_atoms)
+            elif all(isinstance(item, int) for item in fit_atoms):
+                self.fit_atoms = [fit_atoms for i in range(len(pdb_files))]
+
+            elif all(isinstance(item, list) for item in fit_atoms) and len(fit_atoms) == len(pdb_files):
+                self.fit_atoms = fit_atoms
+
         #chemcoord cartesian xyz of the ligand atoms
         self.internal_xyz = []
         #chemcoord internal zmatrix representation of the ligand atoms
@@ -283,6 +296,19 @@ class MolDartMove(RandomLigandRotationMove):
             core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values]))
 
             self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
+
+    def refitPoses(self, current_pose, trajs, fit_atoms, atom_indices):
+        #current_pose current trajectory traj
+
+        #binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
+        binding_mode_traj = [traj.superpose(current_pose, atom_indices=fit_atoms[index], ref_atom_indices=fit_atoms[index]).atom_slice(self.atom_indices) for index, traj in enumerate(trajs)]
+
+        #binding_mode_pos = [np.asarray(traj.superpose(current_pose, atom_indices=fit_atoms[index], ref_atom_indices=fit_atoms[index]).xyz[0]) for index, traj in enumerate(self.trajs)]
+        binding_mode_pos = [np.asarray(traj.xyz[0])*10.0 for index, traj in enumerate(self.trajs)]
+
+        binding_mode_pos = [traj[self.atom_indices] for traj in binding_mode_pos]
+        return binding_mode_pos
+
 
     @classmethod
     def _loadfiles(cls, structure_files, topology):
@@ -615,17 +641,21 @@ class MolDartMove(RandomLigandRotationMove):
 
         #fit different binding modes to current protein
         #to remove rotational changes
-        self.sim_traj.superpose(reference=self.ref_traj,
-                            atom_indices=self.fit_atoms,
-                            ref_atom_indices=self.fit_atoms
-                            )
-
-
         xyz_ref = copy.deepcopy(self.internal_xyz[0])
         traj_positions = self.sim_traj.xyz[0]
         xyz_ref._frame.loc[:, ['x', 'y', 'z']] = traj_positions[self.atom_indices]*10
 
         current_zmat = xyz_ref.get_zmat(construction_table=self.buildlist)
+        import logging
+        logger = logging.getLogger(__name__)
+        #logger.info("Freezing selection '{}' ({} atoms) on {}".format(freeze_selection, len(mask_idx), system))
+        logger.info("sim_traj {}".format(self.sim_traj))
+        logger.info("self.trajs {}".format(self.trajs))
+
+
+        print('sim_traj', self.sim_traj)
+        print('self.trajs', self.trajs)
+        self.binding_mode_traj, self.binding_mode_pos = self.refitPoses(self.sim_traj, self.trajs, self.fit_atoms, self.atom_indices)
         selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
 
                     current_zmat=current_zmat, pos_list=self.binding_mode_pos,
@@ -700,11 +730,6 @@ class MolDartMove(RandomLigandRotationMove):
         if atom_indices == None:
             atom_indices = self.atom_indices
         #choose a random binding pose
-
-        self.sim_traj = self.sim_traj.superpose(reference=self.ref_traj,
-                            atom_indices=self.fit_atoms,
-                            ref_atom_indices=self.fit_atoms
-                            )
         #rand_index = np.random.choice(self.dart_groups, self.transition_matrix[binding_mode_index])
 
         rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix)
