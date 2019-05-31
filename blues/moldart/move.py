@@ -16,6 +16,10 @@ import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
 from blues.moldart.rigid import createRigidBodies, resetRigidBodies
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class MolDartMove(RandomLigandRotationMove):
     """
     Class for performing molecular darting (moldarting) moves during an NCMC simulation.
@@ -142,7 +146,7 @@ class MolDartMove(RandomLigandRotationMove):
         self.binding_mode_pos = []
         #fit atoms are the atom indices which should be fit to to remove rot/trans changes
         self.fit_atoms = fit_atoms
-        if 0:
+        if 1:
             if fit_atoms is None:
                 for traj in self.trajs:
                     ca_atoms = traj.top.select('name CA and protein')
@@ -301,13 +305,20 @@ class MolDartMove(RandomLigandRotationMove):
         #current_pose current trajectory traj
 
         #binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
-        binding_mode_traj = [traj.superpose(current_pose, atom_indices=fit_atoms[index], ref_atom_indices=fit_atoms[index]).atom_slice(self.atom_indices) for index, traj in enumerate(trajs)]
+        #logger.info("1current_pose {}".format(current_pose))
+        #logger.info("1trajs {}".format(trajs))
 
+
+        binding_mode_traj = [traj.superpose(current_pose, atom_indices=fit_atoms[index], ref_atom_indices=fit_atoms[index]).atom_slice(self.atom_indices) for index, traj in enumerate(trajs)]
+        #logger.info("binding_mode_traj1 {}".format(binding_mode_traj))
         #binding_mode_pos = [np.asarray(traj.superpose(current_pose, atom_indices=fit_atoms[index], ref_atom_indices=fit_atoms[index]).xyz[0]) for index, traj in enumerate(self.trajs)]
         binding_mode_pos = [np.asarray(traj.xyz[0])*10.0 for index, traj in enumerate(self.trajs)]
+        #logger.info("binding_mode_pos1 {}".format(binding_mode_pos))
 
         binding_mode_pos = [traj[self.atom_indices] for traj in binding_mode_pos]
-        return binding_mode_pos
+        #logger.info("binding_mode_pos2 {}".format(binding_mode_pos))
+
+        return binding_mode_traj, binding_mode_pos
 
 
     @classmethod
@@ -374,9 +385,15 @@ class MolDartMove(RandomLigandRotationMove):
                 num_atoms_traj = reference_traj.n_atoms
                 num_atoms = min(num_atoms_traj, num_atoms_pdb)
                 traj.atom_slice(range(num_atoms), inplace=True)
-                traj.superpose(reference=reference_traj, atom_indices=fit_atoms,
-                    ref_atom_indices=fit_atoms
-                    )
+                if fit_atoms == None:
+                    traj.superpose(reference=reference_traj, atom_indices=fit_atoms,
+                        ref_atom_indices=fit_atoms
+                        )
+                else:
+                    traj.superpose(reference=reference_traj, atom_indices=fit_atoms[j],
+                        ref_atom_indices=fit_atoms[j]
+                        )
+
             else:
                 traj = md.load(pdb_file)
 
@@ -646,8 +663,6 @@ class MolDartMove(RandomLigandRotationMove):
         xyz_ref._frame.loc[:, ['x', 'y', 'z']] = traj_positions[self.atom_indices]*10
 
         current_zmat = xyz_ref.get_zmat(construction_table=self.buildlist)
-        import logging
-        logger = logging.getLogger(__name__)
         #logger.info("Freezing selection '{}' ({} atoms) on {}".format(freeze_selection, len(mask_idx), system))
         logger.info("sim_traj {}".format(self.sim_traj))
         logger.info("self.trajs {}".format(self.trajs))
@@ -655,7 +670,13 @@ class MolDartMove(RandomLigandRotationMove):
 
         print('sim_traj', self.sim_traj)
         print('self.trajs', self.trajs)
+        #logger.info("before self.binding_mode_traj {} {}".format(len(self.binding_mode_traj), self.binding_mode_traj))
+        #logger.info("before self.binding_mode_pos {} {}".format(len(self.binding_mode_pos), self.binding_mode_pos))
+        #logger.info("before self.binding_mode_thetrajs {} {}".format(len(self.trajs), self.trajs))
         self.binding_mode_traj, self.binding_mode_pos = self.refitPoses(self.sim_traj, self.trajs, self.fit_atoms, self.atom_indices)
+        #logger.info("self.binding_mode_traj {} {}".format(len(self.binding_mode_traj), self.binding_mode_traj))
+        #logger.info("self.binding_mode_pos {} {}".format(len(self.binding_mode_pos), self.binding_mode_pos))
+
         selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
 
                     current_zmat=current_zmat, pos_list=self.binding_mode_pos,
@@ -897,8 +918,8 @@ class MolDartMove(RandomLigandRotationMove):
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
 
         self.sim_traj.xyz[0][self.atom_indices] = xyz_new._frame.loc[:, ['x', 'y', 'z']].get_values() / 10.
-        self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms,
-                ref_atom_indices=self.fit_atoms
+        self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms[rand_index],
+                ref_atom_indices=self.fit_atoms[rand_index]
                 )
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
         self.sim_traj.save('last_output.pdb')
