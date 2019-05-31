@@ -140,7 +140,6 @@ class MolDartMove(RandomLigandRotationMove):
         elif all(isinstance(item, list) for item in restrained_receptor_atoms) and len(restrained_receptor_atoms) == len(pdb_files):
             self.restrained_receptor_atoms = restrained_receptor_atoms
             #exit()
-        self.restrained_receptor_atoms = None
         self.binding_mode_traj = []
         #positions of only the ligand atoms
         self.binding_mode_pos = []
