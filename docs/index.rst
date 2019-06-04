@@ -13,7 +13,6 @@ Welcome to the BLUES documentation!
    intro
    installation
    module_doc
-   tutorial
 
 Indices and tables
 ==================
