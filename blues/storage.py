@@ -184,8 +184,8 @@ class NetCDF4Storage(parmed.openmm.reporters.NetCDFReporter):
 
         Parameters
         ----------
-        simulation : :class:`app.Simulation`
-            The simulation to generate a report for
+        context_state : :class:`openmm.State`
+            The current state of the context
 
         Returns
         -------
@@ -210,10 +210,10 @@ class NetCDF4Storage(parmed.openmm.reporters.NetCDFReporter):
 
         Parameters
         ----------
-        simulation : :class:`app.Simulation`
-            The Simulation to generate a report for
-        state : :class:`mm.State`
-            The current state of the simulation
+        context_state : :class:`openmm.State`
+            The current state of the context
+        integrator : :class:`openmm.Integrator`
+            The integrator belonging to the given context
 
         """
         global VELUNIT, FRCUNIT
@@ -374,8 +374,8 @@ class BLUESStateDataStorage(app.StateDataReporter):
 
         Parameters
         ----------
-        simulation : :class:`app.Simulation`
-            The simulation to generate a report for
+        context_state : :class:`openmm.State`
+            The current state of the context
 
         Returns
         -------
@@ -399,8 +399,11 @@ class BLUESStateDataStorage(app.StateDataReporter):
 
     def _initializeConstants(self, context_state):
         """Initialize a set of constants required for the reports
+
         Parameters
-        - simulation (Simulation) The simulation to generate a report for
+        ----------
+        context_state : :class:`openmm.State`
+            The current state of the context
         """
         system = context_state.system
         if self._temperature:
@@ -427,10 +430,10 @@ class BLUESStateDataStorage(app.StateDataReporter):
 
         Parameters
         ----------
-        simulation : Simulation
-            The Simulation to generate a report for
-        state : State
-            The current state of the simulation
+        context_state : :class:`openmm.State`
+            The current state of the context
+        integrator : :class:`openmm.Integrator`
+            The integrator belonging to the given context
         """
         if not self._hasInitialized:
             self._initializeConstants(context_state)
@@ -462,10 +465,14 @@ class BLUESStateDataStorage(app.StateDataReporter):
             pass
 
     def _checkForErrors(self, context_state, integrator):
-        """Check for errors in the current state of the simulation
+        """Check for errors in the current state of the context
+
         Parameters
-         - simulation (Simulation) The Simulation to generate a report for
-         - state (State) The current state of the simulation
+        ----------
+        context_state : :class:`openmm.State`
+            The current state of the context
+        integrator : :class:`openmm.Integrator`
+            The integrator belonging to the given context
         """
         if self._needEnergy:
             energy = (context_state.getKineticEnergy() + context_state.getPotentialEnergy()).value_in_unit(
@@ -476,14 +483,14 @@ class BLUESStateDataStorage(app.StateDataReporter):
                 raise ValueError('Energy is infinite')
 
     def _constructReportValues(self, context_state, integrator):
-        """Query the simulation for the current state of our observables of interest.
+        """Query the contextfor the current state of our observables of interest.
 
         Parameters
         ----------
-        simulation : Simulation
-            The Simulation to generate a report for
-        state : State
-            The current state of the simulation
+        context_state : :class:`openmm.State`
+            The current state of the context
+        integrator : :class:`openmm.Integrator`
+            The integrator belonging to the given context
 
         Returns
         -------

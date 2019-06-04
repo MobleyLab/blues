@@ -111,7 +111,7 @@ def zero_masses(system, atomList=None):
 
     Arguments
     ---------
-    system : penmm.System
+    system : openmm.System
         system to zero masses
     atomList : list of ints
         atom indicies to zero masses
