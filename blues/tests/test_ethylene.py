@@ -66,7 +66,6 @@ def runEthyleneTest(dir, N):
     sampler_state = SamplerState(positions=structure.positions.in_units_of(unit.nanometers))
 
     sampler = BLUESSampler(
-        atom_subset=alchemical_atoms,
         thermodynamic_state=thermodynamic_state,
         sampler_state=sampler_state,
         ncmc_move=rot_move,
