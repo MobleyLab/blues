@@ -78,7 +78,6 @@ pytest -v -s
 
 ## Documentation
 For documentation on the BLUES modules see [ReadTheDocs: Modules](https://mobleylab-blues.readthedocs.io/en/latest/module_doc.html)
-For a tutorial on how to use BLUES see [ReadTheDocs: Tutorial](https://mobleylab-blues.readthedocs.io/en/latest/tutorial.html)
 
 ### Usage
 This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCMC) to help sample between different ligand binding modes using the OpenMM simulation package. One goal for this package is to allow for easy additions of other moves of interest, which will be covered below.
