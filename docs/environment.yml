@@ -20,6 +20,7 @@ dependencies:
   - parmed
   - netcdf4
   - hdf5
+  - pymbar
   - pyyaml
   - numpydoc
   - ipython
