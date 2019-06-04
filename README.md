@@ -85,7 +85,7 @@ This package takes advantage of non-equilibrium candidate Monte Carlo moves (NCM
 
 The integrator of `BLUES` contains the framework necessary for NCMC. Specifically, the integrator class calculates the work done during a NCMC move. It also controls the lambda scaling of parameters. The integrator that BLUES uses inherits from `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator` to keep track of the work done outside integration steps, allowing Monte Carlo (MC) moves to be incorporated together with the NCMC thermodynamic perturbation protocol. Currently, the `openmmtools.alchemy` package is used to generate the lambda parameters for the ligand, allowing alchemical modification of the sterics and electrostatics of the system.
 
-The `BLUESSampler` class in `ncmc.py` serves as a wrapper for running NCMC+MD simulations. To run the hybrid simulation, the `BLUESSampler` class requires defining two moves for running (1) traditional MD dynamics and (2) the NCMC perturbation which are defined in the `ncmc.py` module. A simple example is provided below.
+The `BLUESSampler` class in `ncmc.py` serves as a wrapper for running NCMC+MD simulations. To run the hybrid simulation, the `BLUESSampler` class requires defining two moves for running the (1) MD simulation and (2) the NCMC protcol. These moves are defined in the `ncmc.py` module. A simple example is provided below.
 
 #### Example
 Using the BLUES framework requires the use of a **ThermodynamicState** and **SamplerState** from `openmmtools` which we import from `openmmtools.states`:
