@@ -43,15 +43,15 @@ def runEthyleneTest(dir, N):
 
     # Iniitialize our Move set
     rot_move = RandomLigandRotationMove(
-        timestep,
-        n_steps,
+        timestep=timestep,
+        n_steps=n_steps,
         atom_subset=alchemical_atoms,
         context_cache=context_cache,
         reporters=[nc_reporter1, state_reporter1])
     langevin_move = ReportLangevinDynamicsMove(
-        timestep,
-        collision_rate,
-        n_steps,
+        timestep=timestep,
+        collision_rate=collision_rate,
+        n_steps=n_steps,
         reassign_velocities=True,
         context_cache=context_cache,
         reporters=[nc_reporter, state_reporter])

@@ -151,6 +151,7 @@ def atomIndexfromTop(resname, topology):
 def getMasses(atom_subset, topology):
     """
     Returns a list of masses of the specified ligand atoms.
+    
     Parameters
     ----------
     topology: parmed.Topology
@@ -174,7 +175,9 @@ def getMasses(atom_subset, topology):
     return masses, totalmass
 
 def getCenterOfMass(positions, masses):
-    """Returns the calculated center of mass of the ligand as a numpy.array
+    """
+    Returns the calculated center of mass of the ligand as a numpy.array
+
     Parameters
     ----------
     positions: nx3 numpy array * simtk.unit compatible with simtk.unit.nanometers

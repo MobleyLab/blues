@@ -1,4 +1,4 @@
-"""Provides classes for setting up and running the BLUES simulation."""
+"""Provides moves and classes for running the BLUES simulation."""
 
 import abc
 import copy
@@ -804,9 +804,6 @@ class BLUESSampler(object):
 
         self.iteration = 0
         for iteration in range(n_iterations):
-            if self.verbose:
-                print("." * 80)
-                print("BLUES Sampler iteration %d" % self.iteration)
 
             # print('NCMC Simulation')
             self.ncmc_move.apply(self.alch_thermodynamic_state,
@@ -820,9 +817,6 @@ class BLUESSampler(object):
 
             # Increment iteration count
             self.iteration += 1
-
-            if self.verbose:
-                print("." * 80)
 
         # print('n_accepted', self.n_accepted)
         # print('iteration', self.iteration)
