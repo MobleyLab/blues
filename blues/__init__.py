@@ -2,9 +2,6 @@
 """
 BLUES
 """
-# Add imports here
-from blues import integrators, moves, reporters, settings, simulation, utils
-
 # Handle versioneer
 from ._version import get_versions
 versions = get_versions()
