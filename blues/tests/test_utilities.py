@@ -5,7 +5,7 @@ import numpy
 import os
 from openmmtools.cache import ContextCache
 from openmmtools.states import ThermodynamicState
-from blues.systemfactories import *
+from blues.systemfactory import *
 from simtk.openmm import app
 from simtk import unit
 

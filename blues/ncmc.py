@@ -13,7 +13,7 @@ from simtk import unit
 
 from blues import utils
 from blues.integrators import AlchemicalExternalLangevinIntegrator
-from blues.systemfactories import generateAlchSystem
+from blues.systemfactory import generateAlchSystem
 import traceback
 
 logger = logging.getLogger(__name__)

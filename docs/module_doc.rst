@@ -25,9 +25,9 @@ BLUESSampler
 .. autoclass:: BLUESSampler
   :members:
 
-SystemFactories
+SystemFactory
 ---------------
-.. automodule:: blues.systemfactories
+.. automodule:: blues.systemfactory
   :members:
 
 Integrators

@@ -6,7 +6,7 @@ import logging
 from netCDF4 import Dataset
 from openmmtools.cache import ContextCache
 from openmmtools.states import SamplerState, ThermodynamicState, CompoundThermodynamicState
-from blues.systemfactories import *
+from blues.systemfactory import *
 from simtk.openmm import app
 from openmmtools import cache
 from simtk import unit
