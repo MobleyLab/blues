@@ -2,8 +2,13 @@ Modules
 ====================
 
 Nonequilibrium Candidate Monte Carlo (NCMC)
---------------------------------------------------------
+-------------------------------------------
 .. automodule:: blues.ncmc
+
+ReportLangevinDynamicsMove
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: ReportLangevinDynamicsMove
+  :members:
 
 NCMCMove
 ~~~~~~~~
@@ -15,27 +20,18 @@ RandomLigandRotationMove
 .. autoclass:: RandomLigandRotationMove
   :members:
 
-
-ReportLangevinDynamicsMove
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: ReportLangevinDynamicsMove
-  :members:
-
-
 BLUESSampler
 ~~~~~~~~~~~~
 .. autoclass:: BLUESSampler
   :members:
-
 
 SystemFactories
 ---------------
 .. automodule:: blues.systemfactories
   :members:
 
-
 Integrators
------------------------------------------------------------
+-----------
 .. automodule:: blues.integrators
   :members:
 
