@@ -139,7 +139,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                  timestep=1.0 * unit.femtosecond,
                  collision_rate=10.0 / unit.picoseconds,
                  reassign_velocities=False,
-                 context_cache=None
+                 context_cache=None,
                  reporters=[],
                  **kwargs):
         super(ReportLangevinDynamicsMove, self).__init__(self, **kwargs)
