@@ -19,7 +19,6 @@ dependencies:
   - openmm >=7.2.2
   - parmed
   - netcdf4
-  - pymbar
   - pyyaml
   - numpydoc
   - ipython
