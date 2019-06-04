@@ -325,8 +325,8 @@ class NCMCMove(MCMCMove):
     """
 
     def __init__(self,
-                 n_steps,
-                 timestep,
+                 n_steps=1000,
+                 timestep=1.0 * unit.femtosecond,
                  atom_subset=None,
                  context_cache=None,
                  reporters=[]):
@@ -685,7 +685,6 @@ class BLUESSampler(object):
     """
 
     def __init__(self,
-                 atom_subset=None,
                  thermodynamic_state=None,
                  alch_thermodynamic_state=None,
                  sampler_state=None,
@@ -698,8 +697,6 @@ class BLUESSampler(object):
 
         Parameters
         ----------
-        atom_subset : slice or list of int, optional
-            If specified, the move is applied only to those atoms specified by these indices. If None, the move is applied to all atoms (default is None).
         thermodynamic_state : ThermodynamicState
             The thermodynamic state to simulate
         alch_thermodynamic_state : CompoundThermodynamicState, optional
@@ -718,17 +715,16 @@ class BLUESSampler(object):
         if sampler_state is None:
             raise Exception("'sampler_state' must be specified")
 
-        self.atom_subset = atom_subset
+        self.sampler_state = sampler_state
+        self.ncmc_move = ncmc_move
+        self.dynamics_move = dynamics_move
         # Make a deep copy of the state so that initial state is unchanged.
         self.thermodynamic_state = copy.deepcopy(thermodynamic_state)
         # Generate an alchemical thermodynamic state if none is provided
         if not alch_thermodynamic_state:
             self.alch_thermodynamic_state = self._get_alchemical_state(
                 thermodynamic_state)
-        self.sampler_state = sampler_state
 
-        self.ncmc_move = ncmc_move
-        self.dynamics_move = dynamics_move
 
         # NML: Attach topology to thermodynamic_states
         self.thermodynamic_state.topology = topology
@@ -741,7 +737,7 @@ class BLUESSampler(object):
 
     def _get_alchemical_state(self, thermodynamic_state):
         alch_system = generateAlchSystem(thermodynamic_state.get_system(),
-                                         self.atom_subset)
+                                         self.ncmc_move.atom_subset)
         alch_state = alchemy.AlchemicalState.from_system(alch_system)
         alch_thermodynamic_state = ThermodynamicState(
             alch_system, thermodynamic_state.temperature)
@@ -754,7 +750,7 @@ class BLUESSampler(object):
         # Create MD context with the final positions from NCMC simulation
         integrator = self.dynamics_move._get_integrator(
             self.thermodynamic_state)
-        context, integrator = self.dynamics_move.context_cache.get_context(
+        context, integrator = cache.global_context_cache.get_context(
             self.thermodynamic_state, integrator)
         self.sampler_state.apply_to_context(context, ignore_velocities=True)
         alch_energy = self.thermodynamic_state.reduced_potential(context)

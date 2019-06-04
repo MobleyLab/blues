@@ -151,7 +151,7 @@ def atomIndexfromTop(resname, topology):
 def getMasses(atom_subset, topology):
     """
     Returns a list of masses of the specified ligand atoms.
-    
+
     Parameters
     ----------
     topology: parmed.Topology
@@ -165,12 +165,12 @@ def getMasses(atom_subset, topology):
        The sum of the mass found in masses
     """
     if isinstance(atom_subset, slice):
-       atoms = list(topology.atoms())[atom_subset]
+        atoms = list(topology.atoms())[atom_subset]
     else:
-       atoms = [ list(topology.atoms())[i] for i in atom_subset]
+        atoms = [ list(topology.atoms())[i] for i in atom_subset]
     masses = unit.Quantity(np.zeros([int(len(atoms)), 1], np.float32), unit.dalton)
     for idx, atom in enumerate(atoms):
-       masses[idx] = atom.element._mass
+        masses[idx] = atom.element._mass
     totalmass = masses.sum()
     return masses, totalmass
 
