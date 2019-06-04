@@ -8,13 +8,13 @@ channels:
   - conda-forge
 
 dependencies:
-  - python >=3.5
+  - python >=3.6
   - pytest
   - sphinx >=1.4
   - nbconvert
   - ipykernel
   - setuptools
-  - openmmtools >=0.15.0
+  - openmmtools >=0.16.0
   - mdtraj
   - openmm >=7.2.2
   - parmed
