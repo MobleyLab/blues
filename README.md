@@ -14,7 +14,7 @@ Latest release:
 
 Latest release:
 [![Build Status](https://travis-ci.com/nathanmlim/blues.svg?branch=master)](https://travis-ci.com/nathanmlim/blues)
-[![Documentation Status](https://readthedocs.org/projects/blues-fork/badge/?version=master)](https://blues-fork.readthedocs.io/en/stable/?badge=master)
+[![Documentation Status](https://readthedocs.org/projects/blues-fork/badge/?version=master)](https://blues-fork.readthedocs.io/en/master/?badge=master)
 [![codecov](https://codecov.io/gh/nathanmlim/blues/branch/master/graph/badge.svg)](https://codecov.io/gh/nathanmlim/blues)
 [![Anaconda-Server Badge](https://anaconda.org/nathanmlim/blues/badges/version.svg)](https://anaconda.org/nathanmlim/blues)
  [![DOI](https://zenodo.org/badge/62096511.svg)](https://zenodo.org/badge/latestdoi/62096511)
