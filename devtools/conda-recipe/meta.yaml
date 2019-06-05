@@ -1,6 +1,7 @@
 package:
   name: blues
-  version: {{ GIT_DESCRIBE_TAG }}
+  version: 0.2.5
+  #version: {{ GIT_DESCRIBE_TAG }}
 
 source:
   path : ../..
@@ -21,10 +22,12 @@ requirements:
     - python
     - pytest
     - setuptools
-    - openmmtools >=0.15.0
+    - openmmtools <=0.16.0
     - mdtraj
     - openmm >=7.2.2
+    - scipy <=1.1.0
     - parmed
+    - pymbar
     - netcdf4
     - pyyaml
     - pip
@@ -41,6 +44,6 @@ test:
     - blues
 
 about:
-  home: https://github.com/mobleylab/blues
+  home: https://github.com/nathanmlim/blues
   license: MIT
   license_file: LICENSE

@@ -1,7 +1,7 @@
 Installation
 ==================
 
-BLUES is compatible with MacOSX/Linux with Python>=3.5 (blues<1.1 still works with Python 2.7)
+BLUES is compatible with MacOSX/Linux with Python>=3.6 (blues<1.1 still works with Python 2.7)
 
 This is a python tool kit with a few dependencies. We recommend installing
 `miniconda <http://conda.pydata.org/miniconda.html>`_. Then you can create an
@@ -9,7 +9,7 @@ environment with the following commands:
 
 .. code-block:: bash
 
-    conda create -n blues python=3.5
+    conda create -n blues python=3.6
     source activate blues
 
 Stable Releases
@@ -48,7 +48,7 @@ source code.
 .. code-block:: bash
 
     git clone https://github.com/MobleyLab/blues.git
-    conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.2.2 numpy cython
+    conda install -c omnia -c conda-forge openmmtools openmm numpy cython
     pip install -e .
 
 To validate your BLUES installation run the tests.
