@@ -14,6 +14,7 @@ Welcome to the BLUES documentation!
    installation
    usage
    module_doc
+   devdoc
 
 
 Indices and tables
