@@ -138,7 +138,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                  n_steps=1000,
                  timestep=1.0 * unit.femtosecond,
                  collision_rate=10.0 / unit.picoseconds,
-                 reassign_velocities=False,
+                 reassign_velocities=True,
                  context_cache=None,
                  reporters=[],
                  **kwargs):
@@ -154,10 +154,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
     def _before_integration(self, context, thermodynamic_state):
         """Execute code after Context creation and before integration."""
         context_state = context.getState(
-            getPositions=True,
-            getVelocities=True,
-            getEnergy=True,
-            enforcePeriodicBox=thermodynamic_state.is_periodic)
+            getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
         self.initial_positions = context_state.getPositions()
         self.initial_energy = thermodynamic_state.reduced_potential(context)
         self._usesPBC = thermodynamic_state.is_periodic
@@ -169,10 +166,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
         exist, together with its bound integrator and system.
         """
         context_state = context.getState(
-            getPositions=True,
-            getVelocities=True,
-            getEnergy=True,
-            enforcePeriodicBox=thermodynamic_state.is_periodic)
+            getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
 
         self.final_positions = context_state.getPositions()
         self.final_energy = thermodynamic_state.reduced_potential(context)
@@ -199,13 +193,11 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
         integrator = self._get_integrator(thermodynamic_state)
 
         # Create context.
-        context, integrator = context_cache.get_context(
-            thermodynamic_state, integrator)
+        context, integrator = context_cache.get_context(thermodynamic_state, integrator)
         thermodynamic_state.apply_to_context(context)
 
         # If we reassign velocities, we can ignore the ones in sampler_state.
-        sampler_state.apply_to_context(
-            context, ignore_velocities=self.reassign_velocities)
+        sampler_state.apply_to_context(context, ignore_velocities=self.reassign_velocities)
         if self.reassign_velocities:
             context.setVelocitiesToTemperature(thermodynamic_state.temperature)
 
@@ -269,13 +261,11 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
             # but are a part of the Context. We do this call twice to minimize duplicating information fetched from
             # the State.
             # Update everything but the collective variables from the State object
-            sampler_state.update_from_context(context_state,
-                                              ignore_collective_variables=True)
+            sampler_state.update_from_context(
+                context_state, ignore_positions=False, ignore_velocities=False, ignore_collective_variables=True)
             # Update only the collective variables from the Context
-            sampler_state.update_from_context(context,
-                                              ignore_positions=True,
-                                              ignore_velocities=True,
-                                              ignore_collective_variables=False)
+            sampler_state.update_from_context(
+                context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
 
 
 class NCMCMove(MCMCMove):
@@ -326,7 +316,7 @@ class NCMCMove(MCMCMove):
 
     def __init__(self,
                  n_steps=1000,
-                 timestep=1.0 * unit.femtosecond,
+                 timestep=2.0 * unit.femtosecond,
                  atom_subset=None,
                  context_cache=None,
                  reporters=[]):
@@ -346,18 +336,18 @@ class NCMCMove(MCMCMove):
         self.proposed_positions = None
         self.currentStep = 0
 
-
     @property
     def statistics(self):
         """Statistics as a dictionary."""
-        return dict(n_accepted=self.n_accepted,
-                    n_proposed=self.n_proposed,
-                    initial_energy=self.initial_energy,
-                    initial_positions=self.initial_positions,
-                    final_energy=self.final_energy,
-                    proposed_positions=self.proposed_positions,
-                    final_positions=self.final_positions,
-                    logp_accept=self.logp_accept)
+        return dict(
+            n_accepted=self.n_accepted,
+            n_proposed=self.n_proposed,
+            initial_energy=self.initial_energy,
+            initial_positions=self.initial_positions,
+            final_energy=self.final_energy,
+            proposed_positions=self.proposed_positions,
+            final_positions=self.final_positions,
+            logp_accept=self.logp_accept)
 
     @statistics.setter
     def statistics(self, value):
@@ -373,10 +363,7 @@ class NCMCMove(MCMCMove):
     def _before_integration(self, context, thermodynamic_state):
         """Execute code after Context creation and before integration."""
         context_state = context.getState(
-            getPositions=True,
-            getVelocities=True,
-            getEnergy=True,
-            enforcePeriodicBox=thermodynamic_state.is_periodic)
+            getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
 
         self.initial_positions = context_state.getPositions()
         self.initial_energy = thermodynamic_state.reduced_potential(context)
@@ -388,15 +375,11 @@ class NCMCMove(MCMCMove):
         exist, together with its bound integrator and system.
         """
         context_state = context.getState(
-            getPositions=True,
-            getVelocities=True,
-            getEnergy=True,
-            enforcePeriodicBox=thermodynamic_state.is_periodic)
+            getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
 
         self.final_positions = context_state.getPositions()
         self.final_energy = thermodynamic_state.reduced_potential(context)
-        self.logp_accept = context._integrator.getLogAcceptanceProbability(
-            context)
+        self.logp_accept = context._integrator.getLogAcceptanceProbability(context)
 
     def _get_integrator(self, thermodynamic_state):
         return AlchemicalExternalLangevinIntegrator(
@@ -409,7 +392,7 @@ class NCMCMove(MCMCMove):
             splitting="H V R O R V H",
             temperature=thermodynamic_state.temperature,
             nsteps_neq=self.n_steps,
-            timestep=1.0*unit.femtoseconds,
+            timestep=self.timestep,
             nprop=1,
             prop_lambda=0.3)
 
@@ -436,13 +419,12 @@ class NCMCMove(MCMCMove):
         integrator = self._get_integrator(thermodynamic_state)
 
         # Create context
-        context, integrator = context_cache.get_context(
-            thermodynamic_state, integrator)
+        context, integrator = context_cache.get_context(thermodynamic_state, integrator)
 
         # Compute initial energy. We don't need to set velocities to compute the potential.
         # TODO assume sampler_state.potential_energy is the correct potential if not None?
-        sampler_state.apply_to_context(context, ignore_velocities=True)
-        context.setVelocitiesToTemperature(thermodynamic_state.temperature)
+        sampler_state.apply_to_context(context, ignore_velocities=False)
+        #context.setVelocitiesToTemperature(thermodynamic_state.temperature)
 
         self._before_integration(context, thermodynamic_state)
 
@@ -472,7 +454,7 @@ class NCMCMove(MCMCMove):
                     proposed_positions = self._propose_positions(sampler_state.positions[self.atom_subset])
                     # Compute the energy of the proposed positions.
                     sampler_state.positions[self.atom_subset] = proposed_positions
-                    sampler_state.apply_to_context(context)
+                    sampler_state.apply_to_context(context, ignore_velocities=True)
 
                 if anyReport:
                     context_state = context.getState(
@@ -502,14 +484,11 @@ class NCMCMove(MCMCMove):
 
             self._after_integration(context, thermodynamic_state)
             # Update everything but the collective variables from the State object
-            sampler_state.update_from_context(context_state,
-                                              ignore_collective_variables=True,
-                                              ignore_velocities=True)
+            sampler_state.update_from_context(
+                context_state, ignore_positions=False, ignore_velocities=False, ignore_collective_variables=True)
             # Update only the collective variables from the Context
-            sampler_state.update_from_context(context,
-                                              ignore_positions=True,
-                                              ignore_velocities=True,
-                                              ignore_collective_variables=False)
+            sampler_state.update_from_context(
+                context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
 
     @abc.abstractmethod
     def _propose_positions(self, positions):
@@ -666,11 +645,9 @@ class RandomLigandRotationMove(NCMCMove):
         reduced_pos = positions - center_of_mass
         # Define random rotational move on the ligand
         rand_quat = mdtraj.utils.uniform_quaternion(size=None)
-        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(
-            rand_quat)
+        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
         # multiply lig coordinates by rot matrix and add back COM translation from origin
-        proposed_positions = numpy.dot(reduced_pos, rand_rotation_matrix
-                                       ) * positions.unit + center_of_mass
+        proposed_positions = numpy.dot(reduced_pos, rand_rotation_matrix) * positions.unit + center_of_mass
 
         return proposed_positions
 
@@ -722,9 +699,7 @@ class BLUESSampler(object):
         self.thermodynamic_state = copy.deepcopy(thermodynamic_state)
         # Generate an alchemical thermodynamic state if none is provided
         if not alch_thermodynamic_state:
-            self.alch_thermodynamic_state = self._get_alchemical_state(
-                thermodynamic_state)
-
+            self.alch_thermodynamic_state = self._get_alchemical_state(thermodynamic_state)
 
         # NML: Attach topology to thermodynamic_states
         self.thermodynamic_state.topology = topology
@@ -736,26 +711,22 @@ class BLUESSampler(object):
         self.n_accepted = 0
 
     def _get_alchemical_state(self, thermodynamic_state):
-        alch_system = generateAlchSystem(thermodynamic_state.get_system(),
-                                         self.ncmc_move.atom_subset)
+        alch_system = generateAlchSystem(thermodynamic_state.get_system(), self.ncmc_move.atom_subset)
         alch_state = alchemy.AlchemicalState.from_system(alch_system)
-        alch_thermodynamic_state = ThermodynamicState(
-            alch_system, thermodynamic_state.temperature)
-        alch_thermodynamic_state = CompoundThermodynamicState(
-            alch_thermodynamic_state, composable_states=[alch_state])
+        alch_thermodynamic_state = ThermodynamicState(alch_system, thermodynamic_state.temperature)
+        alch_thermodynamic_state = CompoundThermodynamicState(alch_thermodynamic_state, composable_states=[alch_state])
 
         return alch_thermodynamic_state
 
     def _acceptRejectMove(self):
         # Create MD context with the final positions from NCMC simulation
-        integrator = self.dynamics_move._get_integrator(
-            self.thermodynamic_state)
-        context, integrator = cache.global_context_cache.get_context(
-            self.thermodynamic_state, integrator)
+        integrator = self.dynamics_move._get_integrator(self.thermodynamic_state)
+        context, integrator = cache.global_context_cache.get_context(self.thermodynamic_state, integrator)
         self.sampler_state.apply_to_context(context, ignore_velocities=True)
         alch_energy = self.thermodynamic_state.reduced_potential(context)
 
-        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy - self.ncmc_move.final_energy)
+        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy -
+                             self.ncmc_move.final_energy)
         logp_accept = self.ncmc_move.logp_accept
         randnum = numpy.log(numpy.random.random())
         # print("logP {} + corr {}".format(logp_accept, correction_factor))
@@ -776,8 +747,7 @@ class BLUESSampler(object):
         self.dynamics_move.totalSteps = int(self.dynamics_move.n_steps * n_iterations)
         # Set initial conditions by running 1 iteration of MD first
         for iteration in range(n_iterations):
-            self.dynamics_move.apply(self.thermodynamic_state,
-                                     self.sampler_state)
+            self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state)
         self.dynamics_move.currentStep = 0
         self.iteration += 1
 
@@ -802,14 +772,12 @@ class BLUESSampler(object):
         for iteration in range(n_iterations):
 
             # print('NCMC Simulation')
-            self.ncmc_move.apply(self.alch_thermodynamic_state,
-                                 self.sampler_state)
+            self.ncmc_move.apply(self.alch_thermodynamic_state, self.sampler_state)
 
             self._acceptRejectMove()
 
             # print('MD Simulation')
-            self.dynamics_move.apply(self.thermodynamic_state,
-                                     self.sampler_state)
+            self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state)
 
             # Increment iteration count
             self.iteration += 1
