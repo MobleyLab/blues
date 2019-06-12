@@ -136,8 +136,8 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
 
     def __init__(self,
                  n_steps=1000,
-                 timestep=1.0 * unit.femtosecond,
-                 collision_rate=10.0 / unit.picoseconds,
+                 timestep=2.0 * unit.femtosecond,
+                 collision_rate=1.0 / unit.picoseconds,
                  reassign_velocities=True,
                  context_cache=None,
                  reporters=[],
@@ -319,9 +319,13 @@ class NCMCMove(MCMCMove):
                  timestep=2.0 * unit.femtosecond,
                  atom_subset=None,
                  context_cache=None,
+                 nprop=1,
+                 propLambda=0.3,
                  reporters=[]):
         self.timestep = timestep
         self.n_steps = n_steps
+        self.nprop = nprop
+        self.propLambda = propLambda
         self.atom_subset = atom_subset
         self.context_cache = context_cache
         self.reporters = list(reporters)
@@ -393,8 +397,8 @@ class NCMCMove(MCMCMove):
             temperature=thermodynamic_state.temperature,
             nsteps_neq=self.n_steps,
             timestep=self.timestep,
-            nprop=1,
-            prop_lambda=0.3)
+            nprop=self.nprop,
+            propLambda=self.propLambda)
 
     def apply(self, thermodynamic_state, sampler_state):
         """Apply a metropolized move to the sampler state.
@@ -718,6 +722,54 @@ class BLUESSampler(object):
 
         return alch_thermodynamic_state
 
+    def _printSimulationTiming(self, n_iterations):
+        """Prints the simulation timing and related information."""
+        self.ncmc_move.totalSteps = int(self.ncmc_move.n_steps * n_iterations)
+        self.dynamics_move.totalSteps = int(self.dynamics_move.n_steps * n_iterations)
+        md_timestep = self.dynamics_move.timestep.value_in_unit(unit.picoseconds)
+        md_steps = self.dynamics_move.n_steps
+        ncmc_timestep = self.ncmc_move.timestep.value_in_unit(unit.picoseconds)
+        ncmc_steps = self.ncmc_move.n_steps
+        nprop = self.ncmc_move.nprop
+        propLambda = self.ncmc_move.propLambda
+
+
+        force_eval = n_iterations * (ncmc_steps + md_steps)
+        time_ncmc_iter = ncmc_steps * ncmc_timestep
+        time_ncmc_total = time_ncmc_iter * n_iterations
+        time_md_iter = md_steps * md_timestep
+        time_md_total = time_md_iter * n_iterations
+        time_iter = time_ncmc_iter + time_md_iter
+        time_total = time_iter * n_iterations
+
+        msg = 'Total BLUES Simulation Time = %s ps (%s ps/Iter)\n' % (time_total, time_iter)
+        msg += 'Total Force Evaluations = %s \n' % force_eval
+        msg += 'Total NCMC time = %s ps (%s ps/iter)\n' % (time_ncmc_total, time_ncmc_iter)
+        msg += 'Total MD time = %s ps (%s ps/iter)\n' % (time_md_total, time_md_iter)
+
+        # Calculate number of lambda steps inside/outside region with extra propgation steps
+        #steps_in_prop = int(nprop * (2 * math.floor(propLambda * nstepsNC)))
+        #steps_out_prop = int((2 * math.ceil((0.5 - propLambda) * nstepsNC)))
+
+        #prop_lambda_window = self._ncmc_sim.context._integrator._propLambda
+        # prop_lambda_window = round(prop_lambda_window[1] - prop_lambda_window[0], 4)
+        # if propSteps != nstepsNC:
+        #     msg += '\t%s lambda switching steps within %s total propagation steps.\n' % (nstepsNC, propSteps)
+        #     msg += '\tExtra propgation steps between lambda [%s, %s]\n' % (prop_lambda_window[0],
+        #                                                                    prop_lambda_window[1])
+        #     msg += '\tLambda: 0.0 -> %s = %s propagation steps\n' % (prop_lambda_window[0], int(steps_out_prop / 2))
+        #     msg += '\tLambda: %s -> %s = %s propagation steps\n' % (prop_lambda_window[0], prop_lambda_window[1],
+        #                                                             steps_in_prop)
+        #     msg += '\tLambda: %s -> 1.0 = %s propagation steps\n' % (prop_lambda_window[1], int(steps_out_prop / 2))
+
+        # #Get trajectory frame interval timing for BLUES simulation
+        # if 'md_trajectory_interval' in self._config.keys():
+        #     frame_iter = nstepsMD / self._config['md_trajectory_interval']
+        #     timetraj_frame = (time_ncmc_iter + time_md_iter) / frame_iter
+        #     msg += 'Trajectory Interval = %s ps/frame (%s frames/iter)' % (timetraj_frame, frame_iter)
+
+        logger.info(msg)
+
     def _acceptRejectMove(self):
         # Create MD context with the final positions from NCMC simulation
         integrator = self.dynamics_move._get_integrator(self.thermodynamic_state)
@@ -744,7 +796,6 @@ class BLUESSampler(object):
 
     def equil(self, n_iterations=1):
         """Equilibrate the system for N iterations."""
-        self.dynamics_move.totalSteps = int(self.dynamics_move.n_steps * n_iterations)
         # Set initial conditions by running 1 iteration of MD first
         for iteration in range(n_iterations):
             self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state)
@@ -761,9 +812,7 @@ class BLUESSampler(object):
         niterations : int, optional, default=1
             Number of iterations to run the sampler for.
         """
-        self.ncmc_move.totalSteps = int(self.ncmc_move.n_steps * n_iterations)
-        self.dynamics_move.totalSteps = int(self.dynamics_move.n_steps * n_iterations)
-
+        self._printSimulationTiming(n_iterations)
         if self.iteration == 0:
             # Set initial conditions by running 1 iteration of MD first
             self.equil(1)
