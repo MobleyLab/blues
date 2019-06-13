@@ -129,6 +129,7 @@ In the ``blues.ncmc.BLUESSampler`` class, there is an ``equil()`` method which l
 BLUES Iterations
 ````````````````
 **NCMC Simulation**
+
 After at least 1 iteration of equilibration, the ``blues.ncmc.BLUESSampler`` class will then proceed forward with running iterations of the NCMC+MD hybrid simulation. It will first run the NCMC simulation by calling the ``apply()`` method on the **ncmc_move** class or, for sake of this example, the ``blues.ncmc.RandomLigandRotationMove`` class. The ``apply()`` method for the **ncmc_move** will take in the **alch_thermodynamic_state** parameter or specifically the ``openmmtools.states.CompoundThermodynamicState`` object.
 
 A code snippet of the ``ncmc_move.apply()`` method is shown below:
@@ -182,6 +183,7 @@ Just prior to integration, a call is made to the ``_before_integration()`` metho
 
 
 **Metropolization**
+
 After advancing the NCMC simulation, a call is made to the ``_acceptRejectMove()`` method embedded in the ``blues.ncmc.BLUESSampler`` class for metropolization of the proposed move.
 
 A code snippet of the ``_acceptRejectMove()`` is shown below:
@@ -209,6 +211,7 @@ A code snippet of the ``_acceptRejectMove()`` is shown below:
 Here, is we compute a correction term for switching between the MD and NCMC integrators and factor this in with natural log of the acceptance probability (**logp_accept**). Then, a random number is generated in which: the move is accepted if the random number is less than the **logp_accept** or rejected if greater. When the move is rejected, we set the positions on the **sampler_state** to the initial positions from the NCMC simulation. If the move is accepted, nothing on the **sampler_state** is changed so that the following MD simulation will contain the final state of the NCMC simulation.
 
 **MD Simulation**
+
 After metropolization of the previously proposed move, a call is made to the ``apply()`` method on the given **dynamics_move** object. In this example, this would refer to the ``blues.ncmc.ReportLangevinDynamicsMove`` class to run the MD simulation.
 
 A code snippet of the ``dynamics_move.apply()`` method is shown below:
