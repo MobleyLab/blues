@@ -401,9 +401,7 @@ class NCMCMove(MCMCMove):
             propLambda=self.propLambda)
 
     def apply(self, thermodynamic_state, sampler_state):
-        """Apply a metropolized move to the sampler state.
-
-        Total number of acceptances and proposed move are updated.
+        """Apply a move to the sampler state.
 
         Parameters
         ----------
@@ -424,6 +422,8 @@ class NCMCMove(MCMCMove):
 
         # Create context
         context, integrator = context_cache.get_context(thermodynamic_state, integrator)
+        #NML: Does the below line need to be here?
+        #thermodynamic_state.apply_to_context(context)
 
         # Compute initial energy. We don't need to set velocities to compute the potential.
         # TODO assume sampler_state.potential_energy is the correct potential if not None?
@@ -671,9 +671,7 @@ class BLUESSampler(object):
                  sampler_state=None,
                  dynamics_move=None,
                  ncmc_move=None,
-                 platform=None,
-                 topology=None,
-                 verbose=False):
+                 topology=None):
         """Create an NCMC sampler.
 
         Parameters
@@ -733,7 +731,6 @@ class BLUESSampler(object):
         nprop = self.ncmc_move.nprop
         propLambda = self.ncmc_move.propLambda
 
-
         force_eval = n_iterations * (ncmc_steps + md_steps)
         time_ncmc_iter = ncmc_steps * ncmc_timestep
         time_ncmc_total = time_ncmc_iter * n_iterations
@@ -785,12 +782,9 @@ class BLUESSampler(object):
         logp_accept = logp_accept + correction_factor
         if (not numpy.isnan(logp_accept) and logp_accept > randnum):
             logger.debug('NCMC MOVE ACCEPTED: logP {}'.format(logp_accept))
-            self.accept = True
             self.n_accepted += 1
         else:
             logger.debug('NCMC MOVE REJECTED: logP {}'.format(logp_accept))
-            self.accept = False
-
             # Restore original positions.
             self.sampler_state.positions = self.ncmc_move.initial_positions
 
