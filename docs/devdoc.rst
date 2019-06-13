@@ -1,6 +1,5 @@
 Developer Guide
 =======================
-
 UML Diagram
 -----------
 .. image:: ../images/uml.png
@@ -77,11 +76,12 @@ The ``blues.ncmc.BLUESSampler`` object ties together all the previously mentione
 
 To be explicit, the input parameters refer to the objects below:
 
-- **thermodynamic_state** &rarr; ``openmmtools.states.ThermodynamicState``
-- **alch_thermodynamic_state** &rarr; ``openmmtools.states.CompoundThermodynamicState``
-- **sampler_state** &rarr; ``openmmtools.states.SamplerState``
-- **dynamics_move** &rarr; ``blues.ncmc.ReportLangevinDynamicsMove``
-- **ncmc_move** &rarr; ``blues.ncmc.RandomLigandRotationMove``
+- **thermodynamic_state** : ``openmmtools.states.ThermodynamicState``
+- **alch_thermodynamic_state** : ``openmmtools.states.CompoundThermodynamicState``
+- **sampler_state** : ``openmmtools.states.SamplerState``
+- **dynamics_move** : ``blues.ncmc.ReportLangevinDynamicsMove``
+- **ncmc_move** : ``blues.ncmc.RandomLigandRotationMove``
+- **topology** : ``openmm.Topology``
 
 When the ``run()`` method in the ``blues.ncmc.BLUESSampler`` is called the following takes place:
 
