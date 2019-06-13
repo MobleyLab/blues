@@ -86,12 +86,12 @@ To be explicit, the input parameters refer to the objects below:
 When the ``run()`` method in the ``blues.ncmc.BLUESSampler`` is called the following takes place:
 
 - Initialization:
-   - `_printSimulationTiming()` : Calculation of total number of steps
-   - `equil()` : Equilibration
+   - ``_printSimulationTiming()`` : Calculation of total number of steps
+   - ``equil()`` : Equilibration
 - BLUES iterations:
-   - `ncmc_move.apply()` : NCMC simulation
-   - `_acceptRejectMove()` : Metropolization
-   - `dynamics_move.apply()` : MD Simulation
+   - ``ncmc_move.apply()`` : NCMC simulation
+   - ``_acceptRejectMove()`` : Metropolization
+   - ``dynamics_move.apply()`` : MD Simulation
 
 A code snippet of the ``run()`` method is shown below:
 
@@ -131,7 +131,7 @@ BLUES Iterations
 **NCMC Simulation**
 After at least 1 iteration of equilibration, the ``blues.ncmc.BLUESSampler`` class will then proceed forward with running iterations of the NCMC+MD hybrid simulation. It will first run the NCMC simulation by calling the ``apply()`` method on the **ncmc_move** class or, for sake of this example, the ``blues.ncmc.RandomLigandRotationMove`` class. The ``apply()`` method for the **ncmc_move** will take in the **alch_thermodynamic_state** parameter or specifically the ``openmmtools.states.CompoundThermodynamicState`` object.
 
-A code snippet of the ``apply()`` method is shown below:
+A code snippet of the ``ncmc_move.apply()`` method is shown below:
 
 .. code-block:: python
 
@@ -184,7 +184,7 @@ Just prior to integration, a call is made to the ``_before_integration()`` metho
 **Metropolization**
 After advancing the NCMC simulation, a call is made to the ``_acceptRejectMove()`` method embedded in the ``blues.ncmc.BLUESSampler`` class for metropolization of the proposed move.
 
-A code snippet of the `_acceptRejectMove()` is shown below:
+A code snippet of the ``_acceptRejectMove()`` is shown below:
 
 .. code-block:: python
 
@@ -211,7 +211,7 @@ Here, is we compute a correction term for switching between the MD and NCMC inte
 **MD Simulation**
 After metropolization of the previously proposed move, a call is made to the ``apply()`` method on the given **dynamics_move** object. In this example, this would refer to the ``blues.ncmc.ReportLangevinDynamicsMove`` class to run the MD simulation.
 
-A code snippet of the ``apply()`` method on the ``blues.ncmc.ReportLangevinDynamicsMove`` class is shown below:
+A code snippet of the ``dynamics_move.apply()`` method is shown below:
 
 .. code-block:: python
 
