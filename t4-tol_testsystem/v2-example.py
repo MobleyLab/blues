@@ -15,7 +15,7 @@ from blues.ncmc import *
 from blues.storage import *
 from blues.systemfactory import *
 
-setup_logging('../blues/logging.yml')
+
 
 parser = argparse.ArgumentParser(description='Restart file name')
 parser.add_argument('-j', '--jobname', default='t4tol', type=str, help="store jobname")
@@ -32,6 +32,8 @@ timestep = 4.0 * unit.femtoseconds
 n_steps = args.nsteps
 reportInterval = args.reportInterval
 nIter = args.nIter
+
+setup_logging(filename=outfname+'.log', default_path='../blues/logging.yml')
 
 context_cache = cache.ContextCache()
 prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')  #TOL-parm

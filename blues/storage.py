@@ -29,7 +29,7 @@ def _check_mode(m, modes):
     if m not in modes:
         raise ValueError('This operation is only available when a file ' 'is open in mode="%s".' % m)
 
-def setup_logging(
+def setup_logging(filename=None,
     default_path='logging.yml',
     default_level=logging.INFO,
     env_key='LOG_CFG'
@@ -44,6 +44,13 @@ def setup_logging(
     if os.path.exists(path):
         with open(path, 'rt') as f:
             config = yaml.safe_load(f.read())
+            if filename:
+                for handler in config['handlers'].keys():
+                    if 'file' in handler:
+                        try:
+                            config['handlers'][handler]['filename'] = str(filename)
+                        except:
+                            pass
         logging.config.dictConfig(config)
     else:
         logging.basicConfig(level=default_level)
