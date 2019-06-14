@@ -1,4 +1,6 @@
+import os
 import logging
+import logging.config
 import sys
 import time
 
@@ -18,12 +20,33 @@ from blues.formats import *
 VELUNIT = u.angstrom / u.picosecond
 FRCUNIT = u.kilocalorie_per_mole / u.angstrom
 
+logger = logging.getLogger(__name__)
+
 def _check_mode(m, modes):
     """
     Check if the file has a read or write mode, otherwise throw an error.
     """
     if m not in modes:
         raise ValueError('This operation is only available when a file ' 'is open in mode="%s".' % m)
+
+def setup_logging(
+    default_path='logging.yml',
+    default_level=logging.INFO,
+    env_key='LOG_CFG'
+):
+    """Setup logging configuration
+
+    """
+    path = default_path
+    value = os.getenv(env_key, None)
+    if value:
+        path = value
+    if os.path.exists(path):
+        with open(path, 'rt') as f:
+            config = yaml.safe_load(f.read())
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=default_level)
 
 
 def addLoggingLevel(levelName, levelNum, methodName=None):
@@ -333,7 +356,7 @@ class BLUESStateDataStorage(app.StateDataReporter):
     """
 
     def __init__(self,
-                 file,
+                 file=None,
                  reportInterval=1,
                  frame_indices=[],
                  title='',
@@ -358,7 +381,6 @@ class BLUESStateDataStorage(app.StateDataReporter):
         super(BLUESStateDataStorage, self).__init__(file, reportInterval, step, time, potentialEnergy, kineticEnergy,
                                                     totalEnergy, temperature, volume, density, progress, remainingTime,
                                                     speed, elapsedTime, separator, systemMass, totalSteps)
-        self.log = self._out
         self.title = title
 
         self.frame_indices = frame_indices
@@ -438,9 +460,11 @@ class BLUESStateDataStorage(app.StateDataReporter):
         if not self._hasInitialized:
             self._initializeConstants(context_state)
             headers = self._constructHeaders()
-            if hasattr(self.log, 'report'):
-                self.log.info = self.log.report
-            self.log.info('#"%s"' % ('"' + self._separator + '"').join(headers))
+            headers_msg = '#"%s"' % ('"' + self._separator + '"').join(headers)
+            if not self._out:
+                logger.info(headers_msg)
+            else:
+                print(headers_msg, file=self._out)
             try:
                 self._out.flush()
             except AttributeError:
@@ -456,9 +480,11 @@ class BLUESStateDataStorage(app.StateDataReporter):
         values = self._constructReportValues(context_state, integrator)
 
         # Write the values.
-        if hasattr(self.log, 'report'):
-            self.log.info = self.log.report
-        self.log.info('%s: %s' % (self.title, self._separator.join(str(v) for v in values)))
+        msg = '%s: %s' % (self.title, self._separator.join(str(v) for v in values))
+        if not self._out:
+            logger.info(msg)
+        else:
+            print(msg, file=self._out)
         try:
             self._out.flush()
         except AttributeError:

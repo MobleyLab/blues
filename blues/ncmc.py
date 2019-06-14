@@ -9,7 +9,7 @@ import numpy
 from openmmtools import alchemy, cache
 from openmmtools.mcmc import LangevinDynamicsMove, MCMCMove
 from openmmtools.states import CompoundThermodynamicState, ThermodynamicState
-from simtk import unit
+from simtk import openmm, unit
 
 from blues import utils
 from blues.integrators import AlchemicalExternalLangevinIntegrator
@@ -18,8 +18,7 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
-
-class ReportLangevinDynamicsMove(LangevinDynamicsMove):
+class ReportLangevinDynamicsMove(object):
     """Langevin dynamics segment as a (pseudo) Monte Carlo move.
 
     This move class allows the attachment of a reporter for storing the data from running this segment of dynamics. This move assigns a velocity from the Maxwell-Boltzmann distribution and executes a number of Maxwell-Boltzmann steps to propagate dynamics. This is not a *true* Monte Carlo move, in that the generation of the correct distribution is only exact in the limit of infinitely small timestep; in other words, the discretization error is assumed to be negligible. Use HybridMonteCarloMove instead to ensure the exact distribution is generated.
@@ -140,16 +139,30 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                  collision_rate=1.0 / unit.picoseconds,
                  reassign_velocities=True,
                  context_cache=None,
-                 reporters=[],
-                 **kwargs):
-        super(ReportLangevinDynamicsMove, self).__init__(self, **kwargs)
+                 reporters=[]):
         self.n_steps = n_steps
         self.timestep = timestep
         self.collision_rate = collision_rate
-        self.resassign_velocities = reassign_velocities
+        self.reassign_velocities = reassign_velocities
         self.context_cache = context_cache
         self.reporters = list(reporters)
         self.currentStep = 0
+
+    def _get_integrator(self, thermodynamic_state):
+        """
+        Generates a LangevinIntegrator for the Simulations.
+        Parameters
+        ----------
+
+        Returns
+        -------
+        integrator : openmm.LangevinIntegrator
+            The LangevinIntegrator object intended for the System.
+        """
+        integrator = openmm.LangevinIntegrator(thermodynamic_state.temperature,
+                            self.collision_rate,
+                            self.timestep)
+        return integrator
 
     def _before_integration(self, context, thermodynamic_state):
         """Execute code after Context creation and before integration."""
@@ -240,8 +253,7 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
                         reporter.report(context_state, integrator)
 
         except Exception as e:
-            print(e)
-            traceback.print_exc()
+            logger.error(e)
             # Catches particle positions becoming nan during integration.
         else:
             # We get also velocities here even if we don't need them because we
@@ -264,8 +276,8 @@ class ReportLangevinDynamicsMove(LangevinDynamicsMove):
             sampler_state.update_from_context(
                 context_state, ignore_positions=False, ignore_velocities=False, ignore_collective_variables=True)
             # Update only the collective variables from the Context
-            sampler_state.update_from_context(
-                context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
+            #sampler_state.update_from_context(
+            #    context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
 
 
 class NCMCMove(MCMCMove):
@@ -422,13 +434,11 @@ class NCMCMove(MCMCMove):
 
         # Create context
         context, integrator = context_cache.get_context(thermodynamic_state, integrator)
-        #NML: Does the below line need to be here?
-        #thermodynamic_state.apply_to_context(context)
+        thermodynamic_state.apply_to_context(context)
 
         # Compute initial energy. We don't need to set velocities to compute the potential.
         # TODO assume sampler_state.potential_energy is the correct potential if not None?
         sampler_state.apply_to_context(context, ignore_velocities=False)
-        #context.setVelocitiesToTemperature(thermodynamic_state.temperature)
 
         self._before_integration(context, thermodynamic_state)
 
@@ -453,12 +463,11 @@ class NCMCMove(MCMCMove):
 
                 alch_lambda = integrator.getGlobalVariableByName('lambda')
                 if alch_lambda == 0.5:
-                    # Propose perturbed positions. Modifying the reference changes the sampler state.
-                    sampler_state.update_from_context(context)
-                    proposed_positions = self._propose_positions(sampler_state.positions[self.atom_subset])
-                    # Compute the energy of the proposed positions.
-                    sampler_state.positions[self.atom_subset] = proposed_positions
-                    sampler_state.apply_to_context(context, ignore_velocities=True)
+                    positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+                    proposed_positions = self._propose_positions(positions[self.atom_subset])
+                    for index, atomidx in enumerate(self.atom_subset):
+                        positions[atomidx] = proposed_positions[index]
+                    context.setPositions(positions)
 
                 if anyReport:
                     context_state = context.getState(
@@ -477,7 +486,7 @@ class NCMCMove(MCMCMove):
                         reporter.report(context_state, integrator)
 
         except Exception as e:
-            print(e)
+            logger.error(e)
             # Catches particle positions becoming nan during integration.
         else:
             context_state = context.getState(
@@ -491,8 +500,8 @@ class NCMCMove(MCMCMove):
             sampler_state.update_from_context(
                 context_state, ignore_positions=False, ignore_velocities=False, ignore_collective_variables=True)
             # Update only the collective variables from the Context
-            sampler_state.update_from_context(
-                context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
+            #sampler_state.update_from_context(
+            #    context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
 
     @abc.abstractmethod
     def _propose_positions(self, positions):
@@ -771,6 +780,7 @@ class BLUESSampler(object):
         # Create MD context with the final positions from NCMC simulation
         integrator = self.dynamics_move._get_integrator(self.thermodynamic_state)
         context, integrator = cache.global_context_cache.get_context(self.thermodynamic_state, integrator)
+        self.thermodynamic_state.apply_to_context(context)
         self.sampler_state.apply_to_context(context, ignore_velocities=True)
         alch_energy = self.thermodynamic_state.reduced_potential(context)
 
@@ -778,7 +788,7 @@ class BLUESSampler(object):
                              self.ncmc_move.final_energy)
         logp_accept = self.ncmc_move.logp_accept
         randnum = numpy.log(numpy.random.random())
-        # print("logP {} + corr {}".format(logp_accept, correction_factor))
+        logger.debug("logP {} + corr {}".format(logp_accept, correction_factor))
         logp_accept = logp_accept + correction_factor
         if (not numpy.isnan(logp_accept) and logp_accept > randnum):
             logger.debug('NCMC MOVE ACCEPTED: logP {}'.format(logp_accept))
