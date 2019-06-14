@@ -15,8 +15,6 @@ from blues.ncmc import *
 from blues.storage import *
 from blues.systemfactory import *
 
-
-
 parser = argparse.ArgumentParser(description='Restart file name')
 parser.add_argument('-j', '--jobname', default='t4tol', type=str, help="store jobname")
 parser.add_argument('-n', '--nIter', default=1, type=int, help="number of Iterations")
@@ -33,9 +31,9 @@ n_steps = args.nsteps
 reportInterval = args.reportInterval
 nIter = args.nIter
 
-setup_logging(filename=outfname+'.log', default_path='../blues/logging.yml')
+setup_logging(filename=outfname+'.log')
 
-context_cache = cache.ContextCache()
+
 prmtop = utils.get_data_filename('blues', 'tests/data/eqToluene.prmtop')  #TOL-parm
 inpcrd = utils.get_data_filename('blues', 'tests/data/eqToluene.inpcrd')
 tol = parmed.load_file(prmtop, xyz=inpcrd)
@@ -52,18 +50,8 @@ tol.system = tol.createSystem(nonbondedMethod=openmm.app.PME,
 sampler_state = SamplerState(positions=tol.positions)
 thermodynamic_state = ThermodynamicState(system=tol.system, temperature=temperature)
 
-# Create our AlchemicalState
-alchemical_atoms = utils.atomIndexfromTop('LIG', tol.topology)
-toluene_alchemical_system = generateAlchSystem(tol.system, alchemical_atoms)
-alchemical_state = alchemy.AlchemicalState.from_system(toluene_alchemical_system)
-alch_thermodynamic_state = ThermodynamicState(system=toluene_alchemical_system, temperature=temperature)
-alch_thermodynamic_state = CompoundThermodynamicState(alch_thermodynamic_state, composable_states=[alchemical_state])
-alch_thermodynamic_state.topology = tol.topology
 
-context, integrator = context_cache.get_context(thermodynamic_state)
-utils.print_host_info(context)
-
-nc_reporter = NetCDF4Storage(outfname + '_MD.nc', reportInterval)
+md_reporter = NetCDF4Storage(outfname + '.nc', reportInterval)
 
 state_reporter = BLUESStateDataStorage(reportInterval=reportInterval,
                                        title='md',
@@ -72,7 +60,7 @@ state_reporter = BLUESStateDataStorage(reportInterval=reportInterval,
                                        progress=True,
                                        totalSteps=int(n_steps * nIter))
 
-state_reporter1 = BLUESStateDataStorage(reportInterval=reportInterval,
+ncmc_state_reporter = BLUESStateDataStorage(reportInterval=reportInterval,
                                         title='ncmc',
                                         step=True,
                                         speed=True,
@@ -81,17 +69,16 @@ state_reporter1 = BLUESStateDataStorage(reportInterval=reportInterval,
                                         totalSteps=int(n_steps * nIter))
 
 # Iniitialize our Move set
+alchemical_atoms = utils.atomIndexfromTop('LIG', tol.topology)
 rot_move = RandomLigandRotationMove(timestep=timestep,
                                     n_steps=n_steps,
                                     atom_subset=alchemical_atoms,
-                                    context_cache=context_cache,
-                                    reporters=[state_reporter1])
+                                    reporters=[ncmc_state_reporter])
 langevin_move = ReportLangevinDynamicsMove(timestep=timestep,
                                            collision_rate=collision_rate,
                                            n_steps=n_steps,
                                            reassign_velocities=True,
-                                           context_cache=context_cache,
-                                           reporters=[nc_reporter, state_reporter])
+                                           reporters=[md_reporter, state_reporter])
 sampler = BLUESSampler(thermodynamic_state=thermodynamic_state,
                        sampler_state=sampler_state,
                        ncmc_move=rot_move,

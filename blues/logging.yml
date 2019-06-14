@@ -10,14 +10,14 @@ handlers:
     console:
         class: logging.StreamHandler
         level: DEBUG
-        formatter: debug
+        formatter: info
         stream: ext://sys.stdout
 
     file_handler:
         class: logging.handlers.RotatingFileHandler
         level: INFO
         formatter: info
-        filename: info.log
+        filename: blues.log
         maxBytes: 10485760 # 10MB
         backupCount: 20
         encoding: utf8
@@ -25,7 +25,7 @@ handlers:
 # loggers:
 #     blues.ncmc:
 #         level: DEBUG
-#         handlers: [file_handler]
+#         handlers: [console]
 #         propagate: no
 #     blues.storage:
 #         level: INFO
@@ -33,5 +33,5 @@ handlers:
 #         propagate: no
 
 root:
-    level: DEBUG
-    handlers: [file_handler]
+    level: INFO
+    handlers: [console, file_handler]

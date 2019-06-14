@@ -816,6 +816,8 @@ class BLUESSampler(object):
         niterations : int, optional, default=1
             Number of iterations to run the sampler for.
         """
+        context, integrator = cache.global_context_cache.get_context(self.thermodynamic_state)
+        utils.print_host_info(context)
         self._printSimulationTiming(n_iterations)
         if self.iteration == 0:
             # Set initial conditions by running 1 iteration of MD first
