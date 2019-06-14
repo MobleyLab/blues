@@ -17,6 +17,7 @@ import math
 
 import blues._version
 from blues.formats import *
+from blues.utils import get_data_filename
 VELUNIT = u.angstrom / u.picosecond
 FRCUNIT = u.kilocalorie_per_mole / u.angstrom
 
@@ -30,14 +31,15 @@ def _check_mode(m, modes):
         raise ValueError('This operation is only available when a file ' 'is open in mode="%s".' % m)
 
 def setup_logging(filename=None,
-    default_path='logging.yml',
+    yml_path='logging.yml',
     default_level=logging.INFO,
-    env_key='LOG_CFG'
-):
+    env_key='LOG_CFG'):
     """Setup logging configuration
 
     """
-    path = default_path
+    if not os.path.exists(yml_path):
+        yml_path = get_data_filename('blues', 'logging.yml')
+    path = yml_path
     value = os.getenv(env_key, None)
     if value:
         path = value
@@ -45,12 +47,10 @@ def setup_logging(filename=None,
         with open(path, 'rt') as f:
             config = yaml.safe_load(f.read())
             if filename:
-                for handler in config['handlers'].keys():
-                    if 'file' in handler:
-                        try:
-                            config['handlers'][handler]['filename'] = str(filename)
-                        except:
-                            pass
+                try:
+                    config['handlers']['file_handler']['filename'] = str(filename)
+                except:
+                    pass
         logging.config.dictConfig(config)
     else:
         logging.basicConfig(level=default_level)
