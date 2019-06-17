@@ -168,7 +168,7 @@ class ReportLangevinDynamicsMove(object):
         """Execute code after Context creation and before integration."""
         context_state = context.getState(
             getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
-        self.initial_positions = context_state.getPositions()
+        self.initial_positions = context_state.getPositions(asNumpy=True)
         self.initial_energy = thermodynamic_state.reduced_potential(context)
         self._usesPBC = thermodynamic_state.is_periodic
 
@@ -181,7 +181,7 @@ class ReportLangevinDynamicsMove(object):
         context_state = context.getState(
             getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
 
-        self.final_positions = context_state.getPositions()
+        self.final_positions = context_state.getPositions(asNumpy=True)
         self.final_energy = thermodynamic_state.reduced_potential(context)
 
     def apply(self, thermodynamic_state, sampler_state):
@@ -381,7 +381,8 @@ class NCMCMove(MCMCMove):
         context_state = context.getState(
             getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
 
-        self.initial_positions = context_state.getPositions()
+        self.initial_positions = context_state.getPositions(asNumpy=True)
+        self.initial_box_vectors = context_state.getPeriodicBoxVectors()
         self.initial_energy = thermodynamic_state.reduced_potential(context)
 
     def _after_integration(self, context, thermodynamic_state):
@@ -393,7 +394,8 @@ class NCMCMove(MCMCMove):
         context_state = context.getState(
             getPositions=True, getVelocities=True, getEnergy=True, enforcePeriodicBox=thermodynamic_state.is_periodic)
 
-        self.final_positions = context_state.getPositions()
+        self.final_positions = context_state.getPositions(asNumpy=True)
+        self.final_box_vectors = context_state.getPeriodicBoxVectors()
         self.final_energy = thermodynamic_state.reduced_potential(context)
         self.logp_accept = context._integrator.getLogAcceptanceProbability(context)
 
@@ -434,7 +436,7 @@ class NCMCMove(MCMCMove):
 
         # Create context
         context, integrator = context_cache.get_context(thermodynamic_state, integrator)
-        thermodynamic_state.apply_to_context(context)
+        #thermodynamic_state.apply_to_context(context)
 
         # Compute initial energy. We don't need to set velocities to compute the potential.
         # TODO assume sampler_state.potential_energy is the correct potential if not None?
@@ -443,6 +445,27 @@ class NCMCMove(MCMCMove):
         self._before_integration(context, thermodynamic_state)
 
         try:
+            # #NML: Old Way
+            # for step in range(int(self.n_steps)):
+            #     alchLambda = integrator.getGlobalVariableByName('lambda')
+            #     if alchLambda == 0.5:
+            #         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+            #         proposed_positions = self._propose_positions(positions[self.atom_subset])
+            #         for index, atomidx in enumerate(self.atom_subset):
+            #             positions[atomidx] = proposed_positions[index]
+            #         context.setPositions(positions)
+            #     if step % self.reporters[0]._reportInterval == 0:
+            #         context_state = context.getState(
+            #             getPositions=True,
+            #             getVelocities=True,
+            #             getEnergy=True,
+            #             enforcePeriodicBox=thermodynamic_state.is_periodic)
+            #         context_state.currentStep = self.currentStep
+            #         context_state.system = thermodynamic_state.get_system()
+            #         self.reporters[0].report(context_state, integrator)
+            #     integrator.step(1)
+            #     self.currentStep+=1
+
             nextReport = [None] * len(self.reporters)
             endStep = self.currentStep + self.n_steps
             while self.currentStep < endStep:
@@ -454,20 +477,20 @@ class NCMCMove(MCMCMove):
                         nextSteps = nextReport[i][0]
                         anyReport = True
 
+                alchLambda = integrator.getGlobalVariableByName('lambda')
+                if alchLambda == 0.5:
+                    positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+                    proposed_positions = self._propose_positions(positions[self.atom_subset])
+                    for index, atomidx in enumerate(self.atom_subset):
+                        positions[atomidx] = proposed_positions[index]
+                    context.setPositions(positions)
+
                 stepsToGo = nextSteps
                 while stepsToGo > 10:
                     integrator.step(10)
                     stepsToGo -= 10
                 integrator.step(stepsToGo)
                 self.currentStep += nextSteps
-
-                alch_lambda = integrator.getGlobalVariableByName('lambda')
-                if alch_lambda == 0.5:
-                    positions = context.getState(getPositions=True).getPositions(asNumpy=True)
-                    proposed_positions = self._propose_positions(positions[self.atom_subset])
-                    for index, atomidx in enumerate(self.atom_subset):
-                        positions[atomidx] = proposed_positions[index]
-                    context.setPositions(positions)
 
                 if anyReport:
                     context_state = context.getState(
@@ -709,7 +732,9 @@ class BLUESSampler(object):
         # Make a deep copy of the state so that initial state is unchanged.
         self.thermodynamic_state = copy.deepcopy(thermodynamic_state)
         # Generate an alchemical thermodynamic state if none is provided
-        if not alch_thermodynamic_state:
+        if alch_thermodynamic_state:
+            self.alch_thermodynamic_state = alch_thermodynamic_state
+        else:
             self.alch_thermodynamic_state = self._get_alchemical_state(thermodynamic_state)
 
         # NML: Attach topology to thermodynamic_states
@@ -776,27 +801,34 @@ class BLUESSampler(object):
 
         logger.info(msg)
 
-    def _acceptRejectMove(self):
+    def _computeAlchemicalCorrection(self):
         # Create MD context with the final positions from NCMC simulation
         integrator = self.dynamics_move._get_integrator(self.thermodynamic_state)
         context, integrator = cache.global_context_cache.get_context(self.thermodynamic_state, integrator)
         self.thermodynamic_state.apply_to_context(context)
         self.sampler_state.apply_to_context(context, ignore_velocities=True)
         alch_energy = self.thermodynamic_state.reduced_potential(context)
+        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.initial_energy + alch_energy - self.ncmc_move.final_energy)
+        # correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy -
+        #                      self.ncmc_move.final_energy)
+        return correction_factor
 
-        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy -
-                             self.ncmc_move.final_energy)
+    def _acceptRejectMove(self):
         logp_accept = self.ncmc_move.logp_accept
         randnum = numpy.log(numpy.random.random())
+
+        correction_factor = self._computerAlchemicalCorrection()
         logger.debug("logP {} + corr {}".format(logp_accept, correction_factor))
         logp_accept = logp_accept + correction_factor
+
         if (not numpy.isnan(logp_accept) and logp_accept > randnum):
             logger.debug('NCMC MOVE ACCEPTED: logP {}'.format(logp_accept))
             self.n_accepted += 1
         else:
             logger.debug('NCMC MOVE REJECTED: logP {}'.format(logp_accept))
-            # Restore original positions.
+            # Restore original positions & box vectors
             self.sampler_state.positions = self.ncmc_move.initial_positions
+            self.sampler_state.box_vectors = self.ncmc_move.initial_box_vectors
 
     def equil(self, n_iterations=1):
         """Equilibrate the system for N iterations."""
