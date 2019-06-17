@@ -817,7 +817,7 @@ class BLUESSampler(object):
         logp_accept = self.ncmc_move.logp_accept
         randnum = numpy.log(numpy.random.random())
 
-        correction_factor = self._computerAlchemicalCorrection()
+        correction_factor = self._computeAlchemicalCorrection()
         logger.debug("logP {} + corr {}".format(logp_accept, correction_factor))
         logp_accept = logp_accept + correction_factor
 
