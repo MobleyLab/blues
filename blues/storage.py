@@ -468,7 +468,7 @@ class BLUESStateDataStorage(app.StateDataReporter):
             self._initializeConstants(context_state)
             headers = self._constructHeaders()
             headers_msg = '#"%s"' % ('"' + self._separator + '"').join(headers)
-            if not self._out:
+            if isinstance(self._out, logging.Logger):
                 logger.info(headers_msg)
             else:
                 print(headers_msg, file=self._out)
@@ -488,7 +488,7 @@ class BLUESStateDataStorage(app.StateDataReporter):
 
         # Write the values.
         msg = '%s: %s' % (self.title, self._separator.join(str(v) for v in values))
-        if not self._out:
+        if if isinstance(self._out, logging.Logger):
             logger.info(msg)
         else:
             print(msg, file=self._out)

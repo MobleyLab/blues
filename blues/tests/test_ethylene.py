@@ -35,11 +35,9 @@ def runEthyleneTest(dir, N):
     structure = parmed.load_file(structure_pdb)
 
     nc_reporter = NetCDF4Storage(filename + '_MD.nc', reportInterval)
-    state_reporter = BLUESStateDataStorage(
-        logger, reportInterval, title='md', step=True, speed=True, totalSteps=int(n_steps * nIter))
+    state_reporter = BLUESStateDataStorage(reportInterval, title='md', step=True, speed=True, totalSteps=int(n_steps * nIter))
     nc_reporter1 = NetCDF4Storage(filename + '_NCMC.nc', reportInterval)
-    state_reporter1 = BLUESStateDataStorage(
-        logger, reportInterval, title='ncmc', step=True, speed=True, totalSteps=int(n_steps * nIter))
+    state_reporter1 = BLUESStateDataStorage(reportInterval, title='ncmc', step=True, speed=True, totalSteps=int(n_steps * nIter))
 
     # Iniitialize our Move set
     rot_move = RandomLigandRotationMove(
