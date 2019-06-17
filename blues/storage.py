@@ -488,7 +488,7 @@ class BLUESStateDataStorage(app.StateDataReporter):
 
         # Write the values.
         msg = '%s: %s' % (self.title, self._separator.join(str(v) for v in values))
-        if if isinstance(self._out, logging.Logger):
+        if isinstance(self._out, logging.Logger):
             logger.info(msg)
         else:
             print(msg, file=self._out)
