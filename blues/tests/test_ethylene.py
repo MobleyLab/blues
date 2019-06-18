@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import pytest
 import parmed
 import fnmatch
@@ -53,74 +52,20 @@ def runEthyleneTest(N):
     }
 
     md_reporters = {'traj_netcdf': {'reportInterval': reportInterval}}
-=======
-import logging
-from collections import Counter
-
-import mdtraj as md
-import numpy as np
-import parmed
-from openmmtools import cache
-from openmmtools.states import SamplerState, ThermodynamicState
-from simtk import openmm, unit
-
-from blues import utils
-from blues.storage import BLUESStateDataStorage, NetCDF4Storage
-from blues.ncmc import RandomLigandRotationMove, ReportLangevinDynamicsMove, BLUESSampler
-
-logger = logging.getLogger(__name__)
-
-
-def runEthyleneTest(dir, N):
-    filename = dir.join('ethylene-test_%s' % N)
-    print('Running %s...' % filename)
-
-    # Set Simulation parameters
-    temperature = 200 * unit.kelvin
-    collision_rate = 1 / unit.picoseconds
-    timestep = 1.0 * unit.femtoseconds
-    n_steps = 20
-    nIter = 100
-    reportInterval = 5
-    alchemical_atoms = [2, 3, 4, 5, 6, 7]
-    platform = openmm.Platform.getPlatformByName('CPU')
-    context_cache = cache.ContextCache(platform)
->>>>>>> nathanmlim-master
 
     # Load a Parmed Structure for the Topology and create our openmm.Simulation
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     structure = parmed.load_file(structure_pdb)
 
-<<<<<<< HEAD
     # Initialize our move proposal class
     rot_move = RandomLigandRotationMove(structure, 'LIG')
     mover = MoveEngine(rot_move)
-=======
-    nc_reporter = NetCDF4Storage(filename + '_MD.nc', reportInterval)
-
-
-
-    # Iniitialize our Move set
-    rot_move = RandomLigandRotationMove(
-        timestep=timestep,
-        n_steps=n_steps,
-        atom_subset=alchemical_atoms,
-        context_cache=context_cache,
-        reporters=[nc_reporter])
-    langevin_move = ReportLangevinDynamicsMove(
-        timestep=timestep,
-        collision_rate=collision_rate,
-        n_steps=n_steps,
-        reassign_velocities=True,
-        context_cache=context_cache)
->>>>>>> nathanmlim-master
 
     # Load our OpenMM System and create Integrator
     system_xml = utils.get_data_filename('blues', 'tests/data/ethylene_system.xml')
     with open(system_xml, 'r') as infile:
         xml = infile.read()
         system = openmm.XmlSerializer.deserialize(xml)
-<<<<<<< HEAD
     integrator = openmm.LangevinIntegrator(sim_cfg['temperature'], sim_cfg['friction'], sim_cfg['dt'])
     integrator.setRandomNumberSeed(seed)
 
@@ -157,21 +102,6 @@ def runEthyleneTest(dir, N):
 
     ethylene_sim = BLUESSimulation(simulations, sim_cfg)
     ethylene_sim.run()
-=======
-
-    thermodynamic_state = ThermodynamicState(system=system, temperature=temperature)
-    sampler_state = SamplerState(positions=structure.positions.in_units_of(unit.nanometers))
-
-    sampler = BLUESSampler(
-        thermodynamic_state=thermodynamic_state,
-        sampler_state=sampler_state,
-        ncmc_move=rot_move,
-        dynamics_move=langevin_move,
-        topology=structure.topology)
-    sampler.run(nIter)
-
-    return filename
->>>>>>> nathanmlim-master
 
 
 def getPopulations(traj):
@@ -186,10 +116,7 @@ def getPopulations(traj):
 
 
 def graphConvergence(dist, n_points=10):
-<<<<<<< HEAD
     bins = len(dist) / n_points
-=======
->>>>>>> nathanmlim-master
     bin_count = []
     bin_points = []
     for N in range(1, len(dist) + 1, n_points):
@@ -210,7 +137,6 @@ def graphConvergence(dist, n_points=10):
     return bin_err_arr[-1, :]
 
 
-<<<<<<< HEAD
 def test_runEthyleneRepeats():
     [runEthyleneTest(i) for i in range(5)]
 
@@ -219,14 +145,6 @@ def test_runAnalysis():
     outfnames = ['ethylene-test_%s.nc' % i for i in range(5)]
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     trajs = [md.load(traj, top=structure_pdb) for traj in outfnames]
-=======
-def test_runEthyleneRepeats(tmpdir):
-    dir = tmpdir.mkdir("tmp")
-    outfnames = [runEthyleneTest(dir, N=i) for i in range(5)]
-
-    structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
-    trajs = [md.load('%s_MD.nc' % traj, top=structure_pdb) for traj in outfnames]
->>>>>>> nathanmlim-master
     dists = []
     freqs = []
     errs = []
@@ -242,8 +160,4 @@ def test_runEthyleneRepeats(tmpdir):
     avg_err = np.mean(errs, axis=0)
     print(avg_freq, avg_err, np.absolute(avg_freq - populations))
     check = np.allclose(avg_freq, populations, atol=avg_err)
-<<<<<<< HEAD
     assert check == True
-=======
-    assert check is True
->>>>>>> nathanmlim-master

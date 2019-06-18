@@ -14,3 +14,7 @@ omit =
     setup.py
     blues/tests/*
     blues/_version.py
+    blues/*dart.py
+    blues/switching.py
+    blues/formats.py
+    blues/example.py
