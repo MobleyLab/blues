@@ -1,13 +1,18 @@
 Modules
 ====================
 
-Moves
---------------------------------------------------------
-.. automodule:: blues.moves
+Nonequilibrium Candidate Monte Carlo (NCMC)
+-------------------------------------------
+.. automodule:: blues.ncmc
 
-Move
-~~~~
-.. autoclass:: Move
+ReportLangevinDynamicsMove
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: ReportLangevinDynamicsMove
+  :members:
+
+NCMCMove
+~~~~~~~~
+.. autoclass:: NCMCMove
   :members:
 
 RandomLigandRotationMove
@@ -15,54 +20,18 @@ RandomLigandRotationMove
 .. autoclass:: RandomLigandRotationMove
   :members:
 
-
-MoveEngine
-~~~~~~~~~~
-.. autoclass:: MoveEngine
+BLUESSampler
+~~~~~~~~~~~~
+.. autoclass:: BLUESSampler
   :members:
-
-Under Development
-~~~~~~~~~~~~~~~~~~~~~~~~~
-**WARNING:** The following move classes have not been tested. Use at your own risk.
-
-.. autoclass:: SideChainMove
-  :members:
-.. autoclass:: SmartDartMove
-  :members:
-.. autoclass:: CombinationMove
-  :members:
-
-Simulation
----------------------------------------------------------
-.. automodule:: blues.simulation
 
 SystemFactory
-~~~~~~~~~~~~~
-.. rubric:: Methods
-.. autoautosummary:: blues.simulation.SystemFactory
-  :methods:
-
-.. autoclass:: SystemFactory
+---------------
+.. automodule:: blues.systemfactory
   :members:
-
-SimulationFactory
-~~~~~~~~~~~~~~~~~
-.. rubric:: Methods
-.. autoautosummary:: blues.simulation.SimulationFactory
-  :methods:
-
-.. autoclass:: SimulationFactory
-  :members:
-
-BLUESSimulation
-~~~~~~~~~~~~~~~
-.. autoclass:: BLUESSimulation
-  :members:
-  :private-members:
-
 
 Integrators
------------------------------------------------------------
+-----------
 .. automodule:: blues.integrators
   :members:
 
@@ -72,9 +41,9 @@ Utilities
   :members:
   :undoc-members:
 
-Reporters
----------
-.. automodule:: blues.reporters
+Storage
+--------
+.. automodule:: blues.storage
   :members:
 
 Formats

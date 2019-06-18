@@ -106,7 +106,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
                  measure_heat=True,
                  nsteps_neq=100,
                  nprop=1,
-                 prop_lambda=0.3,
+                 propLambda=0.3,
                  *args,
                  **kwargs):
         # call the base class constructor
@@ -121,7 +121,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             measure_heat=measure_heat,
             nsteps_neq=nsteps_neq)
 
-        self._prop_lambda = self._get_prop_lambda(prop_lambda)
+        self._propLambda = self._get_propLambda(propLambda)
 
         # add some global variables relevant to the integrator
         kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
@@ -131,8 +131,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("first_step", 0)
         self.addGlobalVariable("nprop", nprop)
         self.addGlobalVariable("prop", 1)
-        self.addGlobalVariable("prop_lambda_min", self._prop_lambda[0])
-        self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
+        self.addGlobalVariable("prop_lambda_min", self._propLambda[0])
+        self.addGlobalVariable("prop_lambda_max", self._propLambda[1])
         # Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d
         self._step_dispatch_table['H'] = (self._add_alchemical_perturbation_step, False)
         #$self._registered_step_types['H'] = (
@@ -144,9 +144,9 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         except:
             self.addGlobalVariable('shadow_work', 0)
 
-    def _get_prop_lambda(self, prop_lambda):
-        prop_lambda_max = round(prop_lambda + 0.5, 4)
-        prop_lambda_min = round(0.5 - prop_lambda, 4)
+    def _get_propLambda(self, propLambda):
+        prop_lambda_max = round(propLambda + 0.5, 4)
+        prop_lambda_min = round(0.5 - propLambda, 4)
         prop_range = prop_lambda_max - prop_lambda_min
 
         #Set values to outside [0, 1.0] to skip IfBlock
