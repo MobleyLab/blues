@@ -86,6 +86,7 @@ To be explicit, the input parameters refer to the objects below:
 When the ``run()`` method in the ``blues.ncmc.BLUESSampler`` is called the following takes place:
 
 - Initialization:
+   - ``_print_host_info()`` : Information print out of host
    - ``_printSimulationTiming()`` : Calculation of total number of steps
    - ``equil()`` : Equilibration
 - BLUES iterations:
@@ -98,6 +99,8 @@ A code snippet of the ``run()`` method is shown below:
 .. code-block:: python
 
    def run(self, n_iterations=1):
+       context, integrator = cache.global_context_cache.get_context(self.thermodynamic_state)
+       utils.print_host_info(context)
        self._printSimulationTiming(n_iterations)
        if self.iteration == 0:
            self.equil(1)
@@ -115,9 +118,26 @@ A code snippet of the ``run()`` method is shown below:
 
 Initialization
 ``````````````
-The first thing that occurs when ``run()`` is called is the initialization stage. During this stage, a call is made to ``_printSimulationTiming()`` method which will print out the total number of force evaluations and simulation time. The output will look something like below:
+The first thing that occurs when ``run()`` is called is the initialization stage. During this stage, a call is made to ``utils.print_host_info()`` and the ``_printSimulationTiming()`` method which will print out some information about the host machine and the total number of force evaluations and simulation time. The output will look something like below:
 
 .. code-block:: python
+    OpenMM(7.3.1.dev-4a269c0) Context generated for CUDA platform
+    system = Linux
+    node = titanpascal
+    release = 4.15.0-50-generic
+    version = #54~16.04.1-Ubuntu SMP Wed May 8 15:55:19 UTC 2019
+    machine = x86_64
+    processor = x86_64
+    DeviceIndex = 0
+    DeviceName = TITAN Xp
+    UseBlockingSync = true
+    Precision = single
+    UseCpuPme = false
+    CudaCompiler = /usr/local/cuda-9.2/bin/nvcc
+    TempDirectory = /tmp
+    CudaHostCompiler =
+    DisablePmeStream = false
+    DeterministicForces = false
 
    Total BLUES Simulation Time = 4.0 ps (0.04 ps/Iter)
    Total Force Evaluations = 4000
@@ -148,6 +168,13 @@ A code snippet of the ``ncmc_move.apply()`` method is shown below:
        try:
            endStep = self.currentStep + self.n_steps
            while self.currentStep < endStep:
+               alch_lambda = integrator.getGlobalVariableByName('lambda')
+               if alch_lambda == 0.5:
+                   sampler_state.update_from_context(context)
+                   proposed_positions = self._propose_positions(sampler_state.positions[self.atom_subset])
+                   sampler_state.positions[self.atom_subset] = proposed_positions
+                   sampler_state.apply_to_context(context, ignore_velocities=True)
+
                nextSteps = endStep - self.currentStep
                stepsToGo = nextSteps
                while stepsToGo > 10:
@@ -155,13 +182,6 @@ A code snippet of the ``ncmc_move.apply()`` method is shown below:
                    stepsToGo -= 10
                integrator.step(stepsToGo)
                self.currentStep += nextSteps
-
-               alch_lambda = integrator.getGlobalVariableByName('lambda')
-               if alch_lambda == 0.5:
-                   sampler_state.update_from_context(context)
-                   proposed_positions = self._propose_positions(sampler_state.positions[self.atom_subset])
-                   sampler_state.positions[self.atom_subset] = proposed_positions
-                   sampler_state.apply_to_context(context, ignore_velocities=True)
        except Exception as e:
            print(e)
        else:
@@ -179,7 +199,7 @@ A code snippet of the ``ncmc_move.apply()`` method is shown below:
 
 When the ``apply()`` method on **ncmc_move** is called, it will first generate the ``blues.integrators.AlchemicalExternalLangevinIntegrator`` by calling the ``_get_integrator()`` method inherent to the move class. Then, it will create (or fetch from the **context_cache**) a corresponding ``openmm.Context`` given the **alch_thermodynamic_state**. Next, the **sampler_state** which contains the last state of the MD simulation is synced to the newly created context from the corresponding **alch_thermodynamic_state**. Particularly, the context will be updated with the *box_vectors*, *positions*, and *velocities* from the last state of the MD simulation.
 
-Just prior to integration, a call is made to the ``_before_integration()`` method in order to store the initial *energies*, *positions* and the *masses* of the ligand to be rotated. Then, we actually step with the integrator where we perform the ligand rotation when *lambda* has reached the half-way point or *lambda=0.5*, continuing integration until we have completed the *n_steps*. After the integration steps have been completed, a call is made to the ``_after_integration()`` method to store the final *energies* and *positions*. Lastly, the **sampler_state** is updated from the final state of the context.
+Just prior to integration, a call is made to the ``_before_integration()`` method in order to store the initial *energies*, *positions*, *box_vectors* and the *masses* of the ligand to be rotated. Then, we actually step with the integrator where we perform the ligand rotation when *lambda* has reached the half-way point or *lambda=0.5*, continuing integration until we have completed the *n_steps*. After the integration steps have been completed, a call is made to the ``_after_integration()`` method to store the final *energies*, *positions*, and *box_vectors*. Lastly, the **sampler_state** is updated from the final state of the context.
 
 
 **Metropolization**
@@ -196,8 +216,7 @@ A code snippet of the ``_acceptRejectMove()`` is shown below:
        self.sampler_state.apply_to_context(context, ignore_velocities=True)
        alch_energy = self.thermodynamic_state.reduced_potential(context)
 
-       correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy -
-                           self.ncmc_move.final_energy)
+       correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy - self.ncmc_move.final_energy)
        logp_accept = self.ncmc_move.logp_accept
        randnum = numpy.log(numpy.random.random())
 
@@ -207,8 +226,9 @@ A code snippet of the ``_acceptRejectMove()`` is shown below:
        else:
            self.accept = False
            self.sampler_state.positions = self.ncmc_move.initial_positions
+           self.sampler_state.box_vectors = self.ncmc_move.initial_box_vectors
 
-Here, is we compute a correction term for switching between the MD and NCMC integrators and factor this in with natural log of the acceptance probability (**logp_accept**). Then, a random number is generated in which: the move is accepted if the random number is less than the **logp_accept** or rejected if greater. When the move is rejected, we set the positions on the **sampler_state** to the initial positions from the NCMC simulation. If the move is accepted, nothing on the **sampler_state** is changed so that the following MD simulation will contain the final state of the NCMC simulation.
+Here, is we compute a correction term for switching between the MD and NCMC integrators and factor this in with natural log of the acceptance probability (**logp_accept**). Then, a random number is generated in which: the move is accepted if the random number is less than the **logp_accept** or rejected if greater. When the move is rejected, we set the *positions* and *box_vectors* on the **sampler_state** to the initial positions and box_vectors from the NCMC simulation. If the move is accepted, nothing on the **sampler_state** is changed so that the following MD simulation will contain the final state of the NCMC simulation.
 
 **MD Simulation**
 
@@ -261,6 +281,6 @@ A code snippet of the ``dynamics_move.apply()`` method is shown below:
 
 When the ``apply()`` method is called, a very similar procedure to the NCMC simulation occurs. The first thing that happens is to generate the integrator through a call to ``_get_integrator()``, where in this given class, it will generate an ``openmm.LangevinIntegrator`` given the **thermodynamic_state** parameter. Then, it will create (or fetch from the **context_cache**) a corresponding ``openmm.Context`` given the **thermodynamic_state**. Next, the **sampler_state**, which contains the last state of the NCMC simulation if the previous move was accepted or the initial state of the NCMC simulation if the move was rejected, is used to update *box_vectors* and *positions* in the newly created ``openmm.Context``. In this case, we reassign the *velocities* in the MD simulation in order to preserve detailed balance.
 
-Following, a call is made to ``_before_integration()`` to store the intial *positions* and *energies* and then we carry forward with the integration for *n_steps*. After the integration steps have been completed, a call is made to the ``_after_integration()`` method to store the final *energies* and *positions*. Lastly, the **sampler_state** object is updated from the final state of the MD simulation context.
+Following, a call is made to ``_before_integration()`` to store the intial *positions*, *box_vectors* and *energies* and then we carry forward with the integration for *n_steps*. After the integration steps have been completed, a call is made to the ``_after_integration()`` method to store the final *energies* and *positions*. Lastly, the **sampler_state** object is updated from the final state of the MD simulation context.
 
 This completes 1 iteration of the BLUES cycle. Here, the **sampler_state** is then used to sync the final state of the MD simulation (i.e. *box_vectors*, *positions*, and *velocities*) from the previous iteration to the NCMC simulation of the next iteration. Then, we repeat the cycle of **NCMC -> Metropolization -> MD** for the given number of iterations.
