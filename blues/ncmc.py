@@ -254,11 +254,7 @@ class ReportLangevinDynamicsMove(object):
 
         except Exception as e:
             logger.error(e)
-            # Catches particle positions becoming nan during integration.
         else:
-            # We get also velocities here even if we don't need them because we
-            # will recycle this State to update the sampler state object. This
-            # way we won't need a second call to Context.getState().
             context_state = context.getState(
                 getPositions=True,
                 getVelocities=True,
@@ -269,16 +265,8 @@ class ReportLangevinDynamicsMove(object):
             self._after_integration(context, thermodynamic_state)
 
             # Updated sampler state.
-            # This is an optimization around the fact that Collective Variables are not a part of the State,
-            # but are a part of the Context. We do this call twice to minimize duplicating information fetched from
-            # the State.
-            # Update everything but the collective variables from the State object
             sampler_state.update_from_context(
                 context_state, ignore_positions=False, ignore_velocities=False, ignore_collective_variables=True)
-            # Update only the collective variables from the Context
-            #sampler_state.update_from_context(
-            #    context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
-
 
 class NCMCMove(MCMCMove):
     """A general NCMC move that applies an alchemical integrator.
@@ -436,7 +424,6 @@ class NCMCMove(MCMCMove):
 
         # Create context
         context, integrator = context_cache.get_context(thermodynamic_state, integrator)
-        #thermodynamic_state.apply_to_context(context)
 
         # Compute initial energy. We don't need to set velocities to compute the potential.
         # TODO assume sampler_state.potential_energy is the correct potential if not None?
@@ -445,27 +432,6 @@ class NCMCMove(MCMCMove):
         self._before_integration(context, thermodynamic_state)
 
         try:
-            # #NML: Old Way
-            # for step in range(int(self.n_steps)):
-            #     alchLambda = integrator.getGlobalVariableByName('lambda')
-            #     if alchLambda == 0.5:
-            #         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
-            #         proposed_positions = self._propose_positions(positions[self.atom_subset])
-            #         for index, atomidx in enumerate(self.atom_subset):
-            #             positions[atomidx] = proposed_positions[index]
-            #         context.setPositions(positions)
-            #     if step % self.reporters[0]._reportInterval == 0:
-            #         context_state = context.getState(
-            #             getPositions=True,
-            #             getVelocities=True,
-            #             getEnergy=True,
-            #             enforcePeriodicBox=thermodynamic_state.is_periodic)
-            #         context_state.currentStep = self.currentStep
-            #         context_state.system = thermodynamic_state.get_system()
-            #         self.reporters[0].report(context_state, integrator)
-            #     integrator.step(1)
-            #     self.currentStep+=1
-
             nextReport = [None] * len(self.reporters)
             endStep = self.currentStep + self.n_steps
             while self.currentStep < endStep:
@@ -522,9 +488,6 @@ class NCMCMove(MCMCMove):
             # Update everything but the collective variables from the State object
             sampler_state.update_from_context(
                 context_state, ignore_positions=False, ignore_velocities=False, ignore_collective_variables=True)
-            # Update only the collective variables from the Context
-            #sampler_state.update_from_context(
-            #    context, ignore_positions=True, ignore_velocities=True, ignore_collective_variables=False)
 
     @abc.abstractmethod
     def _propose_positions(self, positions):
@@ -792,13 +755,6 @@ class BLUESSampler(object):
         #     msg += '\tLambda: %s -> %s = %s propagation steps\n' % (prop_lambda_window[0], prop_lambda_window[1],
         #                                                             steps_in_prop)
         #     msg += '\tLambda: %s -> 1.0 = %s propagation steps\n' % (prop_lambda_window[1], int(steps_out_prop / 2))
-
-        # #Get trajectory frame interval timing for BLUES simulation
-        # if 'md_trajectory_interval' in self._config.keys():
-        #     frame_iter = nstepsMD / self._config['md_trajectory_interval']
-        #     timetraj_frame = (time_ncmc_iter + time_md_iter) / frame_iter
-        #     msg += 'Trajectory Interval = %s ps/frame (%s frames/iter)' % (timetraj_frame, frame_iter)
-
         logger.info(msg)
 
     def _computeAlchemicalCorrection(self):
@@ -808,9 +764,7 @@ class BLUESSampler(object):
         self.thermodynamic_state.apply_to_context(context)
         self.sampler_state.apply_to_context(context, ignore_velocities=True)
         alch_energy = self.thermodynamic_state.reduced_potential(context)
-        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.initial_energy + alch_energy - self.ncmc_move.final_energy)
-        # correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy -
-        #                      self.ncmc_move.final_energy)
+        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy - self.ncmc_move.final_energy)
         return correction_factor
 
     def _acceptRejectMove(self):
@@ -858,16 +812,13 @@ class BLUESSampler(object):
         self.iteration = 0
         for iteration in range(n_iterations):
 
-            # print('NCMC Simulation')
             self.ncmc_move.apply(self.alch_thermodynamic_state, self.sampler_state)
 
             self._acceptRejectMove()
 
-            # print('MD Simulation')
             self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state)
 
-            # Increment iteration count
             self.iteration += 1
 
-        # print('n_accepted', self.n_accepted)
-        # print('iteration', self.iteration)
+        logger.info('n_accepted = {}'.format(self.n_accepted))
+        logger.info('iterations = {}'.format(self.iteration))
