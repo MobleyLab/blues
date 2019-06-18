@@ -118,10 +118,8 @@ def test_netcdf4storage(tmpdir):
 
 def test_statedatastorage(tmpdir):
     context_cache = ContextCache()
-
     dir = tmpdir.mkdir("tmp")
     outfname = dir.join('blues.log')
-    setup_logging(filename=outfname)
     state_storage = BLUESStateDataStorage(outfname,
                                          reportInterval=5,
                                          step=True, time=True,
