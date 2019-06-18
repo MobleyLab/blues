@@ -12,7 +12,6 @@ env:
     - USERNAME="mobleylab"
     - PKG_NAME="blues"
     - RELEASE=true
-    #- RELEASE=false
     - CONDA_ENV="${PKG_NAME}-${TRAVIS_OS_NAME}"
     - OE_LICENSE="$HOME/oe_license.txt"
 
@@ -36,11 +35,6 @@ matrix:
     #      - PYTHON_VER="3.7"
 
     - os: linux
-      python: 3.5
-      env:
-          - CONDA_PY="35"
-          - PYTHON_VER="3.5"
-    - os: linux
       python: 3.6
       env:
           - CONDA_PY="36"
@@ -51,7 +45,6 @@ matrix:
           - CONDA_PY="37"
           - PYTHON_VER="3.7"
 
-
 before_install:
   # Additional info about the build
   - uname -a
@@ -61,8 +54,8 @@ before_install:
   - python -V
 
   # Unpack encrypted OpenEye license file
-  - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_7751cf1f2f9d_key -iv $encrypted_7751cf1f2f9d_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
-  - if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
+  #- if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then openssl aes-256-cbc -K $encrypted_7751cf1f2f9d_key -iv $encrypted_7751cf1f2f9d_iv -in oe_license.txt.enc -out oe_license.txt -d; fi
+  #- if [ "$TRAVIS_SECURE_ENV_VARS" == false ]; then echo "OpenEye license will not be installed in forks."; fi
 
   - conda update --yes -q conda
   # Turn on always yes
@@ -88,12 +81,9 @@ install:
   #  Use beta version for partial bond orders
   - conda install -c openeye/label/beta openeye-toolkits && python -c "import openeye; print(openeye.__version__)"
   - conda install -q -c openeye/label/Orion -c omnia oeommtools packmol
-  - conda info oeommtools
-  - conda info numexpr=2.6.6
 
   # Build and install package
   - conda build -q --python=${PYTHON_VER} devtools/conda-recipe
-  - conda info blues
   - conda install --use-local -q ${PKG_NAME}
   - conda list
 
