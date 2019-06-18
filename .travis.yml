@@ -11,7 +11,7 @@ env:
     - ORGNAME="omnia"
     - USERNAME="mobleylab"
     - PKG_NAME="blues"
-    - RELEASE=false
+    - RELEASE=true
     #- RELEASE=false
     - CONDA_ENV="${PKG_NAME}-${TRAVIS_OS_NAME}"
     - OE_LICENSE="$HOME/oe_license.txt"
