@@ -17,7 +17,7 @@ from blues.systemfactory import *
 
 parser = argparse.ArgumentParser(description='Restart file name')
 parser.add_argument('-j', '--jobname', default='t4tol', type=str, help="store jobname")
-parser.add_argument('-n', '--nIter', default=5000, type=int, help="number of Iterations")
+parser.add_argument('-n', '--nIter', default=2500, type=int, help="number of Iterations")
 parser.add_argument('-s', '--nsteps', default=10000, type=int, help="number of steps")
 parser.add_argument('-r', '--reportInterval', default=2500, type=int, help="reportInterval")
 args = parser.parse_args()
@@ -49,20 +49,6 @@ tol.system = tol.createSystem(nonbondedMethod=openmm.app.PME,
 # Create our State objects
 sampler_state = SamplerState(positions=tol.positions)
 thermodynamic_state = ThermodynamicState(system=tol.system, temperature=temperature)
-
-# Create our AlchemicalState
-alchemical_atoms = utils.atomIndexfromTop('LIG', tol.topology)
-toluene_alchemical_system = generateAlchSystem(tol.system, alchemical_atoms)
-toluene_alchemical_system = freeze_radius(tol, toluene_alchemical_system,
-                                          freeze_distance=5.0 * unit.angstrom,
-                                          freeze_center=':LIG',
-                                          freeze_solvent=':WAT,NA,Cl-',)
-
-alchemical_state = alchemy.AlchemicalState.from_system(toluene_alchemical_system)
-alch_thermodynamic_state = ThermodynamicState(system=toluene_alchemical_system, temperature=temperature)
-alch_thermodynamic_state = CompoundThermodynamicState(alch_thermodynamic_state, composable_states=[alchemical_state])
-alch_thermodynamic_state.topology = tol.topology
-
 
 md_reporter = NetCDF4Storage(outfname + '.nc', reportInterval)
 

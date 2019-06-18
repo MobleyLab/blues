@@ -15,7 +15,7 @@ handlers:
 
     file_handler:
         class: logging.handlers.RotatingFileHandler
-        level: INFO
+        level: DEBUG
         formatter: info
         filename: blues.log
         maxBytes: 10485760 # 10MB
@@ -33,5 +33,5 @@ handlers:
 #         propagate: no
 
 root:
-    level: INFO
+    level: DEBUG
     handlers: [console, file_handler]
