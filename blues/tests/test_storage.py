@@ -116,10 +116,14 @@ def test_netcdf4storage(tmpdir):
     assert set() == keys - nc_keys
 
 
-def test_statedatastorage(caplog):
+def test_statedatastorage(tmpdir):
     context_cache = ContextCache()
-    logger = logging.getLogger(__name__)
-    state_storage = BLUESStateDataStorage(logger, 5,
+
+    dir = tmpdir.mkdir("tmp")
+    outfname = dir.join('blues.log')
+    setup_logging(filename=outfname)
+    state_storage = BLUESStateDataStorage(outfname,
+                                         reportInterval=5,
                                          step=True, time=True,
                                          potentialEnergy=True,
                                          kineticEnergy=True,
@@ -169,6 +173,6 @@ def test_statedatastorage(caplog):
 
     #Check fields have been reported
     state_storage.report(context_state, integrator)
-    headers = caplog.text.splitlines()[0].split('\t')
-    assert len(headers) >= 1
-    #print(text)
+    with open(outfname, 'r') as input:
+        headers = input.read().splitlines()[0].split('\t')
+        assert len(headers) >= 1

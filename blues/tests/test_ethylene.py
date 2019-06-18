@@ -35,9 +35,8 @@ def runEthyleneTest(dir, N):
     structure = parmed.load_file(structure_pdb)
 
     nc_reporter = NetCDF4Storage(filename + '_MD.nc', reportInterval)
-    state_reporter = BLUESStateDataStorage(reportInterval, title='md', step=True, speed=True, totalSteps=int(n_steps * nIter))
-    nc_reporter1 = NetCDF4Storage(filename + '_NCMC.nc', reportInterval)
-    state_reporter1 = BLUESStateDataStorage(reportInterval, title='ncmc', step=True, speed=True, totalSteps=int(n_steps * nIter))
+
+
 
     # Iniitialize our Move set
     rot_move = RandomLigandRotationMove(
@@ -45,14 +44,13 @@ def runEthyleneTest(dir, N):
         n_steps=n_steps,
         atom_subset=alchemical_atoms,
         context_cache=context_cache,
-        reporters=[nc_reporter1, state_reporter1])
+        reporters=[nc_reporter])
     langevin_move = ReportLangevinDynamicsMove(
         timestep=timestep,
         collision_rate=collision_rate,
         n_steps=n_steps,
         reassign_velocities=True,
-        context_cache=context_cache,
-        reporters=[nc_reporter, state_reporter])
+        context_cache=context_cache)
 
     # Load our OpenMM System and create Integrator
     system_xml = utils.get_data_filename('blues', 'tests/data/ethylene_system.xml')
