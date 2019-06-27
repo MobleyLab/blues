@@ -18,6 +18,7 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
+
 class ReportLangevinDynamicsMove(object):
     """Langevin dynamics segment as a (pseudo) Monte Carlo move.
 
@@ -159,9 +160,7 @@ class ReportLangevinDynamicsMove(object):
         integrator : openmm.LangevinIntegrator
             The LangevinIntegrator object intended for the System.
         """
-        integrator = openmm.LangevinIntegrator(thermodynamic_state.temperature,
-                            self.collision_rate,
-                            self.timestep)
+        integrator = openmm.LangevinIntegrator(thermodynamic_state.temperature, self.collision_rate, self.timestep)
         return integrator
 
     def _before_integration(self, context, thermodynamic_state):
@@ -267,6 +266,7 @@ class ReportLangevinDynamicsMove(object):
             # Updated sampler state.
             sampler_state.update_from_context(
                 context_state, ignore_positions=False, ignore_velocities=False, ignore_collective_variables=True)
+
 
 class NCMCMove(MCMCMove):
     """A general NCMC move that applies an alchemical integrator.
@@ -764,7 +764,8 @@ class BLUESSampler(object):
         self.thermodynamic_state.apply_to_context(context)
         self.sampler_state.apply_to_context(context, ignore_velocities=True)
         alch_energy = self.thermodynamic_state.reduced_potential(context)
-        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy - self.ncmc_move.final_energy)
+        correction_factor = (self.ncmc_move.initial_energy - self.dynamics_move.final_energy + alch_energy -
+                             self.ncmc_move.final_energy)
         return correction_factor
 
     def _acceptRejectMove(self):
@@ -785,7 +786,13 @@ class BLUESSampler(object):
             self.sampler_state.box_vectors = self.ncmc_move.initial_box_vectors
 
     def equil(self, n_iterations=1):
-        """Equilibrate the system for N iterations."""
+        """Equilibrate the system for N iterations.
+
+        Parameters
+        ----------
+        n_iterations : int, optional, default=1
+            Number of iterations to run the sampler for.
+        """
         # Set initial conditions by running 1 iteration of MD first
         for iteration in range(n_iterations):
             self.dynamics_move.apply(self.thermodynamic_state, self.sampler_state)
@@ -795,11 +802,9 @@ class BLUESSampler(object):
     def run(self, n_iterations=1):
         """Run the sampler for the specified number of iterations.
 
-        descriptive summary here
-
         Parameters
         ----------
-        niterations : int, optional, default=1
+        n_iterations : int, optional, default=1
             Number of iterations to run the sampler for.
         """
         context, integrator = cache.global_context_cache.get_context(self.thermodynamic_state)

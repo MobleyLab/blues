@@ -23,6 +23,7 @@ FRCUNIT = u.kilocalorie_per_mole / u.angstrom
 
 logger = logging.getLogger(__name__)
 
+
 def _check_mode(m, modes):
     """
     Check if the file has a read or write mode, otherwise throw an error.
@@ -30,10 +31,8 @@ def _check_mode(m, modes):
     if m not in modes:
         raise ValueError('This operation is only available when a file ' 'is open in mode="%s".' % m)
 
-def setup_logging(filename=None,
-    yml_path='logging.yml',
-    default_level=logging.INFO,
-    env_key='LOG_CFG'):
+
+def setup_logging(filename=None, yml_path='logging.yml', default_level=logging.INFO, env_key='LOG_CFG'):
     """Setup logging configuration
 
     """
@@ -116,46 +115,6 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
 
-
-def init_logger(logger, level=logging.INFO, stream=True, outfname=time.strftime("blues-%Y%m%d-%H%M%S")):
-    """Initialize the Logger module with the given logger_level and outfname.
-
-    Parameters
-    ----------
-    logger : logging.getLogger()
-        The root logger object if it has been created already.
-    level : logging.<LEVEL>
-        Valid options for <LEVEL> would be DEBUG, INFO, warningING, ERROR, CRITICAL.
-    stream : bool, default = True
-        If True, the logger will also stream information to sys.stdout as well
-        as the output file.
-    outfname : str, default = time.strftime("blues-%Y%m%d-%H%M%S")
-        The output file path prefix to store the logged data. This will always
-        write to a file with the extension `.log`.
-
-    Returns
-    -------
-    logger : logging.getLogger()
-        The logging object with additional Handlers added.
-    """
-    fmt = LoggerFormatter()
-
-    if stream:
-        # Stream to terminal
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        stdout_handler.setFormatter(fmt)
-        logger.addHandler(stdout_handler)
-
-    # Write to File
-    if outfname:
-        fh = logging.FileHandler(outfname + '.log')
-        fh.setFormatter(fmt)
-        logger.addHandler(fh)
-
-    logger.addHandler(logging.NullHandler())
-    logger.setLevel(level)
-
-    return logger
 
 ######################
 #     REPORTERS      #
