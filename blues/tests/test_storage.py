@@ -30,7 +30,6 @@ def get_states():
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     structure = parmed.load_file(structure_pdb)
 
-
     # Load our OpenMM System and create Integrator
     system_xml = utils.get_data_filename('blues', 'tests/data/ethylene_system.xml')
     with open(system_xml, 'r') as infile:
@@ -40,13 +39,10 @@ def get_states():
     thermodynamic_state = ThermodynamicState(system=system, temperature=temperature)
     sampler_state = SamplerState(positions=structure.positions.in_units_of(unit.nanometers))
 
-    alch_system = generateAlchSystem(thermodynamic_state.get_system(),
-                                     alchemical_atoms)
+    alch_system = generateAlchSystem(thermodynamic_state.get_system(), alchemical_atoms)
     alch_state = alchemy.AlchemicalState.from_system(alch_system)
-    alch_thermodynamic_state = ThermodynamicState(
-        alch_system, thermodynamic_state.temperature)
-    alch_thermodynamic_state = CompoundThermodynamicState(
-        alch_thermodynamic_state, composable_states=[alch_state])
+    alch_thermodynamic_state = ThermodynamicState(alch_system, thermodynamic_state.temperature)
+    alch_thermodynamic_state = CompoundThermodynamicState(alch_thermodynamic_state, composable_states=[alch_state])
 
     return structure, thermodynamic_state, alch_thermodynamic_state
 
@@ -57,24 +53,12 @@ def test_add_logging_level():
     assert True == hasattr(logging, 'TRACE')
 
 
-def test_init_logger(tmpdir):
-    print('Testing logger initialization')
-    dir = tmpdir.mkdir("tmp")
-    outfname = dir.join('testlog')
-    logger = logging.getLogger(__name__)
-    level = logger.getEffectiveLevel()
-    logger = init_logger(logger, level=logging.INFO, outfname=outfname, stream=False)
-    new_level = logger.getEffectiveLevel()
-    assert level != new_level
-
-
 def test_netcdf4storage(tmpdir):
     dir = tmpdir.mkdir("tmp")
     outfname = dir.join('testlog.nc')
     context_cache = ContextCache()
-    ncmc_storage = NetCDF4Storage(outfname, 5, crds=True, vels=True, frcs=True,
-                                protocolWork=True, alchemicalLambda=True)
-
+    ncmc_storage = NetCDF4Storage(
+        outfname, 5, crds=True, vels=True, frcs=True, protocolWork=True, alchemicalLambda=True)
 
     structure, thermodynamic_state, alch_thermodynamic_state = get_states()
     ncmc_integrator = AlchemicalExternalLangevinIntegrator(
@@ -87,7 +71,7 @@ def test_netcdf4storage(tmpdir):
         splitting="H V R O R V H",
         temperature=alch_thermodynamic_state.temperature,
         nsteps_neq=10,
-        timestep=1.0*unit.femtoseconds,
+        timestep=1.0 * unit.femtoseconds,
         nprop=1,
         prop_lambda=0.3)
     context, integrator = context_cache.get_context(alch_thermodynamic_state, ncmc_integrator)
@@ -120,23 +104,25 @@ def test_statedatastorage(tmpdir):
     context_cache = ContextCache()
     dir = tmpdir.mkdir("tmp")
     outfname = dir.join('blues.log')
-    state_storage = BLUESStateDataStorage(outfname,
-                                         reportInterval=5,
-                                         step=True, time=True,
-                                         potentialEnergy=True,
-                                         kineticEnergy=True,
-                                         totalEnergy=True,
-                                         temperature=True,
-                                         volume=True,
-                                         density=True,
-                                         progress=True,
-                                         remainingTime=True,
-                                         speed=True,
-                                         elapsedTime=True,
-                                         systemMass=True,
-                                         totalSteps=20,
-                                         protocolWork=True,
-                                         alchemicalLambda=True )
+    state_storage = BLUESStateDataStorage(
+        outfname,
+        reportInterval=5,
+        step=True,
+        time=True,
+        potentialEnergy=True,
+        kineticEnergy=True,
+        totalEnergy=True,
+        temperature=True,
+        volume=True,
+        density=True,
+        progress=True,
+        remainingTime=True,
+        speed=True,
+        elapsedTime=True,
+        systemMass=True,
+        totalSteps=20,
+        protocolWork=True,
+        alchemicalLambda=True)
     structure, thermodynamic_state, alch_thermodynamic_state = get_states()
     ncmc_integrator = AlchemicalExternalLangevinIntegrator(
         alchemical_functions={
@@ -148,7 +134,7 @@ def test_statedatastorage(tmpdir):
         splitting="H V R O R V H",
         temperature=alch_thermodynamic_state.temperature,
         nsteps_neq=10,
-        timestep=1.0*unit.femtoseconds,
+        timestep=1.0 * unit.femtoseconds,
         nprop=1,
         prop_lambda=0.3)
     context, integrator = context_cache.get_context(alch_thermodynamic_state, ncmc_integrator)
