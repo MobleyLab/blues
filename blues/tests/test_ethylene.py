@@ -24,7 +24,7 @@ def runEthyleneTest(dir, N):
     collision_rate = 1 / unit.picoseconds
     timestep = 1.0 * unit.femtoseconds
     n_steps = 20
-    nIter = 100
+    nIter = 1000
     reportInterval = 5
     alchemical_atoms = [2, 3, 4, 5, 6, 7]
     platform = openmm.Platform.getPlatformByName('CPU')
@@ -35,8 +35,6 @@ def runEthyleneTest(dir, N):
     structure = parmed.load_file(structure_pdb)
 
     nc_reporter = NetCDF4Storage(filename + '_MD.nc', reportInterval)
-
-
 
     # Iniitialize our Move set
     rot_move = RandomLigandRotationMove(
