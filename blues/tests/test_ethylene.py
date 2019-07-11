@@ -104,7 +104,7 @@ def graphConvergence(dist, n_points=10):
 
 def test_runEthyleneRepeats(tmpdir):
     dir = tmpdir.mkdir("tmp")
-    outfnames = [runEthyleneTest(dir, N=i) for i in range(5)]
+    outfnames = [runEthyleneTest(dir, N=i) for i in range(9)]
 
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
     trajs = [md.load('%s_MD.nc' % traj, top=structure_pdb) for traj in outfnames]
