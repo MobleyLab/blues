@@ -23,8 +23,8 @@ def runEthyleneTest(dir, N):
     temperature = 200 * unit.kelvin
     collision_rate = 1 / unit.picoseconds
     timestep = 1.0 * unit.femtoseconds
-    n_steps = 20
-    nIter = 1000
+    n_steps = 40
+    nIter = 2000
     reportInterval = 5
     alchemical_atoms = [2, 3, 4, 5, 6, 7]
     platform = openmm.Platform.getPlatformByName('CPU')
