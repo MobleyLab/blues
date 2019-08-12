@@ -15,6 +15,12 @@ from blues.moldart.boresch import add_rmsd_restraints, add_boresch_restraints
 import parmed
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalNonequilibriumLangevinIntegrator
 from blues.moldart.rigid import createRigidBodies, resetRigidBodies
+import pandas as pd
+from scipy.signal import argrelextrema
+from sklearn.neighbors import KernelDensity
+from scipy.integrate import cumtrapz
+
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -127,6 +133,7 @@ class MolDartMove(RandomLigandRotationMove):
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
+        self.pdb_files = pdb_files
         self.trajs = [md.load(traj) for traj in pdb_files]
         self.restrained_receptor_atoms = []
         if restrained_receptor_atoms is None:
@@ -475,6 +482,204 @@ class MolDartMove(RandomLigandRotationMove):
         return darts
 
     @classmethod
+    def getMaxRange(cls, dihedral, pose_value=None, density_percent=0.9):
+        import matplotlib.pyplot as plt
+        #make the range larger than the periodic boundries
+        dihedral = np.concatenate((dihedral-2*np.pi, dihedral, dihedral+2*np.pi))
+
+        if density_percent > 1.0:
+            raise ValueError('density_percent must be less than 1!')
+        pi_range = np.linspace(-2*np.pi, 2*np.pi+np.pi/50.0, num=360, endpoint=True).reshape(-1,1)
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(dihedral)
+        log_dens = np.exp(kde.score_samples(pi_range))
+        #plt.plot(pi_range, (log_dens))
+        #plt.xlim(-np.pi,np.pi)
+        #plt.show()
+        maxes =  argrelextrema(log_dens, np.greater)
+        mins = argrelextrema(log_dens, np.less)
+        min_value = [pi_range[i] for i in mins]
+        max_value = np.array([pi_range[i] for i in maxes]).reshape(-1)
+        if 0:
+            max_value_check = max_value.tolist()
+            remove_index_dict = {}
+            for index, i in enumerate(max_value_check):
+                remove_index_dict[i] = []
+                for index2,j in enumerate(max_value_check):
+                    print('mod pi', j%np.pi)
+                    if (abs(i-j) < 0.25) or (abs(i-j+np.pi) < 0.25) or (abs(i-j-np.pi) < 0.25):
+                        remove_index_dict[i].append(index2)
+            keep_values = []
+            for key, value in remove_index_dict.items():
+                if value:
+                    keep_values.append(value[0])
+            print('keep_values', keep_values)
+            new_values = [max_value_check[i] for i in keep_values]
+            max_value = np.array(list(set(new_values))).reshape(-1)
+            print('max_value')
+
+        if np.size(min_value) == 0:
+            #that means that there is only a maximum peak
+            probability = 0
+            i_range = 0
+            dx = pi_range[1] - pi_range[0]
+
+            for i in range(1,100):
+                if probability < density_percent:
+                    #find total area to cover density_percent of the density
+                    target_range = log_dens[maxes[0][0]-i:maxes[0][0]+i]
+                    probability = cumtrapz(target_range, dx=dx)[-1]
+                    i_range = i
+                else:
+                    break
+
+            min_value = np.array([[pi_range[maxes[0][0]-i_range], pi_range[maxes[0][0]+i_range]]])
+
+            region_space = i*dx[0]
+            max_return = max_value[0]
+        else:
+            #import matplotlib.pyplot as plt
+            #fig, ax = plt.subplots()
+            #ax.plot(pi_range, np.exp(log_dens), '-')
+
+            #there are multiple minima
+            for index, i in enumerate(max_value):
+                #find where the minima lie to figure out where the peak densities are
+                #min_range = np.array(min_value).reshape(-1).tolist()
+                min_range = [-20]+np.array(min_value).reshape(-1).tolist()+[20]
+
+                for j in range(len(min_range)-1):
+                    if np.less(i, min_range[j+1]) and  np.greater(i, min_range[j]):
+                        #pick range with smallest region to prevent overlaps
+                        min_region = min(abs(i-min_range[j+1]), abs(i-min_range[j]))
+                        break
+                if np.greater(pose_value, i-min_region) and np.less(pose_value, i+min_region) or np.greater(pose_value+np.pi, i-min_region) and np.less(pose_value+np.pi, i+min_region):
+                #if np.greater(pose_value, i-min_region) and np.less(pose_value, i+min_region):
+
+                    max_return = i
+                    #ax.vlines(max_return, 0, 1, colors='red')
+
+                    pi_range = np.linspace(-2*np.pi, 2*np.pi+np.pi/50.0, num=360, endpoint=True).reshape(-1).tolist()
+                    dx = pi_range[1]-pi_range[0]
+                    max_index = pi_range.index(i)
+                    space = int(min_region / dx)
+                    max_space_sub, max_space_add = (max_index-space, max_index+space)
+                    #might have issues with the ends bleeding off, so address those
+                    if max_space_sub < 0:
+                        max_space_sub = 0
+                    if max_space_add > 360:
+                        max_space_add = 359
+                    #target_range = log_dens.reshape(-1)[max_index-space:max_index+space]
+                    target_range = log_dens.reshape(-1)[max_space_sub:max_space_add]
+
+                    print('maxes', maxes, 'i', i)
+                    print('max_index-space', max_index-space)
+                    print('max_index+space', max_index+space)
+
+                    region_probability = cumtrapz(target_range, dx=dx)[-1]
+
+                    if density_percent == 1.00:
+                        region_space = space*dx
+                    else:
+                        probability = 0.0
+                        for spacing in range(1,100):
+                            probability = cumtrapz((log_dens.reshape(-1)[max_index-spacing:max_index+spacing]), dx=dx)[-1]
+                            if probability/float(region_probability) >= density_percent:
+                                region_space = spacing*dx
+                                break
+                    print('this is the break')
+                    break
+                else:
+                    #ADDED
+                    print('pvalue', pose_value)
+                    print('doing none', max_value)
+                    print('min_range', min_range, 'pose_value', pose_value, 'min_region', min_region)
+                    print('min', [i%np.pi for i in min_range[1:-1]], 'max', [i%np.pi for i in max_value])
+                    #ax.plot(pi_range, np.exp(log_dens), '-')
+                    #ax.vlines(pose_value, 0,1, colors='green')
+                    #ADDED
+                    pass
+        #half region space because we look within +- the max_return value
+        try:
+            region_space = region_space/2.0
+        except:
+            plt.plot(pi_range, (log_dens))
+            #plt.xlim(-np.pi,np.pi)
+            plt.vlines(max_value, 0,0.75)
+            plt.vlines(min_range, 0,0.75, color='red')
+
+            plt.show()
+            #exit()
+        #enforce periodicity within region
+        if max_return > np.pi:
+            max_return = max_return - 2*np.pi
+        elif max_return < -np.pi:
+            max_return = max_return + 2*np.pi
+        return max_return, region_space
+
+
+
+
+    def getDartsFromTrajs(self, traj_files, structure_files=None,  atom_indices=None,  topology=None, dihedral_select='pose', set_self=True):
+
+        if structure_files == None:
+            structure_files=self.pdb_files
+        if topology==None:
+            topology = structure_files[0]
+        if atom_indices == None:
+            atom_indices = self.atom_indices
+
+
+        traj_files = [self._loadfiles(i, topology) for i in traj_files]
+
+        internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = self._createZmat(structure_files, atom_indices, topology, reference_traj=None, fit_atoms=None)
+        traj_storage = []
+        dihedral_angles = []
+        for i in internal_zmat[0].index.values[3:]:
+            value_list = [i, internal_zmat[0].loc[i]['b'], internal_zmat[0].loc[i]['a'], internal_zmat[0].loc[i]['d']]
+            dihedral_angles.append(value_list)
+        for index, traj in enumerate(traj_files):
+            dihedrals = md.compute_dihedrals(traj, dihedral_angles)
+            #dihedrals in radians
+            if dihedral_select=='first':
+                pose_mins = [dihedrals[0:i] for i in range(len(internal_zmat[index].index.values[3:]))]
+            elif dihedral_select=='last':
+                pose_mins = [dihedrals[-1:i] for i in range(len(internal_zmat[index].index.values[3:]))]
+            elif dihedral_select=='pose':
+                pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in internal_zmat[index].index.values[3:]]
+            #contains all the dictionary lists conrresponding to the min/max ranges
+
+            traj_dict = {value: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1), pose_mins[aindex]) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
+            #print(traj_dict)
+            traj_storage.append(traj_dict)
+        output_mat = [copy.deepcopy(zmat) for zmat in internal_zmat]
+        #print('output before', output_mat[0])
+        for zindex, zmat in enumerate(output_mat):
+            range_list = [0,0,0]
+            dihedral_max = [0,0,0]
+            for  i in internal_zmat[zindex].index.values[3:]:
+                #zmat._frame.loc[i,'dihedral'] = np.rad2deg(traj_storage[zindex][i][0])
+                range_list.append(np.rad2deg(traj_storage[zindex][i][1]))
+                dihedral_max.append(np.rad2deg(traj_storage[zindex][i][0]))
+            zmat._frame['dihedral_max'] = dihedral_max
+            zmat._frame['dart_range'] = range_list
+            print('traj_storage', traj_storage)
+        if 1:
+            #set dihedral ranges to minimum values
+            starting_frame = copy.deepcopy(output_mat[0]._frame['dart_range'])
+            for zindex, zmat in enumerate(output_mat):
+                starting_frame= pd.concat([starting_frame, zmat._frame['dart_range']]).min(level=0)
+            print('minimum', starting_frame )
+            for zindex, zmat in enumerate(output_mat):
+                zmat._frame['dart_range'] = starting_frame
+        #now have to set up darting using darting regions instead
+        if set_self==True:
+            self.internal_zmat = output_mat
+
+
+        return output_mat
+
+
+    @classmethod
     def _checkTrajectoryDarts(cls, structure_files, atom_indices, traj_files, darts, topology=None, reference_traj=None, fit_atoms=None):
         """
         Parameters
@@ -785,19 +990,40 @@ class MolDartMove(RandomLigandRotationMove):
             old_list =  old_list + change_list
 
         else:
-            zmat_indices = zmat_traj.index.values
-            changed = (zmat_diff._frame.loc[:, change_list] - zmat_compare._frame.loc[:, change_list]).reindex(zmat_indices)
-            abs_bond_diff = zmat_diff._frame.loc[:, 'bond'].iloc[0] - zmat_compare._frame.loc[:, 'bond'].iloc[0]
-            abs_angle_diff = zmat_diff._frame.loc[:, 'angle'].iloc[:2] - zmat_compare._frame.loc[:, 'angle'].iloc[:2]
+            if 'dart_range' in self.internal_zmat[binding_mode_index]._frame:
+                print('doing the right part')
+                #zmat_new._frame['dart_range'] * 2*np.random.random() - zmat_new._frame['dart_range']
+                zmat_size = len(self.internal_zmat[binding_mode_index].index)
+                print((2*np.random.random((zmat_size, 1)) - 1))
+                #diff = zmat_new._frame['dart_range']*(2*np.random.random((zmat_size, 1)) - 1)
+                #diff = zmat_new._frame['dart_range'].multiply(2*np.random.random((zmat_size, 1)) - 1)
+                diff = zmat_new._frame['dart_range'].multiply(2*(np.random.random((zmat_size)) - 0.5))
+                print('diff', diff)
+                print('zmat_new before', zmat_new)
 
-            zmat_diff._frame.loc[:, change_list] = changed
-            zmat_diff._frame.loc[(zmat_diff._frame.index.isin([zmat_diff._frame.index[0]])), 'bond'] = abs_bond_diff
-            zmat_diff._frame.loc[(zmat_diff._frame.index.isin(zmat_diff._frame.index[:2])), 'angle'] = abs_angle_diff
 
-            #Then add back those changes to the darted pose
-            zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[zmat_new._frame.index[2:], 'dihedral'] + zmat_diff._frame.loc[zmat_diff._frame.index[2:], 'dihedral']
-            zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] = zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] + zmat_diff._frame.loc[zmat_new._frame.index[0], 'bond']
-            zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] = zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] + zmat_diff._frame.loc[zmat_diff._frame.index[:2], 'angle']
+                zmat_new._frame['dihedral'] = zmat_new._frame['dihedral_max'] + diff
+                print('zmat_new after', zmat_new)
+
+                #figure out the range to alter the dihedrals
+                #TODO might need to do something with the bond/angle for the first 3 bonds/angles
+
+
+            else:
+                print('doing the wrong part')
+                zmat_indices = zmat_traj.index.values
+                changed = (zmat_diff._frame.loc[:, change_list] - zmat_compare._frame.loc[:, change_list]).reindex(zmat_indices)
+                abs_bond_diff = zmat_diff._frame.loc[:, 'bond'].iloc[0] - zmat_compare._frame.loc[:, 'bond'].iloc[0]
+                abs_angle_diff = zmat_diff._frame.loc[:, 'angle'].iloc[:2] - zmat_compare._frame.loc[:, 'angle'].iloc[:2]
+
+                zmat_diff._frame.loc[:, change_list] = changed
+                zmat_diff._frame.loc[(zmat_diff._frame.index.isin([zmat_diff._frame.index[0]])), 'bond'] = abs_bond_diff
+                zmat_diff._frame.loc[(zmat_diff._frame.index.isin(zmat_diff._frame.index[:2])), 'angle'] = abs_angle_diff
+
+                #Then add back those changes to the darted pose
+                zmat_new._frame.loc[:, change_list] = zmat_new._frame.loc[zmat_new._frame.index[2:], 'dihedral'] + zmat_diff._frame.loc[zmat_diff._frame.index[2:], 'dihedral']
+                zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] = zmat_new._frame.loc[zmat_new._frame.index[0], 'bond'] + zmat_diff._frame.loc[zmat_new._frame.index[0], 'bond']
+                zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] = zmat_new._frame.loc[zmat_new._frame.index[:2], 'angle'] + zmat_diff._frame.loc[zmat_diff._frame.index[:2], 'angle']
 
         #We want to keep the bonds and angles the same between jumps, since they don't really vary
         zmat_new._frame.loc[:, old_list] = zmat_traj._frame.loc[:, old_list]

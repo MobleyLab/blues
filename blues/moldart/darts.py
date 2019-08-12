@@ -1088,19 +1088,36 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
 
         dihedral_output = {}
         dihedral_atoms = list(dart_storage['dihedral'].keys())
-
+        #TODO Need to check if periodic wrapping is handled correctly for the dihedrals when comparing if in the dart
         if len(dihedral_atoms) > 0:
-            for atom_index in dihedral_atoms:
-                dihedral_output[atom_index] = []
-                current_dihedral = current_internal['dihedral'].loc[atom_index]
+            if 'dart_range' in internal_mat[0]._frame:
+                print('dart_range found')
+                for atom_index in dihedral_atoms:
+                    dihedral_output[atom_index] = []
+                    current_dihedral = current_internal['dihedral'].loc[atom_index]
 
-                for posenum, zmat in enumerate(internal_mat):
-                    comparison = zmat['dihedral'].loc[atom_index]
-                    dihedral_diff = abs(current_dihedral - comparison)
+                    for posenum, zmat in enumerate(internal_mat):
+                        comparison = zmat['dihedral_max'].loc[atom_index]
+                        dihedral_diff = abs(current_dihedral - comparison)
+                        dihedral_diff1 = abs(current_dihedral - 360+comparison)
+                        dihedral_diff2 = abs(current_dihedral - (360+comparison))
+
+                        #
+                        if dihedral_diff <= zmat['dart_range'].loc[atom_index]:
+                            dihedral_output[atom_index].append(posenum)
+
+            else:
+                for atom_index in dihedral_atoms:
+                    dihedral_output[atom_index] = []
+                    current_dihedral = current_internal['dihedral'].loc[atom_index]
+
+                    for posenum, zmat in enumerate(internal_mat):
+                        comparison = zmat['dihedral'].loc[atom_index]
+                        dihedral_diff = abs(current_dihedral - comparison)
 
 
-                    if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]):
-                        dihedral_output[atom_index].append(posenum)
+                        if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]) or dihedral_diff1 <= np.rad2deg(dart_storage['dihedral'][atom_index]) or dihedral_diff2 <= np.rad2deg(dart_storage['dihedral'][atom_index]):
+                            dihedral_output[atom_index].append(posenum)
 
 
 
@@ -1125,6 +1142,8 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         except TypeError:
             set_output = []
     except:
+        import traceback
+        traceback.print_exc()
         print('svd not converged')
         set_output = []
     return set_output
