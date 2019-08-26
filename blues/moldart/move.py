@@ -19,11 +19,67 @@ import pandas as pd
 from scipy.signal import argrelextrema
 from sklearn.neighbors import KernelDensity
 from scipy.integrate import cumtrapz
-
+from openeye import oechem
 
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+def AtomsInSameRing(atomA, atomB):
+
+    if not atomA.IsInRing() or not atomB.IsInRing():
+        return False
+
+    if atomA == atomB:
+        return True
+
+    firstpath = [a for a in oechem.OEShortestPath(atomA, atomB, oechem.OEAtomIsInChain())]
+    firstpathlength = len(firstpath)
+
+    if firstpathlength == 2:
+        return True  # neighbors
+
+    if firstpathlength == 0:
+        return False  # not is same ring system
+
+    smallestA = oechem.OEAtomGetSmallestRingSize(atomA)
+    smallestB = oechem.OEAtomGetSmallestRingSize(atomB)
+
+    if firstpathlength > smallestA and firstpathlength > smallestB:
+        return False  # too far away
+
+    # try to find the second shortest different path
+    excludepred = ChainAtomOrAlreadyTraversed(firstpath[1:-1])
+    secondpath = [a for a in oechem.OEShortestPath(atomA, atomB, excludepred)]
+    secondpathlength = len(secondpath)
+
+    if secondpathlength == 0:
+        return False  # can not be in the same ring
+
+    if secondpathlength > smallestA and secondpathlength > smallestB:
+        return False  # too far away
+
+    sumringsize = len(firstpath) + len(secondpath) - 2
+    if sumringsize > smallestA and sumringsize > smallestB:
+        return False
+
+    inringA = oechem.OEAtomIsInRingSize(atomA, sumringsize)
+    inringB = oechem.OEAtomIsInRingSize(atomB, sumringsize)
+    return inringA and inringB
+
+class ChainAtomOrAlreadyTraversed(oechem.OEUnaryAtomPred):
+    def __init__(self, exclude):
+        oechem.OEUnaryAtomPred.__init__(self)
+        self.exclude = exclude
+
+    def __call__(self, atom):
+        if not atom.IsInRing():
+            return False
+        return (atom in self.exclude)
+
+    def CreateCopy(self):
+        return ChainAtomOrAlreadyTraversed(self.exclude).__disown__()
 
 
 class MolDartMove(RandomLigandRotationMove):
@@ -235,11 +291,12 @@ class MolDartMove(RandomLigandRotationMove):
                             if atom.IsHydrogen():
                                 h_list.append(atom.GetIdx())
                     #self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
-                    #self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
-                    self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
+                    self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
+                    #self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
         else:
             self.buildlist = self._createBuildlist(pdb_files, self.atom_indices)
-            self.dihedral_ring_atoms = self._findDihedralRingAtoms(pdb_files, atom_indices=self.atom_indices, rigid_darts=self.rigid_darts)
+            self.traj_dart_dict = self._findDihedralRingAtoms(pdb_files, atom_indices=self.atom_indices, rigid_darts=self.rigid_darts)
+            self.dihedral_ring_atoms = self.traj_dart_dict['dihedral_ring_atoms']
             #get the construction table so internal coordinates are consistent between poses
 
 
@@ -305,7 +362,11 @@ class MolDartMove(RandomLigandRotationMove):
 #            core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values if i not in self.dihedral_ring_atoms]))
             core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values]))
 
-            self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
+            #self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
+            #self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
+
+            self.only_darts_dihedrals = [i for i in self.darts['dihedral'].keys()]
+
 
     def refitPoses(self, current_pose, trajs, fit_atoms, atom_indices):
         #current_pose current trajectory traj
@@ -619,7 +680,7 @@ class MolDartMove(RandomLigandRotationMove):
 
 
 
-    def getDartsFromTrajs(self, traj_files, structure_files=None,  atom_indices=None,  topology=None, dihedral_select='pose', set_self=True):
+    def getDartsFromTrajs(self, traj_files, structure_files=None,  atom_indices=None,  topology=None, dihedral_select='pose', same_range=True, set_self=True):
 
         if structure_files == None:
             structure_files=self.pdb_files
@@ -663,7 +724,7 @@ class MolDartMove(RandomLigandRotationMove):
             zmat._frame['dihedral_max'] = dihedral_max
             zmat._frame['dart_range'] = range_list
             print('traj_storage', traj_storage)
-        if 1:
+        if same_range:
             #set dihedral ranges to minimum values
             starting_frame = copy.deepcopy(output_mat[0]._frame['dart_range'])
             for zindex, zmat in enumerate(output_mat):
@@ -745,40 +806,144 @@ class MolDartMove(RandomLigandRotationMove):
     def _findDihedralRingAtoms(cls, structure_files, atom_indices, rigid_darts=False):
         buildlist = cls._createBuildlist(structure_files, atom_indices)
         if rigid_darts is not None:
-            with tempfile.NamedTemporaryFile(suffix='.xyz') as t:
+            with tempfile.NamedTemporaryFile(suffix='.xyz', mode='w') as t:
                 fname = t.name
                 traj = md.load(structure_files[0]).atom_slice(atom_indices)
                 xtraj = XYZTrajectoryFile(filename=fname, mode='w')
                 xtraj.write(xyz=in_units_of(traj.xyz, traj._distance_unit, xtraj.distance_unit),
                             types=[i.element.symbol for i in traj.top.atoms] )
-
+                xtraj.close()
                 ring_atoms = []
                 from openeye import oechem
                 ifs = oechem.oemolistream()
                 ifs.open(fname)
                 #double_bonds = []
                 h_list = []
+                ring_atom_list = []
+                rotatable_atom_bonds = {}
+                rigid_atom_bonds = {}
                 for mol in ifs.GetOEGraphMols():
                     oechem.OEFindRingAtomsAndBonds(mol)
                     for atom in mol.GetAtoms():
+                        atom_list = []
+                        for atom1 in mol.GetAtoms():
+                            if AtomsInSameRing(atom,atom1):
+                                atom_list.append(atom1.GetIdx())
                         if atom.IsInRing():
                         #if not atom.IsRotor():
+                        #find if connected to a nonring rotatable atom
+                        #keep track of this for darting later in rotatable_atom_bonds
+                            for bond in atom.GetBonds():
+                                parent_atom = atom.GetIdx()
+                                neighbor_atom = bond.GetNbr(atom).GetIdx()
+                                if bond.IsRotor():
+                                    try:
+                                        rotatable_atom_bonds[parent_atom].append(neighbor_atom)
+                                    except:
+                                        rotatable_atom_bonds[parent_atom] = []
+                                        rotatable_atom_bonds[parent_atom].append(neighbor_atom)
+                                else:
+                                    try:
+                                        rigid_atom_bonds[parent_atom].append(neighbor_atom)
+                                    except:
+                                        rigid_atom_bonds[parent_atom] = []
+                                        rigid_atom_bonds[parent_atom].append(neighbor_atom)
                             ring_atoms.append(atom.GetIdx())
                         if atom.IsHydrogen():
                             h_list.append(atom.GetIdx())
+                        if len(atom_list) > 0:
+                            ring_atom_list.append(atom_list)
+                for dict_type in [rotatable_atom_bonds, rigid_atom_bonds]:
+                    for key in dict_type:
+                        dict_type[key] = list(set(dict_type[key]))
+                print('rotatable atom bonds', rotatable_atom_bonds, 'ring_atoms', set(ring_atoms))
+                print('rigid_atom_bonds', rigid_atom_bonds)
                 #bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetEndIdx() in ring_atoms]
                 #end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetBgnIdx() in ring_atoms]
             rigid_atoms = ring_atoms
             #select all atoms that are bonded to a ring/double bond atom
             angle_ring_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] in rigid_atoms]
-            for mol in ifs.GetOEGraphMols():
-                for atom in mol.GetAtoms():
-                    if atom.IsHydrogen():
-                        h_list.append(atom.GetIdx())
+            #print('mols', ifs.GetOEGraphMols())
+            print('atom_list', atom_list)
+            new_atoms = [list(x) for x in set(tuple(x) for x in ring_atom_list)]
+            unique_list = []
+            for entry in new_atoms:
+                for entry2 in new_atoms:
+                    if entry != entry2:
+                        if all(elem in entry for elem in entry2):
+                            unique_list.append(entry)
+            print('unique_list', unique_list)
+            set_1 = set()
+            if 0:
+                for item in unique_list:
+                    print('item', type(item), item, set(item))
+                    print(set(item))
+                    new_item = set(item)
+                    set_1.add(new_item)
+
+                print('set', {set(x) for x in unique_list})
+            unique_set = set({frozenset(sorted(x)) for x in unique_list})
+            print('unique_set', unique_set)
+            unique_list = list(set({frozenset(sorted(x)) for x in unique_list}))
+            #find end atoms (atoms that are bonded to atoms)
+
             #self.dihedral_ring_atoms = list(set(angle_ring_atoms + h_list))
             #self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
             dihedral_ring_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] in rigid_atoms]
-            return dihedral_ring_atoms
+            #find the order of atoms and the indices that should be treated the same (if any)
+            rotate_keys = list(rotatable_atom_bonds.keys())
+            #want to sort based on build order in
+            rotate_keys_sort = list((buildlist.index.tolist().index(i) for i in rotate_keys))
+            print('first', rotate_keys_sort)
+            print('np.argsort(rotate_keys_sort)', np.argsort(rotate_keys_sort))
+
+            rotate_keys = [rotate_keys[np.argsort(rotate_keys_sort)[i]] for i in range(len(rotate_keys))]
+            #if the first 3 atoms are part of the build list then ignore them since their rotations are already accounted for
+            print('test build', buildlist['b'].loc[3:])
+            first_buildlist = buildlist.index.tolist()[:3:] + ['origin', 'e_x', 'e_y', 'e_z']
+            #rotate_keys = [i for i in rotate_keys if i not in buildlist['b']]
+            #rotate_keys = [i for i in rotate_keys if i not in buildlist.index.tolist()[:3]]
+            print(buildlist)
+            print('rotate_keys', rotate_keys)
+            bond_groups = {}
+            for i in buildlist.index:
+                #print('test', i, buildlist.loc[i, ['b', 'a', 'd']])
+                #print('test', i, buildlist[buildlist['b'] == i], buildlist[buildlist['b'] == i].index.tolist())
+                testa = buildlist[buildlist['b'] == i]
+                bond_groups[i] = buildlist[buildlist['b'] == i].index.tolist()
+
+            #find the atoms bonded to these rotate_key atoms
+            rotate_list = []
+            ring_tracker = copy.deepcopy(unique_list)
+            print('rotate_keys1', rotate_keys)
+            #for i in rotate_keys:
+            #    for bonded_atoms in bond_groups[i]:
+            for atoms in rotate_keys:
+                #check bonded atoms of atoms. If bonded atoms are part of first atoms, skip them
+                if atoms in first_buildlist:
+                    if rotatable_atom_bonds[atoms][0] in first_buildlist:
+                        pass
+                    else:
+                        rotate_list.append(rotatable_atom_bonds[atoms][0])
+                else:
+                     rotate_list.append(atoms)
+
+
+                    #if rotated bonds atoms in this 
+                    #check rigid_atom_bonds for rotate_keys
+                    #if rigid_atoms_bonds in the first three buildlist, don't rotate
+                    #
+            #once we know what atoms are the ones to be rotated then we can isolate them for darting
+            
+            print('rotate_list', rotate_list)
+            #NEW THING: check if the first 3/4 atoms take care of a ring. If that's the case then skip that one
+            #print(buildlist.loc[rotate_keys])
+            print('bond groups', bond_groups)
+            output_dict = {}
+            output_dict['rotate_list'] = rotate_list
+            output_dict['bond_groups'] = bond_groups
+            output_dict['dihedral_ring_atoms'] = dihedral_ring_atoms
+            return output_dict
 
     @staticmethod
     def _checkTransitionMatrix(transition_matrix, dart_groups):
@@ -880,7 +1045,8 @@ class MolDartMove(RandomLigandRotationMove):
         self.binding_mode_traj, self.binding_mode_pos = self.refitPoses(self.sim_traj, self.trajs, self.fit_atoms, self.atom_indices)
         #logger.info("self.binding_mode_traj {} {}".format(len(self.binding_mode_traj), self.binding_mode_traj))
         #logger.info("self.binding_mode_pos {} {}".format(len(self.binding_mode_pos), self.binding_mode_pos))
-
+        print('type', type(current_zmat))
+        print('type internal_zmat', type(self.internal_zmat))
         selected = checkDart(self.internal_zmat, current_pos=(np.array(self.sim_traj.openmm_positions(0)._value))[self.atom_indices]*10,
 
                     current_zmat=current_zmat, pos_list=self.binding_mode_pos,
@@ -1129,13 +1295,14 @@ class MolDartMove(RandomLigandRotationMove):
 
         #adjust the angle manually because the first three atom positions are directly
         #translated from the reference without angle adjustments
-        new_angle = zmat_new['angle'][self.buildlist.index[2]]
-        ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(new_angle), maintain_magnitude=False)
-        ###
-        ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
-        nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
-        dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
-        dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
+        if 0:
+            new_angle = zmat_new['angle'][self.buildlist.index[2]]
+            ad_dartvec = adjust_angle(vec1_dart, vec2_dart, np.radians(new_angle), maintain_magnitude=False)
+            ###
+            ad_dartvec = ad_dartvec / np.linalg.norm(ad_dartvec) * zmat_new._frame['bond'][self.buildlist.index.get_values()[1]]/10.
+            nvec2_dart = vec2_dart / np.linalg.norm(vec2_dart) * zmat_new._frame['bond'][self.buildlist.index.get_values()[2]]/10.
+            dart_three[vector_list[0][0]] = dart_three[vector_list[0][1]] + ad_dartvec
+            dart_three[vector_list[1][0]] = dart_three[vector_list[0][1]] + nvec2_dart
 
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
@@ -1508,6 +1675,7 @@ class MolDartMove(RandomLigandRotationMove):
             resetRigidBodies(context.getSystem(), after_pos, self.real_particles, self.vsiteParticles, self.constraint_list, self.atom_indices)
             context.reinitialize(preserveState=True)
         return context
+
 
 class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator):
     def __init__(self,

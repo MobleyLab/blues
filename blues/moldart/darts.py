@@ -1099,10 +1099,12 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                     for posenum, zmat in enumerate(internal_mat):
                         comparison = zmat['dihedral_max'].loc[atom_index]
                         dihedral_diff = abs(current_dihedral - comparison)
-                        dihedral_diff1 = abs(current_dihedral - 360+comparison)
-                        dihedral_diff2 = abs(current_dihedral - (360+comparison))
+                        dihedral_diff1 = abs(current_dihedral - (360+comparison))
+                        dihedral_diff2 = abs(current_dihedral - (comparison-360))
 
                         #
+                        print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat['dart_range'].loc[atom_index] )
+                        print('current dihedrals', zmat[['dihedral', 'dihedral_max', 'dart_range']])
                         if dihedral_diff <= zmat['dart_range'].loc[atom_index]:
                             dihedral_output[atom_index].append(posenum)
 
@@ -1129,6 +1131,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                 return None
 
     combo_list = [current_pos] + pos_list
+    print('current_zmat', type(current_zmat), 'internal_mat', type(internal_mat))
     combo_zmat = [current_zmat] + internal_mat
     try:
         rot_mat, trans_mat = getRotTransMatrices(combo_zmat, combo_list, construction_table)
