@@ -20,7 +20,7 @@ from scipy.signal import argrelextrema
 from sklearn.neighbors import KernelDensity
 from scipy.integrate import cumtrapz
 from openeye import oechem
-
+import random
 
 import logging
 logger = logging.getLogger(__name__)
@@ -80,6 +80,26 @@ class ChainAtomOrAlreadyTraversed(oechem.OEUnaryAtomPred):
 
     def CreateCopy(self):
         return ChainAtomOrAlreadyTraversed(self.exclude).__disown__()
+
+def findCentralAngle(buildlist):
+    connection_list = []
+    index_list = [0,1,2]
+    for i in buildlist.index.get_values()[:3]:
+        connection_list.append(buildlist['b'][i])
+    #count the number of bonds to the first buildatom
+    counts = connection_list.count(buildlist.index.get_values()[0])
+    #if 2 then the first atom is the center atom
+    if counts == 2:
+        center_index = 0
+    #otherwise the second atom is the center atom
+    else:
+        center_index = 1
+    index_list.pop(center_index)
+    vector_list = []
+    for index in index_list:
+        vector_list.append([index, center_index])
+    return vector_list
+
 
 
 class MolDartMove(RandomLigandRotationMove):
@@ -296,6 +316,9 @@ class MolDartMove(RandomLigandRotationMove):
         else:
             self.buildlist = self._createBuildlist(pdb_files, self.atom_indices)
             self.traj_dart_dict = self._findDihedralRingAtoms(pdb_files, atom_indices=self.atom_indices, rigid_darts=self.rigid_darts)
+            print('self.traj_dart_dict keys1', self.traj_dart_dict)
+
+            print('self.traj_dart_dict keys', list(self.traj_dart_dict.keys()))
             self.dihedral_ring_atoms = self.traj_dart_dict['dihedral_ring_atoms']
             #get the construction table so internal coordinates are consistent between poses
 
@@ -805,7 +828,9 @@ class MolDartMove(RandomLigandRotationMove):
     @classmethod
     def _findDihedralRingAtoms(cls, structure_files, atom_indices, rigid_darts=False):
         buildlist = cls._createBuildlist(structure_files, atom_indices)
-        if rigid_darts is not None:
+        central_atom = buildlist.index.tolist()[findCentralAngle(buildlist)[0][1]]
+        #if rigid_darts is not None:
+        if True:
             with tempfile.NamedTemporaryFile(suffix='.xyz', mode='w') as t:
                 fname = t.name
                 traj = md.load(structure_files[0]).atom_slice(atom_indices)
@@ -822,6 +847,10 @@ class MolDartMove(RandomLigandRotationMove):
                 ring_atom_list = []
                 rotatable_atom_bonds = {}
                 rigid_atom_bonds = {}
+                all_rotatable_bonds = []
+                all_rotatable_bonds_dict = {}
+                first_buildlist = buildlist.index.tolist()[:3:] + ['origin', 'e_x', 'e_y', 'e_z']
+
                 for mol in ifs.GetOEGraphMols():
                     oechem.OEFindRingAtomsAndBonds(mol)
                     for atom in mol.GetAtoms():
@@ -829,6 +858,10 @@ class MolDartMove(RandomLigandRotationMove):
                         for atom1 in mol.GetAtoms():
                             if AtomsInSameRing(atom,atom1):
                                 atom_list.append(atom1.GetIdx())
+                        #find out if bond is rotatable
+                        if any([bond.IsRotor() for bond in atom.GetBonds()]):
+                            all_rotatable_bonds.append(atom.GetIdx())
+
                         if atom.IsInRing():
                         #if not atom.IsRotor():
                         #find if connected to a nonring rotatable atom
@@ -837,6 +870,7 @@ class MolDartMove(RandomLigandRotationMove):
                                 parent_atom = atom.GetIdx()
                                 neighbor_atom = bond.GetNbr(atom).GetIdx()
                                 if bond.IsRotor():
+                                    #try accept to add dictionary entry if not present
                                     try:
                                         rotatable_atom_bonds[parent_atom].append(neighbor_atom)
                                     except:
@@ -856,8 +890,25 @@ class MolDartMove(RandomLigandRotationMove):
                 for dict_type in [rotatable_atom_bonds, rigid_atom_bonds]:
                     for key in dict_type:
                         dict_type[key] = list(set(dict_type[key]))
+                for rotatable_atom in all_rotatable_bonds:
+                    print('rotatable_atom', rotatable_atom)
+                    #find all the atoms bonded to the atoms
+                    #bonded_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] ==  rotatable_atom and i not in first_buildlist]
+                    #bonded_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] ==  rotatable_atom and i not in first_buildlist]
+                    #bonded_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] ==  rotatable_atom and i not in first_buildlist and buildlist.at[i, 'b'] !=  central_atom and i in all_rotatable_bonds]
+                    bonded_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] ==  rotatable_atom and buildlist.at[i, 'b'] !=  central_atom and i in all_rotatable_bonds]
+
+                    #find atoms bonded to atom but not in
+                    print('bonded_atoms', bonded_atoms)
+                    if bonded_atoms:
+                        all_rotatable_bonds_dict[rotatable_atom] = bonded_atoms
+
                 print('rotatable atom bonds', rotatable_atom_bonds, 'ring_atoms', set(ring_atoms))
                 print('rigid_atom_bonds', rigid_atom_bonds)
+                print('all_rotatable_bonds', list(set(all_rotatable_bonds)))
+                print('all_rotatable_atom_dict', all_rotatable_bonds_dict)
+            #check if an atom (atom1) is bonded to a rotatable atom (atom2) if all if so, check that all bonds bonded to atom1 are not part of the initial build list
+            #if they aren't add that as a rotatable group (so the dihedral can change)
                 #bgn_idx = [bond.GetBgnIdx() for bond in mol.GetBonds() if bond.GetEndIdx() in ring_atoms]
                 #end_idx = [bond.GetEndIdx() for bond in mol.GetBonds() if bond.GetBgnIdx() in ring_atoms]
             rigid_atoms = ring_atoms
@@ -921,21 +972,28 @@ class MolDartMove(RandomLigandRotationMove):
             for atoms in rotate_keys:
                 #check bonded atoms of atoms. If bonded atoms are part of first atoms, skip them
                 if atoms in first_buildlist:
-                    if rotatable_atom_bonds[atoms][0] in first_buildlist:
+                    #if rotatable_atom_bonds[atoms][0] in first_buildlist:
+                    if rotatable_atom_bonds[atoms][0] == central_atom:
                         pass
-                    else:
+                    elif rotatable_atom_bonds[atoms][0] not in rotate_list:
                         rotate_list.append(rotatable_atom_bonds[atoms][0])
-                else:
+                elif atoms not in rotate_list:
                      rotate_list.append(atoms)
 
 
-                    #if rotated bonds atoms in this 
+                    #if rotated bonds atoms in this
                     #check rigid_atom_bonds for rotate_keys
                     #if rigid_atoms_bonds in the first three buildlist, don't rotate
                     #
             #once we know what atoms are the ones to be rotated then we can isolate them for darting
-            
-            print('rotate_list', rotate_list)
+            print('rotate_list0', rotate_list)
+            for value in all_rotatable_bonds_dict.values():
+                print('value', value)
+                for target_atom in value:
+                    print('target_atom', target_atom)
+                    if target_atom not in rotate_list:
+                        rotate_list.append(target_atom)
+            print('rotate_list1', rotate_list)
             #NEW THING: check if the first 3/4 atoms take care of a ring. If that's the case then skip that one
             #print(buildlist.loc[rotate_keys])
             print('bond groups', bond_groups)
@@ -943,6 +1001,7 @@ class MolDartMove(RandomLigandRotationMove):
             output_dict['rotate_list'] = rotate_list
             output_dict['bond_groups'] = bond_groups
             output_dict['dihedral_ring_atoms'] = dihedral_ring_atoms
+            print('returning output_dict', output_dict)
             return output_dict
 
     @staticmethod
@@ -1143,33 +1202,79 @@ class MolDartMove(RandomLigandRotationMove):
         #and reference poses and take that into account when darting to the new pose
         change_list = ['dihedral']
         old_list = ['bond', 'angle']
+        #TODO: play around with this
+        print('ring_atoms', self.dihedral_ring_atoms)
+        print('rotate_list', self.traj_dart_dict['rotate_list'])
+        print('bond_groups', self.traj_dart_dict['bond_groups'])
+        #exit()
         if rigid_darts == 'rigid_ring':
             rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
         elif rigid_darts == 'rigid_darts':
             #rigid_dihedrals_atoms = [i for i in self.only_darts_dihedrals if i in zmat_new._frame.index[3:]]
+            move_atoms = []
+            for anchor_atoms in self.traj_dart_dict['rotate_list']:
+                for rotate_atoms in self.traj_dart_dict['bond_groups'][anchor_atoms]:
+                    move_atoms.append(rotate_atoms)
+            rigid_dihedrals_atoms = [i for i in zmat_new._frame.index[3:] if i not in move_atoms]
+            print('rigid_dihedrals_atoms', sorted(rigid_dihedrals_atoms), 'move_atoms', sorted(move_atoms))
             rigid_dihedrals_atoms = [i for i in zmat_new._frame.index if i not in self.only_darts_dihedrals]
 
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
-
+            print('test0', zmat_new)
         if rigid_darts == 'rigid_molecule':
             old_list =  old_list + change_list
 
         else:
             if 'dart_range' in self.internal_zmat[binding_mode_index]._frame:
-                print('doing the right part')
-                #zmat_new._frame['dart_range'] * 2*np.random.random() - zmat_new._frame['dart_range']
-                zmat_size = len(self.internal_zmat[binding_mode_index].index)
-                print((2*np.random.random((zmat_size, 1)) - 1))
-                #diff = zmat_new._frame['dart_range']*(2*np.random.random((zmat_size, 1)) - 1)
-                #diff = zmat_new._frame['dart_range'].multiply(2*np.random.random((zmat_size, 1)) - 1)
-                diff = zmat_new._frame['dart_range'].multiply(2*(np.random.random((zmat_size)) - 0.5))
-                print('diff', diff)
-                print('zmat_new before', zmat_new)
+                #test
+                if 1:
+                    new_change =  old_list + change_list
+
+                    zmat_new._frame.loc[rigid_dihedrals_atoms, new_change] = zmat_traj._frame.loc[rigid_dihedrals_atoms, new_change]
+
+                print('doing the new thing')
+
+                for center_atom in self.traj_dart_dict['rotate_list']:
+                    #pick one atom at random to use the dart_range for to displace everything uniformly
+                    chosen_atom = random.choice(self.traj_dart_dict['bond_groups'][center_atom])
+                    print('chosen_atom', chosen_atom)
+                    #find the random displacement based on what the chosen atom is
+                    #displacement = -1*zmat_new._frame['dart_range'].loc[chosen_atom]
+#                    displacement = zmat_new._frame['dart_range'].loc[chosen_atom]*(2*(np.random.random() - 0.5))
+                    displacement = zmat_new._frame.loc[chosen_atom,'dart_range']*(2*(np.random.random() - 0.5))
 
 
-                zmat_new._frame['dihedral'] = zmat_new._frame['dihedral_max'] + diff
-                print('zmat_new after', zmat_new)
+                    ##zmat_new._frame['dihedral'].loc[chosen_atom] =  zmat_new._frame['dihedral_max'].loc[chosen_atom] + displacement
+                    #choose the new starting point and figure out the displacement
+                    #use that displacement for all the atoms bonded to that group
+                    for rotate_atom in self.traj_dart_dict['bond_groups'][center_atom]:
+#                        rotate_displacement = zmat_traj._frame['dihedral'].loc[chosen_atom] - zmat_traj._frame['dihedral'].loc[rotate_atom]
+                        rotate_displacement = zmat_traj._frame.loc[chosen_atom, 'dihedral'] - zmat_traj._frame.loc[rotate_atom,'dihedral']
+
+                        #previous commented out
+                        #zmat_new._frame['dihedral'].loc[rotate_atom] =  zmat_new._frame['dihedral_max'].loc[rotate_atom] + rotate_displacement
+
+#                       zmat_new._frame['dihedral'].loc[rotate_atom] =  zmat_new._frame['dihedral_max'].loc[chosen_atom] + rotate_displacement + displacement
+                        zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] + rotate_displacement + displacement
+
+                    print('after rotating', zmat_new)
+
+                    #TODO Continue here
+                if 0:
+                    print('doing the right part')
+                    #zmat_new._frame['dart_range'] * 2*np.random.random() - zmat_new._frame['dart_range']
+                    zmat_size = len(self.internal_zmat[binding_mode_index].index)
+                    print((2*np.random.random((zmat_size, 1)) - 1))
+                    #diff = zmat_new._frame['dart_range']*(2*np.random.random((zmat_size, 1)) - 1)
+                    #diff = zmat_new._frame['dart_range'].multiply(2*np.random.random((zmat_size, 1)) - 1)
+                    diff = zmat_new._frame['dart_range'].multiply(2*(np.random.random((zmat_size)) - 0.5))
+                    print('diff', diff)
+                    print('zmat_new before', zmat_new)
+
+
+                    zmat_new._frame['dihedral'] = zmat_new._frame['dihedral_max'] + diff
+                    print('zmat_new after', zmat_new)
 
                 #figure out the range to alter the dihedrals
                 #TODO might need to do something with the bond/angle for the first 3 bonds/angles
@@ -1198,32 +1303,23 @@ class MolDartMove(RandomLigandRotationMove):
             rigid_dihedrals_atoms = [i for i in self.dihedral_ring_atoms if i in zmat_new._frame.index[3:]]
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
         elif rigid_darts == 'rigid_darts':
-            rigid_dihedrals_atoms = [i for i in zmat_new._frame.index if i not in self.only_darts_dihedrals]
+            #if 0 for debugging
+            if 0:
+                rigid_dihedrals_atoms = [i for i in zmat_new._frame.index if i not in self.only_darts_dihedrals]
 
-            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+                zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+        zmat_new._frame.loc[:, 'angle'] = zmat_traj._frame.loc[:, 'angle']
+        zmat_new._frame.loc[:, 'bond'] = zmat_traj._frame.loc[:, 'bond']
+
+
+        print('ending dihedral', zmat_new)
+        print('test1', zmat_new)
+        print('test2', zmat_traj)
 
 
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
-        def findCentralAngle(buildlist):
-            connection_list = []
-            index_list = [0,1,2]
-            for i in buildlist.index.get_values()[:3]:
-                connection_list.append(buildlist['b'][i])
-            #count the number of bonds to the first buildatom
-            counts = connection_list.count(self.buildlist.index.get_values()[0])
-            #if 2 then the first atom is the center atom
-            if counts == 2:
-                center_index = 0
-            #otherwise the second atom is the center atom
-            else:
-                center_index = 1
-            index_list.pop(center_index)
-            vector_list = []
-            for index in index_list:
-                vector_list.append([index, center_index])
-            return vector_list
         def normalize_vectors(dart_array, ref_array, vector_list):
             ref1 = ref_array[vector_list[0][0]] - ref_array[vector_list[0][1]]
             ref2 = ref_array[vector_list[1][0]] - ref_array[vector_list[1][1]]
@@ -1306,8 +1402,9 @@ class MolDartMove(RandomLigandRotationMove):
 
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
-
-        xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
+        #MAKE SURE THIS IS ON dart_three NOT sim three 
+        #xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
+        xyz_new = (zmat_new.give_cartesian_edit(start_coord=sim_three*10.)).sort_index()
 
         self.sim_traj.xyz[0][self.atom_indices] = xyz_new._frame.loc[:, ['x', 'y', 'z']].get_values() / 10.
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms[rand_index],

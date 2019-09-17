@@ -932,7 +932,8 @@ def makeDartDictOld(internal_mat, pos_list, construction_table, dihedral_cutoff=
     #get rotation/translation diff matrix
     #start with dihedral, loop over diffs and check overlap
 
-def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=5.5, rotation_cutoff=29.0, dart_buffer=0.9, order=['translation', 'dihedral',  'rotation']):
+def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=5.5, rotation_cutoff=29.0,
+                 dart_buffer=0.9, order=['translation', 'dihedral',  'rotation'], specifc_darts=None):
     """
     Makes the dictionary of darting regions used as the basis for darting,
     attempting to make a set of dihedral darts that separate the given poses.
@@ -1118,7 +1119,8 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                         dihedral_diff = abs(current_dihedral - comparison)
 
 
-                        if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]) or dihedral_diff1 <= np.rad2deg(dart_storage['dihedral'][atom_index]) or dihedral_diff2 <= np.rad2deg(dart_storage['dihedral'][atom_index]):
+                        #if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]) or dihedral_diff1 <= np.rad2deg(dart_storage['dihedral'][atom_index]) or dihedral_diff2 <= np.rad2deg(dart_storage['dihedral'][atom_index]):
+                        if dihedral_diff <= np.rad2deg(dart_storage['dihedral'][atom_index]):
                             dihedral_output[atom_index].append(posenum)
 
 
