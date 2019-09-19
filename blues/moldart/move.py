@@ -1197,7 +1197,7 @@ class MolDartMove(RandomLigandRotationMove):
         #get appropriate comparision zmat
         zmat_compare = self.internal_zmat[binding_mode_index]
         #we don't need to change the bonds/dihedrals since they are fast to sample
-        #if the molecule is treated as rigid, we won't change the internal coordinates
+        #if the molecule is treated as rigid, we won't change the intrnal coordinates
         #otherwise we find the differences in the dihedral angles between the simulation
         #and reference poses and take that into account when darting to the new pose
         change_list = ['dihedral']
@@ -1219,9 +1219,11 @@ class MolDartMove(RandomLigandRotationMove):
             rigid_dihedrals_atoms = [i for i in zmat_new._frame.index[3:] if i not in move_atoms]
             print('rigid_dihedrals_atoms', sorted(rigid_dihedrals_atoms), 'move_atoms', sorted(move_atoms))
             rigid_dihedrals_atoms = [i for i in zmat_new._frame.index if i not in self.only_darts_dihedrals]
+            print('test0', zmat_new)
 
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
-            print('test0', zmat_new)
+            print('test1a', zmat_new)
+
         if rigid_darts == 'rigid_molecule':
             old_list =  old_list + change_list
 
@@ -1238,7 +1240,6 @@ class MolDartMove(RandomLigandRotationMove):
                 for center_atom in self.traj_dart_dict['rotate_list']:
                     #pick one atom at random to use the dart_range for to displace everything uniformly
                     chosen_atom = random.choice(self.traj_dart_dict['bond_groups'][center_atom])
-                    print('chosen_atom', chosen_atom)
                     #find the random displacement based on what the chosen atom is
                     #displacement = -1*zmat_new._frame['dart_range'].loc[chosen_atom]
 #                    displacement = zmat_new._frame['dart_range'].loc[chosen_atom]*(2*(np.random.random() - 0.5))
@@ -1256,9 +1257,13 @@ class MolDartMove(RandomLigandRotationMove):
                         #zmat_new._frame['dihedral'].loc[rotate_atom] =  zmat_new._frame['dihedral_max'].loc[rotate_atom] + rotate_displacement
 
 #                       zmat_new._frame['dihedral'].loc[rotate_atom] =  zmat_new._frame['dihedral_max'].loc[chosen_atom] + rotate_displacement + displacement
-                        zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] + rotate_displacement + displacement
+                        #add_distance = rotate_displacement + displacement
+                        add_distance = rotate_displacement + displacement
+                        print('add_distance for', rotate_atom, add_distance, rotate_displacement, displacement)
+                        zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance
+                        #zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[rotate_atom,'dihedral_max']
 
-                    print('after rotating', zmat_new)
+
 
                     #TODO Continue here
                 if 0:
@@ -1313,10 +1318,18 @@ class MolDartMove(RandomLigandRotationMove):
 
 
         print('ending dihedral', zmat_new)
-        print('test1', zmat_new)
+        print('test1b', zmat_new)
         print('test2', zmat_traj)
-
-
+        #put new function to handle degree wrapping
+        def wrapDegrees(a):
+            if a > 180.0:
+                return a - 360
+            if a < -180.0:
+                return a + 360
+            else:
+                return a
+        #zmat_new._frame['dihedral'] = zmat_new._frame['dihedral'].apply(np.vectorize(wrapDegrees))
+        print('test3', zmat_new)
         #find translation differences in positions of first two atoms to reference structure
         #find the appropriate rotation to transform the structure back
         #repeat for second bond
@@ -1402,9 +1415,38 @@ class MolDartMove(RandomLigandRotationMove):
 
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
-        #MAKE SURE THIS IS ON dart_three NOT sim three 
+        #MAKE SURE THIS IS ON dart_three NOT sim three
         #xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
         xyz_new = (zmat_new.give_cartesian_edit(start_coord=sim_three*10.)).sort_index()
+        print('test4', zmat_new)
+        #print('subtract', zmat_new._frame.loc[2:,['bond', 'angle', 'dihedral']] - zmat_traj._frame.loc[2:,['bond', 'angle', 'dihedral']])
+        print('subtract', zmat_new._frame.loc[zmat_new._frame.index[2:],['bond', 'angle', 'dihedral']] - zmat_traj._frame.loc[zmat_new._frame.index[2:],['bond', 'angle', 'dihedral']])
+        new_df = zmat_new._frame['dihedral'].copy()
+        print('old new')
+        new_df.rename(columns={'dihedral':'zmat_new'})
+        new_df['zmat_traj'] = zmat_traj._frame['dihedral']
+        new_df = pd.DataFrame({'zmat_new': zmat_new._frame['dihedral'], 'zmat_traj':zmat_traj._frame['dihedral']})
+        alist = []
+        def dihedralDifference(input_df, construction_table=None):
+            """Computes the difference in dihedral angles
+            between the pairs present in zmatrices a and b
+            with the cartesian distance in cos, sin
+            """
+            a_di, b_di = input_df['zmat_new'], input_df['zmat_traj']
+            a_dir, b_dir = np.deg2rad(a_di), np.deg2rad(b_di)
+            b_cos, b_sin = np.cos(b_dir), np.sin(b_dir)
+            a_cos, a_sin = np.cos(a_dir), np.sin(a_dir)
+            cos_diff = np.square(b_cos - a_cos)
+            sin_diff = np.square(b_sin - a_sin)
+            dist = np.sqrt(cos_diff + sin_diff)
+            return dist
+        if 0:
+            for i in zmat_new._frame.index:
+                from blues.moldart.darts import dihedralDifference
+                alist.append(dihedralDifference(new_df.loc[i, 'zmat_new'], new_df.loc[i, 'zmat_traj']))
+            new_df['dihedral_difference'] = alist
+        print('dihedral_difference', dihedralDifference(new_df))
+        print('new_df', new_df)
 
         self.sim_traj.xyz[0][self.atom_indices] = xyz_new._frame.loc[:, ['x', 'y', 'z']].get_values() / 10.
         self.sim_traj.superpose(reference=self.sim_ref, atom_indices=self.fit_atoms[rand_index],
