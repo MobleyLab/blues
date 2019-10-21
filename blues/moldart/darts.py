@@ -933,7 +933,7 @@ def makeDartDictOld(internal_mat, pos_list, construction_table, dihedral_cutoff=
     #start with dihedral, loop over diffs and check overlap
 
 def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5, distance_cutoff=5.5, rotation_cutoff=29.0,
-                 dart_buffer=0.9, order=['translation', 'dihedral',  'rotation'], specifc_darts=None):
+                 dart_buffer=0.9, order=['translation', 'dihedral',  'rotation'], specific_darts=None):
     """
     Makes the dictionary of darting regions used as the basis for darting,
     attempting to make a set of dihedral darts that separate the given poses.
@@ -1020,6 +1020,7 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
         if not dart_boolean:
             if darttype == 'dihedral':
                 dihedral_df = makeDihedralDifferenceDf(internal_mat, dihedral_cutoff=dihedral_cutoff)
+                print('dihedral_df', dihedral_df)
             dart_storage, posedart_dict, dart_boolean = createDarts(darttype, internal_mat, dihedral_df, trans_mat, rot_mat, distance_cutoff, posedart_dict, dart_storage)
     if not dart_boolean:
         checkOverlap(posedart_dict)
@@ -1030,6 +1031,7 @@ def makeDartDict(internal_mat, pos_list, construction_table, dihedral_cutoff=0.5
             dart_storage[key][0] = dart_storage[key][0] * dart_buffer
     dart_storage['pose_overlap'] = posedart_dict
     removeRedundancy(dart_storage)
+#    if specific_darts:
     return dart_storage
 
 
@@ -1090,13 +1092,13 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         dihedral_output = {}
         dihedral_atoms = list(dart_storage['dihedral'].keys())
         #TODO Need to check if periodic wrapping is handled correctly for the dihedrals when comparing if in the dart
+        print('current_di', current_internal['dihedral'])
         if len(dihedral_atoms) > 0:
             if 'dart_range' in internal_mat[0]._frame:
                 print('dart_range found')
                 for atom_index in dihedral_atoms:
                     dihedral_output[atom_index] = []
                     current_dihedral = current_internal['dihedral'].loc[atom_index]
-
                     for posenum, zmat in enumerate(internal_mat):
                         comparison = zmat['dihedral_max'].loc[atom_index]
                         dihedral_diff = abs(current_dihedral - comparison)
@@ -1104,8 +1106,8 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                         dihedral_diff2 = abs(current_dihedral - (comparison-360))
 
                         #
-                        print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat['dart_range'].loc[atom_index] )
-                        print('current dihedrals', zmat[['dihedral', 'dihedral_max', 'dart_range']])
+                        print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat['dart_range'].loc[atom_index], 'atom_index', atom_index )
+                        #print('current dihedrals', zmat[['dihedral', 'dihedral_max', 'dart_range']])
                         if dihedral_diff <= zmat['dart_range'].loc[atom_index]:
                             dihedral_output[atom_index].append(posenum)
 
