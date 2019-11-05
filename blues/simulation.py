@@ -732,7 +732,6 @@ class SimulationFactory(object):
             simulation = app.Simulation(structure.topology, system, integrator)
         else:
             platform = openmm.Platform.getPlatformByName(platform)
-            print( platform )
             #Make sure key/values are strings
             properties = {str(k): str(v) for k, v in properties.items()}
             simulation = app.Simulation(structure.topology, system, integrator, platform, properties)

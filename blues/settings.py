@@ -21,14 +21,11 @@ class Settings(object):
     """
 
     def __init__(self, config):
-        print(config)
         # Parse YAML or YAML docstr into dict
         config = Settings.load_yaml(config)
-        print(config)
 
         # Parse the config into dict
         if type(config) is dict:
-            print(config)
             config = Settings.set_Parameters(config)
             self.config = config
                
@@ -57,7 +54,6 @@ class Settings(object):
                       .format(mark.line + 1, mark.column + 1))
                 raise e
         else:
-            print(type(config))
             return config
 
     @staticmethod
