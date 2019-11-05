@@ -6,7 +6,7 @@ from blues.settings import *
 
 def rotmove_cuda(yaml_file):
     # Parse a YAML configuration, return as Dict
-    cfg = Settings('rotmove_cuda.yaml').asDict()
+    cfg = Settings('rotmove_cuda.yml').asDict()
     structure = cfg['Structure']
 
     #Select move type
@@ -30,4 +30,4 @@ def rotmove_cuda(yaml_file):
 
 
 if __name__ == "__main__":
-    rotmove_cuda('rotmove_cuda.yaml')
+    rotmove_cuda('rotmove_cuda.yml')
