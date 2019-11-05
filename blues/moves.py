@@ -307,6 +307,52 @@ class RandomLigandRotationMove(Move):
         return context
 
 
+class RandomLigandRotationMove(Move):
+    """RandomLightRotationMove that provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+    Current methods calculate the object's atomic masses and center of masss.
+    Calculating the object's center of mass will get the positions
+    and total mass.
+
+    Parameters
+    ----------
+    resname : str
+        String specifying the residue name of the ligand.
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    random_state : integer or numpy.RandomState, optional
+        The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    resname : str, default='LIG'
+        The residue name of the ligand or selected atoms to be rotated.
+    topology : openmm.Topology
+        The topology of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of the ligand.
+    masses : list
+        Particle masses of the ligand with units.
+    totalmass : int
+        Total mass of the ligand.
+    center_of_mass : numpy.array
+        Calculated center of mass of the ligand in XYZ coordinates. This should
+        be updated every iteration.
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+
+    Examples
+    --------
+    >>> from blues.move import RandomLigandRotationMove
+    >>> ligand = RandomLigandRotationMove(structure, 'LIG')
+    >>> ligand.resname
+        'LIG'
+    """
+
+
 class MoveEngine(object):
     """MoveEngine provides perturbation functions for the context during the NCMC
     simulation.
