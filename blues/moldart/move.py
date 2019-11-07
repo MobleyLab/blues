@@ -206,7 +206,8 @@ class MolDartMove(RandomLigandRotationMove):
         K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2,
         rigid_body=False,
         centroid_darting=True,
-        lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
+        darting_sampling='uniform'
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
@@ -270,7 +271,9 @@ class MolDartMove(RandomLigandRotationMove):
         self.lambda_restraints = lambda_restraints
         self.rigid_body = rigid_body
         self.centroid_darting = centroid_darting
-
+        if darting_sampling not in ['uniform', 'gaussian']:
+            raise ValueError('darting_sampling must be either gaussian or uniform')
+        self.darting_sampling = darting_sampling
         #find pdb inputs inputs
         if len(pdb_files) <= 1:
             raise ValueError('Should specify at least two pdbs in pdb_files for darting to be beneficial')
@@ -568,13 +571,15 @@ class MolDartMove(RandomLigandRotationMove):
     @classmethod
     def getMaxRange(cls, dihedral, pose_value=None, density_percent=0.9):
         import matplotlib.pyplot as plt
+        orig_dihedral = dihedral
         #make the range larger than the periodic boundries
         dihedral = np.concatenate((dihedral-2*np.pi, dihedral, dihedral+2*np.pi))
-
+        print('len', np.size(dihedral))
         if density_percent > 1.0:
             raise ValueError('density_percent must be less than 1!')
         pi_range = np.linspace(-2*np.pi, 2*np.pi+np.pi/50.0, num=360, endpoint=True).reshape(-1,1)
-        kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(dihedral)
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.15).fit(dihedral)
+
         log_dens = np.exp(kde.score_samples(pi_range))
         #plt.plot(pi_range, (log_dens))
         #plt.xlim(-np.pi,np.pi)
@@ -661,7 +666,8 @@ class MolDartMove(RandomLigandRotationMove):
                     print('max_index+space', max_index+space)
 
                     region_probability = cumtrapz(target_range, dx=dx)[-1]
-
+                    #max region is all the max range of all the points in that dihedral region
+                    max_region = space*dx
                     if density_percent == 1.00:
                         region_space = space*dx
                     else:
@@ -708,7 +714,123 @@ class MolDartMove(RandomLigandRotationMove):
             max_return = max_return - 2*np.pi
         elif max_return < -np.pi:
             max_return = max_return + 2*np.pi
-        return max_return, region_space
+        print('region_space', region_space, 'max_return', max_return)
+        bandwidth_filter = region_space/7.
+        #new_dihedral = dihedral[(dihedral > max_return-region_space) & (dihedral < max_return+region_space)].reshape(-1,1)
+        new_dihedral = dihedral[(dihedral > max_return-(region_space-bandwidth_filter)) & (dihedral < max_return+(region_space-bandwidth_filter))].reshape(-1,1)
+
+        pi_range = np.linspace(-2*np.pi, 2*np.pi+np.pi/50.0, num=360, endpoint=True).reshape(-1,1)
+
+        print(np.shape(new_dihedral), np.shape(pi_range))
+        if 0:
+            #plotting debugging
+            new_kde = KernelDensity(kernel='tophat', bandwidth=0.025).fit(new_dihedral)
+            new_log_dens = np.exp(new_kde.score_samples(pi_range))
+            new_sample = new_kde.sample(1000)
+            #print('new_sample', new_sample)
+            f, axes = plt.subplots(2,1,sharex=True)
+            axes[0].plot(pi_range, log_dens, color='orange', alpha=0.5)
+            axes[0].plot(pi_range, new_log_dens, color='blue', ms=5)
+            axes[0].axvline(max_return)
+            axes[0].axvline(max_return-region_space)
+            axes[0].axvline(max_return+region_space)
+            #axes[0].axvline(new_sample, color='red')
+
+            axes[0].set_xlabel('dihedral')
+            axes[0].set_ylabel('probability')
+            #axes[1].hist(new_sample,bins=10)
+            #axes[1].axvline(max_return-region_space,color='red')
+            #axes[1].axvline(max_return+region_space,color='red')
+            from scipy.stats import norm
+            mu, std = norm.fit(new_dihedral)
+            print('mu', mu, 'std', std)
+            mu, std = norm.fit(new_dihedral)
+            #might want to change this to use the original data mean (mu)
+            print('new_mu', mu, 'std', std)
+
+            #print('max', norm(mu,std).cdf(max_return), norm(mu,std).cdf(max_return-region_space), norm(mu,std).cdf(max_return+region_space))
+            print('max', norm(max_return,std).cdf(max_return), norm(max_return,std).cdf(max_return-region_space), norm(max_return,std).cdf(max_return+region_space))
+            percent_outside_region = norm(max_return,std).cdf(max_return-region_space)*2
+            percent_increase = 1./(1.-percent_outside_region)
+            print('inverse', norm(max_return,std).ppf(0.5), percent_outside_region, percent_increase)
+            print('pdf', norm(max_return,std).pdf(max_return), 'pdf-region_space', norm(max_return,std).pdf(max_return-region_space))
+
+            xmin, xmax = plt.xlim()
+            x = np.linspace(-2*np.pi, 2*np.pi, 1000)
+            p = norm.pdf(x, mu, std)
+            axes[1].plot(x,p, linewidth=2,color='black')
+            #check_sample = new_sample[(new_sample < max_return-region_space) or (new_sample > max_return+region_space)].reshape(-1,1)
+            check_sample = new_sample[np.logical_or((new_sample < max_return-region_space), (new_sample > max_return+region_space))].reshape(-1,1)
+            all_distribution = np.linspace(-2*np.pi,2*np.pi,36000)
+            #scored_distribution = new_kde.score_samples(all_distribution.reshape(-1,1))
+            #print('scored_distribution', scored_distribution)
+            #exit()
+            print('check_sample', np.size(check_sample))
+            #axes[1].hist(dihedral,bins=25,color='green',alpha=0.5)
+            plt.show()
+            exit()
+
+        if 1:
+            #multiply by -1 since chemcoords dihedrals are opposite
+            #region_space = (space*dx)/2.
+            new_dihedral = -1*dihedral[(dihedral > (max_return-region_space)) & (dihedral < (max_return+region_space))].reshape(-1,1)
+            #new_dihedral = -1*dihedral
+
+            from scipy.stats import norm
+            #multiply by -1 since chemcoords dihedrals are opposite
+            max_return_deg = np.rad2deg(-1*max_return)
+            mu, std = norm.fit(np.rad2deg(new_dihedral))
+            gauss = norm(max_return_deg,std)
+            percent_outside_region = gauss.cdf(max_return_deg-np.rad2deg(region_space))*2
+            percent_increase = 1./(1.-percent_outside_region)
+            print('region_space', region_space, 'max_return', max_return)
+            print('percent_outside_region', percent_outside_region, percent_increase)
+            print('random_samples', gauss.rvs(size=10, random_state=2),gauss.pdf(gauss.rvs(size=10, random_state=2)))
+            pi_space = np.linspace(-2*180,2*180,720)
+            if 0:
+                plt.plot(pi_space,gauss.pdf(pi_space))
+                plt.hist(np.rad2deg(new_dihedral),bins=100,density=True)
+
+                plt.axvline(max_return_deg-np.rad2deg(region_space))
+                plt.axvline(max_return_deg+np.rad2deg(region_space))
+
+                plt.show()
+                exit()
+
+        if 0:
+            #plotting debugging
+            f, axes = plt.subplots(4,1,sharex=False)
+            axes[0].scatter(range(np.size(orig_dihedral)), orig_dihedral)
+            axes[0].set_xlabel('frame')
+            axes[0].set_ylabel('dihedral')
+            axes[1].hist(dihedral, bins=100)
+            axes[1].set_xlim(-2*np.pi,2*np.pi)
+            axes[1].set_xlabel('dihedral (radians)')
+            axes[1].set_ylabel('counts')
+
+            axes[2].plot(pi_range, log_dens, color='orange', alpha=0.5)
+            #axes[1].plot(pi_range, new_log_dens, color='blue', ms=5)
+            #axes[0].axvline(new_sample, color='red')
+            axes[2].set_xlabel('dihedral (radians)')
+            axes[2].set_ylabel('probability')
+
+            axes[3].plot(pi_range, log_dens, color='orange', alpha=0.5)
+            #axes[1].plot(pi_range, new_log_dens, color='blue', ms=5)
+            axes[3].axvline(max_return)
+            axes[3].axvline(max_return-region_space)
+            axes[3].axvline(max_return+region_space)
+            #axes[0].axvline(new_sample, color='red')
+
+            axes[3].set_xlabel('dihedral (radians)')
+            axes[3].set_ylabel('probability')
+            axes[3].axvline(max_return-region_space,color='red')
+            axes[3].axvline(max_return+region_space,color='red')
+
+            plt.show()
+
+
+
+        return max_return, region_space, gauss, percent_increase
 
 
 
@@ -724,7 +846,7 @@ class MolDartMove(RandomLigandRotationMove):
             atom_indices = self.atom_indices
 
 
-        traj_files = [self._loadfiles(i, topology) for i in traj_files]
+        traj_files = [self._loadfiles(i, topology, stride=stride) for i in traj_files]
 
         internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = self._createZmat(structure_files, atom_indices, topology, reference_traj=None, fit_atoms=None)
         traj_storage = []
@@ -753,25 +875,65 @@ class MolDartMove(RandomLigandRotationMove):
         output_mat = [copy.deepcopy(zmat) for zmat in internal_zmat]
         #print('output before', output_mat[0])
         for zindex, zmat in enumerate(output_mat):
+            #the first three atoms are automatically placed, no there isn't a need for more info
             range_list = [0,0,0]
             dihedral_max = [0,0,0]
+            gauss_list = [0,0,0]
+            percent_list = [0,0,0]
+
             for  i in internal_zmat[zindex].index.values[3:]:
                 #zmat._frame.loc[i,'dihedral'] = np.rad2deg(traj_storage[zindex][i][0])
                 range_list.append(np.rad2deg(traj_storage[zindex][i][1]))
                 dihedral_max.append(np.rad2deg(traj_storage[zindex][i][0]))
+                gauss_list.append(traj_storage[zindex][i][2])
+                percent_list.append(traj_storage[zindex][i][3])
             #using mdtraj gives opposite sign compared to chemcoord, so multipy by -1
             zmat._frame['dihedral_max'] = [-1*di for di in dihedral_max]
 
             zmat._frame['dart_range'] = range_list
-            print('traj_storage', traj_storage)
+            zmat._frame['gauss'] =  gauss_list
+            zmat._frame['ratio'] = percent_list
+            #print('traj_storage', traj_storage)
         if same_range:
+            old_zmat = copy.deepcopy(output_mat)
+            print('output_mat old', old_zmat)
+            for zmat1, zmat2 in zip(output_mat, old_zmat):
+                print('diff', zmat1._frame['ratio'] - zmat2._frame['ratio'])
+
             #set dihedral ranges to minimum values
             starting_frame = copy.deepcopy(output_mat[0]._frame['dart_range'])
             for zindex, zmat in enumerate(output_mat):
                 starting_frame= pd.concat([starting_frame, zmat._frame['dart_range']]).min(level=0)
-            print('minimum', starting_frame )
             for zindex, zmat in enumerate(output_mat):
                 zmat._frame['dart_range'] = starting_frame
+            print('minimum', starting_frame )
+            #TODO: put section here for adjusting gaussian distribution
+            print('zmat before all')
+            print('output_mat', output_mat)
+            #old_zmat = copy.deepcopy(output_mat)
+            if 1:
+                for zindex, zmat in enumerate(output_mat):
+                    #adjust ratios based on new regions
+                    for i in zmat._frame.index:
+                        #skip for the first three entries (since those are invariant)
+                        if zmat._frame.loc[i,'gauss'] == 0:
+                            pass
+                        else:
+                            #TODO: make test for ratios
+                            #find the percent density that lies outside the regions
+                            #print('zmat._frame.loc[i,"gauss"])', zmat._frame.loc[i,'gauss'])
+                            percent_outside_region = (zmat._frame.loc[i,'gauss']).cdf(zmat._frame.loc[i,'gauss'].mean()-zmat._frame.loc[i,'dart_range'])*2
+                            #print('ratio before', zmat._frame.loc[i,'ratio'])
+                            zmat._frame.loc[i,'ratio'] = 1./(1.-percent_outside_region)
+                            #print('ratio after', zmat._frame.loc[i,'ratio'])
+                #print('output_mat new', output_mat)
+                #print('output_mat old', old_zmat)
+                #for index, (zmat1, zmat2) in enumerate(zip(output_mat, old_zmat)):
+                #    print('diff', index, zmat1._frame['ratio'] - zmat2._frame['ratio'])
+            #print('output mat', output_mat)
+            #print('one', output_mat[0]._frame.index)
+            #exit()
+
         #now have to set up darting using darting regions instead
         if set_self==True:
             self.internal_zmat = output_mat
@@ -783,15 +945,18 @@ class MolDartMove(RandomLigandRotationMove):
             print('traj_dart_dict', self.traj_dart_dict)
             #exit()
             for rotate in self.traj_dart_dict['rotate_list']:
-                output_atoms = []
-                #filter out H atoms
-                if any(elem in self.darts['dihedral'] for elem in self.traj_dart_dict['bond_groups'][rotate]) == False:
-                    #check which atoms\\
-                    for next_atom in  self.traj_dart_dict['bond_groups'][rotate]:
-                        print('is it in there', next_atom, dihedral_difference.atomnum.values)
-                        if next_atom not in self.darts['dihedral'] and (next_atom in dihedral_difference.atomnum.values):
-                            output_atoms.append(next_atom)
-                            print('next atom', next_atom, 'not in dihedral')
+                if 0:
+                    #TODO check if this is necessary
+                    output_atoms = []
+                    #filter out H atoms
+                    #for any of the rotatable bonds check if any entry in the dihedrals is in the bond groups
+                    if any(elem in self.darts['dihedral'] for elem in self.traj_dart_dict['bond_groups'][rotate]) == False:
+                        #check which atoms\\
+                        for next_atom in  self.traj_dart_dict['bond_groups'][rotate]:
+                            print('is it in there', next_atom, dihedral_difference.atomnum.values)
+                            if next_atom not in self.darts['dihedral'] and (next_atom in dihedral_difference.atomnum.values):
+                                output_atoms.append(next_atom)
+                                print('next atom', next_atom, 'not in dihedral')
                     print('test0', output_atoms)
                     print('test', output_mat[0].index[output_atoms].tolist())
                     #selected_df = output_mat[0].loc[output_mat[0].index[output_atoms].tolist(), 'dart_range']
@@ -825,6 +990,7 @@ class MolDartMove(RandomLigandRotationMove):
 
         #exit()
         def removeDartOverlaps():
+            #temporary for now Might want to consider if darts are the same across all poses then to exclude it
             pass
         return output_mat
 
@@ -917,6 +1083,7 @@ class MolDartMove(RandomLigandRotationMove):
                 all_rotatable_bonds = []
                 all_rotatable_bonds_dict = {}
                 first_buildlist = buildlist.index.tolist()[:3:] + ['origin', 'e_x', 'e_y', 'e_z']
+                #first_buildlist = ['origin', 'e_x', 'e_y', 'e_z']
 
                 for mol in ifs.GetOEGraphMols():
                     oechem.OEFindRingAtomsAndBonds(mol)
@@ -954,15 +1121,38 @@ class MolDartMove(RandomLigandRotationMove):
                             h_list.append(atom.GetIdx())
                         if len(atom_list) > 0:
                             ring_atom_list.append(atom_list)
+                    if 1:
+                        #debugging
+                        for atom in mol.GetAtoms():
+                            for bond in atom.GetBonds():
+                                print('test')
+                                parent_atom = atom.GetIdx()
+                                neighbor_atom = bond.GetNbr(atom).GetIdx()
+                                if bond.IsRotor():
+                                    #try accept to add dictionary entry if not present
+                                    try:
+                                        rotatable_atom_bonds[parent_atom].append(neighbor_atom)
+                                    except:
+                                        rotatable_atom_bonds[parent_atom] = []
+                                        rotatable_atom_bonds[parent_atom].append(neighbor_atom)
+                                else:
+                                    try:
+                                        rigid_atom_bonds[parent_atom].append(neighbor_atom)
+                                    except:
+                                        rigid_atom_bonds[parent_atom] = []
+                                        rigid_atom_bonds[parent_atom].append(neighbor_atom)
                 for dict_type in [rotatable_atom_bonds, rigid_atom_bonds]:
                     for key in dict_type:
                         dict_type[key] = list(set(dict_type[key]))
+                print('rotatable_atom_bonds', rotatable_atom_bonds)
                 all_rotatable_bonds = list(set(all_rotatable_bonds))
                 all_rotatable_bonds_dict = {}
                 for item in all_rotatable_bonds:
                     all_rotatable_bonds_dict[item] = []
                 print('all_rotatable_bonds', all_rotatable_bonds)
+                print('debug0', rotatable_atom_bonds)
                 for rotatable_atom_key, rotatable_atom_value in rotatable_atom_bonds.items():
+                    print('debug1')
                     print('rotatable_atom', rotatable_atom_key, rotatable_atom_value)
                     #find all the atoms bonded to the atoms
                     #bonded_atoms = [i for i in range(len(atom_indices)) if buildlist.at[i, 'b'] ==  rotatable_atom and buildlist.at[i, 'b'] !=  central_atom and i in all_rotatable_bonds]
@@ -975,6 +1165,10 @@ class MolDartMove(RandomLigandRotationMove):
                             all_rotatable_bonds_dict[rotatable_atom_key].append(atom_value)
                         else:
                             all_rotatable_bonds_dict[atom_value].append(rotatable_atom_key)
+                for key, value in all_rotatable_bonds_dict.items():
+                    all_rotatable_bonds_dict[key] = list(set(value))
+                print('rotatable_atom_bonds new', all_rotatable_bonds_dict)
+                #exit()
                 for key in list(all_rotatable_bonds_dict.keys()):
                     if not all_rotatable_bonds_dict[key]:
                         del all_rotatable_bonds_dict[key]
@@ -1041,6 +1235,8 @@ class MolDartMove(RandomLigandRotationMove):
             #if the first 3 atoms are part of the build list then ignore them since their rotations are already accounted for
             print('test build', buildlist['b'].loc[3:])
             first_buildlist = buildlist.index.tolist()[:3:] + ['origin', 'e_x', 'e_y', 'e_z']
+            #first_buildlist = ['origin', 'e_x', 'e_y', 'e_z']
+
             #rotate_keys = [i for i in rotate_keys if i not in buildlist['b']]
             #rotate_keys = [i for i in rotate_keys if i not in buildlist.index.tolist()[:3]]
             print(buildlist)
@@ -1098,6 +1294,7 @@ class MolDartMove(RandomLigandRotationMove):
             print('bond groups', bond_groups)
             output_dict = {}
             output_dict['rotate_list'] = rotate_list
+            print('rotate_list', rotate_list)
             output_dict['bond_groups'] = bond_groups
             output_dict['dihedral_ring_atoms'] = dihedral_ring_atoms
             output_dict['all_rotatable_bonds_dict'] = all_rotatable_bonds_dict
@@ -1346,11 +1543,25 @@ class MolDartMove(RandomLigandRotationMove):
                     zmat_new._frame.loc[rigid_dihedrals_atoms, new_change] = zmat_traj._frame.loc[rigid_dihedrals_atoms, new_change]
 
                 print('doing the new thing')
+                if rigid_darts == 'rigid_darts':
+                    move_atoms = []
+                    for center_atom in self.traj_dart_dict['rotate_list']:
+                        if any([i in self.traj_dart_dict['bond_groups'][center_atom] for i in self.darts['dihedral'].keys()]):
+                            move_atoms.append(center_atom)
+                print('move_atoms', move_atoms)
+                #exit()
+#                for center_atom in self.traj_dart_dict['rotate_list']:
+                for center_atom in move_atoms:
 
-                for center_atom in self.traj_dart_dict['rotate_list']:
                     #pick one atom at random to use the dart_range for to displace everything uniformly
+
+                    #all_bonds = [(i, self.internal_zmat[binding_mode_index]._frame.loc[i,'dart_range']) for i in self.traj_dart_dict['bond_groups'][center_atom]]
+                    #print('all_bonds', all_bonds)
+                    #exit()
                     chosen_atom = random.choice(self.traj_dart_dict['bond_groups'][center_atom])
-                    chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][1]
+                    #chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][0]
+                    chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][0]
+
                     print('chosen_atom', chosen_atom)
                     #chosen_atom = center_atom
 
@@ -1358,7 +1569,52 @@ class MolDartMove(RandomLigandRotationMove):
                     #find the random displacement based on what the chosen atom is
                     #displacement = -1*zmat_new._frame['dart_range'].loc[chosen_atom]
 #                    displacement = zmat_new._frame['dart_range'].loc[chosen_atom]*(2*(np.random.random() - 0.5))
-                    displacement = zmat_new._frame.loc[chosen_atom,'dart_range']*(2*(np.random.random() - 0.5))
+                    if self.darting_sampling == 'uniform':
+                        displacement = zmat_new._frame.loc[chosen_atom,'dart_range']*(2*(np.random.random() - 0.5))
+                    elif self.darting_sampling == 'gaussian':
+                        zmat_new._frame.loc[chosen_atom,'gauss'].random_state = np.random.RandomState()
+                        #random_number = zmat_new._frame.loc[chosen_atom,'gauss'].rvs(size=10000)
+                        random_number = zmat_new._frame.loc[chosen_atom,'gauss'].rvs()
+                        displacement = zmat_new._frame.loc[chosen_atom,'dihedral_max'] - random_number
+                        print('displacement', displacement)
+                        while displacement > zmat_new._frame.loc[chosen_atom,'dart_range']:
+                            print('displacement', displacement, zmat_new._frame.loc[chosen_atom,'dart_range'])
+
+                            random_number = zmat_new._frame.loc[chosen_atom,'gauss'].rvs()
+                            displacement = zmat_new._frame.loc[chosen_atom,'dihedral_max'] - random_number
+
+                        import matplotlib.pyplot as plt
+                        #need to do two things to maintain detailed balance
+                        #evaluate current probability of having the dihedral before and after
+                        print('random_number', random_number, 'pdf', zmat_new._frame.loc[chosen_atom,'gauss'].pdf(random_number))
+                        print('zmat_new', zmat_new)
+                        print('max', zmat_new._frame.loc[chosen_atom,'gauss'].pdf(zmat_new._frame.loc[chosen_atom,'dihedral_max']))
+                        #find the probability of proposing the move based on the gaussian probability of the initial and darted dihedral position
+                        gauss_prob_before = self.internal_zmat[binding_mode_index]._frame.loc[chosen_atom,'gauss'].pdf(zmat_traj._frame.loc[chosen_atom,'dihedral'])
+                        gauss_prob_after = self.internal_zmat[rand_index]._frame.loc[chosen_atom,'gauss'].pdf(random_number)
+                        #adjust the probability based on the ratio
+                        gauss_ratio_before = self.internal_zmat[binding_mode_index].loc[chosen_atom,'ratio']
+                        gauss_ratio_after = self.internal_zmat[rand_index].loc[chosen_atom,'ratio']
+                        #divide the ratios of the probability densities of the darted_pose/current pose to maintain detailed balance
+                        #(since the total probabilites could be different because we adjust the darting ranges)
+
+                        print('gauss before', gauss_prob_before)
+                        print('gauss after', gauss_prob_after)
+                        print('modificiation', (gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before))
+                        self.acceptance_ratio = (gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before)
+                        print('acceptance_ratio', self.acceptance_ratio)
+                        #exit()
+                        self.acceptance_ratio = self.acceptance_ratio * (self.internal_zmat[rand_index].loc[chosen_atom,'ratio']/self.internal_zmat[self.selected_pose].loc[chosen_atom,'ratio'])
+                        #displacement = zmat_new._frame.loc[chosen_atom,'dihedral_max'] - zmat_new._frame.loc[chosen_atom,'gauss'].rvs(size=1)[0]
+                        if 0:
+                            random_number = zmat_new._frame.loc[chosen_atom,'gauss'].rvs(size=10000)
+                            num_list = []
+                            output = zmat_new._frame.loc[chosen_atom,'dihedral_max'] - random_number
+                            plt.hist(output, bins=50)
+                            plt.savefig('test.png')
+                            #displacement = zmat_new._frame.loc[chosen_atom,'dihedral_max'] - random_number
+                            #print('displacement', displacement, 'random_number', random_number, 'dihedral_max', zmat_new._frame.loc[chosen_atom,'dihedral_max'])
+                            exit()
                     #displacement = zmat_new._frame.loc[chosen_atom,'dart_range']*(2*(1 - 0.5))
                     #displacement = 0.0
 
@@ -1544,10 +1800,10 @@ class MolDartMove(RandomLigandRotationMove):
         print('zmat after move\n', zmat_new)
        #print('dir', dir(xyz_new))
         convert = xyz_new.to_zmat(construction_table=self.buildlist)
-        print('after conversion\n', xyz_new.to_zmat(construction_table=self.buildlist))
-        print('bond_diff\n', zmat_new['bond']- convert['bond'])
-        print('angle_diff\n', zmat_new['angle']- convert['angle'])
-        print('dihedral_diff\n', zmat_new['dihedral']- convert['dihedral'])
+        #print('after conversion\n', xyz_new.to_zmat(construction_table=self.buildlist))
+        #print('bond_diff\n', zmat_new['bond']- convert['bond'])
+        #print('angle_diff\n', zmat_new['angle']- convert['angle'])
+        #print('dihedral_diff\n', zmat_new['dihedral']- convert['dihedral'])
 
         new_df.rename(columns={'dihedral':'zmat_new'})
         new_df['zmat_traj'] = zmat_traj._frame['dihedral']
@@ -1823,7 +2079,10 @@ class MolDartMove(RandomLigandRotationMove):
         #take into account the number of possible states at the start/end of this proceudre
         #and factor that into the acceptance criterion
         else:
-            self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/float(self.num_poses_begin))
+            if self.num_poses_begin == 0:
+                self.acceptance_ratio = 0
+            else:
+                self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/float(self.num_poses_begin))
 
 
         return context
