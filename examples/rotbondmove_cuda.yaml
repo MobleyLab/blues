@@ -1,10 +1,10 @@
-# YAML configuration for simulating toluene bound to T4 lysozyme
+# YAML configuration for simulating ligand bound to c-junk 1 protein
 # Atoms 5 angstroms away from the ligand are frozen
 # Simulation on a CUDA device with index 0
-# NVT simulation with Hydrogen Mass Repartioning + 4fs timesteps
-# 5 BLUES iterations (random rotational move proposals), 1000 steps of NCMC and MD per iteration
+# NVT simulation without Hydrogen Mass Repartioning + 2fs timesteps
+# 10 BLUES iterations (random bond rotations move proposals), 3502 steps of NCMC and 1000 steps of MD per iteration
 # MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
-# NCMC Reporters: NetCDF (stores protocol work at 1st, mid, and last frame) and speed for benchmarking
+# NCMC Reporters: None
 
 output_dir: .
 outfname: gmx
@@ -55,7 +55,7 @@ simulation:
   dt: 0.002 * picoseconds
   friction: 1 * 1/picoseconds
   temperature: 300 * kelvin
-  nIter: 100
+  nIter: 10
   nstepsMD: 1000
   nstepsNC: 3502
   #Default
@@ -88,14 +88,10 @@ md_reporters:
     currentIter : True
 
 ncmc_reporters:
-  traj_netcdf:
-    frame_indices: [1]
-    alchemicalLambda: False
-    protocolWork: False
   stream:
     title: ncmc
     reportInterval: 2000
-    totalSteps: 5000000 #nIter * nstepsNC
+    totalSteps: 500000 #nIter * nstepsNC
     step: False
     speed: False
     progress: False

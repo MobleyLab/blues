@@ -438,7 +438,7 @@ class RandomRotatableBondMove(Move):
         updated_pos = self.molecule.GetCoords()
 
         for index, atomidx in enumerate(self.atom_indices_ligand):
-            positions[atomidx] = np.array(updated_pos[index])*unit.nanometers
+            positions[atomidx] = numpy.array(updated_pos[index])*unit.nanometers
         context.setPositions(positions)
         self.positions = positions[self.atom_indices_ligand]
         return context
@@ -489,7 +489,7 @@ class RandomRotatableBondFlipMove( RandomRotatableBondMove ):
         updated_pos = self.molecule.GetCoords()
 
         for index, atomidx in enumerate(self.atom_indices_ligand):
-            positions[atomidx] = np.array(updated_pos[index])*unit.nanometers
+            positions[atomidx] = numpy.array(updated_pos[index])*unit.nanometers
         context.setPositions(positions)
         self.positions = positions[self.atom_indices_ligand]   
         return context
