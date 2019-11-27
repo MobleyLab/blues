@@ -1,7 +1,7 @@
 import unittest, parmed
 from blues import utils
 from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
-from blues.moves import RandomLigandRotationMove
+from blues.moves import RandomRotatableBondMove 
 from blues.moves import MoveEngine
 from simtk.openmm import app
 from simtk import unit
