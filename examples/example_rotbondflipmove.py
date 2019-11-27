@@ -4,7 +4,7 @@ import json
 from blues.settings import *
 
 
-def rotbondmove_cuda(yaml_file):
+def rotbondflipmove_cuda(yaml_file):
     # Parse a YAML configuration, return as Dict
     cfg = Settings('rotbondmove_cuda.yaml').asDict()
     structure = cfg['Structure']

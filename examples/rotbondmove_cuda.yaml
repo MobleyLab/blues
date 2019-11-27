@@ -13,8 +13,8 @@ logger:
   stream: True
 
 structure:
-  filename: eqRef_2gmx.prmtop
-  xyz: eqRef_2gmx.inpcrd
+  filename: tests/data/eqRef_2gmx.prmtop
+  xyz: tests/data/eqRef_2gmx.inpcrd
 
 system:
   nonbondedMethod: PME

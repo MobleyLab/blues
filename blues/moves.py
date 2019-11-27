@@ -7,7 +7,7 @@ a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
 
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
+Contributors: Nathan M. Lim, Kalistyn Burley, Sukanya Sasmal, David L. Mobley
 """
 
 import copy
@@ -156,7 +156,8 @@ class RandomLigandRotationMove(Move):
     structure: parmed.Structure
         ParmEd Structure object of the relevant system to be moved.
     random_state : integer or numpy.RandomState, optional
-        The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
+        The generator used for random numbers. If an integer is given, 
+        it fixes the seed. Defaults to the global numpy random number generator.
 
     Attributes
     ----------
@@ -310,58 +311,50 @@ class RandomLigandRotationMove(Move):
 class RandomRotatableBondMove(Move):
     """RandomRotatableBondMove that provides methods for calculating properties on the
     object 'model' (i.e ligand) being perturbed in the NCMC simulation.
-    Current methods calculates the properties needed to rotate a rotatable bond
-    of a structure in the NCMC simulation and then executes a rotation of 
-    a random 'rotatable' bond in the designated small molecule by a random 
+    Current methods calculates the properties needed to randomly rotate a rotatable 
+    bond of a structure in the NCMC simulation and then executes a rotation of 
+    a user-specified 'rotatable' bond in the designated small molecule by a random 
     angle of rotation 'theta'.
 
     Parameters
     ----------
-    resname : str
-        String specifying the residue name of the ligand.
     structure: parmed.Structure
         ParmEd Structure object of the relevant system to be moved.
-    random_state : integer or numpy.RandomState, optional
-        The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
+    prmtop: str
+        String specifying the name of the parameter file.        
+    inpcrd: str
+        String specifying the name of the restart file.
+    dihedral_atoms: list
+        List containing the four atomnames describing the rotatable bond of interest. 
+    alch_list: list
+        List containing atomnames corresponding to the atoms considered to be
+        in the alchemical region during NCMC move.
+    resname : str
+        String specifying the residue name of the ligand.
 
     Attributes
     ----------
     structure : parmed.Structure
         The structure of the ligand or selected atoms to be rotated.
-    resname : str, default='LIG'
-        The residue name of the ligand or selected atoms to be rotated.
-    topology : openmm.Topology
-        The topology of the ligand or selected atoms to be rotated.
     atom_indices : list
-        Atom indicies of the ligand.
+        Atom indicies of atoms present in the alchemical region of the ligand.
+    atom_indices_ligand :
+        Atom indicies of all atoms present in the ligand.
+    dihedral_atoms : list
+        Atomnames corresponding to the atoms describing the rotatable bond
     positions : numpy.array
         Ligands positions in XYZ coordinates. This should be updated
         every iteration.
-
+    molecule : OEMol
+        OEChem Molecule describing the ligand
+ 
     Examples
     --------
     >>> from blues.move import RandomRotatableBondMove
-    >>> ligand = RandomRotatableBondMove(structure, 'LIG')
-    >>> ligand.resname
-        'LIG'
+    >>> ligand = RandomRotatableBondMove(structure, prmtopFileName, inpcrdFileName, dihedral_atoms, alch_list, 'LIG')
     """
 
     def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, alch_list, resname='LIG'):
-        """Initialize the model.
-        Parameters
-        ----------
-        structure: parmed.Structure
-            ParmEd Structure object of the relevant system to be moved.
-        prmtop: prmtop file
-        inpcrd: inpcrd file
-        dihedral_atoms: atom names decribing the dihedral angle of ligand being rotated, list
-        alch_list: list containing atom names of ligand being alchemically turned off
-        resname : str
-            String specifying the resiue name of the ligand.
-        dihedral_atoms: an array of characters
-            Contains the four atoms defining the dihedral angle
-
-        """
         self.structure = structure
         self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
         self.dihedral_atoms = dihedral_atoms
@@ -370,7 +363,6 @@ class RandomRotatableBondMove(Move):
 
     def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
         """Helper function for converting the parmed structure into an OEMolecule."""
-        from oeommtools.utils import openmmTop_to_oemol
         structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
         mask = "!(:%s)" %resname
         structure_LIG.strip(mask)
@@ -388,14 +380,19 @@ class RandomRotatableBondMove(Move):
         Get atom indices of a ligand from ParmEd Structure.
         Arguments
         ---------
-        resname : str
-            String specifying the resiue name of the ligand.
         structure: parmed.Structure
             ParmEd Structure object of the atoms to be moved.
+        resname : str
+            String specifying the resiue name of the ligand.
+        alch_list: list
+            List containing atomnames corresponding to the atoms considered to be
+            in the alchemical region during NCMC move.
         Returns
         -------
         atom_indices : list of ints
-            list of atoms in the coordinate file matching lig_resname
+            list of atoms in the coordinate file matching alch_list
+        atom_indices_ligand :
+            Atom indicies of all atoms present in the ligand.
         """
         atom_indices = []
         atom_indices_ligand = []
@@ -409,8 +406,8 @@ class RandomRotatableBondMove(Move):
         return atom_indices, atom_indices_ligand
 
     def move(self, context):
-        """Function that performs a random rotation about the
-        center of mass of the ligand.
+        """Function that performs a random rotation of the specified 
+        bond of the ligand.
 
         Parameters
         ----------
@@ -445,18 +442,52 @@ class RandomRotatableBondMove(Move):
 
 
 class RandomRotatableBondFlipMove( RandomRotatableBondMove ):
+    """RandomRotatableFlipBondMove that provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+    Current methods calculates the properties needed to randomly flipxs a rotatable 
+    bond of a structure in the NCMC simulation and then executes 
+    a rotation of a user-specified 'rotatable' bond in the designated small molecule 
+    by a random angle of rotation 'theta' between 160 to 200 degrees.
+
+    Class is inherited from RandomRotatableBondMove
+
+    Parameters
+    ----------
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    prmtop: str
+        String specifying the name of the parameter file.        
+    inpcrd: str
+        String specifying the name of the restart file.
+    dihedral_atoms: list
+        List containing the four atomnames describing the rotatable bond of interest. 
+    alch_list: list
+        List containing atomnames corresponding to the atoms considered to be
+        in the alchemical region during NCMC move.
+    resname : str
+        String specifying the residue name of the ligand.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of atoms present in the alchemical region of the ligand.
+    atom_indices_ligand :
+        Atom indicies of all atoms present in the ligand.
+    dihedral_atoms : list
+        Atomnames corresponding to the atoms describing the rotatable bond
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+    molecule : OEMol
+        OEChem Molecule describing the ligand
+ 
+    Examples
+    --------
+    >>> from blues.move import RandomRotatableBondFlipMove
+    >>> ligand = RandomRotatableBondFlipMove(structure, prmtopFileName, inpcrdFileName, dihedral_atoms, alch_list, 'LIG')
     """
-       Edited by Sukanya
-       Move that provides methods for:
-        1. calculating the properties needed to rotate a rotatable bond
-        of a structure in the NCMC simulation
-        2. Executing a rotation of a random 'rotatable' bond in the designated 
-        small molecule by a random angle of rotation: 'theta'
-
-        Calculated properties include: needs to be updated **** 
-
-        The class contains functions to randomly select a bond and angle to be rotated
-        and applies a rotation matrix to the target atoms to update their coordinates"""
 
     def move(self, context):
         """Function that performs a random rotation about the
