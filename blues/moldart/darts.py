@@ -1100,7 +1100,10 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                     dihedral_output[atom_index] = []
                     current_dihedral = current_internal['dihedral'].loc[atom_index]
                     for posenum, zmat in enumerate(internal_mat):
-                        comparison = zmat['dihedral_max'].loc[atom_index]
+                        #TODO: check which is right, -1 or normal
+                        #comparison = zmat['dihedral_max'].loc[atom_index]
+
+                        comparison = -1*zmat['dihedral_max'].loc[atom_index]
                         dihedral_diff = abs(current_dihedral - comparison)
                         dihedral_diff1 = abs(current_dihedral - (360+comparison))
                         dihedral_diff2 = abs(current_dihedral - (comparison-360))
