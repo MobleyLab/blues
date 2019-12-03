@@ -224,10 +224,13 @@ class RandomLigandRotationMove(Move):
         """
         # TODO: Add option for resnum to better select residue names
         atom_indices = []
-        topology = structure.topology
-        for atom in topology.atoms():
-            if atom.residue.name in resname:
-                atom_indices.append(atom.index)
+        if all([type(i) == int for i in resname]) == True:
+            atom_indices = resname
+        else:
+            topology = structure.topology
+            for atom in topology.atoms():
+                if atom.residue.name in resname:
+                    atom_indices.append(atom.index)
         return atom_indices
 
     def getMasses(self, topology):
@@ -468,6 +471,8 @@ class SideChainMove(Move):
     """
 
     def __init__(self, structure, residue_list, verbose=False, write_move=False):
+        super(SideChainMove, self).__init__()
+
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list

@@ -1013,14 +1013,14 @@ class MolDartMove(RandomLigandRotationMove):
             self.internal_zmat = output_mat
         change_darts = True
         if change_darts ==  True:
-            #change 
+            #change
             pass
             dihedral_difference = makeDihedralDifferenceDf(self.internal_zmat, dihedral_cutoff=0.01)
             #print("self.traj_dart_dict['rotate_list']", self.traj_dart_dict['rotate_list'])
             #print('traj_dart_dict', self.traj_dart_dict)
             #exit()
             for rotate in self.traj_dart_dict['rotate_list']:
-                if 1:
+                if 0:
                     #TODO check if this is necessary
                     output_atoms = []
                     #filter out H atoms

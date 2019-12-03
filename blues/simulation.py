@@ -649,7 +649,9 @@ class SimulationFactory(object):
         integrator : openmm.LangevinIntegrator
             The LangevinIntegrator object intended for the System.
         """
-        integrator = openmm.LangevinIntegrator(temperature, friction, dt)
+        #integrator = openmm.LangevinIntegrator(temperature, friction, dt)
+        import openmmtools
+        integrator = openmmtools.integrators.LangevinIntegrator(temperature=temperature, timestep=dt)
         return integrator
 
     @classmethod
@@ -711,17 +713,32 @@ class SimulationFactory(object):
                 processed_functions[k] = ('%s(step)') % (tab_function_name)
             else:
                 processed_functions[k] = v
+        print('integrator 1')
+        from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
+        if 0:
+            ncmc_integrator = AlchemicalNonequilibriumLangevinIntegrator(
+            #ncmc_integrator = AlchemicalExternalLangevinIntegrator(
+                alchemical_functions=alchemical_functions,
+                splitting=splitting,
+                temperature=temperature,
+                nsteps_neq=nstepsNC,
+                timestep=dt)
+            print('done')
+            ncmc_integrator._prop_lambda = 1
+        else:
+            ncmc_integrator = AlchemicalExternalLangevinIntegrator(
+                alchemical_functions=alchemical_functions,
+                splitting=splitting,
+                temperature=temperature,
+                nsteps_neq=nstepsNC,
+                timestep=dt,
+                nprop=nprop,
+                prop_lambda=propLambda)
 
-        ncmc_integrator = AlchemicalExternalLangevinIntegrator(
-            alchemical_functions=alchemical_functions,
-            splitting=splitting,
-            temperature=temperature,
-            nsteps_neq=nstepsNC,
-            timestep=dt,
-            nprop=nprop,
-            prop_lambda=propLambda)
+        print('integrator 2')
         for k, v in tab_functions.items():
             ncmc_integrator.addTabulatedFunction0(k, v)
+        print('integrator 3')
 
         return ncmc_integrator
 
@@ -797,8 +814,9 @@ class SimulationFactory(object):
         if not config: config = self.config
 
         #Construct MD Integrator and Simulation
+        print('adding integrator')
         self.integrator = self.generateIntegrator(**config)
-
+        print('after integrator')
         #Check for pressure parameter to set simulation to NPT
         if 'pressure' in config.keys():
             self._system = self.addBarostat(self._system, **config)
@@ -819,13 +837,16 @@ class SimulationFactory(object):
             for k, v in ncmc_parameters.items():
                 config[k] = v
             self.config = config
+        print('debug')
 
         #Construct NCMC Integrator and Simulation
         self.ncmc_integrator = self.generateNCMCIntegrator(**config)
+        print('debug1')
 
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self._move_engine.moves:
             self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
+        print('before generateSimFromStruct')
         self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **config)
         utils.print_host_info(self.ncmc)
 
@@ -1057,6 +1078,8 @@ class BLUESSimulation(object):
         self._ncmc_sim.context.setState(self._md_sim.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=False))
 
 
+
+
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
         """Advance the NCMC simulation.
 
@@ -1088,7 +1111,8 @@ class BLUESSimulation(object):
             try:
                 #Attempt anything related to the move before protocol is performed
                 if not step:
-                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
+                    if 1:
+                        self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
 
                 # Attempt selected MoveEngine Move at the halfway point
                 #to ensure protocol is symmetric
@@ -1104,13 +1128,16 @@ class BLUESSimulation(object):
 
                 #Attempt anything related to the move after protocol is performed
                 if step == lastStep:
-                    self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+                    if 1:
+                        self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
 
             except Exception as e:
+                import traceback
+                traceback.print_tb(e.__traceback__)
+
                 logger.error(e)
                 move_engine.selected_move._error(self._ncmc_sim.context)
                 break
-
         # ncmc_state1 stores the state AFTER a proposed move.
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
         self._setStateTable('ncmc', 'state1', ncmc_state1)
@@ -1138,7 +1165,7 @@ class BLUESSimulation(object):
 
         return correction_factor
 
-    def _acceptRejectMove(self, write_move=False):
+    def _acceptRejectMove(self, write_move=False, randomize_velocities=True):
         """Choose to accept or reject the proposed move based
         on the acceptance criterion.
 
@@ -1169,11 +1196,12 @@ class BLUESSimulation(object):
             # Potential energy should be from last MD step in the previous iteration
             md_state0 = self.stateTable['md']['state0']
             md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
-            if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
-                logger.error(
-                    'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
-                    % (md_state0['potential_energy'], md_PE))
-                sys.exit(1)
+            if 0:
+                if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
+                    logger.error(
+                        'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
+                        % (md_state0['potential_energy'], md_PE))
+                    sys.exit(1)
 
         elif work_ncmc + math.log(acceptance_ratio) > randnum:
             self.accept += 1
@@ -1181,7 +1209,21 @@ class BLUESSimulation(object):
 
             # If accept move, sync NCMC state to MD context
             ncmc_state1 = self.stateTable['ncmc']['state1']
-            self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
+            if randomize_velocities:
+                self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
+            else:
+                #vel_before = self._ncmc_sim.context.getState(getVelocities=True).getVelocities(asNumpy=True)
+                if 0:
+                    #debugging, set md vel the same as before doing ncmc
+                    vel_before = self._md_sim.context.getState(getVelocities=True).getVelocities(asNumpy=True)
+
+                    self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=True)
+                    vel_after = self._md_sim.context.getState(getVelocities=True).getVelocities(asNumpy=True)
+                    self._md_sim.context.setVelocities(vel_before)
+                else:
+                    self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=True)
+
+
 
             if write_move:
                 utils.saveSimulationFrame(self._md_sim, '{}acc-it{}.pdb'.format(self._config['outfname'],
@@ -1193,17 +1235,21 @@ class BLUESSimulation(object):
 
             # If reject move, do nothing,
             # NCMC simulation be updated from MD Simulation next iteration.
-
+            if randomize_velocities == False:
+                neg_velocity = self._md_sim.context.getState(getVelocities=True).getVelocities(asNumpy=True)*-1
+                print('neg1', neg_velocity)
+                self._md_sim.context.setVelocities(neg_velocity)
             # Potential energy should be from last MD step in the previous iteration
             md_state0 = self.stateTable['md']['state0']
             md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
-            if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
-                logger.error(
-                    'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
-                    % (md_state0['potential_energy'], md_PE))
-                sys.exit(1)
+            if 0:
+                if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
+                    logger.error(
+                        'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
+                        % (md_state0['potential_energy'], md_PE))
+                    sys.exit(1)
 
-    def _resetSimulations(self, temperature=None):
+    def _resetSimulations(self, temperature=None, randomize_velocities=True):
         """At the end of each iteration:
 
         1. Reset the step number in the NCMC context/integrator
@@ -1215,14 +1261,15 @@ class BLUESSimulation(object):
             The target temperature for the simulation.
 
         """
-        if not temperature:
-            temperature = self._md_sim.context._integrator.getTemperature()
 
         self._ncmc_sim.currentStep = 0
         self._ncmc_sim.context._integrator.reset()
 
         #Reinitialize velocities, preserving detailed balance?
-        self._md_sim.context.setVelocitiesToTemperature(temperature)
+        if randomize_velocities:
+            if not temperature:
+                temperature = self._md_sim.context._integrator.getTemperature()
+            self._md_sim.context.setVelocitiesToTemperature(temperature)
 
     def _stepMD(self, nstepsMD):
         """Advance the MD simulation.
@@ -1250,7 +1297,7 @@ class BLUESSimulation(object):
                                           'MD-fail-it%s-md%i.pdb' % (self.currentIter, self._md_sim.currentStep))
                 sys.exit(1)
 
-    def run(self, nIter=0, nstepsNC=0, moveStep=0, nstepsMD=0, temperature=300, write_move=False, **config):
+    def run(self, nIter=0, nstepsNC=0, moveStep=0, nstepsMD=0, temperature=300, write_move=False, randomize_velocities=True, **config):
         """Executes the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
         then performs the MD simulation from the NCMC state, niter number of times.
@@ -1283,11 +1330,20 @@ class BLUESSimulation(object):
         for N in range(int(nIter)):
             self.currentIter = N
             logger.info('BLUES Iteration: %s' % N)
+            bf = self._md_sim.context.getState(getEnergy=True).getKineticEnergy()
+            nf = self._ncmc_sim.context.getState(getEnergy=True).getKineticEnergy()
             self._syncStatesMDtoNCMC()
+            after_sync = self._ncmc_sim.context.getState(getEnergy=True).getKineticEnergy()
             self._stepNCMC(nstepsNC, moveStep)
-            self._acceptRejectMove(write_move)
-            self._resetSimulations(temperature)
+            self._acceptRejectMove(write_move, randomize_velocities)
+            print('ncbf ke', nf)
+            print('sync ke', after_sync)
 
+            print('mdbf ke', bf)
+
+            print('ncmc ke', self._ncmc_sim.context.getState(getEnergy=True).getKineticEnergy())
+            self._resetSimulations(temperature, randomize_velocities)
+            print('mdaf ke', self._md_sim.context.getState(getEnergy=True).getKineticEnergy())
             self._stepMD(nstepsMD)
 
         # END OF NITER
@@ -1330,6 +1386,7 @@ class MonteCarloSimulation(BLUESSimulation):
             -1.0 / self._ncmc_sim.context._integrator.kT)
         randnum = math.log(np.random.random())
         acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
+        logger.info('acceptance ratio {}'.format(acceptance_ratio))
         if acceptance_ratio == 0:
             self.reject += 1
             logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum))
@@ -1343,6 +1400,7 @@ class MonteCarloSimulation(BLUESSimulation):
             self.reject += 1
             logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum))
             self._md_sim.context.setPositions(md_state0['positions'])
+        self._move_engine.selected_move.acceptance_ratio = 1.0
         self._md_sim.context.setVelocitiesToTemperature(temperature)
 
     def run(self, nIter=0, mc_per_iter=0, nstepsMD=0, temperature=300, write_move=False):
