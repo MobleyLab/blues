@@ -1093,12 +1093,14 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         dihedral_atoms = list(dart_storage['dihedral'].keys())
         #TODO Need to check if periodic wrapping is handled correctly for the dihedrals when comparing if in the dart
         print('current_di', current_internal['dihedral'])
+
         if len(dihedral_atoms) > 0:
             if 'dart_range' in internal_mat[0]._frame:
                 print('dart_range found')
                 for atom_index in dihedral_atoms:
                     dihedral_output[atom_index] = []
-                    current_dihedral = current_internal['dihedral'].loc[atom_index]
+                    #current_dihedral = current_internal['dihedral'].loc[atom_index]
+                    current_dihedral = current_internal.loc[atom_index, 'dihedral']
                     for posenum, zmat in enumerate(internal_mat):
                         #TODO: check which is right, -1 or normal
                         #comparison = zmat['dihedral_max'].loc[atom_index]
@@ -1109,9 +1111,13 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                         dihedral_diff2 = abs(current_dihedral - (comparison-360))
 
                         #
-                        print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat['dart_range'].loc[atom_index], 'atom_index', atom_index )
+                        print('compared_to', zmat['dihedral_max'])
+                        print('dihedral', atom_index, 'current', current_internal.loc[atom_index, 'dihedral'], 'internal_zmat', zmat.loc[atom_index, 'dihedral_max'])
+                        print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat['dart_range'].loc[atom_index], 'atom_index', atom_index, 'pose_num', posenum)
                         #print('current dihedrals', zmat[['dihedral', 'dihedral_max', 'dart_range']])
-                        if dihedral_diff <= zmat['dart_range'].loc[atom_index]:
+                        if dihedral_diff <= zmat['dart_range'].loc[atom_index] or dihedral_diff1 <= zmat['dart_range'].loc[atom_index] or dihedral_diff2 <= zmat['dart_range'].loc[atom_index]:
+
+#                        if dihedral_diff <= zmat['dart_range'].loc[atom_index]:
                             dihedral_output[atom_index].append(posenum)
 
             else:
