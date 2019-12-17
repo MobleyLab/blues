@@ -1092,11 +1092,11 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         dihedral_output = {}
         dihedral_atoms = list(dart_storage['dihedral'].keys())
         #TODO Need to check if periodic wrapping is handled correctly for the dihedrals when comparing if in the dart
-        print('current_di', current_internal['dihedral'])
+        #print('current_di', current_internal['dihedral'])
 
         if len(dihedral_atoms) > 0:
             if 'dart_range' in internal_mat[0]._frame:
-                print('dart_range found')
+                #print('dart_range found')
                 for atom_index in dihedral_atoms:
                     dihedral_output[atom_index] = []
                     #current_dihedral = current_internal['dihedral'].loc[atom_index]
@@ -1111,11 +1111,11 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                         dihedral_diff2 = abs(current_dihedral - (comparison-360))
 
                         #
-                        print('current dihedral', current_internal.loc[atom_index, 'dihedral'], 'compared_to', -1*zmat.loc[atom_index, 'dihedral_max'])
-                        print('dihedral', atom_index, 'current', current_internal.loc[atom_index, 'dihedral'], 'internal_zmat', zmat.loc[atom_index, 'dihedral_max'])
-                        print("-1*zmat.loc[atom_index, 'dihedral_max']", -1*zmat.loc[atom_index, 'dihedral_max'], comparison)
-                        print("current_dihedral", current_internal.loc[atom_index, 'dihedral'], current_dihedral)
-                        print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat.loc[atom_index,'dart_range'], 'atom_index', atom_index, 'pose_num', posenum)
+                        #print('current dihedral', current_internal.loc[atom_index, 'dihedral'], 'compared_to', -1*zmat.loc[atom_index, 'dihedral_max'])
+                        #print('dihedral', atom_index, 'current', current_internal.loc[atom_index, 'dihedral'], 'internal_zmat', zmat.loc[atom_index, 'dihedral_max'])
+                        #print("-1*zmat.loc[atom_index, 'dihedral_max']", -1*zmat.loc[atom_index, 'dihedral_max'], comparison)
+                        #print("current_dihedral", current_internal.loc[atom_index, 'dihedral'], current_dihedral)
+                        #print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat.loc[atom_index,'dart_range'], 'atom_index', atom_index, 'pose_num', posenum)
                         #print('current dihedrals', zmat[['dihedral', 'dihedral_max', 'dart_range']])
                         if dihedral_diff <= zmat.loc[atom_index, 'dart_range'] or dihedral_diff1 <= zmat.loc[atom_index, 'dart_range'] or dihedral_diff2 <= zmat.loc[atom_index, 'dart_range']:
 
@@ -1146,7 +1146,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                 return None
 
     combo_list = [current_pos] + pos_list
-    print('current_zmat', type(current_zmat), 'internal_mat', type(internal_mat))
+    #print('current_zmat', type(current_zmat), 'internal_mat', type(internal_mat))
     combo_zmat = [current_zmat] + internal_mat
     try:
         rot_mat, trans_mat = getRotTransMatrices(combo_zmat, combo_list, construction_table)
