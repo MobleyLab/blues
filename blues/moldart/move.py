@@ -835,12 +835,17 @@ class MolDartMove(RandomLigandRotationMove):
         if 1:
             #multiply by -1 since chemcoords dihedrals are opposite
             #region_space = (space*dx)/2.
-            new_dihedral = -1*dihedral[(dihedral > (max_return-region_space)) & (dihedral < (max_return+region_space))].reshape(-1,1)
+            #new_dihedral = -1*dihedral[(dihedral > (max_return-region_space)) & (dihedral < (max_return+region_space))].reshape(-1,1)
+            #new_dihedral = -1*dihedral[(dihedral > (max_return-region_space)) & (dihedral < (max_return+region_space))].reshape(-1,1)
+            new_dihedral = dihedral[(dihedral > (max_return-region_space)) & (dihedral < (max_return+region_space))].reshape(-1,1)
+
             #new_dihedral = -1*dihedral
 
             from scipy.stats import norm
             #multiply by -1 since chemcoords dihedrals are opposite
-            max_return_deg = np.rad2deg(-1*max_return)
+#            max_return_deg = np.rad2deg(-1*max_return)
+            max_return_deg = np.rad2deg(max_return)
+
             mu, std = norm.fit(np.rad2deg(new_dihedral))
             gauss = norm(max_return_deg,std)
             percent_outside_region = gauss.cdf(max_return_deg-np.rad2deg(region_space))*2
@@ -962,7 +967,8 @@ class MolDartMove(RandomLigandRotationMove):
                 gauss_list.append(traj_storage[zindex][i][2])
                 percent_list.append(traj_storage[zindex][i][3])
             #using mdtraj gives opposite sign compared to chemcoord, so multipy by -1
-            zmat._frame['dihedral_max'] = [-1*di for di in dihedral_max]
+            #zmat._frame['dihedral_max'] = [-1*di for di in dihedral_max]
+            zmat._frame['dihedral_max'] = [di for di in dihedral_max]
 
             zmat._frame['dart_range'] = range_list
             zmat._frame['gauss'] =  gauss_list
@@ -1465,6 +1471,7 @@ class MolDartMove(RandomLigandRotationMove):
         xyz_ref._frame.loc[:, ['x', 'y', 'z']] = traj_positions[self.atom_indices]*10
 
         current_zmat = xyz_ref.get_zmat(construction_table=self.buildlist)
+        print('current_zmat', current_zmat)
         #logger.info("Freezing selection '{}' ({} atoms) on {}".format(freeze_selection, len(mask_idx), system))
         logger.info("sim_traj {}".format(self.sim_traj))
         logger.info("self.trajs {}".format(self.trajs))
@@ -1486,6 +1493,7 @@ class MolDartMove(RandomLigandRotationMove):
                     construction_table=self.buildlist,
                     dart_storage=self.darts
                     )
+        print('selected_dart', selected)
         if len(selected) >= 1:
             #returns binding mode
             #diff_list will be used to dart
@@ -1565,6 +1573,7 @@ class MolDartMove(RandomLigandRotationMove):
         #rand_index = np.random.choice(self.dart_groups, self.transition_matrix[binding_mode_index])
 
         rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix)
+        print('rand_index', rand_index)
         dart_ratio = self.dart_ratio
         print('dart_ratio', dart_ratio)
         self.acceptance_ratio = self.acceptance_ratio * dart_ratio
@@ -1635,9 +1644,12 @@ class MolDartMove(RandomLigandRotationMove):
                     #all_bonds = [(i, self.internal_zmat[binding_mode_index]._frame.loc[i,'dart_range']) for i in self.traj_dart_dict['bond_groups'][center_atom]]
                     #print('all_bonds', all_bonds)
                     #exit()
+                    print('all possible choices', self.traj_dart_dict['bond_groups'][center_atom])
                     chosen_atom = random.choice(self.traj_dart_dict['bond_groups'][center_atom])
                     #chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][0]
-                    chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][0]
+                    #chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][2]
+                    chosen_atom =8
+
 
                     print('chosen_atom', chosen_atom)
                     #chosen_atom = center_atom
@@ -1651,6 +1663,7 @@ class MolDartMove(RandomLigandRotationMove):
 
                     if self.darting_sampling == 'uniform':
                         displacement = zmat_new._frame.loc[chosen_atom,'dart_range']*(2*(np.random.random() - 0.5))
+                        print('displacement', displacement)
                     elif self.darting_sampling == 'gaussian':
                         zmat_new._frame.loc[chosen_atom,'gauss'].random_state = np.random.RandomState()
                         #random_number = zmat_new._frame.loc[chosen_atom,'gauss'].rvs(size=10000)
@@ -1719,14 +1732,21 @@ class MolDartMove(RandomLigandRotationMove):
                         #add_distance = wrapDegrees(wrapDegrees(rotate_displacement) + wrapDegrees(displacement)) is right
 
                         add_distance = wrapDegrees(wrapDegrees(rotate_displacement) + wrapDegrees(displacement)) #default
+                        edit_add_distance = rotate_displacement + displacement
+                        edit_result = zmat_new._frame.loc[chosen_atom,'dihedral_max'] - edit_add_distance
                         #add_distance = wrapDegrees(wrapDegrees(-rotate_displacement) - wrapDegrees(displacement)) #kinda works? but not
                         #add_distance = wrapDegrees(wrapDegrees(-rotate_displacement) + wrapDegrees(displacement)) #kinda works? but not right
 
 
                         #print('add_distance for', rotate_atom, add_distance, rotate_displacement, displacement)
+                        zmat_di_before = zmat_new._frame.loc[rotate_atom,'dihedral']
+                        #zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance #right
+                        #changed this in most recent
                         zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance
-                        #zmat_new._frame.loc[rotate_atom,'dihedral'] =  wrapDegrees(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)
 
+                        #zmat_new._frame.loc[rotate_atom,'dihedral'] =  wrapDegrees(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)
+                        print(rotate_atom, 'before', zmat_di_before, 'after', zmat_new._frame.loc[rotate_atom,'dihedral'], 'rotate_displacement', rotate_displacement, 'displacement', displacement, 'add_distance', add_distance )
+                        print("zmat_new._frame.loc[chosen_atom,'dihedral_max']", zmat_new._frame.loc[chosen_atom,'dihedral_max'], 'edit_add_distance', edit_add_distance, 'edit_result', edit_result)
                         #debug here
                         #zmat_new._frame.loc[rotate_atom,'dihedral'] = zmat_new._frame.loc[rotate_atom,'dihedral_max']
                         #zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max']
@@ -1919,6 +1939,9 @@ class MolDartMove(RandomLigandRotationMove):
         nc_pos = self.sim_traj.xyz[0] * unit.nanometers
         self.sim_traj.save('last_output.pdb')
         print('zmat_traj', zmat_traj)
+        for i,j in enumerate(self.internal_zmat):
+            print('internal_zmat',i,'\n',j)
+        print('zmat_new', zmat_new)
         return nc_pos, rand_index
 
     def initializeSystem(self, system, integrator):
@@ -2161,10 +2184,11 @@ class MolDartMove(RandomLigandRotationMove):
         #take into account the number of possible states at the start/end of this proceudre
         #and factor that into the acceptance criterion
         else:
-            if self.num_poses_begin == 0:
-                self.acceptance_ratio = 0
-            else:
-                self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/float(self.num_poses_begin))
+            if 0:
+                if self.num_poses_begin == 0:
+                    self.acceptance_ratio = 0
+                else:
+                    self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/float(self.num_poses_begin))
 
 
         return context
@@ -2237,6 +2261,7 @@ class MolDartMove(RandomLigandRotationMove):
             #translate new pose to center of first molecule
             #find rotation that matches atom1 and atom2s of the build list
             #apply that rotation using atom1 as the origin
+            print('selected_pose before redarting', self.selected_pose)
             new_pos, darted_pose = self._moldRedart(atom_indices=self.atom_indices,
                                             binding_mode_pos=self.binding_mode_traj,
                                             binding_mode_index=self.selected_pose,
@@ -2245,7 +2270,10 @@ class MolDartMove(RandomLigandRotationMove):
 
             self.selected_pose = darted_pose
             context.setPositions(new_pos)
+            print('checking pose after')
             overlap_after = self._poseDart(context, self.atom_indices)
+            print('selected_pose after redarting', self.selected_pose)
+
             #the acceptance depends on the instantaenous move
             #therefore find the ratio of number of poses before and after
             self.num_poses_end = len(overlap_after)
@@ -2259,6 +2287,14 @@ class MolDartMove(RandomLigandRotationMove):
                 for i in range(len(self.binding_mode_traj)):
                     context.setParameter('restraint_pose_'+str(i), 0)
                 context.setParameter('restraint_pose_'+str(self.selected_pose), 1)
+            else:
+                #if restraints aren't being used, then we can find out the overlap here
+                print('num pose begin', self.num_poses_begin, 'num_poses_end', self.num_poses_end)
+                if self.num_poses_begin == 0:
+                    self.acceptance_ratio = 0
+                else:
+                    self.acceptance_ratio = self.acceptance_ratio*(float(self.num_poses_end)/float(self.num_poses_begin))
+
 
         if self.freeze_waters > 0:
             start_state = context.getState(getPositions=True, getVelocities=True)
