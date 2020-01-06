@@ -762,7 +762,7 @@ class MolDartMove(RandomLigandRotationMove):
             plt.show()
             exit()
 
-        if 1:
+        if debug:
             #plotting debugging
             new_kde = KernelDensity(kernel='tophat', bandwidth=0.025).fit(new_dihedral)
             new_log_dens = np.exp(new_kde.score_samples(pi_range))
@@ -815,6 +815,7 @@ class MolDartMove(RandomLigandRotationMove):
             #exit()
             #print('check_sample', np.size(check_sample))
             #axes[1].hist(dihedral,bins=25,color='green',alpha=0.5)
+            axes[0].legend(('region_space:',np.rad2deg(region_space), ' max_return:',np.rad2deg(max_return)))
             output_name = 'plot_'+str(debug)+'.png'
             plt.savefig(output_name)
             #plt.show()
@@ -959,6 +960,7 @@ class MolDartMove(RandomLigandRotationMove):
             zmat._frame['ratio'] = percent_list
             #print('traj_storage', traj_storage)
         if same_range:
+            self.same_range = True
             old_zmat = copy.deepcopy(output_mat)
             #print('output_mat old', old_zmat)
             #for zmat1, zmat2 in zip(output_mat, old_zmat):
@@ -997,7 +999,9 @@ class MolDartMove(RandomLigandRotationMove):
             #print('output mat', output_mat)
             #print('one', output_mat[0]._frame.index)
             #exit()
-
+        #if not same range we have to find the volume associated with each
+        else:
+            self.same_range = False
         #now have to set up darting using darting regions instead
         if set_self==True:
             self.internal_zmat = output_mat
@@ -1514,6 +1518,36 @@ class MolDartMove(RandomLigandRotationMove):
         acceptance_ratio = float(prob_reverse)/prob_forward
         return rand_index, acceptance_ratio
 
+    def _dart_selection_edit(self, binding_mode_index, transition_matrix):
+        """
+        Picks a new dart based on an inital binding mode index and transition matrix.
+        Returns the randomly selected dart and acceptance criteria factoring in the probabilities
+        from the transition matrix
+
+        Parameters
+        ----------
+        binding_mode_index: int
+            The binding mode index of a dart
+        transition_matrix: nxn np.array
+            The transition matrix to determine the transition probabilities
+            from a given dart
+
+        Returns
+        -------
+        rand_index: int
+            The randomly chosen binding mode index selected using the transition matrix
+            probabilities.
+        acceptance_ratio:
+            The probability ratio that needs to be factored into the acceptance criterion
+            for using the transition matrix.
+        """
+        rand_index = np.random.choice(self.dart_groups, p=transition_matrix[binding_mode_index])
+        prob_forward = transition_matrix[binding_mode_index][rand_index]
+        prob_reverse = transition_matrix[rand_index][binding_mode_index]
+        acceptance_ratio = float(prob_reverse)/prob_forward
+        return rand_index, acceptance_ratio
+
+
     def _moldRedart(self, atom_indices, binding_mode_pos, binding_mode_index, nc_pos, rigid_darts):
         """
         Helper function to choose a random pose and determine the vector
@@ -1647,6 +1681,10 @@ class MolDartMove(RandomLigandRotationMove):
 
                     if self.darting_sampling == 'uniform':
                         displacement = zmat_new._frame.loc[chosen_atom,'dart_range']*(2*(np.random.random() - 0.5))
+                        if 0:
+                            ratio_before = self.internal_zmat[binding_mode_index].loc[chosen_atom,'dart_range']
+                            ratio_after = self.internal_zmat[rand_index].loc[chosen_atom,'dart_range']
+                            self.acceptance_ratio = ratio_before/ratio_after
                         #print('displacement', displacement)
                     elif self.darting_sampling == 'gaussian':
                         zmat_new._frame.loc[chosen_atom,'gauss'].random_state = np.random.RandomState()
@@ -1679,7 +1717,8 @@ class MolDartMove(RandomLigandRotationMove):
                         #print('gauss after', gauss_prob_after)
                         #print('modificiation', (gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before))
                         #self.acceptance_ratio = (gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before)
-                        self.acceptance_ratio = self.acceptance_ratio*(gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before)
+                        #self.acceptance_ratio = self.acceptance_ratio*(gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before)
+                        self.acceptance_ratio = self.acceptance_ratio*(gauss_prob_before*gauss_ratio_before)/(gauss_prob_after*gauss_ratio_after)
 
                         #print('acceptance_ratio', self.acceptance_ratio)
                         #exit()
