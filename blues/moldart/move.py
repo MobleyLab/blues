@@ -578,7 +578,7 @@ class MolDartMove(RandomLigandRotationMove):
         orig_dihedral = dihedral
         #make the range larger than the periodic boundries
         dihedral = np.concatenate((dihedral-2*np.pi, dihedral, dihedral+2*np.pi))
-        print('len', np.size(dihedral))
+        #print('len', np.size(dihedral))
         if density_percent > 1.0:
             raise ValueError('density_percent must be less than 1!')
         pi_range = np.linspace(-2*np.pi, 2*np.pi+np.pi/50.0, num=360, endpoint=True).reshape(-1,1)
@@ -1489,7 +1489,7 @@ class MolDartMove(RandomLigandRotationMove):
         elif len(selected) == 0:
             return []
 
-    def _dart_selection(self, binding_mode_index, transition_matrix):
+    def _dart_selection(self, binding_mode_index, transition_matrix, same_range=True, ):
         """
         Picks a new dart based on an inital binding mode index and transition matrix.
         Returns the randomly selected dart and acceptance criteria factoring in the probabilities
@@ -1512,10 +1512,37 @@ class MolDartMove(RandomLigandRotationMove):
             The probability ratio that needs to be factored into the acceptance criterion
             for using the transition matrix.
         """
-        rand_index = np.random.choice(self.dart_groups, p=transition_matrix[binding_mode_index])
-        prob_forward = transition_matrix[binding_mode_index][rand_index]
-        prob_reverse = transition_matrix[rand_index][binding_mode_index]
-        acceptance_ratio = float(prob_reverse)/prob_forward
+        if same_range==True:
+            rand_index = np.random.choice(self.dart_groups, p=transition_matrix[binding_mode_index])
+            prob_forward = transition_matrix[binding_mode_index][rand_index]
+            prob_reverse = transition_matrix[rand_index][binding_mode_index]
+            acceptance_ratio = float(prob_reverse)/prob_forward
+        elif same_range==False:
+            selected_dihedral = list(self.darts['dihedral'].keys())
+            density_list = []
+            for index, zmat in enumerate(self.internal_zmat):
+                if index != binding_mode_index:
+                    print('selected_dihedral', selected_dihedral)
+                    print('index', index, zmat['dart_range'])
+                    sum_total = zmat.loc[selected_dihedral, 'dart_range'].sum()
+                    print(sum_total)
+                    density = sum_total
+                    density_list.append(density)
+                else:
+                    print('index', index, zmat['dart_range'])
+
+                    #ignore density for the current binding mode because it isn't chosen
+                    pass
+                    #density_list.append(0.0)
+
+            #print('density_list', density_list, 'binding_mode_index', binding_mode_index )
+            #density_list.pop(binding_mode_index)
+            print('density_list', density_list, 'binding_mode_index', binding_mode_index )
+
+            density_array = np.array(density_list)/np.sum(density_list)
+            print('density_array', density_array)
+            print(self.internal_zmat)
+            exit()
         return rand_index, acceptance_ratio
 
     def _dart_selection_edit(self, binding_mode_index, transition_matrix):
@@ -1590,7 +1617,7 @@ class MolDartMove(RandomLigandRotationMove):
         #choose a random binding pose
         #rand_index = np.random.choice(self.dart_groups, self.transition_matrix[binding_mode_index])
 
-        rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix)
+        rand_index, self.dart_ratio = self._dart_selection(binding_mode_index, self.transition_matrix, same_range=self.same_range)
         #print('rand_index', rand_index)
         dart_ratio = self.dart_ratio
         #print('dart_ratio', dart_ratio)
