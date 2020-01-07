@@ -1111,11 +1111,11 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
                         dihedral_diff2 = abs(current_dihedral - (comparison-360))
 
                         #
-                        #print('current dihedral', current_internal.loc[atom_index, 'dihedral'], 'compared_to', -1*zmat.loc[atom_index, 'dihedral_max'])
+                        print('current dihedral', current_internal.loc[atom_index, 'dihedral'])
                         #print('dihedral', atom_index, 'current', current_internal.loc[atom_index, 'dihedral'], 'internal_zmat', zmat.loc[atom_index, 'dihedral_max'])
                         #print("-1*zmat.loc[atom_index, 'dihedral_max']", -1*zmat.loc[atom_index, 'dihedral_max'], comparison)
                         #print("current_dihedral", current_internal.loc[atom_index, 'dihedral'], current_dihedral)
-                        #print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat.loc[atom_index,'dart_range'], 'atom_index', atom_index, 'pose_num', posenum)
+                        print('dihedral_diff', dihedral_diff, dihedral_diff1, dihedral_diff2, 'range', zmat.loc[atom_index,'dart_range'], 'atom_index', atom_index, 'pose_num', posenum)
                         #print('current dihedrals', zmat[['dihedral', 'dihedral_max', 'dart_range']])
                         if dihedral_diff <= zmat.loc[atom_index, 'dart_range'] or dihedral_diff1 <= zmat.loc[atom_index, 'dart_range'] or dihedral_diff2 <= zmat.loc[atom_index, 'dart_range']:
 
