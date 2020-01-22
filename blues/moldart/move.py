@@ -207,7 +207,8 @@ class MolDartMove(RandomLigandRotationMove):
         rigid_body=False,
         centroid_darting=True,
         lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
-        darting_sampling='uniform'
+        darting_sampling='uniform',
+        buildlist=None
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
@@ -318,8 +319,9 @@ class MolDartMove(RandomLigandRotationMove):
                     self.dihedral_ring_atoms = list(set(rigid_atoms + h_list))
                     #self.dihedral_ring_atoms = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in rigid_atoms]
         else:
-            self.buildlist = self._createBuildlist(pdb_files, self.atom_indices)
-            self.traj_dart_dict = self._findDihedralRingAtoms(pdb_files, atom_indices=self.atom_indices, rigid_darts=self.rigid_darts)
+            if self.buildlist == None:
+                self.buildlist = self._createBuildlist(pdb_files, self.atom_indices)
+            self.traj_dart_dict = self._findDihedralRingAtoms(pdb_files, atom_indices=self.atom_indices, rigid_darts=self.rigid_darts, buildlist=self.buildlist)
             #print('self.traj_dart_dict keys1', self.traj_dart_dict)
             #print('self.traj_dart_dict keys', list(self.traj_dart_dict.keys()))
             self.dihedral_ring_atoms = self.traj_dart_dict['dihedral_ring_atoms']
@@ -521,7 +523,9 @@ class MolDartMove(RandomLigandRotationMove):
             return buildlist
 
     @classmethod
-    def _getDarts(cls, structure_files, atom_indices, topology=None, reference_traj=None, fit_atoms=None, dihedral_cutoff=0.5, distance_cutoff=5.5, rotation_cutoff=29.0, dart_buffer=0.9, order=['translation', 'dihedral',  'rotation']):
+    def _getDarts(cls, structure_files, atom_indices, topology=None, reference_traj=None, fit_atoms=None,
+        dihedral_cutoff=0.5, distance_cutoff=5.5, rotation_cutoff=29.0, dart_buffer=0.9, order=['translation', 'dihedral',  'rotation'],
+        buildlist=None):
         """
         Parameters
         ----------
@@ -563,8 +567,10 @@ class MolDartMove(RandomLigandRotationMove):
                     atom_indices=atom_indices,
                     topology=topology,
                     reference_traj=reference_traj,
-                    fit_atoms=fit_atoms)
-        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
+                    fit_atoms=fit_atoms,
+                    buildlist=buildlist)
+        if buildlist is None:
+            buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
         darts = makeDartDict(internal_zmat, binding_mode_pos, buildlist, dihedral_cutoff=dihedral_cutoff, distance_cutoff=distance_cutoff, rotation_cutoff=rotation_cutoff,
                             dart_buffer=dart_buffer, order=order)
         return darts
@@ -892,7 +898,7 @@ class MolDartMove(RandomLigandRotationMove):
 
 
     def getDartsFromTrajs(self, traj_files, structure_files=None,  atom_indices=None,  topology=None, dihedral_select='pose',
-                          density_percent=0.9, stride=None, same_range=True, set_self=True, debug=False):
+                          density_percent=0.9, stride=None, same_range=True, set_self=True, debug=False, buildlist=None):
 
         if structure_files == None:
             structure_files=self.pdb_files
@@ -900,7 +906,8 @@ class MolDartMove(RandomLigandRotationMove):
             topology = structure_files[0]
         if atom_indices == None:
             atom_indices = self.atom_indices
-
+        if buildlist == None:
+            buildlist = self.buildlist
 
         traj_files = [self._loadfiles(i, topology, stride=stride) for i in traj_files]
         for i,j in enumerate(structure_files):
@@ -952,8 +959,9 @@ class MolDartMove(RandomLigandRotationMove):
                 gauss_list.append(traj_storage[zindex][i][2])
                 percent_list.append(traj_storage[zindex][i][3])
             #using mdtraj gives opposite sign compared to chemcoord, so multipy by -1
-            #zmat._frame['dihedral_max'] = [-1*di for di in dihedral_max]
-            zmat._frame['dihedral_max'] = [di for di in dihedral_max]
+            zmat._frame['dihedral_max'] = [-1*di for di in dihedral_max] #TEMP
+            #TEMP
+            #zmat._frame['dihedral_max'] = [di for di in dihedral_max]
 
             zmat._frame['dart_range'] = range_list
             zmat._frame['gauss'] =  gauss_list
@@ -1066,7 +1074,8 @@ class MolDartMove(RandomLigandRotationMove):
 
 
     @classmethod
-    def _checkTrajectoryDarts(cls, structure_files, atom_indices, traj_files, darts, topology=None, reference_traj=None, fit_atoms=None):
+    def _checkTrajectoryDarts(cls, structure_files, atom_indices, traj_files, darts,
+                             topology=None, reference_traj=None, fit_atoms=None, buildlist=None, internal_zmat=None):
         """
         Parameters
         ----------
@@ -1092,26 +1101,37 @@ class MolDartMove(RandomLigandRotationMove):
         """
         if not isinstance(traj_files, list):
             traj_files = [traj_files]
+        if not isinstance(structure_files, list):
+            structure_files = [structure_files]
+
+        print('sfiles', structure_files[0], topology)
         if reference_traj is None:
             reference_traj = cls._loadfiles(structure_files[0], topology)
         else:
             if isinstance(reference_traj, str):
                 reference_traj = cls._loadfiles(reference_traj, topology)
 
-        internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
+        internal_xyz, internal_zmat_fromcreate, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
                     atom_indices=atom_indices,
                     topology=topology,
                     reference_traj=reference_traj,
-                    fit_atoms=fit_atoms)
-        buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
+                    fit_atoms=fit_atoms,
+                    buildlist=buildlist)
+        if buildlist is None:
+            buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
+        if internal_zmat is None:
+            internal_zmat = internal_zmat_fromcreate
         temp_xyz = copy.deepcopy(internal_xyz[0])
         all_darts = []
         for traj in traj_files:
             #print('traj', traj)
             traj = cls._loadfiles(traj, topology)
-            traj.superpose(reference=reference_traj,
-                atom_indices=fit_atoms)
+            print('traj', traj)
+            print('reference', reference_traj)
+            traj.superpose(reference=reference_traj, atom_indices=fit_atoms[0])
             traj_frames = []
+            print('dart_storage',darts)
+            #exit()
             for frame in range(traj.n_frames):
                 temp_xyz._frame.loc[:, ['x', 'y', 'z']] = traj.xyz[frame][atom_indices]*10
                 temp_zmat = temp_xyz.get_zmat(construction_table=buildlist)
@@ -1125,11 +1145,78 @@ class MolDartMove(RandomLigandRotationMove):
 
         return all_darts
 
+    @classmethod
+    def _checkTrajectoryDarts2(cls, structure_files, atom_indices, traj_files, darts,
+                             topology=None, reference_traj=None, fit_atoms=None, buildlist=None, internal_zmat=None):
+        """
+        Parameters
+        ----------
+        structure_files: list of str
+            List corresponding to the path of the structures to create representations of.
+        atom_indices: list of ints
+            The atom indices of the ligand in the structure files.
+        topology: str, optional, default=None
+            Path of topology file, if structure_files doesn't contain topology information.
+        reference_traj: mdtraj.Trajectory or str, optional, default=None
+            Trajectory object, or path to file, containing the reference system to superpose to. If None then
+            trajectories are fitted to the first structure in structure_files.
+        fit_atoms: list, optional, default=None
+            List of atom indices to be used in fitting the structure_files positions to the
+            reference trajectory (if reference_traj is not None)
+
+        Returns
+        -------
+        all_darts: list of lists
+            List containing a list of ints for each traj_files item. Each int corresponds to a frame of that trajectory if it matches
+            a pose from the poses specified in structure_files
+
+        """
+        if not isinstance(traj_files, list):
+            traj_files = [traj_files]
+        if not isinstance(structure_files, list):
+            structure_files = [structure_files]
+
+        print('sfiles', structure_files[0], topology)
+        if reference_traj is None:
+            reference_traj = cls._loadfiles(structure_files[0], topology)
+        else:
+            if isinstance(reference_traj, str):
+                reference_traj = cls._loadfiles(reference_traj, topology)
+
+        internal_xyz, internal_zmat_fromcreate, binding_mode_pos, binding_mode_traj = cls._createZmat(structure_files=structure_files,
+                    atom_indices=atom_indices,
+                    topology=topology,
+                    reference_traj=reference_traj,
+                    fit_atoms=fit_atoms,
+                    buildlist=buildlist)
+        if buildlist is None:
+            buildlist = MolDartMove._createBuildlist(structure_files, atom_indices, topology=topology)
+        if internal_zmat is None:
+            internal_zmat = internal_zmat_fromcreate
+        temp_xyz = copy.deepcopy(internal_xyz[0])
+        all_darts = []
+        for traj in traj_files:
+            #print('traj', traj)
+            traj = cls._loadfiles(traj, topology)
+            print('traj', traj)
+            print('reference', reference_traj)
+            traj.superpose(reference=reference_traj, atom_indices=fit_atoms[0])
+            traj_frames = []
+            print('dart_storage',darts)
+            #exit()
+            for frame in range(traj.n_frames):
+                temp_xyz._frame.loc[:, ['x', 'y', 'z']] = traj.xyz[frame][atom_indices]*10
+                temp_zmat = temp_xyz.get_zmat(construction_table=buildlist)
+                traj_frames.append(temp_zmat._frame)
+            all_darts.append(traj_frames)
+
+        return all_darts
 
 
     @classmethod
-    def _findDihedralRingAtoms(cls, structure_files, atom_indices, rigid_darts=False):
-        buildlist = cls._createBuildlist(structure_files, atom_indices)
+    def _findDihedralRingAtoms(cls, structure_files, atom_indices, rigid_darts=False, buildlist=None):
+        if buildlist is None:
+            buildlist = cls._createBuildlist(structure_files, atom_indices)
         #central
         central_atom = buildlist.index.tolist()[findCentralAngle(buildlist)[0][1]]
         #if rigid_darts is not None:
@@ -1533,7 +1620,7 @@ class MolDartMove(RandomLigandRotationMove):
 
                     #ignore density for the current binding mode because it isn't chosen
                     pass
-                    #density_list.append(0.0)
+                    density_list.append(0.0)
 
             #print('density_list', density_list, 'binding_mode_index', binding_mode_index )
             #density_list.pop(binding_mode_index)
@@ -1541,8 +1628,11 @@ class MolDartMove(RandomLigandRotationMove):
 
             density_array = np.array(density_list)/np.sum(density_list)
             print('density_array', density_array)
+            print('dart groups', self.dart_groups)
             print(self.internal_zmat)
-            exit()
+            rand_index = np.random.choice(self.dart_groups, p=transition_matrix[binding_mode_index])
+            acceptance_ratio = 1.0
+            #exit()
         return rand_index, acceptance_ratio
 
     def _dart_selection_edit(self, binding_mode_index, transition_matrix):
@@ -1630,6 +1720,7 @@ class MolDartMove(RandomLigandRotationMove):
         xyz_ref._frame.loc[:, ['x', 'y', 'z']] = traj_positions[self.atom_indices]*10
         zmat_new = copy.deepcopy(self.internal_zmat[rand_index])
         zmat_diff = xyz_ref.get_zmat(construction_table=self.buildlist)
+        print('zmat_from_traj', zmat_diff)
         zmat_traj = copy.deepcopy(xyz_ref.get_zmat(construction_table=self.buildlist))
         #get appropriate comparision zmat
         zmat_compare = self.internal_zmat[binding_mode_index]
@@ -1690,10 +1781,13 @@ class MolDartMove(RandomLigandRotationMove):
                     #print('all_bonds', all_bonds)
                     #exit()
                     print('all possible choices', self.traj_dart_dict['bond_groups'][center_atom])
-                    chosen_atom = random.choice(self.traj_dart_dict['bond_groups'][center_atom])
+                    possible_atoms = [i for i in self.traj_dart_dict['bond_groups'][center_atom] if i in self.darts['dihedral'].keys()]
+                    print('possible_atoms', possible_atoms)
+                    #chosen_atom = random.choice(self.traj_dart_dict['bond_groups'][center_atom])
+                    chosen_atom = random.choice(possible_atoms)
                     #chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][0]
                     #chosen_atom = self.traj_dart_dict['bond_groups'][center_atom][2]
-                    chosen_atom =8
+                    #chosen_atom = 8
 
 
                     #print('chosen_atom', chosen_atom)
@@ -1707,6 +1801,7 @@ class MolDartMove(RandomLigandRotationMove):
                     #print('zmat_traj.current', zmat_traj._frame.loc[chosen_atom,'dihedral'])
 
                     if self.darting_sampling == 'uniform':
+                        print('doing uniform sampling')
                         displacement = zmat_new._frame.loc[chosen_atom,'dart_range']*(2*(np.random.random() - 0.5))
                         if 0:
                             ratio_before = self.internal_zmat[binding_mode_index].loc[chosen_atom,'dart_range']
@@ -1769,7 +1864,9 @@ class MolDartMove(RandomLigandRotationMove):
                     ##zmat_new._frame['dihedral'].loc[chosen_atom] =  zmat_new._frame['dihedral_max'].loc[chosen_atom] + displacement
                     #choose the new starting point and figure out the displacement
                     #use that displacement for all the atoms bonded to that group
-                    for rotate_atom in self.traj_dart_dict['bond_groups'][center_atom]:
+                    counter = 0
+                    for rotate_atom in sorted(self.traj_dart_dict['bond_groups'][center_atom]):
+                        print('rotate atom', rotate_atom)
 #                        rotate_displacement = zmat_traj._frame['dihedral'].loc[chosen_atom] - zmat_traj._frame['dihedral'].loc[rotate_atom]
                         #rotate_displacement = wrapDegrees(zmat_traj._frame.loc[chosen_atom, 'dihedral'] - zmat_traj._frame.loc[rotate_atom,'dihedral'])
                         rotate_displacement = zmat_traj._frame.loc[chosen_atom, 'dihedral'] - zmat_traj._frame.loc[rotate_atom,'dihedral']
@@ -1793,7 +1890,21 @@ class MolDartMove(RandomLigandRotationMove):
                         #zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance #right
                         #changed this in most recent
                         zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance
+                        if counter == 0:
+                            with open('angles0.txt', 'a') as f:
+                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
+                                #f.write(str(displacement)+'\n')
+                        elif counter == 1:
+                            with open('angles1.txt', 'a') as f:
+                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
+                        elif counter == 2:
+                            with open('angles2.txt', 'a') as f:
+                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
+                        elif counter == 3:
+                            with open('angles3.txt', 'a') as f:
+                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
 
+                        counter += 1
                         #zmat_new._frame.loc[rotate_atom,'dihedral'] =  wrapDegrees(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)
                         #print(rotate_atom, 'before', zmat_di_before, 'after', zmat_new._frame.loc[rotate_atom,'dihedral'], 'rotate_displacement', rotate_displacement, 'displacement', displacement, 'add_distance', add_distance )
                         #print("zmat_new._frame.loc[chosen_atom,'dihedral_max']", zmat_new._frame.loc[chosen_atom,'dihedral_max'], 'edit_add_distance', edit_add_distance, 'edit_result', edit_result)

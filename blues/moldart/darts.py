@@ -508,6 +508,7 @@ def getRotTransMatrices(internal_mat, pos_list, construction_table):
     for zindex in combinations(list(range(len(internal_mat))), 2):
         first_index = zindex[0]
         second_index = zindex[1]
+        print('len_pos_list', len(pos_list))
         temp_rot, temp_trans = dartRotTrans(binding_mode_pos=pos_list, internal_zmat=internal_mat,
                                  binding_mode_index=first_index, comparison_index=second_index,
                                  construction_table=construction_table )
@@ -1093,7 +1094,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         dihedral_atoms = list(dart_storage['dihedral'].keys())
         #TODO Need to check if periodic wrapping is handled correctly for the dihedrals when comparing if in the dart
         #print('current_di', current_internal['dihedral'])
-
+        #exit()
         if len(dihedral_atoms) > 0:
             if 'dart_range' in internal_mat[0]._frame:
                 #print('dart_range found')
@@ -1153,6 +1154,7 @@ def checkDart(internal_mat, current_pos, current_zmat, pos_list, construction_ta
         trans_list = createTranslationDarts(combo_zmat, trans_mat, dart_storage)
 
         rot_list = compareRotation(rot_mat, combo_zmat, dart_storage)
+        print('dart_storage', dart_storage)
         dihedral_output = compareDihedral(current_zmat, internal_mat, dart_storage)
         combined_comparison = [set(i) for i in [dihedral_output, rot_list, trans_list] if i is not None]
         try:
