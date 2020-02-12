@@ -1,10 +1,17 @@
-from yank.restraints import Boresch, RMSD
+from yank.restraints import Boresch, RMSD, _AtomSelector
 import numpy as np
 from simtk import openmm, unit
 import parmed
 from openmmtools.states import ThermodynamicState
 from openmmtools.states import SamplerState
 from yank.yank import Topography
+import itertools
+import mdtraj as md
+import random
+
+import logging
+logger = logging.getLogger(__name__)
+
 class BoreschBLUES(Boresch):
     """Inherits over the Yank Boresch restraint class
     to add boresch-style restaints to the system used in BLUES
@@ -27,6 +34,155 @@ class BoreschBLUES(Boresch):
                  K_phiC=K_phiC, phi_C0=phi_C0,
                  *args, **kwargs)
         #super(Boresch, self).__init__(*args, **kwargs)
+
+
+    def _pick_restrained_atoms(self, sampler_state, topography):
+        """Select atoms to be used in restraint.
+        Parameters
+        ----------
+        sampler_state : openmmtools.states.SamplerState, optional
+            The sampler state holding the positions of all atoms.
+        topography : yank.Topography, optional
+            The topography with labeled receptor and ligand atoms.
+        Returns
+        -------
+        restrained_atoms : list of int
+            List of six atom indices used in the restraint.
+            restrained_atoms[0:3] belong to the receptor,
+            restrained_atoms[4:6] belong to the ligand.
+        Notes
+        -----
+        The current algorithm simply selects random subsets of receptor
+        and ligand atoms and rejects those that are too close to collinear.
+        Future updates can further refine this algorithm.
+        """
+        # If receptor and ligand atoms are explicitly provided, use those.
+        heavy_ligand_atoms = self.restrained_ligand_atoms
+        heavy_receptor_atoms = self.restrained_receptor_atoms
+
+        # Otherwise we restrain only heavy atoms.
+        heavy_atoms = set(topography.topology.select('not element H').tolist())
+        # Intersect heavy atoms with receptor/ligand atoms (s1&s2 is intersect).
+
+        atom_selector = _AtomSelector(topography)
+
+        heavy_ligand_atoms = atom_selector.compute_atom_intersect(heavy_ligand_atoms, 'ligand_atoms', heavy_atoms)
+        heavy_receptor_atoms = atom_selector.compute_atom_intersect(heavy_receptor_atoms, 'receptor_atoms', heavy_atoms)
+
+        if len(heavy_receptor_atoms) < 3 or len(heavy_ligand_atoms) < 3:
+            raise ValueError('There must be at least three heavy atoms in receptor_atoms '
+                             '(# heavy {}) and ligand_atoms (# heavy {}).'.format(
+                                     len(heavy_receptor_atoms), len(heavy_ligand_atoms)))
+        print('heavy_ligand_atoms', heavy_ligand_atoms)
+        print('heavy_receptor_atoms', heavy_receptor_atoms)
+        # If r3 or l1 atoms are given. We have to pick those.
+        if isinstance(heavy_receptor_atoms, list):
+            #r3_atoms = [heavy_receptor_atoms[2]]
+            r3_atoms = heavy_receptor_atoms
+
+        else:
+            r3_atoms = heavy_receptor_atoms
+        if isinstance(heavy_ligand_atoms, list):
+            l1_atoms = [heavy_ligand_atoms[0]]
+            #l1_atoms = heavy_ligand_atoms
+        else:
+            l1_atoms = heavy_ligand_atoms
+        # TODO: Cast itertools generator to np array more efficiently
+        r3_l1_pairs = np.array(list(itertools.product(r3_atoms, l1_atoms)))
+        print('pairs', r3_l1_pairs)
+        # Filter r3-l1 pairs that are too close/far away for the distance constraint.
+        max_distance = 8 * unit.angstrom/unit.nanometer
+        min_distance = 1 * unit.angstrom/unit.nanometer
+        t = md.Trajectory(sampler_state.positions / unit.nanometers, topography.topology)
+        print('distance_short', md.geometry.compute_distances(t, r3_l1_pairs))
+        distances = md.geometry.compute_distances(t, r3_l1_pairs)[0]
+        indices_of_in_range_pairs = np.where(np.logical_and(distances > min_distance, distances <= max_distance))[0]
+        print('distances', distances)
+        if len(indices_of_in_range_pairs) == 0:
+            error_msg = ('There are no heavy ligand atoms within the range of [{},{}] nm heavy receptor atoms!\n'
+                         'Please Check your input files or try another restraint class')
+            raise ValueError(error_msg.format(min_distance, max_distance))
+        r3_l1_pairs = r3_l1_pairs[indices_of_in_range_pairs].tolist()
+
+        def find_bonded_to(input_atom_index, comparison_set):
+            """
+            Find bonded network between the atoms to create a selection with 1 angle to the reference
+            Parameters
+            ----------
+            input_atom_index : int
+                Reference atom index to try and create the selection from the bonds
+            comparison_set : iterable of int
+                Set of additional atoms to try and make the selection from. There should be at least
+                one non-colinear set 3 atoms which are bonded together in R-B-C where R is the input_atom_index
+                and B, C are atoms in the comparison_set bonded to each other.
+                Can be inclusive of input_atom_index and C can be bound to R as well as B
+            Returns
+            -------
+            bonded_atoms : list of int, length 3
+                Returns the list of atoms in order of input_atom_index <- bonded atom <- bonded atom
+            """
+            # Probably could make this faster if we added a graph module like networkx dep, but not needed
+            # Could also be done by iterating over OpenMM System angles
+            # Get topology
+            top = topography.topology
+            bonds = np.zeros([top.n_atoms, top.n_atoms], dtype=bool)
+            # Create bond graph
+            for a1, a2 in top.bonds:
+                a1 = a1.index
+                a2 = a2.index
+                bonds[a1, a2] = bonds[a2, a1] = True
+            all_bond_options = []
+            # Cycle through all bonds on the reference
+            for a2, first_bond in enumerate(bonds[input_atom_index]):
+                # Enumerate all secondary bonds from the reference but only if in comparison set
+                if first_bond and a2 in comparison_set:
+                    # Same as first
+                    for a3, second_bond in enumerate(bonds[a2]):
+                        if second_bond and a3 in comparison_set and a3 != input_atom_index:
+                            all_bond_options.append([a2, a3])
+            # This will raise a ValueError if nothing is found
+            return random.sample(all_bond_options, 1)[0]
+
+        # Iterate until we have found a set of non-collinear atoms.
+        accepted = False
+        max_attempts = 100
+        attempts = 0
+        while not accepted:
+            logger.debug('Attempt {} / {} at automatically selecting atoms and '
+                         'restraint parameters...'.format(attempts, max_attempts))
+            # Select a receptor/ligand atom in range of each other for the distance constraint.
+            r3_l1_atoms = random.sample(r3_l1_pairs, 1)[0]
+            # Determine remaining receptor/ligand atoms.
+            if isinstance(heavy_receptor_atoms, list):
+                r1_r2_atoms = heavy_receptor_atoms[:2]
+            else:
+                try:
+                    r1_r2_atoms = find_bonded_to(r3_l1_atoms[0], heavy_receptor_atoms)[::-1]
+                except ValueError:
+                    r1_r2_atoms = None
+            if isinstance(heavy_ligand_atoms, list):
+                l2_l3_atoms = heavy_ligand_atoms[1:]
+            else:
+                try:
+                    l2_l3_atoms = find_bonded_to(r3_l1_atoms[-1], heavy_ligand_atoms)
+                except ValueError:
+                    l2_l3_atoms = None
+            # Reject collinear sets of atoms.
+            if r1_r2_atoms is None or l2_l3_atoms is None:
+                accepted = False
+            else:
+                restrained_atoms = r1_r2_atoms + r3_l1_atoms + l2_l3_atoms
+                accepted = not self._is_collinear(sampler_state.positions, restrained_atoms)
+            if attempts > max_attempts:
+                raise RuntimeError("Could not find any good sets of bonded atoms to make stable Boresch-like "
+                                   "restraints from. There should be at least 1 real defined angle in the"
+                                   "selected restrained ligand atoms and 1 in the selected restrained receptor atoms "
+                                   "for good numerical stability")
+            else:
+                attempts += 1
+
+        logger.debug('Selected atoms to restrain: {}'.format(restrained_atoms))
+        return restrained_atoms
 
 
     def restrain_state(self, thermodynamic_state, pose_num=0, force_group=0):
@@ -187,6 +343,7 @@ def add_rmsd_restraints(sys, struct, pos, ligand_atoms, pose_num=0, force_group=
     #del topography
 
     return new_sys
+
 
 def add_boresch_restraints(sys, struct, pos, ligand_atoms, pose_num=0, force_group=0,
                  restrained_receptor_atoms=None, restrained_ligand_atoms=None,

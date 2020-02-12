@@ -202,7 +202,7 @@ class MolDartMove(RandomLigandRotationMove):
         rigid_darts='rigid_darts',
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=None, restrained_receptor_atoms=None,
-        receptor_cutoff=0.5,
+        receptor_cutoff=0.8,
         K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2,
         rigid_body=False,
         centroid_darting=True,
@@ -215,17 +215,21 @@ class MolDartMove(RandomLigandRotationMove):
         self.pdb_files = pdb_files
         self.trajs = [md.load(traj) for traj in pdb_files]
         self.restrained_receptor_atoms = []
+        print('restrained_receptor_atoms', restrained_receptor_atoms)
+
         if restrained_receptor_atoms is None:
             for traj in self.trajs:
                 ca_atoms = traj.top.select('name CA and protein')
                 receptor_atoms = md.compute_neighbors(traj, cutoff=receptor_cutoff, query_indices=self.atom_indices, haystack_indices=ca_atoms)
-                self.restrained_receptor_atoms.append(receptor_atoms)
+                self.restrained_receptor_atoms.append(receptor_atoms[0])
         elif all(isinstance(item, int) for item in restrained_receptor_atoms):
             self.restrained_receptor_atoms = [restrained_receptor_atoms for i in range(len(pdb_files))]
 
         elif all(isinstance(item, list) for item in restrained_receptor_atoms) and len(restrained_receptor_atoms) == len(pdb_files):
             self.restrained_receptor_atoms = restrained_receptor_atoms
             #exit()
+        print('self.restrained_receptor_atoms', self.restrained_receptor_atoms)
+
         self.binding_mode_traj = []
         #positions of only the ligand atoms
         self.binding_mode_pos = []
@@ -233,10 +237,11 @@ class MolDartMove(RandomLigandRotationMove):
         self.fit_atoms = fit_atoms
         if 1:
             if fit_atoms is None:
+                self.fit_atoms = []
                 for traj in self.trajs:
                     ca_atoms = traj.top.select('name CA and protein')
                     receptor_atoms = md.compute_neighbors(traj, cutoff=receptor_cutoff, query_indices=self.atom_indices, haystack_indices=ca_atoms)
-                    self.fit_atoms.append(receptor_atoms)
+                    self.fit_atoms.append(receptor_atoms[0])
             elif all(isinstance(item, int) for item in fit_atoms):
                 self.fit_atoms = [fit_atoms for i in range(len(pdb_files))]
 
@@ -272,6 +277,7 @@ class MolDartMove(RandomLigandRotationMove):
         self.lambda_restraints = lambda_restraints
         self.rigid_body = rigid_body
         self.centroid_darting = centroid_darting
+        self.same_range = True #for trajectory darting
         if darting_sampling not in ['uniform', 'gaussian']:
             raise ValueError('darting_sampling must be either gaussian or uniform')
         self.darting_sampling = darting_sampling
@@ -399,10 +405,7 @@ class MolDartMove(RandomLigandRotationMove):
     def refitPoses(self, current_pose, trajs, fit_atoms, atom_indices):
         #current_pose current trajectory traj
 
-        #binding_mode_pos = [np.asarray(atraj.xyz[0])[self.atom_indices]*10.0 for atraj in self.binding_mode_traj]
-        #logger.info("1current_pose {}".format(current_pose))
-        #logger.info("1trajs {}".format(trajs))
-
+            
 
         binding_mode_traj = [traj.superpose(current_pose, atom_indices=fit_atoms[index], ref_atom_indices=fit_atoms[index]).atom_slice(self.atom_indices) for index, traj in enumerate(trajs)]
         #logger.info("binding_mode_traj1 {}".format(binding_mode_traj))
@@ -576,7 +579,7 @@ class MolDartMove(RandomLigandRotationMove):
         return darts
 
     @classmethod
-    def getMaxRange(cls, dihedral, pose_value=None, density_percent=0.9, debug=False):
+    def getMaxRange(cls, dihedral, pose_value=None, density_percent=0.9, bandwidth=0.15, debug=False):
         import matplotlib
         matplotlib.use('Agg')
 
@@ -588,7 +591,7 @@ class MolDartMove(RandomLigandRotationMove):
         if density_percent > 1.0:
             raise ValueError('density_percent must be less than 1!')
         pi_range = np.linspace(-2*np.pi, 2*np.pi+np.pi/50.0, num=360, endpoint=True).reshape(-1,1)
-        kde = KernelDensity(kernel='gaussian', bandwidth=0.15).fit(dihedral)
+        kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth).fit(dihedral)
 
         log_dens = np.exp(kde.score_samples(pi_range))
         #plt.plot(pi_range, (log_dens))
@@ -652,6 +655,7 @@ class MolDartMove(RandomLigandRotationMove):
                         min_region = min(abs(i-min_range[j+1]), abs(i-min_range[j]))
                         break
                 debug_counter = 0
+                print('min_region', min_region)
                 if np.greater(pose_value, i-min_region) and np.less(pose_value, i+min_region) or np.greater(pose_value+np.pi, i-min_region) and np.less(pose_value+np.pi, i+min_region):
                 #if np.greater(pose_value, i-min_region) and np.less(pose_value, i+min_region):
                     debug_counter =1
@@ -677,14 +681,38 @@ class MolDartMove(RandomLigandRotationMove):
                     if density_percent == 1.00:
                         region_space = space*dx
                     else:
-                        probability = 0.0
-                        for spacing in range(1,100):
-                            probability = cumtrapz((log_dens.reshape(-1)[max_index-spacing:max_index+spacing]), dx=dx)[-1]
-                            if probability/float(region_probability) >= density_percent:
-                                region_space = spacing*dx
-                                break
+                        try:
+                            probability = 0.0
+                            for spacing in range(1,100):
+                                probability = cumtrapz((log_dens.reshape(-1)[max_index-spacing:max_index+spacing]), dx=dx)[-1]
+                                print('probability', probability, probability/float(region_probability))
+                                if probability/float(region_probability) >= density_percent:
+                                    region_space = spacing*dx
+                                    break
+                        except Exception as e:
+                            plt.clf()
+                            plt.plot(pi_range, (log_dens))
+                            #plt.xlim(-np.pi,np.pi)
+                            plt.vlines(pose_value, 0,0.75, color='blue')
+                            #plt.vlines(min_range, 0,0.75, color='red')
+                            for j in max_value:
+                                plt.vlines(j, 0,0.75, color='red')
+                            plt.savefig('debug1.png')
+                            print('exception', e)
+                            exit()
+
                     break
                 else:
+                    plt.clf()
+                    plt.plot(pi_range, (log_dens))
+                    #plt.xlim(-np.pi,np.pi)
+                    plt.vlines(pose_value, 0,0.75, color='blue')
+                    #plt.vlines(min_range, 0,0.75, color='red')
+                    for j in max_value:
+                        plt.vlines(j, 0,0.75, color='red')
+
+                    plt.savefig('debug.png')
+
                     #ADDED
                     #ax.plot(pi_range, np.exp(log_dens), '-')
                     #ax.vlines(pose_value, 0,1, colors='green')
@@ -898,7 +926,7 @@ class MolDartMove(RandomLigandRotationMove):
 
 
     def getDartsFromTrajs(self, traj_files, structure_files=None,  atom_indices=None,  topology=None, dihedral_select='pose',
-                          density_percent=0.9, stride=None, same_range=True, set_self=True, debug=False, buildlist=None):
+                          density_percent=0.9, stride=None, same_range=True, set_self=True, bandwidth=0.15, debug=False, buildlist=None):
 
         if structure_files == None:
             structure_files=self.pdb_files
@@ -934,10 +962,12 @@ class MolDartMove(RandomLigandRotationMove):
             #print('pose_mins', pose_mins, pose_mins[0])
             if debug != False:
                 traj_dict = {value: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1),
-                    pose_mins[aindex], density_percent=density_percent, debug=str(index)+'_'+str(value)) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
+                    pose_mins[aindex], density_percent=density_percent, bandwidth=bandwidth,
+                    debug=str(index)+'_'+str(value)) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
             else:
                 traj_dict = {value: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1),
-                    pose_mins[aindex], density_percent=density_percent) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
+                    pose_mins[aindex], bandwidth=bandwidth,
+                    density_percent=density_percent) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
             test = [(i,j,k,l) for i,j,k,l in dihedral_angles if i == 8]
             #print(traj_dict)
             traj_storage.append(traj_dict)
@@ -1725,7 +1755,7 @@ class MolDartMove(RandomLigandRotationMove):
         #get appropriate comparision zmat
         zmat_compare = self.internal_zmat[binding_mode_index]
         #we don't need to change the bonds/dihedrals since they are fast to sample
-        #if the molecule is treated as rigid, we won't change the intrnal coordinates
+        #if the molecule is treated as rigid, we won't change the internal coordinates
         #otherwise we find the differences in the dihedral angles between the simulation
         #and reference poses and take that into account when darting to the new pose
         change_list = ['dihedral']
@@ -1890,21 +1920,6 @@ class MolDartMove(RandomLigandRotationMove):
                         #zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance #right
                         #changed this in most recent
                         zmat_new._frame.loc[rotate_atom,'dihedral'] =  zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance
-                        if counter == 0:
-                            with open('angles0.txt', 'a') as f:
-                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
-                                #f.write(str(displacement)+'\n')
-                        elif counter == 1:
-                            with open('angles1.txt', 'a') as f:
-                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
-                        elif counter == 2:
-                            with open('angles2.txt', 'a') as f:
-                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
-                        elif counter == 3:
-                            with open('angles3.txt', 'a') as f:
-                                f.write(str(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)+'\n')
-
-                        counter += 1
                         #zmat_new._frame.loc[rotate_atom,'dihedral'] =  wrapDegrees(zmat_new._frame.loc[chosen_atom,'dihedral_max'] - add_distance)
                         #print(rotate_atom, 'before', zmat_di_before, 'after', zmat_new._frame.loc[rotate_atom,'dihedral'], 'rotate_displacement', rotate_displacement, 'displacement', displacement, 'add_distance', add_distance )
                         #print("zmat_new._frame.loc[chosen_atom,'dihedral_max']", zmat_new._frame.loc[chosen_atom,'dihedral_max'], 'edit_add_distance', edit_add_distance, 'edit_result', edit_result)
@@ -2007,9 +2022,13 @@ class MolDartMove(RandomLigandRotationMove):
         #repeat for second bond
         #get first 3 new moldart positions, apply same series of rotation/translations
         #start_indices = atom_indices[self.buildlist.index.get_values()[:3]]
-        start_indices = [atom_indices[i] for i in self.buildlist.index.values[:3]]
+
+        ##start_indices = [atom_indices[i] for i in self.buildlist.index.values[:3]]
+        start_indices = [i for i in self.buildlist.index.values[:3]]
 
         sim_three = self.sim_traj.xyz[0][start_indices]
+        print('binding_mode_pos[binding_mode_index]', binding_mode_pos[binding_mode_index])
+        print('start_indices', start_indices)
         ref_three  = binding_mode_pos[binding_mode_index].xyz[0][start_indices]
         dart_three = binding_mode_pos[rand_index].xyz[0][start_indices]
         dart_ref = binding_mode_pos[rand_index].xyz[0][start_indices]
@@ -2056,8 +2075,8 @@ class MolDartMove(RandomLigandRotationMove):
         #get xyz from internal coordinates
         zmat_new.give_cartesian_edit = give_cartesian_edit.__get__(zmat_new)
         #MAKE SURE THIS IS ON dart_three NOT sim three
-        #xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
-        xyz_new = (zmat_new.give_cartesian_edit(start_coord=sim_three*10.)).sort_index()
+        xyz_new = (zmat_new.give_cartesian_edit(start_coord=dart_three*10.)).sort_index()
+        #xyz_new = (zmat_new.give_cartesian_edit(start_coord=sim_three*10.)).sort_index()
         #print('subtract', zmat_new._frame.loc[2:,['bond', 'angle', 'dihedral']] - zmat_traj._frame.loc[2:,['bond', 'angle', 'dihedral']])
         new_df = zmat_new._frame['dihedral'].copy()
         #print('zmat after move\n', zmat_new)
@@ -2216,12 +2235,31 @@ class MolDartMove(RandomLigandRotationMove):
                 new_pos[self.atom_indices] = pose_pos
                 new_pos= new_pos * unit.nanometers
                 #restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.get_values()[:3]]
-                restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.values[:3]]
+                restraint_lig = None
+                for atom in range(len(self.atom_indices)):
+                    indices = self.buildlist.index.values[0+atom:3+atom]
+                    elements = self.internal_zmat[0]._frame.loc[indices,'atom']
+                    h_element = elements[elements=='H']
+                    print('elements', elements)
+                    print('h_element', h_element.index.values, h_element)
+                    restraint_lig = [self.atom_indices[i] for i in indices]
 
+                    neighbors = md.compute_neighbors(pose, 0.7, restraint_lig, haystack_indices=self.restrained_receptor_atoms[index])[0]
+                    print('neighbors', neighbors)
+                    if len(h_element.index.values) == 0 and len(neighbors) > 2:
+                        print('breaking')
+                        break
+                #exit()
+                #restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.values[:3]]
+                print('indices', indices)
+                restraint_lig = [self.atom_indices[i] for i in indices]
+                print('restraint_lig', restraint_lig)
                 #choose restraint type based on specified parameter
                 restraint_style = {'boresch':add_boresch_restraints, 'rmsd':add_rmsd_restraints}
                 #check which force groups aren't being used and set restraint forces to that
+                pose.save('debug.pdb')
                 if self.restraints == 'boresch':
+                    print('restrained_receptor_atoms[index]', self.restrained_receptor_atoms[index])
                     new_sys = restraint_style[self.restraints](new_sys, structure, pose_allpos, self.atom_indices, index, self.restraint_group,
                                             self.restrained_receptor_atoms[index], restraint_lig,
                                             K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
