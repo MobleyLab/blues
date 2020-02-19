@@ -620,6 +620,7 @@ class MolDartMove(RandomLigandRotationMove):
             print('max_value')
 
         if np.size(min_value) == 0:
+            print('doing min')
             #that means that there is only a maximum peak
             probability = 0
             i_range = 0
@@ -639,11 +640,13 @@ class MolDartMove(RandomLigandRotationMove):
             region_space = i*dx[0]
             max_return = max_value[0]
         else:
+            print('doing else')
             #import matplotlib.pyplot as plt
             #fig, ax = plt.subplots()
             #ax.plot(pi_range, np.exp(log_dens), '-')
 
             #there are multiple minima
+            print('max_value', max_value)
             for index, i in enumerate(max_value):
                 #find where the minima lie to figure out where the peak densities are
                 #min_range = np.array(min_value).reshape(-1).tolist()
@@ -656,6 +659,9 @@ class MolDartMove(RandomLigandRotationMove):
                         break
                 debug_counter = 0
                 print('min_region', min_region)
+                print('pose_value', pose_value)
+                print('pose_value, i-min_region', pose_value, i-min_region)
+                print('pose_value, i+min_region', pose_value, i+min_region)
                 if np.greater(pose_value, i-min_region) and np.less(pose_value, i+min_region) or np.greater(pose_value+np.pi, i-min_region) and np.less(pose_value+np.pi, i+min_region):
                 #if np.greater(pose_value, i-min_region) and np.less(pose_value, i+min_region):
                     debug_counter =1
@@ -664,7 +670,14 @@ class MolDartMove(RandomLigandRotationMove):
 
                     pi_range = np.linspace(-2*np.pi, 2*np.pi+np.pi/50.0, num=360, endpoint=True).reshape(-1).tolist()
                     dx = pi_range[1]-pi_range[0]
+                    print('index', index, 'i', i)
                     max_index = pi_range.index(i)
+                    print('max_return', i, 'max_index', max_index)
+                    if 1:
+                        if i < -np.pi:
+                            max_index = max_index + 179
+                        elif i > np.pi:
+                            max_index = max_index - 179
                     space = int(min_region / dx)
                     max_space_sub, max_space_add = (max_index-space, max_index+space)
                     #might have issues with the ends bleeding off, so address those
@@ -685,7 +698,9 @@ class MolDartMove(RandomLigandRotationMove):
                             probability = 0.0
                             for spacing in range(1,100):
                                 probability = cumtrapz((log_dens.reshape(-1)[max_index-spacing:max_index+spacing]), dx=dx)[-1]
-                                print('probability', probability, probability/float(region_probability))
+                                #print('probability', probability, probability/float(region_probability))
+                                print('max_index-spacing, max_index+spacing', max_index-spacing, max_index+spacing, dx, np.pi/dx)
+                                print('pi value', pi_range[max_index])
                                 if probability/float(region_probability) >= density_percent:
                                     region_space = spacing*dx
                                     break
@@ -696,7 +711,13 @@ class MolDartMove(RandomLigandRotationMove):
                             plt.vlines(pose_value, 0,0.75, color='blue')
                             #plt.vlines(min_range, 0,0.75, color='red')
                             for j in max_value:
-                                plt.vlines(j, 0,0.75, color='red')
+                                print('j', j)
+                                plt.vlines(j, 0,0.75, color='red', linestyles='dashed')
+                            for j in max_value:
+                                plt.vlines(j, 0,0.75, color='red', linestyles='dashed')
+                            #print('pi value', pi_range[max_index+180-1] )
+                            plt.vlines(pi_range[max_index], 0,0.75, color='green')
+
                             plt.savefig('debug1.png')
                             print('exception', e)
                             exit()
@@ -802,21 +823,21 @@ class MolDartMove(RandomLigandRotationMove):
             new_log_dens = np.exp(new_kde.score_samples(pi_range))
             new_sample = new_kde.sample(1000)
             #print('new_sample', new_sample)
-            f, axes = plt.subplots(2,1,sharex=True)
+            f, axes = plt.subplots(2,1,sharex=False)
             if 0:
                 axes[0].plot(pi_range, log_dens, color='orange', alpha=0.5)
                 axes[0].plot(pi_range, new_log_dens, color='blue', ms=5)
-                axes[0].axvline(max_return)
-                axes[0].axvline(max_return-region_space)
-                axes[0].axvline(max_return+region_space)
+                axes[0].axvline(max_return, color='green')
+                axes[0].axvline(max_return-region_space, color='green')
+                axes[0].axvline(max_return+region_space, color='green')
                 #axes[0].axvline(new_sample, color='red')
 
             else:
                 axes[0].plot(np.rad2deg(pi_range), log_dens, color='orange', alpha=0.5)
                 axes[0].plot(np.rad2deg(pi_range), new_log_dens, color='blue', ms=5)
                 axes[0].axvline(np.rad2deg(max_return))
-                axes[0].axvline(np.rad2deg(max_return-region_space))
-                axes[0].axvline(np.rad2deg(max_return+region_space))
+                axes[0].axvline(np.rad2deg(max_return-region_space,), color='green')
+                axes[0].axvline(np.rad2deg(max_return+region_space), color='green')
 
             axes[0].set_xlabel('dihedral')
             axes[0].set_ylabel('probability')
@@ -851,7 +872,9 @@ class MolDartMove(RandomLigandRotationMove):
             #axes[1].hist(dihedral,bins=25,color='green',alpha=0.5)
             axes[0].legend(('region_space:',np.rad2deg(region_space), ' max_return:',np.rad2deg(max_return)))
             output_name = 'plot_'+str(debug)+'.png'
+            f.set_size_inches(10,4)
             plt.savefig(output_name)
+            plt.close()
             #plt.show()
 
 
@@ -919,14 +942,57 @@ class MolDartMove(RandomLigandRotationMove):
             plt.show()
 
 
-
+        print('max_return, region_space, gauss, percent_increase', max_return, region_space, gauss, percent_increase)
         return max_return, region_space, gauss, percent_increase
 
 
 
 
     def getDartsFromTrajs(self, traj_files, structure_files=None,  atom_indices=None,  topology=None, dihedral_select='pose',
-                          density_percent=0.9, stride=None, same_range=True, set_self=True, bandwidth=0.15, debug=False, buildlist=None):
+                          density_percent=0.9, stride=None, same_range=True, set_self=True, bandwidth=0.15, debug=False, only_darts=False, buildlist=None):
+        """
+        Function to determine the dart ranges and the maximums if using dart ranges dart instead of determinisitcally.
+
+        Parameters
+        ----------
+        List corresponding to the path of the trajectories to use to define the dart ranges for the dihedrals.
+        structure_files: list of str
+            List corresponding to the path of the structures to create representations of.
+        atom_indices: list of ints
+            The atom indices of the ligand in the structure files.
+        topology: str, optional, default=None
+            Path of topology file, if structure_files doesn't contain topology information.
+        dihedral_select: 'pose', 'first', or 'last', default='pose'
+            The pose of the dihedral to define the maximum of the dihedral range for the darts. 'pose' indicates
+            to use the dihedral value of the poses provided from pdb_files.
+            'first' specifies using the first frame of the trajectory from traj_files to specify the maximum,
+            and similarly 'last' specifies using the last frame of the trajectory.
+        density_percent: float, default=0.9
+            How much density should be included in the range of the darts when determining how wide the darts should be.
+            Ranges from 0-1.0.
+        stride: int, default=None
+            How much to stride the trajectories to determine the dart sizes, to make this function run faster.
+        same_range: boolean, default=True
+            Set all the ranges to be the same for each matching dihedral across each pose. *THE FALSE SETTING IS NOT
+            VALIDATED YET, SO BE CAREFUL*
+        set_self: boolean, default=True
+            Changes self.internal_zmat to the new internal_zmat with the darting ranges.
+        bandwidth: float, default=0.15
+            The bandwidth used for kernal density estimation smoothing out the percentage densities.
+        debug: boolean, default=False:
+            Whether to output debug info for if this function doesn't work properly.
+        only_darts, boolean, default=True:
+            If true only tries to find the darting regions for dihedral darts that are already defined self.darts,
+            else find darting ranges for all the dihedrals.
+        buildlist, boolean, default=False:
+            Specifies a buildlist to use when creating the zmatrices. If None, then uses the buildlist from self.buildlist.
+        Returns
+        -------
+        dart_storage: dict
+            Dict containing the darts associated with `rotation`, `translation` and `dihedral`
+            keys that refer to the size of the given dart, if not empty
+
+        """
 
         if structure_files == None:
             structure_files=self.pdb_files
@@ -946,31 +1012,58 @@ class MolDartMove(RandomLigandRotationMove):
         for i in internal_zmat[0].index.values[3:]:
             value_list = [i, internal_zmat[0].loc[i]['b'], internal_zmat[0].loc[i]['a'], internal_zmat[0].loc[i]['d']]
             dihedral_angles.append(value_list)
+
         for index, traj in enumerate(traj_files):
             dihedrals = md.compute_dihedrals(traj, dihedral_angles)
             #dihedrals in radians
             #print('dihedrals', dihedrals, np.shape(dihedrals))
+
+            # only set values for darts if True
+            if only_darts:
+                selected_di = list(self.darts['dihedral'].keys())
+                print('1', selected_di)
+                print('2', internal_zmat[index].index.values[3:])
+                #exit()
+            else:
+                selected_di = internal_zmat[index].index.values[3:]
+
             if dihedral_select=='first':
                 pose_mins = [dihedrals[0,i] for i in range(len(internal_zmat[index].index.values[3:]))]
+                #pose_mins = [dihedrals[0,i] for i in range(len(selected_di))]
+
             elif dihedral_select=='last':
 #                pose_mins = [dihedrals[-1:i] for i in range(len(internal_zmat[index].index.values[3:]))]
                 pose_mins = [dihedrals[-1,i] for i in range(len(internal_zmat[index].index.values[3:]))]
 
+                #pose_mins = [dihedrals[-1,i] for i in range(len(selected_di))]
+
             elif dihedral_select=='pose':
-                pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in internal_zmat[index].index.values[3:]]
             #contains all the dictionary lists conrresponding to the min/max ranges
             #print('pose_mins', pose_mins, pose_mins[0])
+                pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in internal_zmat[index].index.values[3:]]
+
+                #pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in selected_di]
+                print('pose_mins', pose_mins)
+
             if debug != False:
                 traj_dict = {value: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1),
+                #traj_dict = {value: self.getMaxRange(dihedrals[:,value].reshape(-1,1),
+
                     pose_mins[aindex], density_percent=density_percent, bandwidth=bandwidth,
                     debug=str(index)+'_'+str(value)) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
+                    #debug=str(index)+'_'+str(value)) for aindex, value in enumerate(selected_di)}
+
             else:
                 traj_dict = {value: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1),
                     pose_mins[aindex], bandwidth=bandwidth,
-                    density_percent=density_percent) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
+                    #density_percent=density_percent) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
+                    density_percent=density_percent) for aindex, value in enumerate(selected_di)}
+
+
             test = [(i,j,k,l) for i,j,k,l in dihedral_angles if i == 8]
             #print(traj_dict)
             traj_storage.append(traj_dict)
+            print('traj_storage', traj_storage)
         #exit()
 
         output_mat = [copy.deepcopy(zmat) for zmat in internal_zmat]
@@ -982,12 +1075,25 @@ class MolDartMove(RandomLigandRotationMove):
             gauss_list = [0,0,0]
             percent_list = [0,0,0]
 
-            for  i in internal_zmat[zindex].index.values[3:]:
-                #zmat._frame.loc[i,'dihedral'] = np.rad2deg(traj_storage[zindex][i][0])
-                range_list.append(np.rad2deg(traj_storage[zindex][i][1]))
-                dihedral_max.append(np.rad2deg(traj_storage[zindex][i][0]))
-                gauss_list.append(traj_storage[zindex][i][2])
-                percent_list.append(traj_storage[zindex][i][3])
+            for  j in internal_zmat[zindex].index.values[3:]:
+            #for  i in selected_di:
+                if j in selected_di:
+                    print('j', j)
+                    i = selected_di.index(j)
+                    print('i', i)
+                    print('j', j)
+                    print('traj_storage[zindex]', traj_storage[zindex])
+                    #zmat._frame.loc[i,'dihedral'] = np.rad2deg(traj_storage[zindex][i][0])
+                    range_list.append(np.rad2deg(traj_storage[zindex][j][1]))
+                    dihedral_max.append(np.rad2deg(traj_storage[zindex][j][0]))
+                    gauss_list.append(traj_storage[zindex][j][2])
+                    percent_list.append(traj_storage[zindex][j][3])
+                else:
+                    range_list.append(0)
+                    dihedral_max.append(0)
+                    gauss_list.append(0)
+                    percent_list.append(0)
+
             #using mdtraj gives opposite sign compared to chemcoord, so multipy by -1
             zmat._frame['dihedral_max'] = [-1*di for di in dihedral_max] #TEMP
             #TEMP
@@ -1121,6 +1227,9 @@ class MolDartMove(RandomLigandRotationMove):
         fit_atoms: list, optional, default=None
             List of atom indices to be used in fitting the structure_files positions to the
             reference trajectory (if reference_traj is not None)
+        buildlist: boolean, default=False:
+            Specifies a buildlist to use when creating the zmatrices. If None, then uses the buildlist from self.buildlist.
+
 
         Returns
         -------
@@ -1193,6 +1302,8 @@ class MolDartMove(RandomLigandRotationMove):
         fit_atoms: list, optional, default=None
             List of atom indices to be used in fitting the structure_files positions to the
             reference trajectory (if reference_traj is not None)
+        buildlist: boolean, default=False:
+            Specifies a buildlist to use when creating the zmatrices. If None, then uses the buildlist from self.buildlist.
 
         Returns
         -------
@@ -1661,6 +1772,7 @@ class MolDartMove(RandomLigandRotationMove):
             print('dart groups', self.dart_groups)
             print(self.internal_zmat)
             rand_index = np.random.choice(self.dart_groups, p=transition_matrix[binding_mode_index])
+            #change the acceptance ratio here
             acceptance_ratio = 1.0
             #exit()
         return rand_index, acceptance_ratio
@@ -1869,7 +1981,12 @@ class MolDartMove(RandomLigandRotationMove):
                         #print('gauss after', gauss_prob_after)
                         #print('modificiation', (gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before))
                         #self.acceptance_ratio = (gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before)
+
                         #self.acceptance_ratio = self.acceptance_ratio*(gauss_prob_after*gauss_ratio_after)/(gauss_prob_before*gauss_ratio_before)
+                        print('gauss_prob_before*gauss_ratio_before', gauss_prob_before*gauss_ratio_before)
+                        print('gauss_prob_after*gauss_ratio_after', gauss_prob_after*gauss_ratio_after)
+                        print('gauss_prob_before', gauss_prob_before, 'gauss_ratio_before', gauss_ratio_before)
+                        print('gauss_prob_after', gauss_prob_after, 'gauss_ratio_after', gauss_ratio_after)
                         self.acceptance_ratio = self.acceptance_ratio*(gauss_prob_before*gauss_ratio_before)/(gauss_prob_after*gauss_ratio_after)
 
                         #print('acceptance_ratio', self.acceptance_ratio)
@@ -2136,6 +2253,7 @@ class MolDartMove(RandomLigandRotationMove):
             System to be modified.
         integrator : simtk.openmm.Integrator object
             Integrator to be modified.
+
         Returns
         -------
         system : simtk.openmm.System object
