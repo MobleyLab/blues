@@ -580,6 +580,26 @@ class MolDartMove(RandomLigandRotationMove):
 
     @classmethod
     def getMaxRange(cls, dihedral, pose_value=None, density_percent=0.9, bandwidth=0.15, debug=False):
+        """
+        Parameters
+        ----------
+        dihedral: array
+            Dihedral array of dihedral values (in radians).
+        pose_value: float
+            Value that corresponds to some maximum of the dihedral (in radians)
+        deinsity_percent: float, optional, default=0.9
+            Value that determines how large darting region should be to take up that percent
+            of the probability density.
+        bandwidth: float, optional, default=0.15
+            How wide the bandwidth is for kernal density estimation
+        Returns
+        -------
+        dart_storage: dict
+            Dict containing the darts associated with `rotation`, `translation` and `dihedral`
+            keys that refer to the size of the given dart, if not empty
+
+        """
+
         import matplotlib
         matplotlib.use('Agg')
 
@@ -1020,12 +1040,18 @@ class MolDartMove(RandomLigandRotationMove):
 
             # only set values for darts if True
             if only_darts:
-                selected_di = list(self.darts['dihedral'].keys())
-                print('1', selected_di)
+                selected_key = list(sorted(self.darts['dihedral'].keys()))
+                print('1', selected_key)
+                #selected_di = [list(internal_zmat[index].index.values[3:]).index(i) for i in selected_key]
+                selected_di = [list(internal_zmat[index].index.values[3:]).index(i) for i in selected_key]
+
+                print('1a', selected_di)
+
                 print('2', internal_zmat[index].index.values[3:])
                 #exit()
             else:
-                selected_di = internal_zmat[index].index.values[3:]
+                selected_key = internal_zmat[index].index.values[3:]
+                selected_di = range(len(internal_zmat[index].index.values[3:]))
 
             if dihedral_select=='first':
                 pose_mins = [dihedrals[0,i] for i in range(len(internal_zmat[index].index.values[3:]))]
@@ -1033,18 +1059,24 @@ class MolDartMove(RandomLigandRotationMove):
 
             elif dihedral_select=='last':
 #                pose_mins = [dihedrals[-1:i] for i in range(len(internal_zmat[index].index.values[3:]))]
-                pose_mins = [dihedrals[-1,i] for i in range(len(internal_zmat[index].index.values[3:]))]
+                #pose_mins = [dihedrals[-1,i] for i in range(len(internal_zmat[index].index.values[3:]))]
 
                 #pose_mins = [dihedrals[-1,i] for i in range(len(selected_di))]
+                print('di shape', selected_di, np.shape(selected_di))
+                print('len atoms', len(list(internal_zmat[index].index.values)))
+                pose_mins = [dihedrals[-1,i] for i in selected_di]
+                print('pose_mins', pose_mins)
+                #exit()
 
             elif dihedral_select=='pose':
             #contains all the dictionary lists conrresponding to the min/max ranges
             #print('pose_mins', pose_mins, pose_mins[0])
-                pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in internal_zmat[index].index.values[3:]]
+                #pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in internal_zmat[index].index.values[3:]]
 
-                #pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in selected_di]
+                pose_mins = [np.deg2rad(internal_zmat[index].loc[i,'dihedral']) for i in selected_di]
                 print('pose_mins', pose_mins)
-
+            #print('len_pose_mins', len(pose_mins))
+            #exit()
             if debug != False:
                 traj_dict = {value: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1),
                 #traj_dict = {value: self.getMaxRange(dihedrals[:,value].reshape(-1,1),
@@ -1054,16 +1086,20 @@ class MolDartMove(RandomLigandRotationMove):
                     #debug=str(index)+'_'+str(value)) for aindex, value in enumerate(selected_di)}
 
             else:
-                traj_dict = {value: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1),
+                traj_dict = {selected_key[aindex]: self.getMaxRange(dihedrals[:,aindex].reshape(-1,1),
+                #traj_dict = {value: self.getMaxRange(dihedrals[:,value].reshape(-1,1),
                     pose_mins[aindex], bandwidth=bandwidth,
                     #density_percent=density_percent) for aindex, value in enumerate(internal_zmat[index].index.values[3:])}
+                    #density_percent=density_percent) for aindex, value in enumerate(selected_di)}
                     density_percent=density_percent) for aindex, value in enumerate(selected_di)}
+
 
 
             test = [(i,j,k,l) for i,j,k,l in dihedral_angles if i == 8]
             #print(traj_dict)
             traj_storage.append(traj_dict)
             print('traj_storage', traj_storage)
+            #exit()
         #exit()
 
         output_mat = [copy.deepcopy(zmat) for zmat in internal_zmat]
@@ -1077,10 +1113,12 @@ class MolDartMove(RandomLigandRotationMove):
 
             for  j in internal_zmat[zindex].index.values[3:]:
             #for  i in selected_di:
-                if j in selected_di:
+                #if j in selected_di:
+                if j in selected_key:
+
                     print('j', j)
-                    i = selected_di.index(j)
-                    print('i', i)
+                    #i = selected_di.index(j)
+                    #print('i', i)
                     print('j', j)
                     print('traj_storage[zindex]', traj_storage[zindex])
                     #zmat._frame.loc[i,'dihedral'] = np.rad2deg(traj_storage[zindex][i][0])
