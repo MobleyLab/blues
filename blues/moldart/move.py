@@ -208,12 +208,15 @@ class MolDartMove(RandomLigandRotationMove):
         centroid_darting=True,
         lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
         darting_sampling='uniform',
-        buildlist=None
+        buildlist=None,
+        ignore_warning=False
         ):
         super(MolDartMove, self).__init__(structure, resname)
         #md trajectory representation of only the ligand atoms
         self.pdb_files = pdb_files
         self.trajs = [md.load(traj) for traj in pdb_files]
+        self.min_atoms = min([traj.n_atoms for traj in self.trajs])
+        self.trajs = [traj.atom_slice(range(self.min_atoms), inplace=True) for traj in self.trajs]
         self.restrained_receptor_atoms = []
         print('restrained_receptor_atoms', restrained_receptor_atoms)
 
@@ -228,6 +231,44 @@ class MolDartMove(RandomLigandRotationMove):
         elif all(isinstance(item, list) for item in restrained_receptor_atoms) and len(restrained_receptor_atoms) == len(pdb_files):
             self.restrained_receptor_atoms = restrained_receptor_atoms
             #exit()
+        #for atom in self.restrained_receptor_atoms:
+        if 1:
+            self.indiv_atoms = []
+            self.indiv_sidechain_atoms = []
+            self.indiv_residue_atoms = []
+            for receptor_atoms in self.restrained_receptor_atoms:
+                if 0:
+                    indiv_atoms = [atom.index for atom in self.trajs[0].topology.atoms if atom.index in receptor_atoms]
+                    self.indiv_atoms.append(indiv_atoms)
+                    indiv_residues = list(set(atom.residue for atom in self.trajs[0].topology.atoms if atom.index in receptor_atoms))
+                    indiv_residue_atoms = [atom.index for atom in self.trajs[0].topology.atoms if atom.residue in indiv_residues]
+                    indiv_sidechain_atoms = [atom.index for atom in self.trajs[0].topology.atoms if (atom.residue in indiv_residues) and atom.is_sidechain]
+                else:
+                    ring_sidechain = ['HIS', 'PRO', 'TYR', 'TRP']
+                    indiv_residues = list(set([atom.residue for atom in self.trajs[0].topology.atoms if atom.index in receptor_atoms and atom.residue.name not in ring_sidechain]))
+                    indiv_residue_atoms = [atom.index for atom in self.trajs[0].topology.atoms if atom.residue in indiv_residues and atom.residue.name not in ring_sidechain]
+                    indiv_sidechain_atoms = [atom.index for atom in self.trajs[0].topology.atoms if (atom.residue in indiv_residues) and atom.is_sidechain]
+
+                self.indiv_sidechain_atoms.append(indiv_sidechain_atoms)
+                self.indiv_residue_atoms.append(indiv_residue_atoms)
+
+            self.all_sidechain_atoms = list(set([item for sublist in self.indiv_sidechain_atoms for item in sublist]))
+            self.all_residue_atoms = list(set([item for sublist in self.indiv_residue_atoms for item in sublist]))
+            print('allsidechain', len(self.all_sidechain_atoms))
+            print('allress', len(self.all_residue_atoms))
+            #exit()
+
+            if 1:
+                import oeommtools
+                from openeye import oechem
+
+                top = self.structure.topology
+                pos = self.structure.positions
+                molecule = oeommtools.utils.openmmTop_to_oemol(top, pos, verbose=False)
+                oechem.OEPerceiveResidues(molecule)
+                oechem.OEFindRingAtomsAndBonds(molecule)
+
+
         print('self.restrained_receptor_atoms', self.restrained_receptor_atoms)
 
         self.binding_mode_traj = []
@@ -238,7 +279,7 @@ class MolDartMove(RandomLigandRotationMove):
         if 1:
             if fit_atoms is None:
                 self.fit_atoms = []
-                for traj in self.trajs:
+                for index, traj in enumerate(self.trajs):
                     ca_atoms = traj.top.select('name CA and protein')
                     receptor_atoms = md.compute_neighbors(traj, cutoff=receptor_cutoff, query_indices=self.atom_indices, haystack_indices=ca_atoms)
                     self.fit_atoms.append(receptor_atoms[0])
@@ -247,7 +288,7 @@ class MolDartMove(RandomLigandRotationMove):
 
             elif all(isinstance(item, list) for item in fit_atoms) and len(fit_atoms) == len(pdb_files):
                 self.fit_atoms = fit_atoms
-
+            print('fit_atoms', fit_atoms)
         #chemcoord cartesian xyz of the ligand atoms
         self.internal_xyz = []
         #chemcoord internal zmatrix representation of the ligand atoms
@@ -377,7 +418,8 @@ class MolDartMove(RandomLigandRotationMove):
 
         self.darts = makeDartDict(self.internal_zmat, self.binding_mode_pos, self.buildlist,
                                 dihedral_cutoff=dihedral_cutoff, distance_cutoff=distance_cutoff,
-                                rotation_cutoff=rotation_cutoff, dart_buffer=dart_buffer, order=dart_region_order)
+                                rotation_cutoff=rotation_cutoff, dart_buffer=dart_buffer, order=dart_region_order,
+                                ignore_warning=ignore_warning)
         if transition_matrix is None:
             self.transition_matrix = np.ones((len(pdb_files), len(pdb_files)))
             np.fill_diagonal(self.transition_matrix, 0)
@@ -391,21 +433,25 @@ class MolDartMove(RandomLigandRotationMove):
         #get values that differ significantly
         dihedral_diff_df = makeDihedralDifferenceDf(self.internal_zmat)
         #find which atoms experience signficant changes and allow those to change while darting, other parts of the molecule stay the same
-        if self.rigid_darts is not None:
+        if self.rigid_darts is not None and dihedral_diff_df is not None:
             #find the bonded atoms that are not part of the dihedral ri
 #            core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values if i not in self.dihedral_ring_atoms]))
+            print('self buildlist', self.buildlist)
+            print("dihedral_diff_df['atomnum']", dihedral_diff_df)
             core = list(set([self.buildlist.at[i, 'b'] for i in dihedral_diff_df['atomnum'].values]))
 
             #self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
             #self.only_darts_dihedrals = [i for i in range(len(self.atom_indices)) if self.buildlist.at[i, 'b'] in core]
 
             self.only_darts_dihedrals = [i for i in self.darts['dihedral'].keys()]
+        self.zmat_inital_atoms = np.array(self.atom_indices)[self.internal_zmat[0].index.values[:3]].tolist()
 
 
     def refitPoses(self, current_pose, trajs, fit_atoms, atom_indices):
+        #fits trajectory onto reference poses
         #current_pose current trajectory traj
 
-            
+
 
         binding_mode_traj = [traj.superpose(current_pose, atom_indices=fit_atoms[index], ref_atom_indices=fit_atoms[index]).atom_slice(self.atom_indices) for index, traj in enumerate(trajs)]
         #logger.info("binding_mode_traj1 {}".format(binding_mode_traj))
@@ -482,14 +528,16 @@ class MolDartMove(RandomLigandRotationMove):
                 #traj = md.load(pdb_file)[0]
                 num_atoms_pdb = traj.n_atoms
                 num_atoms_traj = reference_traj.n_atoms
-                num_atoms = min(num_atoms_traj, num_atoms_pdb)
+                num_atoms = min(num_atoms_traj, num_atoms_pdb, reference_traj.n_atoms)
+                ref_traj_copy = copy.deepcopy(reference_traj)
                 traj.atom_slice(range(num_atoms), inplace=True)
+                ref_traj_copy.atom_slice(range(num_atoms), inplace=True)
                 if fit_atoms == None:
-                    traj.superpose(reference=reference_traj, atom_indices=fit_atoms,
+                    traj.superpose(reference=ref_traj_copy, atom_indices=fit_atoms,
                         ref_atom_indices=fit_atoms
                         )
                 else:
-                    traj.superpose(reference=reference_traj, atom_indices=fit_atoms[j],
+                    traj.superpose(reference=ref_traj_copy, atom_indices=fit_atoms[j],
                         ref_atom_indices=fit_atoms[j]
                         )
 
@@ -969,7 +1017,8 @@ class MolDartMove(RandomLigandRotationMove):
 
 
     def getDartsFromTrajs(self, traj_files, structure_files=None,  atom_indices=None,  topology=None, dihedral_select='pose',
-                          density_percent=0.9, stride=None, same_range=True, set_self=True, bandwidth=0.15, debug=False, only_darts=False, buildlist=None):
+                          density_percent=0.9, stride=None, same_range=True, set_self=True, bandwidth=0.15, debug=False, only_darts=False,
+                          buildlist=None, fit_atoms=None, ref_traj=None):
         """
         Function to determine the dart ranges and the maximums if using dart ranges dart instead of determinisitcally.
 
@@ -1022,13 +1071,50 @@ class MolDartMove(RandomLigandRotationMove):
             atom_indices = self.atom_indices
         if buildlist == None:
             buildlist = self.buildlist
-
-        traj_files = [self._loadfiles(i, topology, stride=stride) for i in traj_files]
-        for i,j in enumerate(structure_files):
-            md.load(j).save(str(i)+'.pdb')
+        if fit_atoms == None:
+            fit_atoms = self.fit_atoms
+        if ref_traj == None:
+            ref_traj = self.ref_traj
+        if topology == str:
+            topology = [topology for i in len(structure_files)]
+        
+        traj_files = [self._loadfiles(i, topology[index], stride=stride) for index, i in enumerate(traj_files)]
+        traj_files = [traj.atom_slice(range(self.min_atoms), inplace=True) for traj in traj_files]
+        #for i,j in enumerate(structure_files):
+        #    md.load(j).save(str(i)+'.pdb')
         internal_xyz, internal_zmat, binding_mode_pos, binding_mode_traj = self._createZmat(structure_files, atom_indices, topology, reference_traj=None, fit_atoms=None, buildlist=self.buildlist)
         traj_storage = []
         dihedral_angles = []
+        trans_storage = {}
+        rot_storage = []
+        first_atom, second_atom, third_atom = self.zmat_inital_atoms
+        print('first_atom', first_atom)
+        for index, traj in enumerate(traj_files):
+            print('ref_traj', ref_traj)
+            print('traj', traj)
+            print('fit_atoms[index]', fit_atoms[index])
+            #traj.superpose(ref_traj, atom_indices=fit_atoms[index])
+            traj.superpose(ref_traj, atom_indices=fit_atoms[index])
+
+            lig_frames = traj.xyz[:,[first_atom,second_atom,third_atom],:]
+            print(np.shape(lig_frames), lig_frames)
+            print('first atom', lig_frames[:,0,:])
+            print(np.mean(lig_frames[:,0,:],axis=0), np.std(lig_frames[:,0,:], axis=0))
+            trans_storage[index] = {}
+            trans_storage[index]['mean'] = np.mean(lig_frames[:,0,:],axis=0)
+            trans_storage[index]['std'] = np.std(lig_frames[:,0,:], axis=0)
+            traj[-1].save(str(index)+'_.pdb')
+            ref_traj.save('ref.pdb')
+        trans_storage[0]['std'] = trans_storage[0]['std'] * 2
+        for index, traj in enumerate(traj_files):
+            #should make it dependent on each trajectory
+            trans_storage[index]['std'] = trans_storage[0]['std']
+
+            #continue here
+        self.trans_dart = trans_storage
+        #return 0
+        print(self.trans_dart)
+
         for i in internal_zmat[0].index.values[3:]:
             value_list = [i, internal_zmat[0].loc[i]['b'], internal_zmat[0].loc[i]['a'], internal_zmat[0].loc[i]['d']]
             dihedral_angles.append(value_list)
@@ -1751,6 +1837,33 @@ class MolDartMove(RandomLigandRotationMove):
         if len(selected) >= 1:
             #returns binding mode
             #diff_list will be used to dart
+            if 0:
+                trans_region = []
+                print('sim_traj', self.sim_traj)
+                copy_traj = copy.deepcopy(self.sim_traj)
+                print('self.trans_dart', self.trans_dart)
+                print('self.zmat_inital_atoms[0]', self.zmat_inital_atoms[0])
+                #if 'dart_range' in self.internal_zmat[0]._frame:
+                for key, value in self.trans_dart.items():
+                    copy_traj.superpose(self.ref_traj, atom_indices=self.fit_atoms[key])
+
+                    #print('self.sim_traj.xyz[0][ligand_atoms] - value["mean"]', self.sim_traj.xyz[0][self.zmat_inital_atoms[0]] - value['mean'])
+                    #print('self.sim_traj.xyz[0][self.zmat_inital_atoms[0]]', self.sim_traj.xyz[0][self.zmat_inital_atoms[0]], value['mean'], value['std'])
+                    print('self.sim_traj.xyz[0][ligand_atoms] - value["mean"]', copy_traj.xyz[0][self.zmat_inital_atoms[0]] - value['mean'])
+                    print('self.sim_traj.xyz[0][self.zmat_inital_atoms[0]]', copy_traj.xyz[0][self.zmat_inital_atoms[0]], value['mean'], value['std'])
+
+                    #if np.all(np.less_equal(self.sim_traj.xyz[0][self.zmat_inital_atoms[0]] - value['mean'], value['std'])):
+                    if np.all(np.less_equal(np.abs(copy_traj.xyz[0][self.zmat_inital_atoms[0]] - value['mean']), value['std'])):
+
+                            trans_region.append(key)
+                output = []
+                for selected_value in selected:
+                    if selected_value in trans_region:
+                        output.append(selected_value)
+
+                print('trans overlap', trans_region)
+                print('output', output)
+                return output
             return selected
         elif len(selected) == 0:
             return []
@@ -1935,9 +2048,19 @@ class MolDartMove(RandomLigandRotationMove):
 
         if rigid_darts == 'rigid_molecule':
             old_list =  old_list + change_list
+            rigid_dihedrals_atoms = [i for i in zmat_new._frame.index[3:]]
 
         else:
             if 'dart_range' in self.internal_zmat[binding_mode_index]._frame:
+                if rigid_darts == None:
+                    rigid_dihedrals_atoms = []
+                    move_atoms = []
+                    for center_atom in self.traj_dart_dict['rotate_list']:
+                        #if any([i in self.traj_dart_dict['bond_groups'][center_atom] for i in self.darts['dihedral'].keys()]):
+                        if any([i in self.traj_dart_dict['bond_groups'][center_atom] for i in zmat_new._frame.index[3:]]):
+
+                            move_atoms.append(center_atom)
+
                 #test
                 if 1:
                     new_change =  old_list + change_list
@@ -2211,11 +2334,71 @@ class MolDartMove(RandomLigandRotationMove):
         #perform the same angle change on new coordinate
         centroid_orig = dart_three[vector_list[0][1]]
         #perform rotation
-        if self.centroid_darting:
+        if self.centroid_darting == True:
             dart_three = (dart_three -  np.tile(centroid_orig, (3,1))).dot(rot_mat) + np.tile(centroid_orig, (3,1)) - np.tile(centroid, (3,1))
+        elif self.centroid_darting == 'random':
+            def offset_superpose(old_traj, old_reference, frame=0, atom_indices=None,
+                          ref_atom_indices=None, parallel=True):
+                """Su perpose each conformation in this trajectory upon a reference
+                Parameters
+                ----------
+                reference : md.Trajectory
+                    Align self to a particular frame in `reference`
+                frame : int
+                    The index of the conformation in `reference` to align to.
+                atom_indices : array_like, or None
+                    The indices of the atoms to superpose. If not
+                    supplied, all atoms will be used.
+                ref_atom_indices : array_like, or None
+                    Use these atoms on the reference structure. If not supplied,
+                    the same atom indices will be used for this trajectory and the
+                    reference one.
+                parallel : bool
+                    Use OpenMP to run the superposition in parallel over multiple cores
+                Returns
+                -------
+                self
+                """
+                traj = copy.deepcopy(old_traj)
+                reference = copy.deepcopy(old_reference)
+                if atom_indices is None:
+                    atom_indices = slice(None)
+
+                if ref_atom_indices is None:
+                    ref_atom_indices = atom_indices
+
+                if not isinstance(ref_atom_indices, slice) and (
+                    len(ref_atom_indices) != len(atom_indices)):
+                    raise ValueError("Number of atoms must be consistent!")
+
+                n_frames = traj.xyz.shape[0]
+                self_align_xyz = np.asarray(traj.xyz[:, atom_indices, :], order='c')
+                self_displace_xyz = np.asarray(traj.xyz, order='c')
+                ref_align_xyz = np.array(reference.xyz[frame, ref_atom_indices, :],
+                                         copy=True, order='c').reshape(1, -1, 3)
+
+                offset = np.mean(self_align_xyz, axis=1, dtype=np.float64).reshape(n_frames, 1, 3)
+                self_align_xyz -= offset
+                if self_align_xyz.ctypes.data != self_displace_xyz.ctypes.data:
+                    # when atom_indices is None, these two arrays alias the same memory
+                    # so we only need to do the centering once
+                    self_displace_xyz -= offset
+
+                ref_offset = ref_align_xyz[0].astype('float64').mean(0)
+                print('ref_offset', ref_offset)
+                return ref_offset
+            #take offset and dart region and translate it to the new one
+            if 0:
+                offset = offset_superpose(self.sim_ref, self.ref_traj, atom_indices=self.fit_atoms[rand_index])
+                #offset = [0,0,0]
+                first_atom_offset = (offset + self.trans_dart[rand_index]['mean'] + 2*(np.random.rand(1,3) - 0.5)*self.trans_dart[rand_index]['std'])
+                trans_difference = first_atom_offset - dart_three[0]
+                print('trans_difference', trans_difference)
+            #dart_three = dart_three + trans_difference
+
+            #dart_three = dart_three - trans_difference
         vec1_dart = dart_three[vector_list[0][0]] - dart_three[vector_list[0][1]]
         vec2_dart = dart_three[vector_list[1][0]] - dart_three[vector_list[1][1]]
-
         #adjust the angle manually because the first three atom positions are directly
         #translated from the reference without angle adjustments
         if 1:
@@ -2373,10 +2556,12 @@ class MolDartMove(RandomLigandRotationMove):
 
             old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
 
-
             new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
                                                lambda_restraints=self.lambda_restraints, **old_int.int_kwargs)
-
+            for number in range(old_int.getNumTabulatedFunctions()):
+                name = old_int.getTabulatedFunctionName(number)
+                new_int.addTabulatedFunction(name, copy.deepcopy(old_int.getTabulatedFunction(number)))
+            #exit()
             new_int.reset()
             initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
             for index, pose in enumerate(self.binding_mode_traj):
@@ -2683,8 +2868,8 @@ class MolDartMove(RandomLigandRotationMove):
             after_pos[non_moved_index] = state.getPositions(asNumpy=True)[non_moved_index]
         return context
 
-
-class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator):
+from openmmtools.integrators import PrettyPrintableIntegrator
+class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator, PrettyPrintableIntegrator):
     def __init__(self,
                  alchemical_functions,
                  restraint_group,
@@ -2720,7 +2905,8 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
             self.addGlobalVariable("restraint_energy", 0)
         except:
             pass
-
+        self.pretty_print()
+        #exit()
 
     def updateRestraints(self):
         self.addComputeGlobal('lambda_restraints', self.lambda_restraints)
