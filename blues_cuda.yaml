@@ -1,0 +1,97 @@
+#output_dir: /oasis/tscc/scratch/bergazin/water/unequal_density_2wall
+output_dir: 2wall-prod/2wall_part3_save
+outfname: 2wall_part3
+#logger_level: info #critical, error, warning, info, debug
+logger:
+  level: info
+  stream: True
+
+structure:
+  filename: oneWat.prmtop
+  xyz: oneWat.inpcrd #04_Prod_MC_004.restrt.pdb #oneWat.inpcrd
+  #restart: t4-toluene_2.rst7
+
+system:
+  nonbondedMethod: PME
+  nonbondedCutoff: 10 * angstroms
+  constraints: HBonds
+  rigidWater: True
+  removeCMMotion: True
+  hydrogenMass: 3.024 * daltons
+  ewaldErrorTolerance: 0.005
+  flexibleConstraints: True
+  splitDihedrals: False
+
+  alchemical:
+    softcore_alpha: 0.5 #0.0001
+    softcore_a : 1
+    softcore_b : 1
+    softcore_c : 6 #48
+    softcore_beta : 0.0
+    softcore_d : 1
+    softcore_e : 1
+    softcore_f : 2
+    annihilate_electrostatics : True
+    annihilate_sterics : False
+
+restraints:
+    selection: ':1-2' 
+    weight: 5
+
+simulation:
+  #platform: CUDA
+  #platform: OpenCL
+  #properties:
+    #CudaPrecision: single
+    #CudaDeviceIndex: 0
+    #OpenCLPrecision: single
+    #OpenCLDeviceIndex: 2
+  dt: 0.004 * picoseconds
+  friction: 1 * 1/picoseconds
+  temperature: 500 * kelvin
+  nIter: 12500000000 #5ns
+  nstepsMD: 1000 #1000000000
+  #mc_per_iter: 639817500
+  nstepsNC: 2500
+  #propRegion: electrostatics
+  nprop: 1
+  prop_lambda: 0.3
+  #pressure: 1 * atmospheres
+
+md_reporters:
+  state:
+    reportInterval: 1000
+  traj_netcdf:
+    reportInterval: 1000
+  restart:
+    reportInterval: 1000
+#  progress:
+#    totalSteps: 100
+#    reportInterval: 10
+  stream:
+    title: md
+    reportInterval: 1000
+    totalSteps: 1000
+    step: True
+    speed: True
+    progress: True
+    remainingTime: True
+    currentIter : True
+    volume: True
+
+ncmc_reporters:
+  traj_netcdf:
+    frame_indices: [1, 0.5, -1]
+    alchemicalLambda: True
+    protocolWork: True
+  stream:
+    title: ncmc
+    reportInterval: 2500
+    totalSteps: 2500 ##use nStepsNC
+    step: True
+    speed: True
+    progress: True
+    remainingTime : True
+    protocolWork : True
+    alchemicalLambda : True
+    currentIter : True
