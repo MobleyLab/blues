@@ -1,4 +1,4 @@
-from yank.restraints import Boresch, RMSD, _AtomSelector
+from yank.restraints import Boresch, RMSD, _AtomSelector, PeriodicTorsionBoresch
 import numpy as np
 from simtk import openmm, unit
 import parmed
@@ -12,7 +12,7 @@ import random
 import logging
 logger = logging.getLogger(__name__)
 
-class BoreschBLUES(Boresch):
+class BoreschBLUES(PeriodicTorsionBoresch):
     """Inherits over the Yank Boresch restraint class
     to add boresch-style restaints to the system used in BLUES
     """

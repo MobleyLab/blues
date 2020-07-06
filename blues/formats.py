@@ -511,6 +511,7 @@ class NetCDF4Traj(NetCDFTraj):
                  remd=None,
                  remd_dimension=None,
                  title='',
+                 temperature=False,
                  protocolWork=False,
                  alchemicalLambda=False):
         """Opens a new NetCDF file and sets the attributes
@@ -566,7 +567,7 @@ class NetCDF4Traj(NetCDFTraj):
 
         inst.hasprotocolWork = bool(protocolWork)
         inst.hasalchemicalLambda = bool(alchemicalLambda)
-
+        inst.hastemperature = bool(temperature)
         # Assign the main attributes
         ncfile.Conventions = "AMBER"
         ncfile.ConventionVersion = "1.0"
@@ -646,6 +647,10 @@ class NetCDF4Traj(NetCDFTraj):
             v = ncfile.createVariable('alchemicalLambda', 'f', ('frame', ))
             v.units = 'unitless'
             inst._last_alchemicalLambda_frame = 0
+        if inst.hastemperature:
+            v = ncfile.createVariable('temperature', 'f', ('frame', ))
+            v.units = 'K'
+            inst._last_temperature_frame = 0
 
         return inst
 
@@ -667,6 +672,26 @@ class NetCDF4Traj(NetCDFTraj):
         #if u.is_quantity(stuff): stuff = stuff.value_in_unit(u.picoseconds)
         self._ncfile.variables['protocolWork'][self._last_protocolWork_frame] = float(stuff)
         self._last_protocolWork_frame += 1
+        self.flush()
+
+    @property
+    def temperature(self):
+        """
+        Store the accumulated protocolWork from the NCMC simulation as property.
+        """
+        return self._ncfile.variables['temperature'][:]
+
+    def add_temperature(self, stuff):
+        """ Adds the time to the current frame of the NetCDF file
+
+        Parameters
+        ----------
+        stuff : float or time-dimension Quantity
+            The time to add to the current frame
+        """
+        #if u.is_quantity(stuff): stuff = stuff.value_in_unit(u.picoseconds)
+        self._ncfile.variables['temperature'][self._last_temperature_frame] = float(stuff)
+        self._last_temperature_frame += 1
         self.flush()
 
     @property

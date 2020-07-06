@@ -9,16 +9,13 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     """Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
     The functions can use this to create more complex protocols for other global parameters.
-
     As opposed to `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator`,
     which this inherits from, the AlchemicalExternalLangevinIntegrator integrator also takes
     into account work done outside the nonequilibrium switching portion(between integration steps).
     For example if a molecule is rotated between integration steps, this integrator would
     correctly account for the work caused by that rotation.
-
     Propagator is based on Langevin splitting, as described below.
     One way to divide the Langevin system is into three parts which can each be solved "exactly:"
-
     - R: Linear "drift" / Constrained "drift"
         Deterministic update of *positions*, using current velocities
         ``x <- x + v dt``
@@ -28,18 +25,15 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     - O: Ornstein-Uhlenbeck
         Stochastic update of velocities, simulating interaction with a heat bath
         ``v <- av + b sqrt(kT/m) R`` where:
-
         - a = e^(-gamma dt)
         - b = sqrt(1 - e^(-2gamma dt))
         - R is i.i.d. standard normal
-
     We can then construct integrators by solving each part for a certain timestep in sequence.
     (We can further split up the V step by force group, evaluating cheap but fast-fluctuating
     forces more frequently than expensive but slow-fluctuating forces. Since forces are only
     evaluated in the V step, we represent this by including in our "alphabet" V0, V1, ...)
     When the system contains holonomic constraints, these steps are confined to the constraint
     manifold.
-
     Parameters
     ----------
     alchemical_functions : dict of strings
@@ -69,12 +63,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     nprop : int (Default: 1)
         Controls the number of propagation steps to add in the lambda
         region defined by `prop_lambda`.
-
     Attributes
     ----------
     _kinetic_energy : str
         This is 0.5*m*v*v by default, and is the expression used for the kinetic energy
-
     Examples
     --------
     - g-BAOAB:
@@ -85,14 +77,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         splitting="V R H R V"
     - An NCMC algorithm with Metropolized integrator:
         splitting="O { V R H R V } O"
-
-
     References
     ----------
     [Nilmeier, et al. 2011] Nonequilibrium candidate Monte Carlo is an efficient tool for equilibrium simulation
-
     [Leimkuhler and Matthews, 2015] Molecular dynamics: with deterministic and stochastic numerical methods, Chapter 7
-
     """
 
     def __init__(self,
@@ -250,4 +238,184 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.setGlobalVariableByName("perturbed_pe", 0.0)
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
         self.setGlobalVariableByName("prop", 1)
-        super(AlchemicalExternalLangevinIntegrator, self).reset()
+        #super(AlchemicalExternalLangevinIntegrator, self).reset()
+
+
+
+
+class AlchemicalExternalLangevinIntegrator_old(AlchemicalNonequilibriumLangevinIntegrator):
+    def __init__(self,
+                 alchemical_functions,
+                 splitting="R V O H O V R",
+                 temperature=298.0 * simtk.unit.kelvin,
+                 collision_rate=1.0 / simtk.unit.picoseconds,
+                 timestep=1.0 * simtk.unit.femtoseconds,
+                 constraint_tolerance=1e-8,
+                 measure_shadow_work=False,
+                 measure_heat=True,
+                 nsteps_neq=100,
+                 nprop=1,
+                 prop_lambda=0.3,
+                 *args,
+                 **kwargs):
+        # call the base class constructor
+        super(AlchemicalExternalLangevinIntegrator, self).__init__(
+            alchemical_functions=alchemical_functions,
+            splitting=splitting,
+            temperature=temperature,
+            collision_rate=collision_rate,
+            timestep=timestep,
+            constraint_tolerance=constraint_tolerance,
+            measure_shadow_work=measure_shadow_work,
+            measure_heat=measure_heat,
+            nsteps_neq=nsteps_neq)
+        frame = inspect.currentframe()
+
+        args, _, _, values = inspect.getargvalues(frame)
+        inputs = dict([(i, values[i]) for i in args if i is not 'self'])
+        self.int_kwargs = inputs
+        # add some global variables relevant to the integrator
+        kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
+        kT = kB * temperature
+        #self._prop_lambda  = 1
+        self._prop_lambda = self._get_prop_lambda(prop_lambda)
+
+        self.addGlobalVariable("perturbed_pe", 0)
+        self.addGlobalVariable("unperturbed_pe", 0)
+        self.addGlobalVariable("first_step", 0)
+        self.addGlobalVariable("nprop", nprop)
+        self.addGlobalVariable("prop", 1)
+        self.addGlobalVariable("prop_lambda_min", 0.2)
+        self.addGlobalVariable("prop_lambda_max", 0.5)
+        # Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d
+        self._step_dispatch_table['H'] = (self._add_alchemical_perturbation_step, False)
+        #$self._registered_step_types['H'] = (
+        #    self._add_alchemical_perturbation_step, False)
+        self.addGlobalVariable("debug", 0)
+        try:
+            self.getGlobalVariableByName("shadow_work")
+        except:
+            self.addGlobalVariable('shadow_work', 0)
+
+
+
+
+    def _get_prop_lambda(self, prop_lambda):
+        prop_lambda_max = round(prop_lambda + 0.5, 4)
+        prop_lambda_min = round(0.5 - prop_lambda, 4)
+        prop_range = prop_lambda_max - prop_lambda_min
+
+        #Set values to outside [0, 1.0] to skip IfBlock
+        if prop_range <= 0.0:
+            prop_lambda_min = 2.0
+            prop_lambda_max = -1.0
+
+        return prop_lambda_min, prop_lambda_max
+
+    def getLogAcceptanceProbability(self, context):
+        #TODO remove context from arguments if/once ncmc_switching is changed
+        protocol = self.getGlobalVariableByName("protocol_work")
+        shadow = self.getGlobalVariableByName("shadow_work")
+        logp_accept = -1.0 * (protocol + shadow) * _OPENMM_ENERGY_UNIT / self.kT
+        return logp_accept
+
+    def reset(self):
+        if 1:
+            self.setGlobalVariableByName("step", 0)
+            #self.setGlobalVariableByName("first_step", 0)
+
+        if 0:
+            self.setGlobalVariableByName("lambda", 0.0)
+            self.setGlobalVariableByName("protocol_work", 0.0)
+            self.setGlobalVariableByName("shadow_work", 0.0)
+            self.setGlobalVariableByName("first_step", 0)
+            self.setGlobalVariableByName("perturbed_pe", 0.0)
+            self.setGlobalVariableByName("unperturbed_pe", 0.0)
+            self.setGlobalVariableByName("prop", 1)
+        #super(AlchemicalExternalLangevinIntegrator, self).reset()
+
+from openmmtools.integrators import LangevinIntegrator
+class Fake(LangevinIntegrator):
+    def __init__(self,
+                 alchemical_functions,
+                 splitting="R V O H O V R",
+                 temperature=298.0 * simtk.unit.kelvin,
+                 collision_rate=1.0 / simtk.unit.picoseconds,
+                 timestep=1.0 * simtk.unit.femtoseconds,
+                 constraint_tolerance=1e-8,
+                 measure_shadow_work=False,
+                 measure_heat=True,
+                 nsteps_neq=100,
+                 nprop=1,
+                 prop_lambda=0.3,
+                 *args,
+                 **kwargs):
+        # call the base class constructor
+        super(AlchemicalExternalLangevinIntegrator, self).__init__(
+            splitting="R V O V R",
+            temperature=temperature,
+            collision_rate=collision_rate,
+            timestep=timestep,
+            constraint_tolerance=constraint_tolerance,
+            measure_shadow_work=measure_shadow_work,
+            measure_heat=measure_heat,
+            )
+        frame = inspect.currentframe()
+
+        args, _, _, values = inspect.getargvalues(frame)
+        inputs = dict([(i, values[i]) for i in args if i is not 'self'])
+        self.int_kwargs = inputs
+        # add some global variables relevant to the integrator
+        kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
+        kT = kB * temperature
+        self._prop_lambda  = 1
+        self.addGlobalVariable("perturbed_pe", 0)
+        self.addGlobalVariable("unperturbed_pe", 0)
+        self.addGlobalVariable("first_step", 0)
+        self.addGlobalVariable("nprop", nprop)
+        self.addGlobalVariable("prop", 1)
+        self.addGlobalVariable("prop_lambda_min", 0.2)
+        self.addGlobalVariable("prop_lambda_max", 0.5)
+        # Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d
+        #self._step_dispatch_table['H'] = (self._add_alchemical_perturbation_step, False)
+        #$self._registered_step_types['H'] = (
+        #    self._add_alchemical_perturbation_step, False)
+        self.addGlobalVariable("debug", 0)
+        try:
+            self.getGlobalVariableByName("shadow_work")
+        except:
+            self.addGlobalVariable('shadow_work', 0)
+        try:
+            self.getGlobalVariableByName("protocol_work")
+        except:
+            self.addGlobalVariable('protocol_work', 0)
+        try:
+            self.getGlobalVariableByName("lambda")
+        except:
+            self.addGlobalVariable('lambda', 0)
+
+
+
+
+
+
+    def getLogAcceptanceProbability(self, context):
+        #TODO remove context from arguments if/once ncmc_switching is changed
+        return 0
+    def get_protocol_work(self, dimensionless=True):
+        return 0
+    def reset(self):
+        if 0:
+            self.setGlobalVariableByName("step", 0)
+            #self.setGlobalVariableByName("first_step", 0)
+
+        if 0:
+            self.setGlobalVariableByName("lambda", 0.0)
+            self.setGlobalVariableByName("protocol_work", 0.0)
+            self.setGlobalVariableByName("shadow_work", 0.0)
+            self.setGlobalVariableByName("first_step", 0)
+            self.setGlobalVariableByName("perturbed_pe", 0.0)
+            self.setGlobalVariableByName("unperturbed_pe", 0.0)
+            self.setGlobalVariableByName("prop", 1)
+        #super(AlchemicalExternalLangevinIntegrator, self).reset()
+

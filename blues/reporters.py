@@ -10,7 +10,7 @@ from mdtraj.utils import unitcell
 from parmed import unit as u
 from parmed.geometry import box_vectors_to_lengths_and_angles
 from simtk.openmm import app
-
+from simtk.openmm import CMMotionRemover
 import blues._version
 import blues.reporters
 from blues.formats import *
@@ -762,7 +762,8 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
                  vels=False,
                  frcs=False,
                  protocolWork=False,
-                 alchemicalLambda=False):
+                 alchemicalLambda=False,
+                 temperature=False):
         """
         Create a NetCDFReporter instance.
         """
@@ -775,7 +776,8 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
                     self._out = None # not written yet
                     self.fname = file
 
-        self.crds, self.vels, self.frcs, self.protocolWork, self.alchemicalLambda = crds, vels, frcs, protocolWork, alchemicalLambda
+        self._hasInitialized = False
+        self.crds, self.vels, self.frcs, self.protocolWork, self.alchemicalLambda, self.temperature = crds, vels, frcs, protocolWork, alchemicalLambda, temperature
         self.frame_indices = frame_indices
         if self.frame_indices:
             #If simulation.currentStep = 1, store the frame from the previous step.
@@ -799,6 +801,23 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             velocities, forces, and/or energies are needed from the Context
         """
         #Monkeypatch to report at certain frame indices
+        if not self._hasInitialized:
+            system = simulation.system
+            frclist = system.getForces()
+
+            if self.temperature:
+                # Compute the number of degrees of freedom.
+                dof = 0
+                for i in range(system.getNumParticles()):
+                    if system.getParticleMass(i) > 0*u.dalton:
+                        dof += 3
+                dof -= system.getNumConstraints()
+                if any(isinstance(frc, CMMotionRemover) for frc in frclist):
+                    dof -= 3
+                self._dof = dof
+
+            self._hasInitialized = True
+
         if self.frame_indices:
             if simulation.currentStep in self.frame_indices:
                 steps = 1
@@ -807,7 +826,8 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         if not self.frame_indices:
             steps_left = simulation.currentStep % self._reportInterval
             steps = self._reportInterval - steps_left
-        return (steps, self.crds, self.vels, self.frcs, False)
+
+        return (steps, self.crds, self.vels, self.frcs, self.temperature)
 
     def report(self, simulation, state):
         """Generate a report.
@@ -831,6 +851,11 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             protocolWork = simulation.integrator.get_protocol_work(dimensionless=True)
         if self.alchemicalLambda:
             alchemicalLambda = simulation.integrator.getGlobalVariableByName('lambda')
+        if self.temperature:
+            ke = state.getKineticEnergy()
+            pe = state.getPotentialEnergy()
+            temperature = (2 * ke / (self._dof * u.MOLAR_GAS_CONSTANT_R)).value_in_unit(u.kelvin)
+
         if self._out is None:
             # This must be the first frame, so set up the trajectory now
             if self.crds:
@@ -839,6 +864,8 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
                 atom = len(vels)
             elif self.frcs:
                 atom = len(frcs)
+            else:
+                atom = 1
             self.uses_pbc = simulation.topology.getUnitCellDimensions() is not None
             self._out = NetCDF4Traj.open_new(
                 self.fname,
@@ -850,6 +877,7 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
                 title="ParmEd-created trajectory using OpenMM",
                 protocolWork=self.protocolWork,
                 alchemicalLambda=self.alchemicalLambda,
+                temperature=self.temperature
             )
 
         if self.uses_pbc:
@@ -869,5 +897,7 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
             self._out.add_protocolWork(protocolWork)
         if self.alchemicalLambda:
             self._out.add_alchemicalLambda(alchemicalLambda)
+        if self.temperature:
+            self._out.add_temperature(temperature)
         # Now it's time to add the time.
         self._out.add_time(state.getTime().value_in_unit(u.picosecond))

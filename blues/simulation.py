@@ -70,7 +70,7 @@ class SystemFactory(object):
         and `generateAlchSystem`
     """
 
-    def __init__(self, structure, atom_indices, config=None):
+    def __init__(self, structure, atom_indices, config=None,other_regions=None,torsion_atoms=None):
         self.structure = structure
         self.atom_indices = atom_indices
         self._config = config
@@ -83,7 +83,13 @@ class SystemFactory(object):
                 #Use function defaults if none is provided
                 self.alch_config = {}
             self.md = SystemFactory.generateSystem(self.structure, **self._config)
-            self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
+            print('self.alch_config', self.alch_config)
+
+            #self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, other_regions, **self.alch_config)
+            self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, other_regions=other_regions, torsion_atoms=torsion_atoms, **self.alch_config)
+
+#            self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
+
 
     @staticmethod
     def amber_selection_to_atomidx(structure, selection):
@@ -235,6 +241,8 @@ class SystemFactory(object):
                            disable_alchemical_dispersion_correction=True,
                            alchemical_pme_treatment='direct-space',
                            suppress_warnings=True,
+                           other_regions=None,
+                           torsion_atoms=None,
                            **kwargs):
         """Returns the OpenMM System for alchemical perturbations.
         This function calls `openmmtools.alchemy.AbsoluteAlchemicalFactory` and
@@ -311,9 +319,36 @@ class SystemFactory(object):
             softcore_e=softcore_e,
             softcore_f=softcore_f,
             annihilate_electrostatics=annihilate_electrostatics,
-            annihilate_sterics=annihilate_sterics)
+            annihilate_sterics=annihilate_sterics,
+            )
+        if 0:
+            region_list = []
+            region_list.append(alch_region)
+            print('other_regions', other_regions, type(other_regions))
+            if other_regions:
+                if isinstance(other_regions, alchemy.AlchemicalRegion):
+                    region_list.append(other_regions)
+                else:
+                    for region in other_regions:
+                        print('region!', region)
+                        region_list.append(region)
+                    print('other region!')
+                print('region_list', region_list)
+                alch_system = factory.create_alchemical_system(system, region_list)
+            else:
+                print('no region list')
+                alch_system = factory.create_alchemical_system(system, alch_region)
+        if 1:
+            if torsion_atoms:
+                reference_forces = {force.__class__.__name__: force for force in system.getForces()}
+                torsion_list = alchemy.AbsoluteAlchemicalFactory._build_alchemical_torsion_list(torsion_atoms, reference_forces,system)
+                torsion_region = alchemy.AlchemicalRegion(alchemical_torsions=torsion_list, name='protein')
+                region_list = [alch_region, torsion_region]
+                print('adding torsion region')
+                alch_system = factory.create_alchemical_system(system, region_list)
+            else:
+                alch_system = factory.create_alchemical_system(system, alch_region)
 
-        alch_system = factory.create_alchemical_system(system, alch_region)
         return alch_system
 
     @classmethod
@@ -713,12 +748,14 @@ class SimulationFactory(object):
                 processed_functions[k] = ('%s(step)') % (tab_function_name)
             else:
                 processed_functions[k] = v
+        for k, v in alchemical_functions.items():
+             print('k', k, 'v', v)
         print('integrator 1')
         from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
         if 0:
             ncmc_integrator = AlchemicalNonequilibriumLangevinIntegrator(
             #ncmc_integrator = AlchemicalExternalLangevinIntegrator(
-                alchemical_functions=alchemical_functions,
+                alchemical_functions=processed_functions,
                 splitting=splitting,
                 temperature=temperature,
                 nsteps_neq=nstepsNC,
@@ -727,7 +764,7 @@ class SimulationFactory(object):
             ncmc_integrator._prop_lambda = 1
         else:
             ncmc_integrator = AlchemicalExternalLangevinIntegrator(
-                alchemical_functions=alchemical_functions,
+                alchemical_functions=processed_functions,
                 splitting=splitting,
                 temperature=temperature,
                 nsteps_neq=nstepsNC,
@@ -737,7 +774,7 @@ class SimulationFactory(object):
 
         print('integrator 2')
         for k, v in tab_functions.items():
-            ncmc_integrator.addTabulatedFunction0(k, v)
+            ncmc_integrator.addTabulatedFunction(k, v)
         print('integrator 3')
 
         return ncmc_integrator
@@ -1030,6 +1067,7 @@ class BLUESSimulation(object):
 
         prop_lambda_window = self._ncmc_sim.context._integrator._prop_lambda
         # prop_range = round(prop_lambda_window[1] - prop_lambda_window[0], 4)
+        print('prop_lambda_window', prop_lambda_window)
         if propSteps != nstepsNC:
             msg += '\t%s lambda switching steps within %s total propagation steps.\n' % (nstepsNC, propSteps)
             msg += '\tExtra propgation steps between lambda [%s, %s]\n' % (prop_lambda_window[0],
@@ -1181,6 +1219,7 @@ class BLUESSimulation(object):
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
             correction_factor = self._computeAlchemicalCorrection()
+            print('correction', correction_factor)
             #logger.info('md context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._md_sim.context)))
             #logger.info('ncmc context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._ncmc_sim.context)))
             #logger.info('alch context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._alch_sim.context)))
@@ -1328,6 +1367,7 @@ class BLUESSimulation(object):
 
         logger.info('Running %i BLUES iterations...' % (nIter))
         for N in range(int(nIter)):
+            print('moveStep', moveStep)
             self.currentIter = N
             logger.info('BLUES Iteration: %s' % N)
             bf = self._md_sim.context.getState(getEnergy=True).getKineticEnergy()

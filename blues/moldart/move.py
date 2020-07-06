@@ -202,6 +202,7 @@ class MolDartMove(RandomLigandRotationMove):
         rigid_darts='rigid_darts',
         rigid_ring=False, rigid_move=False, freeze_waters=0, freeze_protein=False,
         restraints=None, restrained_receptor_atoms=None,
+        restrained_ligand_atoms=None,
         receptor_cutoff=0.8,
         K_r=10, K_angle=10, K_RMSD=0.6, RMSD0=2,
         rigid_body=False,
@@ -209,9 +210,11 @@ class MolDartMove(RandomLigandRotationMove):
         lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
         darting_sampling='uniform',
         buildlist=None,
-        ignore_warning=False
+        ignore_warning=False,
+        old_restraint=True
         ):
         super(MolDartMove, self).__init__(structure, resname)
+        self.old_restraint = old_restraint
         #md trajectory representation of only the ligand atoms
         self.pdb_files = pdb_files
         self.trajs = [md.load(traj) for traj in pdb_files]
@@ -319,6 +322,7 @@ class MolDartMove(RandomLigandRotationMove):
         self.rigid_body = rigid_body
         self.centroid_darting = centroid_darting
         self.same_range = True #for trajectory darting
+        self.restrained_ligand_atoms = restrained_ligand_atoms
         if darting_sampling not in ['uniform', 'gaussian']:
             raise ValueError('darting_sampling must be either gaussian or uniform')
         self.darting_sampling = darting_sampling
@@ -2045,6 +2049,21 @@ class MolDartMove(RandomLigandRotationMove):
             zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
             #print('test1a', zmat_new)
             #print('zmat_traj', zmat_traj)
+        elif rigid_darts == 'flexible_darts':
+            #rigid_dihedrals_atoms = [i for i in self.only_darts_dihedrals if i in zmat_new._frame.index[3:]]
+            move_atoms = []
+            for anchor_atoms in self.traj_dart_dict['rotate_list']:
+                for rotate_atoms in self.traj_dart_dict['bond_groups'][anchor_atoms]:
+                    move_atoms.append(rotate_atoms)
+            #rigid_dihedrals_atoms = [i for i in zmat_new._frame.index[3:] if i not in move_atoms]
+            #print('rigid_dihedrals_atoms', sorted(rigid_dihedrals_atoms), 'move_atoms', sorted(move_atoms))
+            rigid_dihedrals_atoms = [i for i in zmat_new._frame.index if i not in self.only_darts_dihedrals]
+            print('rigid_dihedrals_atoms', rigid_dihedrals_atoms)
+            #print('test0', zmat_new)
+
+            zmat_new._frame.loc[rigid_dihedrals_atoms,['dihedral']] = zmat_traj._frame.loc[rigid_dihedrals_atoms,['dihedral']]
+            #print('test1a', zmat_new)
+            #print('zmat_traj', zmat_traj)
 
         if rigid_darts == 'rigid_molecule':
             old_list =  old_list + change_list
@@ -2073,6 +2092,15 @@ class MolDartMove(RandomLigandRotationMove):
                     for center_atom in self.traj_dart_dict['rotate_list']:
                         if any([i in self.traj_dart_dict['bond_groups'][center_atom] for i in self.darts['dihedral'].keys()]):
                             move_atoms.append(center_atom)
+                if rigid_darts == 'flexible_darts':
+                    move_atoms = []
+                    for center_atom in self.traj_dart_dict['bond_groups']:
+                        print('center atoms', center_atom)
+
+                        if any([i in self.traj_dart_dict['bond_groups'][center_atom] for i in self.darts['dihedral'].keys()]):
+                            move_atoms.append(center_atom)
+                #print('move_atoms', move_atoms)
+                #exit()
                 #print('move_atoms', move_atoms)
                 #exit()
 #                for center_atom in self.traj_dart_dict['rotate_list']:
@@ -2555,9 +2583,17 @@ class MolDartMove(RandomLigandRotationMove):
             self.restraint_group = group_avail[0]
 
             old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
+            print(old_int._system_parameters)
+            print(old_int.int_kwargs)
+            if self.old_restraint:
+                new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
+                                                   lambda_restraints=self.lambda_restraints, **old_int.int_kwargs)
+            else:
+                old_int.int_kwargs['alchemical_functions']['lambda_restraints'] = self.lambda_restraints
+                print(old_int.int_kwargs)
+                new_int = AlchemicalExternalLangevinIntegrator(restraint_group=self.restraint_group,
+                                                   lambda_restraints=self.lambda_restraints, **old_int.int_kwargs)
 
-            new_int = AlchemicalExternalRestrainedLangevinIntegrator(restraint_group=self.restraint_group,
-                                               lambda_restraints=self.lambda_restraints, **old_int.int_kwargs)
             for number in range(old_int.getNumTabulatedFunctions()):
                 name = old_int.getTabulatedFunctionName(number)
                 new_int.addTabulatedFunction(name, copy.deepcopy(old_int.getTabulatedFunction(number)))
@@ -2576,24 +2612,26 @@ class MolDartMove(RandomLigandRotationMove):
                 new_pos[self.atom_indices] = pose_pos
                 new_pos= new_pos * unit.nanometers
                 #restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.get_values()[:3]]
-                restraint_lig = None
-                for atom in range(len(self.atom_indices)):
-                    indices = self.buildlist.index.values[0+atom:3+atom]
-                    elements = self.internal_zmat[0]._frame.loc[indices,'atom']
-                    h_element = elements[elements=='H']
-                    print('elements', elements)
-                    print('h_element', h_element.index.values, h_element)
+                restraint_lig = self.restrained_ligand_atoms
+                if restraint_lig is None:
+                    for atom in range(len(self.atom_indices)):
+                        indices = self.buildlist.index.values[0+atom:3+atom]
+                        elements = self.internal_zmat[0]._frame.loc[indices,'atom']
+                        h_element = elements[elements=='H']
+                        print('elements', elements)
+                        print('h_element', h_element.index.values, h_element)
+                        restraint_lig = [self.atom_indices[i] for i in indices]
+
+                        neighbors = md.compute_neighbors(pose, 0.7, restraint_lig, haystack_indices=self.restrained_receptor_atoms[index])[0]
+                        print('neighbors', neighbors)
+                        if len(h_element.index.values) == 0 and len(neighbors) > 2:
+                            print('breaking')
+                            break
+                    #exit()
+                    #restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.values[:3]]
+                    print('indices', indices)
                     restraint_lig = [self.atom_indices[i] for i in indices]
 
-                    neighbors = md.compute_neighbors(pose, 0.7, restraint_lig, haystack_indices=self.restrained_receptor_atoms[index])[0]
-                    print('neighbors', neighbors)
-                    if len(h_element.index.values) == 0 and len(neighbors) > 2:
-                        print('breaking')
-                        break
-                #exit()
-                #restraint_lig = [self.atom_indices[i] for i in self.buildlist.index.values[:3]]
-                print('indices', indices)
-                restraint_lig = [self.atom_indices[i] for i in indices]
                 print('restraint_lig', restraint_lig)
                 #choose restraint type based on specified parameter
                 restraint_style = {'boresch':add_boresch_restraints, 'rmsd':add_rmsd_restraints}
@@ -2670,6 +2708,7 @@ class MolDartMove(RandomLigandRotationMove):
             selected_list = self._poseDart(context, self.atom_indices)
             if len(selected_list) >= 1:
                 self.selected_pose = np.random.choice(selected_list, replace=False)
+                print('chosing pose', self.selected_pose)
                 self.dart_begin = self.selected_pose
                 self.num_poses_begin_restraints = len(selected_list)
 
@@ -2713,6 +2752,7 @@ class MolDartMove(RandomLigandRotationMove):
         """
         if self.restraints:
             selected_list = self._poseDart(context, self.atom_indices)
+            print('pose after move', selected_list)
             if self.selected_pose not in selected_list:
                 self.acceptance_ratio = 0
             else:
@@ -2774,11 +2814,12 @@ class MolDartMove(RandomLigandRotationMove):
             The same input context, but whose positions were changed by this function.
 
         """
+        print('themove')
         self.moves_attempted += 1
         state = context.getState(getPositions=True, getEnergy=True)
         oldDartPos = state.getPositions(asNumpy=True)
         selected_list = self._poseDart(context, self.atom_indices)
-
+        print('start of move selected', selected_list)
         if self.restraints:
             context.setParameter('restraint_pose_'+str(self.selected_pose), 0)
         else:
@@ -2889,6 +2930,107 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
         self.restraint_energy = "energy"+str(restraint_group)
 
         super(AlchemicalExternalRestrainedLangevinIntegrator, self).__init__(
+                     alchemical_functions,
+                     splitting,
+                     temperature,
+                     collision_rate,
+                     timestep,
+                     constraint_tolerance,
+                     measure_shadow_work,
+                     measure_heat,
+                     nsteps_neq,
+                     nprop,
+                     prop_lambda,
+                     *args, **kwargs)
+        try:
+            self.addGlobalVariable("restraint_energy", 0)
+        except:
+            pass
+        self.pretty_print()
+        #exit()
+
+    def updateRestraints(self):
+        self.addComputeGlobal('lambda_restraints', self.lambda_restraints)
+
+    def _add_integrator_steps(self):
+        """
+        Override the base class to insert reset steps around the integrator.
+        """
+
+        # First step: Constrain positions and velocities and reset work accumulators and alchemical integrators
+        self.beginIfBlock('step = 0')
+        self.addComputeGlobal("restraint_energy", self.restraint_energy)
+        self.addComputeGlobal("perturbed_pe", "energy-restraint_energy")
+        self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
+        self.addConstrainPositions()
+        self.addConstrainVelocities()
+        self._add_reset_protocol_work_step()
+        self._add_alchemical_reset_step()
+        self.endBlock()
+
+        # Main body
+
+        if self._n_steps_neq == 0:
+            # If nsteps = 0, we need to force execution on the first step only.
+            self.beginIfBlock('step = 0')
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.addComputeGlobal("step", "step + 1")
+            self.endBlock()
+        else:
+            #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
+            self.beginIfBlock("step < nsteps")#
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("perturbed_pe", "energy-restraint_energy")
+            self.beginIfBlock("first_step < 1")##
+            #TODO write better test that checks that the initial work isn't gigantic
+            self.addComputeGlobal("first_step", "1")
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
+            self.endBlock()##
+            #initial iteration
+            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            #if more propogation steps are requested
+            self.beginIfBlock("lambda > prop_lambda_min")###
+            self.beginIfBlock("lambda <= prop_lambda_max")####
+
+            self.beginWhileBlock("prop < nprop")#####
+            self.addComputeGlobal("prop", "prop + 1")
+
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.endBlock()#####
+            self.endBlock()####
+            self.endBlock()###
+            #ending variables to reset
+            self.updateRestraints()
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
+            self.addComputeGlobal("step", "step + 1")
+            self.addComputeGlobal("prop", "1")
+
+            self.endBlock()#
+
+
+class AlchemicalExternalRestrainedLangevinIntegrator_new(AlchemicalExternalLangevinIntegrator, PrettyPrintableIntegrator):
+    def __init__(self,
+                 alchemical_functions,
+                 restraint_group,
+                 splitting="R V O H O V R",
+                 temperature=298.0 * unit.kelvin,
+                 collision_rate=1.0 / unit.picoseconds,
+                 timestep=1.0 * unit.femtoseconds,
+                 constraint_tolerance=1e-8,
+                 measure_shadow_work=False,
+                 measure_heat=True,
+                 nsteps_neq=100,
+                 nprop=1,
+                 prop_lambda=0.3,
+                 lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
+                 *args, **kwargs):
+        self.lambda_restraints = lambda_restraints
+        self.restraint_energy = "energy"+str(restraint_group)
+
+        super(AlchemicalExternalRestrainedLangevinIntegrator_new, self).__init__(
                      alchemical_functions,
                      splitting,
                      temperature,

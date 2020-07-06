@@ -275,6 +275,17 @@ def get_data_filename(package_root, relative_path):
         raise ValueError("Sorry! %s does not exist. If you just added it, you'll have to re-install" % fn)
     return fn
 
+def getAlchemicalParametersFromDict(dictionary):
+    parameter_dict = {}
+    parameter_list = ['alchemical_atoms', 'alchemical_bonds', 'alchemical_angles', 'alchemical_torsions',
+        'annihilate_electrostatics', 'annihilate_sterics', 'softcore_alpha', 'softcore_a', 'softcore_b',
+        'softcore_c', 'softcore_beta', 'softcore_d', 'softcore_e']
+    for key, value in dictionary.items():
+        if key in parameter_list:
+            parameter_dict[key] = value
+
+    return parameter_dict
+
 
 def spreadLambdaProtocol(switching_values, steps, switching_types='auto', kind='cubic', return_tab_function=True):
     """

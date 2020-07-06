@@ -632,6 +632,7 @@ def createTranslationDarts(internal_mat, trans_mat, posedart_dict, dart_storage,
                 rotation_present = False
 
             else:
+                print('pose', pose)
                 trans_overlap_list = [set(pose['translation'])]
 
             overlap_list = addSet([di_overlap_list, trans_overlap_list])
