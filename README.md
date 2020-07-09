@@ -117,6 +117,8 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.2.1](https://doi.org/10.5281/zenodo.1288925): Bug fix in alchemical correction term
 - [Version 0.2.2](https://doi.org/10.5281/zenodo.1324415): Bug fixes for OpenEye tests and restarting from the YAML; enhancements to the Logger and package installation.
 - [Version 0.2.3](https://zenodo.org/badge/latestdoi/62096511): Improvements to Travis CI, fix in velocity synicng, and add tests for checking freezing selection.
+- [Version 0.2.4](https://zenodo.org/badge/latestdoi/62096511): Broken conda recipe fix and documentation clarification.
+
 
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.
