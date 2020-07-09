@@ -63,7 +63,7 @@ conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.2.2 numpy cyth
 pip install -e .
 
 # To validate your BLUES installation run the tests.
-pip instal -e .[tests]
+pip install -e .[tests]
 pytest -v -s
 ```
 
