@@ -744,7 +744,7 @@ class SimulationFactory(object):
             b = Vec3(*structure.box_vectors[1].value_in_unit(unit.nanometer))
             c = Vec3(*structure.box_vectors[2].value_in_unit(unit.nanometer))
             old_box = [a,b,c]*unit.nanometer
-            box_vectors = reducePeriodicBoxVectors(new_unit)
+            box_vectors = reducePeriodicBoxVectors(old_box)
 
             simulation.context.setPeriodicBoxVectors(*box_vectors)
         simulation.context.setPositions(structure.positions)
