@@ -41,7 +41,7 @@ In the example we have just a single move so we just pass that into the `MoveEng
 
 ```python
 # Initialize object that proposes moves.
-from blues.engine import MoveEngine
+from blues.moves import MoveEngine
 ligand_mover = MoveEngine(ligand)
 ```
 
