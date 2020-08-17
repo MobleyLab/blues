@@ -8,7 +8,7 @@ from simtk import unit
 import numpy as np
 
 
-class RandomRotatableBondMove(unittest.TestCase):
+class RandomRotatableBondMoveTester(unittest.TestCase):
     """
     Test the RandomRotatableBondMove class.
     """
@@ -52,14 +52,24 @@ class RandomRotatableBondMove(unittest.TestCase):
         self.initial_positions = self.ncmc_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
 
     def test_random_rotation_bond(self):
+        #rotated atoms correspond to the atoms that should be rotated
+        rotate_atoms = [5949, 5948, 5953, 5952, 5951,  5971, 5970, 5974, 5973, 5972]
+
         before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
-            asNumpy=True)[self.atom_indices, :]
+        #    asNumpy=True)[self.move.atom_indices, :]
+            asNumpy=True)[rotate_atoms, :]
+
+        print('selected_move', self.engine.selected_move)
         self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)
         after_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
-            asNumpy=True)[self.atom_indices, :]
+            #asNumpy=True)[self.move.atom_indices, :]
+            asNumpy=True)[rotate_atoms, :]
 
         #Check that the ligand has been rotated
         pos_compare = np.not_equal(before_move, after_move).all()
+        print('before move', before_move)
+        print('after move', after_move)
+        print('compare', pos_compare)
         assert pos_compare
 
 

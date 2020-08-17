@@ -18,7 +18,7 @@ from collections import Counter
 logger = logging.getLogger("blues.simulation")
 logger = init_logger(logger, level=logging.ERROR, stream=True)
 
-
+@pytest.mark.skip(reason="need to look at this test more")
 def runEthyleneTest(N):
     filename = 'ethylene-test_%s' % N
     print('Running %s...' % filename)
@@ -35,9 +35,9 @@ def runEthyleneTest(N):
         'dt': 1 * unit.femtoseconds,
         'friction': 1 / unit.picoseconds,
         'temperature': 200 * unit.kelvin,
-        'nIter': 100,
+        'nIter': 1000,
         'nstepsMD': 20,
-        'nstepsNC': 20,
+        'nstepsNC': 200,
         'propSteps': 20,
         'moveStep': 10
     }
@@ -136,11 +136,11 @@ def graphConvergence(dist, n_points=10):
     bin_err_arr = np.vstack(bin_err)
     return bin_err_arr[-1, :]
 
-
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_runEthyleneRepeats():
     [runEthyleneTest(i) for i in range(5)]
 
-
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_runAnalysis():
     outfnames = ['ethylene-test_%s.nc' % i for i in range(5)]
     structure_pdb = utils.get_data_filename('blues', 'tests/data/ethylene_structure.pdb')
@@ -158,6 +158,6 @@ def test_runAnalysis():
     errs = np.asarray(errs)
     avg_freq = np.mean(freqs, axis=0)
     avg_err = np.mean(errs, axis=0)
-    print(avg_freq, avg_err, np.absolute(avg_freq - populations))
+    print('debug', avg_freq, avg_err, np.absolute(avg_freq - populations))
     check = np.allclose(avg_freq, populations, atol=avg_err)
     assert check == True
