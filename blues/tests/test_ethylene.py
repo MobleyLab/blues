@@ -158,6 +158,5 @@ def test_runAnalysis():
     errs = np.asarray(errs)
     avg_freq = np.mean(freqs, axis=0)
     avg_err = np.mean(errs, axis=0)
-    print('debug', avg_freq, avg_err, np.absolute(avg_freq - populations))
     check = np.allclose(avg_freq, populations, atol=avg_err)
     assert check == True
