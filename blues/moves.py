@@ -924,11 +924,9 @@ class WaterTranslationMove(Move):
         topology: parmed.Topology
             ParmEd topology object containing atoms of the system.
         """
-        #print('This is the start of the getMasses function....')
         masses = unit.Quantity(numpy.zeros([int(topology.getNumAtoms()),1],numpy.float32), unit.dalton)
         for idx,atom in enumerate(topology.atoms()):
             masses[idx] = atom.element._mass #gets the mass of the atom, adds to list (along with index)
-        #print('This is the end of the getMasses function....')
         return masses
 
     def _getCenterOfMass(self, positions, masses):
@@ -1050,9 +1048,11 @@ class WaterTranslationMove(Move):
         return context
 
     def afterMove(self, context):
-        """This method is called at the end of the NCMC portion if the
-        context needs to be checked or modified before performing the move
-        at the halfway point.
+        """This method is called at the end of the NCMC portion.
+        This checks if the water has ended up outside the defined
+        translational region. If so, it rejects the move
+        (by manually setting protocol work to a high value).
+
         Parameters
         ----------
         context: simtk.openmm.Context object
@@ -1076,7 +1076,6 @@ class WaterTranslationMove(Move):
         pairs = self.traj.topology.select_pairs(numpy.array(self.atom_indices[0]).flatten(), numpy.array(self.protein_atoms[0]).flatten())
         water_distance = mdtraj.compute_distances(self.traj, pairs, periodic=True)
         #We reject if the water molecule ends up outside our defined radius value
-        print('water_distance', water_distance)
         if water_distance > numpy.linalg.norm(self.radius._value) and self.go == True:
             #we can update this if we implement acceptance_ratios into the acceptance to be handle this more 'correctly'
             #essentially this will result in rejected though
