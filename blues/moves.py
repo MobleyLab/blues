@@ -20,6 +20,9 @@ import mdtraj
 import numpy
 import parmed
 from simtk import unit
+import tempfile
+
+
 
 try:
     import openeye.oechem as oechem
@@ -838,6 +841,246 @@ class SideChainMove(Move):
         if self.write_move:
             filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
             mod_prot = model.save(filename, overwrite=True)
+        return context
+
+class WaterTranslationMove(Move):
+    """ Move that translates a random water within a specified radius of the protein's
+    center of mass to another point within that radius
+    Parameters
+    ----------
+    structure:
+        topology: parmed.Topology
+            ParmEd topology object containing atoms of the system.
+        water_name: str, optional, default='WAT'
+            Residue name of the waters in the system.
+        protein_selection: str, option, default='protein'
+            Expression in the MDTraj atom selection DSL to specify the desired protein atoms.
+            The center of mass of this is used to translate the water molecules.
+        radius: float*unit compatible with simtk.unit.nanometers, optional, default=2.0*unit.nanometers
+            Defines the radius within the protein center of mass to choose a water
+            and the radius in which to randomly translate that water.
+    """
+
+    def __init__(self, structure, water_name=['WAT','HOH'], protein_selection='protein', radius=2.3*unit.nanometers):
+        #initialize self attributes
+        self.radius = radius #
+        self.water_name = water_name
+        self.water_residues = [] #contains indices of the atoms of the waters
+        self.before_ncmc_check = True
+        self.structure = structure
+        #we want to get a mdtraj trajectory representation of the structure
+        #so save structure to a temp file to be read with mdtraj
+        with tempfile.NamedTemporaryFile(suffix='.pdb', mode='r+') as t:
+            fname = t.name
+            structure.save(t,format='pdb')
+            t.flush()
+            self.traj = mdtraj.load(fname)
+
+        #go through the topology and identify water and protein residues
+        residues = structure.topology.residues()
+        #looks for residues with water_name in them
+        for res in residues:
+            if res.name in self.water_name: #checks if the name of the residue is 'WAT' or 'HOH'
+                water_mol = [] #list of each waters atom indices
+                for atom in res.atoms():
+                   water_mol.append(atom.index) #append the index of each of the atoms of the water residue
+                self.water_residues.append(water_mol)#append the water atom indices as a self attribute (above)
+
+        self.atom_indices = self.water_residues[0] #the atom indices of the first water, this is the alchemical water
+        #get the protein atoms of the selection and the masses
+        self.protein_atoms = self.traj.topology.select(protein_selection)
+        self.protein_masses = self._getMasses(self.structure.topology)[self.protein_atoms]
+        #go keeps track if water is inside specified radius
+        self.go = True
+
+
+
+    def _random_sphere_point(self, radius, origin):
+        """function to generate a uniform random point
+        in a sphere of a specified radius.
+        Used to randomly translate the water molecule
+        Parameters
+        ----------
+        radius: float
+            Defines the radius of the sphere in which a point
+            will be uniformly randomly generated.
+        """
+        #print("Radius of _random_sphere_point", radius)
+        r = radius * ( numpy.random.random()**(1./3.) )  #r (radius) = specified radius * cubed root of a random number between 0.00 and 0.99999
+        phi = numpy.random.uniform(0,2*numpy.pi) #restriction of phi (or azimuth angle) is set from 0 to 2pi. random.uniform allows the values to be chosen w/ an equal probability
+        costheta = numpy.random.uniform(-1,1) #restriction set from -1 to 1
+        theta = numpy.arccos(costheta) #calculate theta, the angle between r and Z axis
+        x = numpy.sin(theta) * numpy.cos(phi) #x,y,and z are cartesian coordinates
+        y = numpy.sin(theta) * numpy.sin(phi)
+        z = numpy.cos(theta)
+
+        sphere_point = numpy.array([x, y, z]) * r + origin
+        return sphere_point #sphere_point = a random point with an even distribution
+
+    def _getMasses(self, topology):
+        """Returns a list of masses of the specified ligand atoms.
+        Parameters
+        ----------
+        topology: parmed.Topology
+            ParmEd topology object containing atoms of the system.
+        """
+        #print('This is the start of the getMasses function....')
+        masses = unit.Quantity(numpy.zeros([int(topology.getNumAtoms()),1],numpy.float32), unit.dalton)
+        for idx,atom in enumerate(topology.atoms()):
+            masses[idx] = atom.element._mass #gets the mass of the atom, adds to list (along with index)
+        #print('This is the end of the getMasses function....')
+        return masses
+
+    def _getCenterOfMass(self, positions, masses):
+        """Returns the calculated center of mass of the ligand as a np.array
+        Parameters
+        ----------
+        positions: nx3 np.array
+            Positions of the atoms to be moved.
+        masses : nx1 numpy.array
+            numpy.array of particle masses
+        """
+        try: #try with units, if not do without units in except clause
+            coordinates = numpy.asarray(positions._value, numpy.float32) #gives the value of atomic positions as an array
+            center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
+
+        except:
+            coordinates = numpy.asarray(positions, numpy.float32) #gives the value of atomic positions as an array
+            center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) 
+
+        return center_of_mass
+
+    def beforeMove(self, context):
+        """
+        Temporary fterHop/unction (until multiple alchemical regions are supported),
+        which is performed at the beginning of a ncmc iteration. Selects
+        a random water within self.radius of the protein's center of mass
+        and switches the positions and velocities with the alchemical water
+        defined by self.atom_indices, effecitvely duplicating mulitple
+        alchemical region support.
+        Parameters
+        ----------
+        context: simtk.openmm Context object
+            The context which corresponds to the NCMC simulation.
+        """
+        start_state = context.getState(getPositions=True, getVelocities=True)
+        start_pos = start_state.getPositions(asNumpy=True) #gets starting positions
+        start_vel = start_state.getVelocities(asNumpy=True) #gets starting velocities
+        switch_pos = numpy.copy(start_pos)*start_pos.unit #starting position (a shallow copy) is * by start_pos.unit to retain units
+        switch_vel = numpy.copy(start_vel)*start_vel.unit #starting vel (a shallow copy) is * by start_pos.unit to retain units
+
+        #look for a random water inside the radius
+        is_inside_sphere = False
+        #use random.shuffle to pick random particles (limits upper bound)
+        water_residues_shuffle = copy.deepcopy(self.water_residues)
+        numpy.random.shuffle(water_residues_shuffle)
+        #we want to use mdtraj distance function, but needs to act on trajectory object
+        #get around this by selecting the first protein atom to act as a dummy atom for the com
+        self.traj.xyz[0,:,:] = start_pos
+        #get the current center of mass of the protein selection
+        current_com = self._getCenterOfMass(self.traj.xyz[0,:,:][self.protein_atoms], self.protein_masses)
+        #set the dummy com atom position
+        self.traj.xyz[0,self.protein_atoms[0],:] = current_com
+        self.traj.unitcell_vectors[0] = context.getState(getPositions=True).getPeriodicBoxVectors(asNumpy=True)
+        #find a water within radius range of the center of mass
+        while ((not is_inside_sphere) or len(water_residues_shuffle)==0):
+            if len(water_residues_shuffle)==0:
+                break
+            #pop out the first water in the list and see if it's within the sphere radius
+            water_choice = water_residues_shuffle.pop(0)
+            pairs = self.traj.topology.select_pairs(numpy.array(water_choice[0]).flatten(), numpy.array(self.protein_atoms[0]).flatten())
+            water_distance = mdtraj.compute_distances(self.traj, pairs, periodic=True)
+            water_dist = numpy.linalg.norm(water_distance)
+            if water_dist <= (self.radius.value_in_unit(unit.nanometers)):
+                is_inside_sphere = True
+        #replace chosen water's positions/velocities with alchemical water
+        if is_inside_sphere:
+            switch_pos[self.atom_indices] = start_pos[water_choice]
+            switch_vel[self.atom_indices] = start_vel[water_choice]
+            switch_pos[water_choice] = start_pos[self.atom_indices]
+            switch_vel[water_choice] = start_vel[self.atom_indices]
+            context.setPositions(switch_pos)
+            context.setVelocities(switch_vel)
+            #keep track if switch occurs or not
+            self.go = True
+        else:
+            self.go = False
+        return context
+
+    def move(self, context):
+        """
+        This function is called by the blues.MoveEngine object during a simulation.
+        Translates the alchemical water randomly within a sphere of self.radius.
+        """
+        #If there was no water selected in beforeMove skip the move
+        if self.go == False:
+            return context
+        #get the position of the system from the context
+        before_move_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        movePos = numpy.copy(before_move_pos)*before_move_pos.unit #makes a copy of the position of the system from the context
+        movePos_end = numpy.copy(before_move_pos)*before_move_pos.unit #use this to get around switching dummy atom
+        #get the current center of mass of the protein selection
+        current_com = self._getCenterOfMass(self.traj.xyz[0,:,:][self.protein_atoms], self.protein_masses)
+        #set the current center of mass as a dummy atom in self.traj
+        self.traj.xyz[0,:,:] = movePos
+        self.traj.xyz[0][self.protein_atoms[0]] = current_com
+        self.traj.unitcell_vectors[0] = context.getState(getPositions=True).getPeriodicBoxVectors(asNumpy=True)
+        origin = self.traj.xyz[0][self.protein_atoms[0]]*movePos.unit
+
+        #Generate uniform random point in a sphere of a specified radius
+        sphere_displacement = self._random_sphere_point(self.radius, origin)
+        pairs = self.traj.topology.select_pairs(numpy.array(self.atom_indices[0]).flatten(), numpy.array(self.protein_atoms[0]).flatten())
+        water_distance = mdtraj.compute_distances(self.traj, pairs, periodic=True)
+        #if the water molecule ends up outside the defined region we can't perform the move
+        if water_distance >= (self.radius.value_in_unit(unit.nanometers)):
+            #return the starting context
+            return context
+
+        #move the water molecule
+        displacement_vector = movePos_end[self.atom_indices[0]] - sphere_displacement
+        movePos_end[self.atom_indices] = movePos_end[self.atom_indices] - displacement_vector
+        if 1: #debug statement
+            self.traj.xyz[0][self.atom_indices] = movePos_end[self.atom_indices]
+            pairs = self.traj.topology.select_pairs(numpy.array(self.atom_indices[0]).flatten(), numpy.array(self.protein_atoms[0]).flatten())
+            water_distance = mdtraj.compute_distances(self.traj, pairs, periodic=True)
+
+        #set the new positions
+        context.setPositions(movePos_end)
+
+        return context
+
+    def afterMove(self, context):
+        """This method is called at the end of the NCMC portion if the
+        context needs to be checked or modified before performing the move
+        at the halfway point.
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same inumpyut context, but whose context were changed by this function.
+        """
+        before_final_move_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+        #Update positions for distance calculation
+        movePos_a = numpy.copy(before_final_move_pos)*before_final_move_pos.unit
+
+        self.traj.xyz[0,:,:] = movePos_a;
+        #find the center of mass of the specified protein residues
+        current_com = self._getCenterOfMass(self.traj.xyz[0,:,:][self.protein_atoms], self.protein_masses)
+        self.traj.xyz[0,self.protein_atoms[0],:] = current_com
+        self.traj.unitcell_vectors[0] = context.getState(getPositions=True).getPeriodicBoxVectors(asNumpy=True)
+
+        #find the distance between the chosen water and the protein com
+        pairs = self.traj.topology.select_pairs(numpy.array(self.atom_indices[0]).flatten(), numpy.array(self.protein_atoms[0]).flatten())
+        water_distance = mdtraj.compute_distances(self.traj, pairs, periodic=True)
+        #We reject if the water molecule ends up outside our defined radius value
+        print('water_distance', water_distance)
+        if water_distance > numpy.linalg.norm(self.radius._value) and self.go == True:
+            #we can update this if we implement acceptance_ratios into the acceptance to be handle this more 'correctly'
+            #essentially this will result in rejected though
+            context._integrator.setGlobalVariableByName("protocol_work", 999999)
         return context
 
 
