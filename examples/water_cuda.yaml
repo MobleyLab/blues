@@ -1,0 +1,88 @@
+output_dir: waterMUP-test
+outfname: waterMUP
+
+logger:
+  level: info
+  stream: True
+
+structure:
+  filename: mup.prmtop
+  xyz: mup.inpcrd
+  restart: equilibrated_mup.rst7
+
+system:
+  nonbondedMethod: PME
+  nonbondedCutoff: 10 * angstroms
+  constraints: HBonds
+  rigidWater: True
+  removeCMMotion: True
+  hydrogenMass: 3.024 * daltons
+  ewaldErrorTolerance: 0.005
+  flexibleConstraints: True
+  splitDihedrals: False
+
+  alchemical:
+    softcore_alpha: 0.5
+    softcore_a : 1
+    softcore_b : 1
+    softcore_c : 6
+    softcore_beta : 0.0
+    softcore_d : 1
+    softcore_e : 1
+    softcore_f : 2
+    annihilate_electrostatics : True
+    annihilate_sterics : False
+
+restraints:
+    selection: ':158|@CA,C,N'
+    weight: 5
+
+simulation:
+  platform: CUDA
+  properties:
+    CudaPrecision: single
+    CudaDeviceIndex: 0
+  dt: 0.004 * picoseconds
+  friction: 1 * 1/picoseconds
+  temperature: 300 * kelvin
+  nIter: 5
+  nstepsMD: 1000
+  nstepsNC: 1000
+  nprop: 1 #Default
+  prop_lambda: 0.3 #Default
+  #pressure: 1 * atmospheres
+
+md_reporters:
+  state:
+    reportInterval: 250
+  traj_netcdf:
+    reportInterval: 250
+  restart:
+    reportInterval: 1000
+  stream:
+    title: md
+    reportInterval: 250
+    totalSteps: 5000
+    step: True
+    speed: True
+    progress: True
+    remainingTime: True
+    currentIter : True
+    volume: True
+
+ncmc_reporters:
+  traj_netcdf:
+    frame_indices: [1, 0.5, -1]
+    alchemicalLambda: True
+    protocolWork: True
+  stream:
+    title: ncmc
+    reportInterval: 100
+    totalSteps: 5000
+    step: True
+    speed: True
+    progress: True
+    remainingTime : True
+    protocolWork : True
+    alchemicalLambda : True
+    currentIter : True
