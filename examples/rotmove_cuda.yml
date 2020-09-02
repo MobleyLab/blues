@@ -55,7 +55,7 @@ simulation:
   nIter: 5000
   nstepsMD: 10000
   nstepsNC: 10000
-  #Defauilt
+  #Default
   nprop: 1
   propLambda: 0.3
   ###Advanced: Add additional relaxation steps in NCMC simulation###

@@ -28,6 +28,7 @@ class Settings(object):
         if type(config) is dict:
             config = Settings.set_Parameters(config)
             self.config = config
+               
 
     @staticmethod
     def load_yaml(yaml_config):
