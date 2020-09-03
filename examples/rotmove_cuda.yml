@@ -13,8 +13,8 @@ logger:
   stream: True
 
 structure:
-  filename: tests/data/eqToluene.prmtop
-  xyz: tests/data/eqToluene.inpcrd
+  filename: ../blues/tests/data/eqToluene.prmtop
+  xyz: ../blues/tests/data/eqToluene.inpcrd
 
 system:
   nonbondedMethod: PME

@@ -12,8 +12,8 @@ logger:
   stream: True
   
 structure:
-  filename: tests/data/vacDivaline.prmtop
-  xyz: tests/data/vacDivaline.inpcrd
+  filename: ../blues/tests/data/vacDivaline.prmtop
+  xyz: ../blues/tests/data/vacDivaline.inpcrd
 
 system:
   nonbondedMethod: PME

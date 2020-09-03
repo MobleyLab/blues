@@ -35,7 +35,7 @@ def sidechain_example(yaml_file):
     structure = cfg['Structure']
 
     #Select move type
-    sidechain = SideChainMove(structure, [1])
+    sidechain = SideChainMove(structure, [1], verbose=False)
     #Iniitialize object that selects movestep
     sidechain_mover = MoveEngine(sidechain)
 
@@ -62,5 +62,5 @@ def sidechain_example(yaml_file):
             output.write("%s\n" % str(value)[1:-1])
 
 
-ligrot_example(get_data_filename('blues', '../examples/rotmove_cuda.yml'))
-#sidechain_example(get_data_filename('blues', '../examples/sidechain_cuda.yml'))
+#ligrot_example(get_data_filename('blues', '../examples/rotmove_cuda.yml'))
+sidechain_example(get_data_filename('blues', '../examples/sidechain_cuda.yml'))
