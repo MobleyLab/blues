@@ -27,7 +27,7 @@ from mdtraj.geometry.dihedral import (indices_chi2,
                                       indices_chi1,
                                       indices_chi4,
                                       indices_chi5)
-
+from blues import utils
 try:
     import openeye.oechem as oechem
     if not oechem.OEChemIsLicensed():
@@ -444,6 +444,10 @@ class SideChainMove(Move):
         List of the residue numbers of the sidechains to be rotated.
     verbose : bool, default=False
         Enable verbosity to print out detailed information of the rotation.
+    bias_range: float, default=15.0
+        The range around each Dunbrak minima to be considered for rotation.
+        If 0, then the Dunbrak minimas are not considered and a random rotation
+        of the sidechain takes place instead.
     write_move : bool, default=False
         If True, writes a PDB of the system after rotation.
 
@@ -473,7 +477,7 @@ class SideChainMove(Move):
 
     """
 
-    def __init__(self, structure, residue_list, bias_range=15, verbose=False, write_move=False):
+    def __init__(self, structure, residue_list, bias_range=15.0, verbose=False, write_move=False):
         self.structure = structure
         self.molecule = self._pmdStructureToOEMol()
         self.residue_list = residue_list
@@ -483,6 +487,7 @@ class SideChainMove(Move):
         self.atom_indices = self.rot_atoms
         self.verbose = verbose
         self.write_move = write_move
+        self.bias = bool(bias_range)
 
     def _pmdStructureToOEMol(self):
         """Helper function for converting the parmed structure into an OEMolecule."""
@@ -760,7 +765,7 @@ class SideChainMove(Move):
         rot_atoms = self.getRotAtoms(rot_bonds, self.molecule, backbone_atoms)
 
         # Read in yaml file
-        rotfile = open('rotpref.yml',"r")
+        rotfile = open(utils.get_data_filename('blues', 'tests/rotpref.yml'),"r")
         rot_pref = yaml.load(rotfile)
         # Restructure dictionary and populate atms2mv and bin_pref
         for residx in rot_atoms.keys():
@@ -844,13 +849,14 @@ class SideChainMove(Move):
                             [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
     def beforeMove(self, context):
-
+        self.selected_bond = 1
         self.start_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        self.selected_bond = self.chooseBond(self.start_pos)
-        if not self.selected_bond:
-            self.acceptance_ratio = 0
-        else:
-            self.acceptance_ratio = 1
+        if self.bias:
+            self.selected_bond = self.chooseBond(self.start_pos)
+            if not self.selected_bond:
+                self.acceptance_ratio = 0
+            else:
+                self.acceptance_ratio = 1
         return context
 
     def move(self, context, verbose=True):
@@ -895,20 +901,64 @@ class SideChainMove(Move):
 
         positions = model.positions
 
-        if self.selected_bond:
-            new_theta, self.target_bin = self.chooseTheta(self.selected_bond)
-            self.dihed_atoms = [self.selected_bond[0]['dihed_atms']]
-            axis1 = self.dihed_atoms[0][1]
-            axis2 = self.dihed_atoms[0][2]
-            rot_axis = (positions[axis1] - positions[axis2])/positions.unit
+        #if bias is being used
+        if self.bias :
+            #check if it's within
+            if self.selected_bond:
+                new_theta, self.target_bin = self.chooseTheta(self.selected_bond)
+                self.dihed_atoms = [self.selected_bond[0]['dihed_atms']]
+                axis1 = self.dihed_atoms[0][1]
+                axis2 = self.dihed_atoms[0][2]
+                rot_axis = (positions[axis1] - positions[axis2])/positions.unit
 
-            #Adjust theta to account for repositioning during NCMC relaxation
-            post_relax_dihed = self.getDihedral(initial_positions,self.dihed_atoms)
-            theta_adj = self.selected_bond[1] - post_relax_dihed + new_theta
+                #Adjust theta to account for repositioning during NCMC relaxation
+                post_relax_dihed = self.getDihedral(initial_positions,self.dihed_atoms)
+                theta_adj = self.selected_bond[1] - post_relax_dihed + new_theta
+                #calculate the rotation matrix
+                rot_matrix = self.rotation_matrix(rot_axis, -theta_adj)
+
+                target_atoms = self.selected_bond[0]['atms2mv']
+
+                # apply the rotation matrix to the target atoms
+                for idx, atom in enumerate(target_atoms):
+
+                    my_position = positions[atom]
+
+                    if self.verbose:
+                        print('The current position for %i is: %s' % (atom, my_position))
+
+                    # find the reduced position (substract out axis)
+                    red_position = (my_position - model.positions[axis2])._value
+                    # find the new positions by multiplying by rot matrix
+                    new_position = numpy.dot(rot_matrix, red_position) * positions.unit + positions[axis2]
+
+                    if self.verbose: print("The new position should be:", new_position)
+
+                    positions[atom] = new_position
+                    # Update the parmed model with the new positions
+                    model.atoms[atom].xx = new_position[0] / positions.unit
+                    model.atoms[atom].xy = new_position[1] / positions.unit
+                    model.atoms[atom].xz = new_position[2] / positions.unit
+
+                    #update the copied ncmc context array with the new positions
+                    nc_positions[atom][0] = model.atoms[atom].xx * nc_positions.unit / 10
+                    nc_positions[atom][1] = model.atoms[atom].xy * nc_positions.unit / 10
+                    nc_positions[atom][2] = model.atoms[atom].xz * nc_positions.unit / 10
+
+                    if self.verbose:
+                        print('The updated position for this atom is:', model.positions[atom])
+
+        #if bias is not being used we can rotate randomly
+        else:
+            positions = model.positions
+
+            # find the rotation axis using the updated positions
+            axis1 = target_atoms[0]
+            axis2 = target_atoms[1]
+            rot_axis = (positions[axis1] - positions[axis2]) / positions.unit
+
             #calculate the rotation matrix
-            rot_matrix = self.rotation_matrix(rot_axis, -theta_adj)
-
-            target_atoms = self.selected_bond[0]['atms2mv']
+            rot_matrix = self.rotation_matrix(rot_axis, theta)
 
             # apply the rotation matrix to the target atoms
             for idx, atom in enumerate(target_atoms):
@@ -939,15 +989,15 @@ class SideChainMove(Move):
                 if self.verbose:
                     print('The updated position for this atom is:', model.positions[atom])
 
-            # update the actual ncmc context object with the new positions
-            context.setPositions(nc_positions)
+        # update the actual ncmc context object with the new positions
+        context.setPositions(nc_positions)
 
-            # update the class structure positions
-            self.structure.positions = model.positions
+        # update the class structure positions
+        self.structure.positions = model.positions
 
-            if self.write_move:
-                filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
-                mod_prot = model.save(filename, overwrite=True)
+        if self.write_move:
+            filename = 'sc_move_%s_%s_%s.pdb' % (res, axis1, axis2)
+            mod_prot = model.save(filename, overwrite=True)
 
         return context
 
@@ -968,10 +1018,11 @@ class SideChainMove(Move):
             The same input context, but whose context were changed by this function.
 
         """
-        post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
-        final_angle = self.getDihedral(post_pos,self.dihed_atoms)
-        if not self.is_in_bin(final_angle,self.target_bin):
-            self.acceptance_ratio = False
+        if self.bias:
+            post_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
+            final_angle = self.getDihedral(post_pos,self.dihed_atoms)
+            if not self.is_in_bin(final_angle,self.target_bin):
+                self.acceptance_ratio = 0
 
         return context
 
