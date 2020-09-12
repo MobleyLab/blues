@@ -1086,6 +1086,9 @@ class BLUESSimulation(object):
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
 
             except Exception as e:
+                import traceback
+                traceback.print_tb(e.__traceback__)
+
                 logger.error(e)
                 move_engine.selected_move._error(self._ncmc_sim.context)
                 break
