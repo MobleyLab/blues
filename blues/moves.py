@@ -45,6 +45,8 @@ class Move(object):
         """Initialize the Move object
         Currently empy.
         """
+        self.acceptance_ratio = 1
+
 
     def initializeSystem(self, system, integrator):
         """If the system or integrator needs to be modified to perform the move
@@ -191,8 +193,12 @@ class RandomLigandRotationMove(Move):
     """
 
     def __init__(self, structure, resname='LIG', random_state=None):
+        super(RandomLigandRotationMove, self).__init__()
         self.structure = structure
-        self.resname = resname
+        if isinstance(resname, str):
+            self.resname = [resname]
+        else:
+            self.resname = resname
         self.random_state = random_state
         self.atom_indices = self.getAtomIndices(structure, self.resname)
         self.topology = structure[self.atom_indices].topology
@@ -223,7 +229,7 @@ class RandomLigandRotationMove(Move):
         atom_indices = []
         topology = structure.topology
         for atom in topology.atoms():
-            if str(resname) in atom.residue.name:
+            if atom.residue.name in resname:
                 atom_indices.append(atom.index)
         return atom_indices
 
@@ -462,7 +468,6 @@ class SideChainMove(Move):
     --------
     >>> from blues.move import SideChainMove
     >>> sidechain = SideChainMove(structure, [1])
-
     """
 
     def __init__(self, structure, residue_list, verbose=False, write_move=False):
@@ -752,7 +757,6 @@ class SideChainMove(Move):
     def move(self, context, verbose=False):
         """Rotates the target atoms around a selected bond by angle theta and updates
         the atom coordinates in the parmed structure as well as the ncmc context object
-
 
         Parameters
         ----------
@@ -1554,3 +1558,5 @@ class CombinationMove(Move):
         else:
             for single_move in reverse(self.move_list):
                 single_move.move(context)
+
+from blues.moldart.move import MolDartMove

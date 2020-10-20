@@ -430,7 +430,12 @@ class SystemFactory(object):
         N_atoms = system.getNumParticles()
         #Select the LIG and atoms within 5 angstroms, except for WAT or IONS (i.e. selects the binding site)
         if hasattr(freeze_distance, '_value'): freeze_distance = freeze_distance._value
-        selection = "(%s<:%f)&!(%s)" % (freeze_center, freeze_distance, freeze_solvent)
+        if freeze_solvent is not None:
+            #to handle errors in case there is no solvent (in implicit simulations)
+            selection = "(%s<:%f)&!(%s)" % (freeze_center, freeze_distance, freeze_solvent)
+        else:
+            selection = "(%s<:%f)" % (freeze_center, freeze_distance)
+
         logger.info('Inverting parmed selection for freezing: %s' % selection)
         site_idx = cls.amber_selection_to_atomidx(structure, selection)
         #Invert that selection to freeze everything but the binding site.
@@ -694,6 +699,19 @@ class SimulationFactory(object):
         #During NCMC simulation, lambda parameters are controlled by function dict below
         # Keys correspond to parameter type (i.e 'lambda_sterics', 'lambda_electrostatics')
         # 'lambda' = step/totalsteps where step corresponds to current NCMC step,
+        processed_functions = {}
+        #get function names to add
+        tab_functions = {}
+        for k, v in alchemical_functions.items():
+            if isinstance(v, list):
+                tab_function_name = k+'_fn'
+                tab_function = utils.spreadLambdaProtocol(v, nstepsNC)
+                tab_functions[tab_function_name] = tab_function
+
+                processed_functions[k] = ('%s(step)') % (tab_function_name)
+            else:
+                processed_functions[k] = v
+
         ncmc_integrator = AlchemicalExternalLangevinIntegrator(
             alchemical_functions=alchemical_functions,
             splitting=splitting,
@@ -702,6 +720,9 @@ class SimulationFactory(object):
             timestep=dt,
             nprop=nprop,
             prop_lambda=propLambda)
+        for k, v in tab_functions.items():
+            ncmc_integrator.addTabulatedFunction0(k, v)
+
         return ncmc_integrator
 
     @classmethod
@@ -849,6 +870,7 @@ class BLUESSimulation(object):
         self._md_sim = simulations.md
         self._alch_sim = simulations.alch
         self._ncmc_sim = simulations.ncmc
+        isPeriodic = self._md_sim.context.getSystem().usesPeriodicBoundaryConditions()
 
         # Check if configuration has been specified in `SimulationFactory` object
         if not config:
@@ -876,8 +898,8 @@ class BLUESSimulation(object):
             'getVelocities': True,
             'getForces': False,
             'getEnergy': True,
-            'getParameters': True,
-            'enforcePeriodicBox': True
+            'getParameters': False,
+            'enforcePeriodicBox': isPeriodic
         }
 
     @classmethod
@@ -903,6 +925,7 @@ class BLUESSimulation(object):
 
         stateinfo = {}
         state = context.getState(**state_keys)
+        stateinfo['state'] = state
         stateinfo['positions'] = state.getPositions(asNumpy=True)
         stateinfo['velocities'] = state.getVelocities(asNumpy=True)
         stateinfo['potential_energy'] = state.getPotentialEnergy()
@@ -954,12 +977,7 @@ class BLUESSimulation(object):
             have been updated.
         """
         # Replace ncmc data from the md context
-        if box:
-            context.setPeriodicBoxVectors(*state['box_vectors'])
-        if positions:
-            context.setPositions(state['positions'])
-        if velocities:
-            context.setVelocities(state['velocities'])
+        context.setState(state['state'])
         return context
 
     def _printSimulationTiming(self):
@@ -1030,11 +1048,14 @@ class BLUESSimulation(object):
         replace the box vectors, positions, and velocties in the NCMC context.
         """
         # Retrieve MD state from previous iteration
+
         md_state0 = self.getStateFromContext(self._md_sim.context, self._state_keys)
         self._setStateTable('md', 'state0', md_state0)
 
         # Sync MD state to the NCMC context
-        self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
+        #enforcePeriodicBox is false so wrapping molecules doesn't cause issues in implicit solvent
+        self._ncmc_sim.context.setState(self._md_sim.context.getState(getPositions=True, getVelocities=True, enforcePeriodicBox=False))
+
 
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
         """Advance the NCMC simulation.
@@ -1113,6 +1134,8 @@ class BLUESSimulation(object):
 
         # Retrieve potential_energy for alch correction
         alch_PE = self._alch_sim.context.getState(getEnergy=True).getPotentialEnergy()
+
+
         correction_factor = (ncmc_state0_PE - md_state0_PE + alch_PE - ncmc_state1_PE) * (
             -1.0 / self._ncmc_sim.context._integrator.kT)
 
@@ -1129,15 +1152,33 @@ class BLUESSimulation(object):
         """
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
         randnum = math.log(np.random.random())
+        acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
 
         # Compute correction if work_ncmc is not NaN
         if not np.isnan(work_ncmc):
             correction_factor = self._computeAlchemicalCorrection()
-            logger.debug(
-                'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
-            work_ncmc = work_ncmc + correction_factor
+            #logger.info('md context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._md_sim.context)))
+            #logger.info('ncmc context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._ncmc_sim.context)))
+            #logger.info('alch context {}'.format(parmed.openmm.utils.energy_decomposition(self._move_engine.moves[0].structure, self._alch_sim.context)))
 
-        if work_ncmc > randnum:
+
+
+            work_ncmc = work_ncmc + correction_factor
+        if acceptance_ratio == 0:
+            self.reject += 1
+            logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum))
+            # If reject move, do nothing,
+            # NCMC simulation be updated from MD Simulation next iteration.
+            # Potential energy should be from last MD step in the previous iteration
+            md_state0 = self.stateTable['md']['state0']
+            md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
+            if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
+                logger.error(
+                    'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
+                    % (md_state0['potential_energy'], md_PE))
+                sys.exit(1)
+
+        elif work_ncmc + math.log(acceptance_ratio) > randnum:
             self.accept += 1
             logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum))
 
@@ -1249,6 +1290,7 @@ class BLUESSimulation(object):
             self._stepNCMC(nstepsNC, moveStep)
             self._acceptRejectMove(write_move)
             self._resetSimulations(temperature)
+
             self._stepMD(nstepsMD)
 
         # END OF NITER
@@ -1290,8 +1332,13 @@ class MonteCarloSimulation(BLUESSimulation):
         work_mc = (md_state1['potential_energy'] - md_state0['potential_energy']) * (
             -1.0 / self._ncmc_sim.context._integrator.kT)
         randnum = math.log(np.random.random())
+        acceptance_ratio = self._move_engine.selected_move.acceptance_ratio
+        if acceptance_ratio == 0:
+            self.reject += 1
+            logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum))
+            self._md_sim.context.setPositions(md_state0['positions'])
 
-        if work_mc > randnum:
+        elif work_mc + math.log(acceptance_ratio) > randnum:
             self.accept += 1
             logger.info('MC MOVE ACCEPTED: work_mc {} > randnum {}'.format(work_mc, randnum))
             self._md_sim.context.setPositions(md_state1['positions'])

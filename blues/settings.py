@@ -113,11 +113,11 @@ class Settings(object):
         """
         # Initialize root Logger module
         #level = config['logger_level'].upper()
-        level = config['logger']['level'].upper()
-        stream = config['logger']['stream']
+        level = config['Logger']['level'].upper()
+        stream = config['Logger']['stream']
 
-        if 'filename' in config['logger'].keys():
-            outfname = config['logger']['filename']
+        if 'filename' in config['Logger'].keys():
+            outfname = config['Logger']['filename']
         else:
             outfname = config['outfname']
 
@@ -301,7 +301,8 @@ class Settings(object):
             config = Settings.set_Reporters(config)
 
         except Exception as e:
-            config['Logger'].exception(e)
+            print('config', config)
+            #config['Logger'].exception(e)
             raise e
 
         return config

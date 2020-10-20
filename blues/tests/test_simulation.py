@@ -431,7 +431,7 @@ class TestBLUESSimulation(object):
         yaml_cfg = """
             output_dir: .
             outfname: tol-test
-            logger:
+            Logger:
               level: info
               stream: True
 

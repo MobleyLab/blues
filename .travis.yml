@@ -74,6 +74,7 @@ before_install:
 
   # Add conda-forge channel to top priority
   - conda config --add channels conda-forge
+  - conda config --add channels sgill2
 
 install:
   # Create test environment for package

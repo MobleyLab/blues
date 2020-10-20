@@ -1,6 +1,6 @@
 import simtk
 from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
-
+import inspect
 # Energy unit used by OpenMM unit system
 _OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
 
@@ -122,6 +122,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             nsteps_neq=nsteps_neq)
 
         self._prop_lambda = self._get_prop_lambda(prop_lambda)
+        frame = inspect.currentframe()
+        args, _, _, values = inspect.getargvalues(frame)
+        inputs = dict([(i, values[i]) for i in args if i is not 'self'])
+        self.int_kwargs = inputs
 
         # add some global variables relevant to the integrator
         kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA

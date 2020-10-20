@@ -766,7 +766,15 @@ class NetCDF4Reporter(parmed.openmm.reporters.NetCDFReporter):
         """
         Create a NetCDFReporter instance.
         """
-        super(NetCDF4Reporter, self).__init__(file, reportInterval, crds, vels, frcs)
+        try:
+            super(NetCDF4Reporter, self).__init__(file, reportInterval, crds, vels, frcs)
+        except ValueError:
+                    #Inherited NetCDF init complains if no crds are present so work around
+                    self.crds, self.vels, self.frcs = crds, vels, frcs
+                    self._reportInterval = reportInterval
+                    self._out = None # not written yet
+                    self.fname = file
+
         self.crds, self.vels, self.frcs, self.protocolWork, self.alchemicalLambda = crds, vels, frcs, protocolWork, alchemicalLambda
         self.frame_indices = frame_indices
         if self.frame_indices:

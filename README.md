@@ -30,12 +30,17 @@ BLUES is compatible with MacOSX/Linux with Python>=3.5 (blues<=1.1 still works w
 Install [miniconda](http://conda.pydata.org/miniconda.html) according to your system.
 
 ## Requirements
-Starting from v1.2, you will need the OpenEye toolkits and related tools:
+Starting from v1.2, you will need the OpenEye toolkits and related tools to use the `SideChainMove` class:
 ```bash
 conda install -c openeye/label/Orion -c omnia oeommtools packmol
 
 # Requires OpenEye License
 conda install -c openeye openeye-toolkits
+
+# Requirements for the MolDartMove class
+conda install --yes -c sgill2 chemcoord
+conda install -c omnia mdtraj parmed yank openmmtools=0.14.0
+conda install --yes -c conda-forge future
 ```
 
 ## Installation

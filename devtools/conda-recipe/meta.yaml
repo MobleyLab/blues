@@ -24,9 +24,12 @@ requirements:
     - openmmtools >=0.15.0
     - mdtraj
     - openmm >=7.2.2
+    - yank
     - parmed
     - pymbar
     - netcdf4
+    - chemcoord
+    - future
     - pyyaml
     - pip
 
