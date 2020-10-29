@@ -5,11 +5,21 @@ package:
 source:
   path : ../..
 
-build:
-  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
+  #build:
+  #  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
   #string: py{{ CONDA_PY }}_{{ environ.get('GIT_BUILD_STR', '') }} # Ex. `py35_5_g6aaba2d`
-  string: py{{ CONDA_PY }}{{ environ.get('GIT_DESCRIBE_HASH', 'ERROR') }}_{{ environ.get('GIT_DESCRIBE_NUMBER', 0) }} #Ex. `py35g6aaba2d_5`
-  script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+  #string: py{{ CONDA_PY }}{{ environ.get('GIT_DESCRIBE_HASH', 'ERROR') }}_{{ environ.get('GIT_DESCRIBE_NUMBER', 0) }} #Ex. `py35g6aaba2d_5`
+  #script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+
+build:
+  preserve_egg_dir: True
+  number: 0 # Build number and string do not work together.
+  #string: py{{ py }}_a1 # Alpha version 1.
+  skip: True # [win or py27 or py35]
+  noarch: python
+  script:
+    - ${PYTHON}  -m pip install .
+
 
 requirements:
   host:
@@ -19,21 +29,26 @@ requirements:
 
   build:
     - python
-    - pytest
-    - setuptools
-    - openmmtools >=0.15.0
-    - mdtraj
-    - openmm >=7.2.2
-    - parmed
-    - pymbar
-    - netcdf4
-    - pyyaml
     - pip
+    - openeye-toolkits
 
   run:
-  {% for package in resolved_packages('build') %}
-    - {{ package }}
-  {% endfor %}
+    - python
+    - pytest
+    - setuptools
+    - openmmtools==0.15.0
+    - oeommtools # >=0.1.16
+    - openeye-toolkits
+    - mdtraj
+    - openmm #>=7.2.2
+    - parmed
+    - netcdf4
+    - hdf5
+    - pyyaml
+    - pip
+    - numpy
+    - cython
+      
 
 test:
   requires:

@@ -49,7 +49,7 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     license='MIT',
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     url='https://github.com/MobleyLab/blues',
     platforms=['Linux-64', 'Mac OSX-64', 'Unix-64'],
     classifiers=CLASSIFIERS.splitlines(),
@@ -80,6 +80,13 @@ setup(
         'pytest-cov',
         'pytest-pep8',
         'tox',
+    ],
+    install_requires=[
+        'openmmtools==0.15.0',
+        'oeommtools>=0.1.16',
+        'openmm>=7.2.2',
+        'numpy>=1.15.2',
+        'cython>=0.28.5'
     ],
     zip_safe=False,
     include_package_data=True)
