@@ -738,7 +738,15 @@ class SimulationFactory(object):
 
         # Set initial positions/velocities
         if structure.box_vectors:
-            simulation.context.setPeriodicBoxVectors(*structure.box_vectors)
+            from simtk.openmm.app.internal.unitcell import reducePeriodicBoxVectors
+            from simtk.openmm.vec3 import Vec3
+            a = Vec3(*structure.box_vectors[0].value_in_unit(unit.nanometer))
+            b = Vec3(*structure.box_vectors[1].value_in_unit(unit.nanometer))
+            c = Vec3(*structure.box_vectors[2].value_in_unit(unit.nanometer))
+            old_box = [a,b,c]*unit.nanometer
+            box_vectors = reducePeriodicBoxVectors(old_box)
+
+            simulation.context.setPeriodicBoxVectors(*box_vectors)
         simulation.context.setPositions(structure.positions)
         simulation.context.setVelocitiesToTemperature(integrator.getTemperature())
 

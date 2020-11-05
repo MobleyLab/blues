@@ -13,10 +13,12 @@ Latest release:
 ## Citations
 #### Publication
 - [Gill, S; Lim, N. M.; Grinaway, P.; Rustenburg, A. S.; Fass, J.; Ross, G.; Chodera, J. D.; Mobley, D. L. “Binding Modes of Ligands Using Enhanced Sampling (BLUES): Rapid Decorrelation of Ligand Binding Modes Using Nonequilibrium Candidate Monte Carlo”](https://pubs.acs.org/doi/abs/10.1021/acs.jpcb.7b11820) - Journal of Physical Chemistry B. February 27, 2018
+- [Burley, K. H., Gill, S. C., Lim, N. M., & Mobley, D. L. "Enhancing Sidechain Rotamer Sampling Using Non-Equilibrium Candidate Monte Carlo"](https://pubs.acs.org/doi/abs/10.1021/acs.jctc.8b01018) - Journal of Chemical Theory and Computation. January 24, 2019
 
 #### Preprints
 - [BLUES v1](https://chemrxiv.org/articles/Binding_Modes_of_Ligands_Using_Enhanced_Sampling_BLUES_Rapid_Decorrelation_of_Ligand_Binding_Modes_Using_Nonequilibrium_Candidate_Monte_Carlo/5406907) - ChemRxiv September 19, 2017
 - [BLUES v2](https://doi.org/10.26434/chemrxiv.5406907.v2) - ChemRxiv September 25, 2017
+- [Sampling alternate conformations of bound ligands](https://chemrxiv.org/articles/Sampling_Conformational_Changes_of_Bound_Ligands_Using_Nonequilibrium_Candidate_Monte_Carlo/10003412) - ChemRxiv October 23, 2019
 
 ## Manifest
 * `blues/` -  Source code and example scripts for BLUES toolkit
