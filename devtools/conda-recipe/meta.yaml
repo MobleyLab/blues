@@ -16,7 +16,8 @@ build:
   number: 0 # Build number and string do not work together.
   #string: py{{ py }}_a1 # Alpha version 1.
   skip: True # [win or py27 or py35]
-  noarch: python
+  noarch: generic
+  #  noarch: python
   script:
     - ${PYTHON}  -m pip install .
 
