@@ -41,15 +41,13 @@ conda install -c mobleylab blues
 Install from source (NOT RECOMMENDED)
 ```bash
 # Clone the BLUES repository
-git clone https://github.com/MobleyLab/blues.git blues
+git clone https://github.com/MobleyLab/blues.git ./blues
 
 # Install some dependencies
 conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.4.2 numpy cython
 
-# Optional: To use SideChainMove class, OpenEye toolkits and related tools are requried
+# Optional: To use SideChainMove class, OpenEye toolkits and related tools are requried (requires OpenEye License)
 conda install -c openeye/label/Orion -c omnia oeommtools
-
-# Requires OpenEye License
 conda install -c openeye openeye-toolkits
 
 # Install BLUES package from the top directory
@@ -110,7 +108,6 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.2.1](https://doi.org/10.5281/zenodo.1288925): Bug fix in alchemical correction term
 - [Version 0.2.2](https://doi.org/10.5281/zenodo.1324415): Bug fixes for OpenEye tests and restarting from the YAML; enhancements to the Logger and package installation.
 - [Version 0.2.3](https://zenodo.org/badge/latestdoi/62096511): Improvements to Travis CI, fix in velocity synicng, and add tests for checking freezing selection.
-https://doi.org/10.5281/zenodo.2672932
 - [Version 0.2.4](https://doi.org/10.5281/zenodo.2672932): Added a simple test system (charged ethylene) which can run quickly on CPU.
 - [Version 0.2.5](https://doi.org/10.5281/zenodo.4118606): This contains numerous small changes/fixes since the v0.2.4 release, but most notably includes the introduction of water hopping as described at https://doi.org/10.26434/chemrxiv.12429464.v1
 
