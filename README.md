@@ -34,7 +34,19 @@ Install [miniconda](http://conda.pydata.org/miniconda.html) according to your sy
 [ReadTheDocs: Installation](https://mobleylab-blues.readthedocs.io/en/latest/installation.html)
 
 Recommended: Install releases from conda
+
+For MacOSX users:
 ```bash
+conda install -c mobleylab blues
+```
+
+For Linux users:
+```bash
+# Install OpenEye toolkits and related tools first
+conda install -c openeye/label/Orion -c omnia oeommtools
+conda install -c openeye openeye-toolkits
+
+# Then install BLUES
 conda install -c mobleylab blues
 ```
 
