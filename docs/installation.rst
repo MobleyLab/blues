@@ -54,5 +54,6 @@ source code.
 To validate your BLUES installation run the tests.
 
 .. code-block:: bash
+
     cd blues/tests
     pytest -v -s
