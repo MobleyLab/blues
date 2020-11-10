@@ -1,7 +1,7 @@
 Installation
 ==================
 
-BLUES is compatible with MacOSX/Linux with Python>=3.5 (blues<1.1 still works with Python 2.7)
+BLUES is compatible with MacOSX/Linux with Python=3.6.
 
 This is a python tool kit with a few dependencies. We recommend installing
 `miniconda <http://conda.pydata.org/miniconda.html>`_. Then you can create an
@@ -9,35 +9,29 @@ environment with the following commands:
 
 .. code-block:: bash
 
-    conda create -n blues python=3.5
+    conda create -n blues python=3.6
     source activate blues
 
 Stable Releases
 ---------------
 The recommended way to install BLUES would be to install from conda.
 
+For MacOSX users:
 .. code-block:: bash
 
     conda install -c mobleylab blues
 
-
-Development Builds
-------------------
-Alternatively, you can install the latest development build. Development builds
-contain the latest commits/PRs not yet issued in a point release.
-
+For Linux users:
+Install OpenEye toolkits and related tools first
 .. code-block:: bash
 
-    conda install -c mobleylab/label/dev blues
-
-
-In order to use the `SideChainMove` class you will need OpenEye Toolkits and
-some related tools.
-
-.. code-block:: bash
-
-    conda install -c openeye/label/Orion -c omnia oeommtools packmol
+    conda install -c openeye/label/Orion -c omnia oeommtools
     conda install -c openeye openeye-toolkits
+
+Then install BLUES
+.. code-block:: bash
+
+    conda install -c mobleylab blues
 
 
 Source Installation
@@ -47,13 +41,14 @@ source code.
 
 .. code-block:: bash
 
-    git clone https://github.com/MobleyLab/blues.git
-    conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.2.2 numpy cython
+    git clone https://github.com/MobleyLab/blues.git ./blues
+    conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.4.2 numpy cython
+    conda install -c openeye/label/Orion -c omnia oeommtools
+    conda install -c openeye openeye-toolkits
     pip install -e .
 
 To validate your BLUES installation run the tests.
 
 .. code-block:: bash
-
-   pip instal -e .[tests]
+   cd blues/tests
    pytest -v -s
