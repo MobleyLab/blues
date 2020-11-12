@@ -26,44 +26,47 @@ Latest release:
 * `notebooks` - Jupyter notebooks for testing/development
 
 ## Prerequisites
-BLUES is compatible with MacOSX/Linux with Python>=3.5 (blues<=1.1 still works with Python 2.7)
+BLUES is compatible with MacOSX/Linux with Python=3.6
 Install [miniconda](http://conda.pydata.org/miniconda.html) according to your system.
 
-## Requirements
-Starting from v1.2, you will need the OpenEye toolkits and related tools:
-```bash
-conda install -c openeye/label/Orion -c omnia oeommtools packmol
-
-# Requires OpenEye License
-conda install -c openeye openeye-toolkits
-```
 
 ## Installation
 [ReadTheDocs: Installation](https://mobleylab-blues.readthedocs.io/en/latest/installation.html)
 
 Recommended: Install releases from conda
+
+For MacOSX users:
 ```bash
 conda install -c mobleylab blues
 ```
 
-Development builds: contains latest commits/PRs not yet issued in a point release
+For Linux users:
 ```bash
-conda install -c mobleylab/label/dev blues
+# Install OpenEye toolkits and related tools first
+conda install -c openeye/label/Orion -c omnia oeommtools
+conda install -c openeye openeye-toolkits
+
+# Then install BLUES
+conda install -c mobleylab blues
 ```
 
 Install from source (NOT RECOMMENDED)
 ```bash
 # Clone the BLUES repository
-git clone git@github.com:MobleyLab/blues.git
+git clone https://github.com/MobleyLab/blues.git ./blues
 
 # Install some dependencies
-conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.2.2 numpy cython
+conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.4.2 numpy cython
+
+# Optional: To use SideChainMove class, OpenEye toolkits and related tools are requried (requires OpenEye License)
+conda install -c openeye/label/Orion -c omnia oeommtools
+conda install -c openeye openeye-toolkits
 
 # Install BLUES package from the top directory
 pip install -e .
 
-# To validate your BLUES installation run the tests.
-pip install -e .[tests]
+# To validate your BLUES installation run the tests (need pytest)
+cd blues/tests
 pytest -v -s
 ```
 
@@ -117,6 +120,8 @@ One important non-obvious thing to note about the CombinationMove class is that 
 - [Version 0.2.1](https://doi.org/10.5281/zenodo.1288925): Bug fix in alchemical correction term
 - [Version 0.2.2](https://doi.org/10.5281/zenodo.1324415): Bug fixes for OpenEye tests and restarting from the YAML; enhancements to the Logger and package installation.
 - [Version 0.2.3](https://zenodo.org/badge/latestdoi/62096511): Improvements to Travis CI, fix in velocity synicng, and add tests for checking freezing selection.
+- [Version 0.2.4](https://doi.org/10.5281/zenodo.2672932): Added a simple test system (charged ethylene) which can run quickly on CPU.
+- [Version 0.2.5](https://doi.org/10.5281/zenodo.4118606): This contains numerous small changes/fixes since the v0.2.4 release, but most notably includes the introduction of water hopping as described at https://doi.org/10.26434/chemrxiv.12429464.v1
 
 ## Acknowledgements
 We would like to thank Patrick Grinaway and John Chodera for their basic code framework for NCMC in OpenMM (see https://github.com/choderalab/perses/tree/master/perses/annihilation), and John Chodera and Christopher Bayly for their helpful discussions.
