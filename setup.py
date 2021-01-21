@@ -81,12 +81,5 @@ setup(
         'pytest-pep8',
         'tox',
     ],
-    install_requires=[
-        'openmmtools==0.15.0',
-        'oeommtools>=0.1.16',
-        'openmm>=7.2.2',
-        'numpy>=1.15.2',
-        'cython>=0.28.5'
-    ],
     zip_safe=False,
     include_package_data=True)
