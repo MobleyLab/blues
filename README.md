@@ -35,22 +35,24 @@ Install [miniconda](http://conda.pydata.org/miniconda.html) according to your sy
 
 Recommended: Install releases from conda
 
-For MacOSX users:
 ```bash
-conda install -c mobleylab blues
-```
+# Create a clean environment (python 3.6 is required)
+conda create -n blues python=3.6
+conda activate blues
 
-For Linux users:
-```bash
 # Install OpenEye toolkits and related tools first
 conda install -c openeye/label/Orion -c omnia oeommtools
 conda install -c openeye openeye-toolkits
+
+# Install some dependencies
+conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.4.2 numpy cython
 
 # Then install BLUES
 conda install -c mobleylab blues
 ```
 
-Install from source (NOT RECOMMENDED)
+
+Install from source (if conda installation fails)
 ```bash
 # Clone the BLUES repository
 git clone https://github.com/MobleyLab/blues.git ./blues
@@ -58,7 +60,7 @@ git clone https://github.com/MobleyLab/blues.git ./blues
 # Install some dependencies
 conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.4.2 numpy cython
 
-# Optional: To use SideChainMove class, OpenEye toolkits and related tools are requried (requires OpenEye License)
+# To use SideChainMove class, OpenEye toolkits and related tools are requried (requires OpenEye License)
 conda install -c openeye/label/Orion -c omnia oeommtools
 conda install -c openeye openeye-toolkits
 
