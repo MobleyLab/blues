@@ -10,33 +10,23 @@ environment with the following commands:
 .. code-block:: bash
 
    conda create -n blues python=3.6
-   source activate blues
+   conda activate blues
 
 Stable Releases
 ---------------
 The recommended way to install BLUES would be to install from conda.
 
-For MacOSX users:
-Install BLUES with dependencies together.
-
 .. code-block:: bash
 
-    conda install -c mobleylab blues
-
-For Linux users:
-Install OpenEye toolkits and related tools first.
-
-.. code-block:: bash
-
+    # Install OpenEye toolkits and related tools first
     conda install -c openeye/label/Orion -c omnia oeommtools
     conda install -c openeye openeye-toolkits
 
-Then install BLUES.
-
-.. code-block:: bash
+    # Install necessary dependencies
+    conda install -c omnia -c conda-forge openmmtools=0.15.0 openmm=7.4.2 numpy cython
 
     conda install -c mobleylab blues
-
+    
 
 Source Installation
 -------------------
