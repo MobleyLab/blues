@@ -447,6 +447,8 @@ class TestBLUESSimulation(object):
               nIter: 1
               nstepsMD: 2
               nstepsNC: 2
+              propRegion: sterics
+              nprop: 2
               platform: CPU
 
             md_reporters:
@@ -539,3 +541,135 @@ class TestBLUESSimulation(object):
         #Check that our system has run dynamics
         pos_compare = np.not_equal(before_iter, after_iter).all()
         assert pos_compare
+
+    def test_blues_NCMCSteps_simulation(self, tmpdir, structure, tol_atom_indices, system_cfg, engine):
+        yaml_cfg = """
+            output_dir: .
+            outfname: tol-test
+            logger:
+              level: info
+              stream: True
+
+            system:
+              nonbondedMethod: PME
+              nonbondedCutoff: 8.0 * angstroms
+              constraints: HBonds
+
+            simulation:
+              dt: 0.002 * picoseconds
+              friction: 1 * 1/picoseconds
+              temperature: 300 * kelvin
+              nIter: 1
+              nstepsMD: 2
+              nstepsNC: 20
+              propRegion: sterics
+              propLambda: 0.3
+
+              nprop: 2
+              platform: CPU
+
+            md_reporters:
+              stream:
+                title: md
+                reportInterval: 1
+                totalSteps: 2 # nIter * nstepsMD
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                currentIter : True
+            ncmc_reporters:
+              stream:
+                title: ncmc
+                reportInterval: 1
+                totalSteps: 2 # Use nstepsNC
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                protocolWork : True
+                alchemicalLambda : True
+                currentIter : True
+        """
+        print('Testing Simulation.run() from YAML')
+        yaml_cfg = Settings(yaml_cfg)
+        cfg = yaml_cfg.asDict()
+        cfg['output_dir'] = tmpdir
+        # os.getenv is equivalent, and can also give a default value instead of `None`
+        PLATFORM = os.getenv('OMM_PLATFORM', 'CPU')
+        cfg['simulation']['platform'] = PLATFORM
+        systems = SystemFactory(structure, tol_atom_indices, cfg['system'])
+        simulations = SimulationFactory(systems, engine, cfg['simulation'], None, None)
+
+        blues = BLUESSimulation(simulations)
+        blues._md_sim.minimizeEnergy()
+        blues._alch_sim.minimizeEnergy()
+        blues._ncmc_sim.minimizeEnergy()
+        blues.run()
+        debug_var1 = blues._ncmc_sim.integrator.getGlobalVariableByName('debug')
+
+        yaml_cfg = """
+            output_dir: .
+            outfname: tol-test
+            logger:
+              level: info
+              stream: True
+
+            system:
+              nonbondedMethod: PME
+              nonbondedCutoff: 8.0 * angstroms
+              constraints: HBonds
+
+            simulation:
+              dt: 0.002 * picoseconds
+              friction: 1 * 1/picoseconds
+              temperature: 300 * kelvin
+              nIter: 1
+              nstepsMD: 2
+              nstepsNC: 20
+              propRegion: electrostatics
+              nprop: 2
+              propLambda: 0.2
+              platform: CPU
+
+            md_reporters:
+              stream:
+                title: md
+                reportInterval: 1
+                totalSteps: 2 # nIter * nstepsMD
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                currentIter : True
+            ncmc_reporters:
+              stream:
+                title: ncmc
+                reportInterval: 1
+                totalSteps: 2 # Use nstepsNC
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                protocolWork : True
+                alchemicalLambda : True
+                currentIter : True
+        """
+        print('Testing Simulation.run() from YAML')
+        yaml_cfg = Settings(yaml_cfg)
+        cfg = yaml_cfg.asDict()
+        cfg['output_dir'] = tmpdir
+        # os.getenv is equivalent, and can also give a default value instead of `None`
+        PLATFORM = os.getenv('OMM_PLATFORM', 'CPU')
+        cfg['simulation']['platform'] = PLATFORM
+        systems = SystemFactory(structure, tol_atom_indices, cfg['system'])
+        simulations = SimulationFactory(systems, engine, cfg['simulation'], None, None)
+
+        blues = BLUESSimulation(simulations)
+        blues._md_sim.minimizeEnergy()
+        blues._alch_sim.minimizeEnergy()
+        blues._ncmc_sim.minimizeEnergy()
+        blues.run()
+        debug_var2 = blues._ncmc_sim.integrator.getGlobalVariableByName('debug')
+        assert debug_var2 == debug_var1
+

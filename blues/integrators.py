@@ -69,6 +69,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     nprop : int (Default: 1)
         Controls the number of propagation steps to add in the lambda
         region defined by `prop_lambda`.
+    propRegion: {'sterics', 'electrostatics'} (Default: 'sterics')
+        Specifies the where additional propogation steps are focused. If 'sterics',
+        then additional propogation steps are placed around the middle depending on
+        prop_lambda. If 'electrostatics', then the propogation steps are placed outisde prop_lambda.
 
     Attributes
     ----------
@@ -85,6 +89,26 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         splitting="V R H R V"
     - An NCMC algorithm with Metropolized integrator:
         splitting="O { V R H R V } O"
+
+    Changing how the sterics and electrostatics are distributed
+
+    40% electrostatics, 60% sterics (Default)
+    >>> alchemical_functions = {lambda_sterics:'min(1, (1/0.3)abs(lambda-0.5))',
+    >>> lambda_electrostatics:'step(0.2-lambda) - 1/0.2lambdastep(0.2-lambda) + 1/0.2(lambda-0.8)*step(lambda-0.8)'}
+    >>> AlchemicalExternalLangevinIntegrator(alchemical_functions=alchemical_functions)
+
+    65% electrostatics, 35% sterics
+    >>> alchemical_functions = {lambda_sterics:'min(1, (1/0.175)abs(lambda-0.5)',
+    >>> lambda_electrostatics:'step(0.325-lambda) - 1/0.325lambda step(0.325-lambda) + 1/0.325(lambda-0.675)*step(lambda-0.675)'}
+    >>> AlchemicalExternalLangevinIntegrator(alchemical_functions=alchemical_functions)
+
+    90% electrostatics, 10% sterics, with 5 propogation steps per lambda increase/decrease in the electrostatic region
+    >>> alchemical_functions = {lambda_sterics:'min(1, (1/0.05)abs(lambda-0.5)',
+    >>> lambda_electrostatics:'step(0.45-lambda) - 1/0.45lambdastep(0.45-lambda) + 1/0.45(lambda-0.55)*step(lambda-0.55)'}
+    >>> AlchemicalExternalLangevinIntegrator(alchemical_functions=alchemical_functions, nprop=5, propRegion='electrostatics')
+
+
+
 
 
     References
@@ -107,6 +131,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
                  nsteps_neq=100,
                  nprop=1,
                  prop_lambda=0.3,
+                 propRegion='sterics',
                  *args,
                  **kwargs):
         # call the base class constructor
@@ -133,6 +158,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("prop", 1)
         self.addGlobalVariable("prop_lambda_min", self._prop_lambda[0])
         self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
+        if propRegion=='sterics':
+            self.addGlobalVariable("propRegion", 1)
+        elif propRegion=='electrostatics':
+            self.addGlobalVariable("propRegion", -1)
         # Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d
         self._step_dispatch_table['H'] = (self._add_alchemical_perturbation_step, False)
         #$self._registered_step_types['H'] = (
@@ -174,39 +203,55 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         # Main body
         if self._n_steps_neq == 0:
             # If nsteps = 0, we need to force execution on the first step only.
-            self.beginIfBlock('step = 0')
+            self.beginIfBlock('step = 0')#
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
             self.addComputeGlobal("step", "step + 1")
-            self.endBlock()
+            self.endBlock()#
         else:
             #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
-            self.beginIfBlock("step < nsteps")
+            self.beginIfBlock("step < nsteps")#
             self.addComputeGlobal("perturbed_pe", "energy")
-            self.beginIfBlock("first_step < 1")
+            self.beginIfBlock("first_step < 1")##
             #TODO write better test that checks that the initial work isn't gigantic
             self.addComputeGlobal("first_step", "1")
             self.addComputeGlobal("unperturbed_pe", "energy")
-            self.endBlock()
+            self.endBlock()##
             #initial iteration
             self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            #if more propogation steps are requested
-            self.beginIfBlock("lambda > prop_lambda_min")
-            self.beginIfBlock("lambda <= prop_lambda_max")
+            #if more propogation steps are requested, focus at middle of region (sterics)
+            self.beginIfBlock("propRegion > 0")######
+            self.beginIfBlock("lambda > prop_lambda_min")###
+            self.beginIfBlock("lambda <= prop_lambda_max")####
 
-            self.beginWhileBlock("prop < nprop")
+            self.beginWhileBlock("prop < nprop")#####
             self.addComputeGlobal("prop", "prop + 1")
 
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            self.endBlock()
-            self.endBlock()
-            self.endBlock()
+            self.endBlock()#####
+            self.endBlock()####
+            self.endBlock()###
+            self.endBlock()######
+            #else we want to focus the propogation steps at the beginning (electrostatics)
+            self.beginIfBlock("propRegion < 0")######
+            self.beginIfBlock("lambda < prop_lambda_min")###
+            self.beginIfBlock("lambda >= prop_lambda_max")####
+
+            self.beginWhileBlock("prop < nprop")#####
+            self.addComputeGlobal("prop", "prop + 1")
+
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.endBlock()#####
+            self.endBlock()####
+            self.endBlock()###
+            self.endBlock()######
+
             #ending variables to reset
             self.addComputeGlobal("unperturbed_pe", "energy")
             self.addComputeGlobal("step", "step + 1")
             self.addComputeGlobal("prop", "1")
 
-            self.endBlock()
+            self.endBlock()#
 
     def _add_alchemical_perturbation_step(self):
         """

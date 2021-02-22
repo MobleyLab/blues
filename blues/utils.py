@@ -86,7 +86,7 @@ def print_host_info(simulation):
     logger.info(msg)
 
 
-def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
+def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, propRegion='sterics', **kwargs):
     """
     Calculates the number of NCMC switching steps.
 
@@ -114,24 +114,38 @@ def calculateNCMCSteps(nstepsNC=0, nprop=1, propLambda=0.3, **kwargs):
             logger.error(msg)
             sys.exit(1)
     # Calculate the total number of lambda switching steps
-    lambdaSteps = nstepsNC / (2 * (nprop * propLambda + 0.5 - propLambda))
+    if propRegion == 'sterics':
+        lambdaSteps = nstepsNC / (2 * (nprop * propLambda + 0.5 - propLambda))
+    elif propRegion == 'electrostatics':
+        #TODO update this
+        lambdaSteps = nstepsNC / (2*(propLambda+nprop*(0.5 - propLambda)))
+    else:
+        msg = 'propRegion must be either `sterics`, or `electrostatics`'
+        logger.error(msg)
+        sys.exit(1)
     if int(lambdaSteps) % 2 == 0:
         lambdaSteps = int(lambdaSteps)
     else:
         lambdaSteps = int(lambdaSteps) + 1
-
-    # Calculate number of lambda steps inside/outside region with extra propgation steps
+        # Calculate number of lambda steps inside/outside region with extra propgation steps
     in_portion = (propLambda) * lambdaSteps
     out_portion = (0.5 - propLambda) * lambdaSteps
-    in_prop = int(nprop * (2 * floor(in_portion)))
-    out_prop = int((2 * ceil(out_portion)))
+    if propRegion == 'sterics':
+        in_prop = int(nprop * (2 * floor(in_portion)))
+        out_prop = int((2 * ceil(out_portion)))
+
+    elif propRegion == 'electrostatics':
+        in_prop = int((2 * floor(in_portion)))
+        out_prop = int(nprop *(2 * ceil(out_portion)))
     propSteps = int(in_prop + out_prop)
 
+
+
     if propSteps != nstepsNC:
-        logger.warn("nstepsNC=%s is incompatible with prop_lambda=%s and nprop=%s." % (nstepsNC, propLambda, nprop))
-        logger.warn("Changing NCMC protocol to %s lambda switching within %s total propagation steps." % (lambdaSteps,
+        logger.warning("nstepsNC=%s is incompatible with prop_lambda=%s and nprop=%s." % (nstepsNC, propLambda, nprop))
+        logger.warning("Changing NCMC protocol to %s lambda switching within %s total propagation steps." % (lambdaSteps,
                                                                                                           propSteps))
-        nstepsNC = lambdaSteps
+    nstepsNC = lambdaSteps
 
     moveStep = int(nstepsNC / 2)
     ncmc_parameters = {
