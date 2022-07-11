@@ -6,15 +6,15 @@
 # MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
 # NCMC Reporters: None
 
-output_dir: .
+output_dir: output
 outfname: gmx
 logger:
   level: info
   stream: True
 
 structure:
-  filename: tests/data/eqRef_2gmx.prmtop
-  xyz: tests/data/eqRef_2gmx.inpcrd
+  filename: data/eqRef_2gmx.prmtop
+  xyz: data/eqRef_2gmx.inpcrd
 
 system:
   nonbondedMethod: PME
@@ -27,7 +27,7 @@ system:
   splitDihedrals: False
 
 rotbond_info:
-  dihedral_atoms: ["C10", "C9", "C3", "C2" ]
+  dihedral_atoms: ['C10', 'C9', 'C3', 'C2']
   alch_list: ['C9', 'H92', 'H93', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'H1', 'H2', 'H4', 'H5', 'H6']
 
   alchemical:

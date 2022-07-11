@@ -2,6 +2,7 @@ from blues.moves import RandomRotatableBondMove, MoveEngine
 from blues.simulation import *
 import json
 from blues.settings import *
+from rdkit import Chem 
 
 
 def rotbondmove_cuda(yaml_file):
@@ -14,7 +15,9 @@ def rotbondmove_cuda(yaml_file):
     inpcrd = cfg['structure']['xyz']
     dihedral_atoms = cfg['rotbond_info']['dihedral_atoms']
     alch_list = cfg['rotbond_info']['alch_list']
-    ligand = RandomRotatableBondMove(structure, prmtop, inpcrd, dihedral_atoms, alch_list, 'LIG')
+
+    rdkit_ref_mol = Chem.MolFromMolFile('data/2gmx.sdf', removeHs=False)
+    ligand = RandomRotatableBondMove(structure, prmtop, inpcrd, dihedral_atoms, alch_list, rdkit_ref_mol, 'LIG')
 
     #Iniitialize object that selects movestep
     ligand_mover = MoveEngine(ligand)

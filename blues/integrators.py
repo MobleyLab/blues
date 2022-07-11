@@ -110,10 +110,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             nsteps_neq=nsteps_neq)
 
         self._prop_lambda = self._get_prop_lambda(prop_lambda)
-        frame = inspect.currentframe()
-        args, _, _, values = inspect.getargvalues(frame)
-        inputs = dict([(i, values[i]) for i in args if i is not 'self'])
-        self.int_kwargs = inputs
+        # frame = inspect.currentframe()
+        # args, _, _, values = inspect.getargvalues(frame)
+        # inputs = dict([(i, values[i]) for i in args if i is not 'self'])
+        # self.int_kwargs = inputs
 
         # add some global variables relevant to the integrator
         kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
