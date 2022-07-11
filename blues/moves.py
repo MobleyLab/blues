@@ -7,7 +7,7 @@ a combination of other pre-defined moves such as via instances of Move.
 
 Authors: Samuel C. Gill
 
-Contributors: Nathan M. Lim, Kalistyn Burley, David L. Mobley
+Contributors: Nathan M. Lim, Kalistyn Burley, Sukanya Sasmal, David L. Mobley
 """
 
 import copy
@@ -27,13 +27,13 @@ import tempfile
 try:
     import openeye.oechem as oechem
     if not oechem.OEChemIsLicensed():
-        print('ImportError: Need License for OEChem! SideChainMove class will be unavailable.')
+        print('ImportError: Need License for OEChem! SideChainMove, RandomRotatableBondMove and RandomRotatableBondFlipMove classes will be unavailable.')
     try:
         import oeommtools.utils as oeommtools
     except ImportError:
-        print('ImportError: Could not import oeommtools. SideChainMove class will be unavailable.')
+        print('ImportError: Could not import oeommtools. SideChainMove, RandomRotatableBondMove and RandomRotatableBondFlipMove classes will be unavailable.')
 except ImportError:
-    print('ImportError: Could not import openeye-toolkits. SideChainMove class will be unavailable.')
+    print('ImportError: Could not import openeye-toolkits. SideChainMove, RandomRotatableBondMove and RandomRotatableBondFlipMove classes will be unavailable.')
 
 
 class Move(object):
@@ -159,7 +159,8 @@ class RandomLigandRotationMove(Move):
     structure: parmed.Structure
         ParmEd Structure object of the relevant system to be moved.
     random_state : integer or numpy.RandomState, optional
-        The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
+        The generator used for random numbers. If an integer is given, 
+        it fixes the seed. Defaults to the global numpy random number generator.
 
     Attributes
     ----------
@@ -307,6 +308,224 @@ class RandomLigandRotationMove(Move):
         context.setPositions(positions)
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         self.positions = positions[self.atom_indices]
+        return context
+
+
+class RandomRotatableBondMove(Move):
+    """RandomRotatableBondMove that provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+    Current methods calculates the properties needed to randomly rotate a rotatable 
+    bond of a structure in the NCMC simulation and then executes a rotation of 
+    a user-specified 'rotatable' bond in the designated small molecule by a random 
+    angle of rotation 'theta'.
+
+    Parameters
+    ----------
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    prmtop: str
+        String specifying the name of the parameter file.        
+    inpcrd: str
+        String specifying the name of the restart file.
+    dihedral_atoms: list
+        List containing the four atomnames describing the rotatable bond of interest. 
+    alch_list: list
+        List containing atomnames corresponding to the atoms considered to be
+        in the alchemical region during NCMC move.
+    resname : str
+        String specifying the residue name of the ligand.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of atoms present in the alchemical region of the ligand.
+    atom_indices_ligand :
+        Atom indicies of all atoms present in the ligand.
+    dihedral_atoms : list
+        Atomnames corresponding to the atoms describing the rotatable bond
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+    molecule : OEMol
+        OEChem Molecule describing the ligand
+ 
+    Examples
+    --------
+    >>> from blues.move import RandomRotatableBondMove
+    >>> ligand = RandomRotatableBondMove(structure, prmtopFileName, inpcrdFileName, dihedral_atoms, alch_list, 'LIG')
+    """
+
+    def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, alch_list, resname='LIG'):
+        self.structure = structure
+        self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
+        self.dihedral_atoms = dihedral_atoms
+        self.positions = structure[self.atom_indices_ligand].positions
+        self.molecule = self._pmdStructureToOEMol(prmtop, inpcrd, resname)
+
+    def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
+        """Helper function for converting the parmed structure into an OEMolecule."""
+        structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
+        mask = "!(:%s)" %resname
+        structure_LIG.strip(mask)
+        top = structure_LIG.topology
+        pos = structure_LIG.positions
+        molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
+        oechem.OEPerceiveBondOrders(molecule)
+        oechem.OEAssignAromaticFlags(molecule)
+        oechem.OEFindRingAtomsAndBonds(molecule)
+
+        return molecule
+
+    def getAtomIndices(self, structure, resname, alch_list):
+        """
+        Get atom indices of a ligand from ParmEd Structure.
+        Arguments
+        ---------
+        structure: parmed.Structure
+            ParmEd Structure object of the atoms to be moved.
+        resname : str
+            String specifying the resiue name of the ligand.
+        alch_list: list
+            List containing atomnames corresponding to the atoms considered to be
+            in the alchemical region during NCMC move.
+        Returns
+        -------
+        atom_indices : list of ints
+            list of atoms in the coordinate file matching alch_list
+        atom_indices_ligand :
+            Atom indicies of all atoms present in the ligand.
+        """
+        atom_indices = []
+        atom_indices_ligand = []
+        topology = structure.topology
+        for atom in topology.atoms():
+           if str(resname) in atom.residue.name:
+              atom_indices_ligand.append(atom.index)
+              if atom.name in alch_list:
+                  atom_indices.append(atom.index)
+
+        return atom_indices, atom_indices_ligand
+
+    def move(self, context):
+        """Function that performs a random rotation of the specified 
+        bond of the ligand.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.molecule.SetCoords( positions[self.atom_indices_ligand].ravel() )
+
+        # Define random torsional move on the ligand
+        rand_torsion = random.uniform ( - math.pi, math.pi )
+        atom1 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[0]))
+        atom2 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[1]))
+        atom3 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[2]))
+        atom4 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[3]))
+        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False :
+           print("Torsional bond couldn't be rotated. Please enter correct atoms!");
+
+        # Update ligand positions in nc_sim
+        updated_pos = self.molecule.GetCoords()
+
+        for index, atomidx in enumerate(self.atom_indices_ligand):
+            positions[atomidx] = numpy.array(updated_pos[index])*unit.nanometers
+        context.setPositions(positions)
+        self.positions = positions[self.atom_indices_ligand]
+        return context
+
+
+class RandomRotatableBondFlipMove( RandomRotatableBondMove ):
+    """RandomRotatableFlipBondMove that provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+    Current methods calculates the properties needed to randomly flipxs a rotatable 
+    bond of a structure in the NCMC simulation and then executes 
+    a rotation of a user-specified 'rotatable' bond in the designated small molecule 
+    by a random angle of rotation 'theta' between 160 to 200 degrees.
+
+    Class is inherited from RandomRotatableBondMove
+
+    Parameters
+    ----------
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    prmtop: str
+        String specifying the name of the parameter file.        
+    inpcrd: str
+        String specifying the name of the restart file.
+    dihedral_atoms: list
+        List containing the four atomnames describing the rotatable bond of interest. 
+    alch_list: list
+        List containing atomnames corresponding to the atoms considered to be
+        in the alchemical region during NCMC move.
+    resname : str
+        String specifying the residue name of the ligand.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of atoms present in the alchemical region of the ligand.
+    atom_indices_ligand :
+        Atom indicies of all atoms present in the ligand.
+    dihedral_atoms : list
+        Atomnames corresponding to the atoms describing the rotatable bond
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+    molecule : OEMol
+        OEChem Molecule describing the ligand
+ 
+    Examples
+    --------
+    >>> from blues.move import RandomRotatableBondFlipMove
+    >>> ligand = RandomRotatableBondFlipMove(structure, prmtopFileName, inpcrdFileName, dihedral_atoms, alch_list, 'LIG')
+    """
+
+    def move(self, context):
+        """Function that performs a random rotation about the
+        center of mass of the ligand.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose positions were changed by this function.
+
+        """
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.molecule.SetCoords( positions[self.atom_indices_ligand].ravel() )
+
+        # Define random torsional move on the ligand
+        rand_torsion_rot = random.uniform ( math.pi - 0.349, math.pi + 0.349)
+        atom1 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[0]))
+        atom2 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[1]))
+        atom3 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[2]))
+        atom4 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[3]))
+        oldTorsion = oechem.OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4 );
+        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, oldTorsion+ rand_torsion_rot ) == False :
+           print("Torsional bond couldn't be rotated. Please enter correct atoms!");
+
+        # Update ligand positions in nc_sim
+        updated_pos = self.molecule.GetCoords()
+
+        for index, atomidx in enumerate(self.atom_indices_ligand):
+            positions[atomidx] = numpy.array(updated_pos[index])*unit.nanometers
+        context.setPositions(positions)
+        self.positions = positions[self.atom_indices_ligand]   
         return context
 
 

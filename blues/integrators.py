@@ -9,16 +9,13 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     """Allows nonequilibrium switching based on force parameters specified in alchemical_functions.
     A variable named lambda is switched from 0 to 1 linearly throughout the nsteps of the protocol.
     The functions can use this to create more complex protocols for other global parameters.
-
     As opposed to `openmmtools.integrators.AlchemicalNonequilibriumLangevinIntegrator`,
     which this inherits from, the AlchemicalExternalLangevinIntegrator integrator also takes
     into account work done outside the nonequilibrium switching portion(between integration steps).
     For example if a molecule is rotated between integration steps, this integrator would
     correctly account for the work caused by that rotation.
-
     Propagator is based on Langevin splitting, as described below.
     One way to divide the Langevin system is into three parts which can each be solved "exactly:"
-
     - R: Linear "drift" / Constrained "drift"
         Deterministic update of *positions*, using current velocities
         ``x <- x + v dt``
@@ -28,18 +25,15 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     - O: Ornstein-Uhlenbeck
         Stochastic update of velocities, simulating interaction with a heat bath
         ``v <- av + b sqrt(kT/m) R`` where:
-
         - a = e^(-gamma dt)
         - b = sqrt(1 - e^(-2gamma dt))
         - R is i.i.d. standard normal
-
     We can then construct integrators by solving each part for a certain timestep in sequence.
     (We can further split up the V step by force group, evaluating cheap but fast-fluctuating
     forces more frequently than expensive but slow-fluctuating forces. Since forces are only
     evaluated in the V step, we represent this by including in our "alphabet" V0, V1, ...)
     When the system contains holonomic constraints, these steps are confined to the constraint
     manifold.
-
     Parameters
     ----------
     alchemical_functions : dict of strings
@@ -69,12 +63,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     nprop : int (Default: 1)
         Controls the number of propagation steps to add in the lambda
         region defined by `prop_lambda`.
-
     Attributes
     ----------
     _kinetic_energy : str
         This is 0.5*m*v*v by default, and is the expression used for the kinetic energy
-
     Examples
     --------
     - g-BAOAB:
@@ -85,14 +77,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         splitting="V R H R V"
     - An NCMC algorithm with Metropolized integrator:
         splitting="O { V R H R V } O"
-
-
     References
     ----------
     [Nilmeier, et al. 2011] Nonequilibrium candidate Monte Carlo is an efficient tool for equilibrium simulation
-
     [Leimkuhler and Matthews, 2015] Molecular dynamics: with deterministic and stochastic numerical methods, Chapter 7
-
     """
 
     def __init__(self,
@@ -122,6 +110,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             nsteps_neq=nsteps_neq)
 
         self._prop_lambda = self._get_prop_lambda(prop_lambda)
+        frame = inspect.currentframe()
+        args, _, _, values = inspect.getargvalues(frame)
+        inputs = dict([(i, values[i]) for i in args if i is not 'self'])
+        self.int_kwargs = inputs
 
         # add some global variables relevant to the integrator
         kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
@@ -246,4 +238,6 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.setGlobalVariableByName("perturbed_pe", 0.0)
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
         self.setGlobalVariableByName("prop", 1)
-        super(AlchemicalExternalLangevinIntegrator, self).reset()
+        #super(AlchemicalExternalLangevinIntegrator, self).reset()
+
+
