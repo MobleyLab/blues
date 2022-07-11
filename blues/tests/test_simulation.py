@@ -32,6 +32,7 @@ def sim_cfg():
         'nIter': 1,
         'nstepsMD': 10,
         'nstepsNC': 10,
+        'splitting': 'H V R O R V H',
         'platform': PLATFORM
     }
     return sim_cfg
@@ -388,7 +389,9 @@ class TestBLUESSimulation(object):
         blues_sim._stepNCMC(nstepsNC, moveStep)
         ncmc_state0 = blues_sim.stateTable['ncmc']['state0']['positions']
         ncmc_state1 = blues_sim.stateTable['ncmc']['state1']['positions']
-        assert np.not_equal(ncmc_state0, ncmc_state1).all()
+
+        assert np.not_equal(ncmc_state0, ncmc_state1).any()
+
 
     def test_computeAlchemicalCorrection(self, blues_sim):
         correction_factor = blues_sim._computeAlchemicalCorrection()
@@ -398,7 +401,7 @@ class TestBLUESSimulation(object):
         # Check positions are different from stepNCMC
         md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
         ncmc_state = BLUESSimulation.getStateFromContext(blues_sim._ncmc_sim.context, state_keys)
-        assert np.not_equal(md_state['positions'], ncmc_state['positions']).all()
+        assert np.not_equal(md_state['positions'], ncmc_state['positions']).any()
 
         caplog.set_level(logging.INFO)
         blues_sim._acceptRejectMove()

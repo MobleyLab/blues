@@ -1,0 +1,102 @@
+# YAML configuration for simulating ligand bound to c-junk 1 protein
+# Atoms 5 angstroms away from the ligand are frozen
+# Simulation on a CUDA device with index 0
+# NVT simulation without Hydrogen Mass Repartioning + 2fs timesteps
+# 10 BLUES iterations (random bond rotations move proposals), 3502 steps of NCMC and 1000 steps of MD per iteration
+# MD Reporters: State (energies), NetCDF, Restart, and speed for benchmarking
+# NCMC Reporters: None
+
+output_dir: output
+outfname: gmx
+logger:
+  level: info
+  stream: True
+
+structure:
+  filename: data/eqRef_2gmx.prmtop
+  xyz: data/eqRef_2gmx.inpcrd
+
+system:
+  nonbondedMethod: PME
+  nonbondedCutoff: 10 * angstroms
+  constraints: HBonds
+  rigidWater: True
+  removeCMMotion: True
+  ewaldErrorTolerance: 0.005
+  flexibleConstraints: True
+  splitDihedrals: False
+
+rotbond_info:
+  dihedral_atoms: ['C10', 'C9', 'C3', 'C2']
+  alch_list: ['C9', 'H92', 'H93', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'H1', 'H2', 'H4', 'H5', 'H6']
+
+  alchemical:
+    softcore_alpha: 0.5
+    softcore_a : 1
+    softcore_b : 1
+    softcore_c : 6
+    softcore_beta : 0.0
+    softcore_d : 1
+    softcore_e : 1
+    softcore_f : 2
+    annihilate_electrostatics : True
+    annihilate_sterics : False
+
+freeze:
+  freeze_center: ':LIG'
+  freeze_solvent: ':WAT, NA, Cl-'
+  freeze_distance: 5 * angstroms
+
+simulation:
+  platform: CUDA
+  properties:
+    CudaPrecision: single
+    CudaDeviceIndex: 0
+  dt: 0.002 * picoseconds
+  friction: 1 * 1/picoseconds
+  temperature: 300 * kelvin
+  nIter: 10
+  nstepsMD: 1000
+  nstepsNC: 3502
+  #Default
+  nprop: 5
+  propLambda: 0.3
+  ###Advanced: Add additional relaxation steps in NCMC simulation###
+  # Suggested options for nprop and nstepsNC
+  # nprop: 2 nstepsNC: Any value in increments of 1000
+  # nprop: 3 nstepsNC: 3000, 6000, 11000, 14000, 17000, 22000, 25000
+  # nprop: 4 nstepsNC: 1000, 7000, 8000, 14000, 15000, 21000, 22000
+  # nprop: 5 nstepsNC: 9000, 13000, 17000
+  ##################################################################
+
+
+md_reporters:
+  state:
+    reportInterval: 1000
+  traj_netcdf:
+    reportInterval: 500
+  restart:
+    reportInterval: 5000 #nstepsMD
+  stream:
+    title: md
+    reportInterval: 1000
+    totalSteps: 100000 #nIter * nstepsMD
+    step: True
+    speed: True
+    progress: True
+    remainingTime: True
+    currentIter : True
+
+ncmc_reporters:
+  stream:
+    title: ncmc
+    reportInterval: 2000
+    totalSteps: 500000 #nIter * nstepsNC
+    step: False
+    speed: False
+    progress: False
+    remainingTime : False
+    protocolWork : False
+    alchemicalLambda : False
+    currentIter : False
+
