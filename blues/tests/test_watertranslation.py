@@ -94,12 +94,45 @@ class WaterTranslationTester(unittest.TestCase):
 
 
 
+    # def test_OLD_water_translation_after(self):
+    #     before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
+    #         asNumpy=True)[self.atom_indices, :]
+    #     self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)
+    #     new_context = self.move.beforeMove(self.simulations.ncmc.context)
+    #     new_context = self.move.move(self.simulations.ncmc.context)
+    #     after_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
+    #         asNumpy=True)
+    #     #Check that the move treats inbound water correctly
+    #     assert self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work') == 0
+    #     after_move[self.move.atom_indices] = after_move[self.move.atom_indices] + [self.move.radius._value,0,0] * self.move.radius.unit
+
+    #     self.simulations.ncmc.context.setPositions(after_move)
+    #     new_context = self.move.afterMove(self.simulations.ncmc.context)
+    #     #Check that the move would be rejected in case it's out of bounds
+    #     assert self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work') >= 999999
+
+
     def test_water_translation_after(self):
+        
         before_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
             asNumpy=True)[self.atom_indices, :]
+        
+        # Print initial protocol work before any move
+        print("Initial protocol work:", self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work'))
+        
         self.simulations.ncmc.context = self.engine.runEngine(self.simulations.ncmc.context)
+        
+        # Print after running engine
+        print("Protocol work after runEngine:", self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work'))
+
         new_context = self.move.beforeMove(self.simulations.ncmc.context)
+        # Print after beforeMove()
+        print("Protocol work after beforeMove:", self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work'))
+        
         new_context = self.move.move(self.simulations.ncmc.context)
+        # Print after move()
+        print("Protocol work after move:", self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work'))
+
         after_move = self.simulations.ncmc.context.getState(getPositions=True).getPositions(
             asNumpy=True)
         #Check that the move treats inbound water correctly
@@ -107,9 +140,35 @@ class WaterTranslationTester(unittest.TestCase):
         after_move[self.move.atom_indices] = after_move[self.move.atom_indices] + [self.move.radius._value,0,0] * self.move.radius.unit
 
         self.simulations.ncmc.context.setPositions(after_move)
+        # Print before calling afterMove()
+        print("Protocol work before afterMove:", self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work'))
+
         new_context = self.move.afterMove(self.simulations.ncmc.context)
-        #Check that the move would be rejected in case it's out of bounds
-        assert self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work') >= 999999
+        # Print after afterMove()
+        print("Protocol work after afterMove:", self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work'))
+
+        # Check that the move would be rejected in case it's out of bounds
+        # Expected movement distance
+        expected_distance = np.linalg.norm(self.move.radius._value)
+        print(f"Expected rejection threshold (radius): {expected_distance}")
+
+        # Print rejection check values
+        pairs = self.move.traj.topology.select_pairs(np.array(self.move.atom_indices[0]).flatten(), np.array(self.move.protein_atoms[0]).flatten())
+        water_distance = md.compute_distances(self.move.traj, pairs, periodic=True)
+        water_dist = np.linalg.norm(water_distance)
+        print(f"Water distance computed in afterMove(): {water_dist}")  # This must be retrieved from afterMove()
+        print(f"Rejection condition met? {water_dist > expected_distance}")
+        print("Final protocol work:", self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work'))
+        
+        if water_distance > expected_distance:
+            assert self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work') >= 999999, \
+                f"Expected move rejection, but protocol_work is {self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work')}"
+        else:
+            assert self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work') == 0, \
+                f"Move should not be rejected, but protocol_work is {self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work')}"
+
+
+            #assert self.simulations.ncmc.context._integrator.getGlobalVariableByName('protocol_work') >= 999999
 
 if __name__ == "__main__":
     unittest.main()
