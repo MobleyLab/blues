@@ -15,4 +15,3 @@ dependencies:
   - ipykernel
   - conda-forge::openff-toolkit
   - parmed
-
