@@ -1,0 +1,19 @@
+name: blues
+channels:
+  - omnia
+  - openeye
+  - conda-forge
+  - defaults
+dependencies:
+  - python==3.11
+  - oeommtools
+  - openeye-toolkits
+  - cython
+  - numpy
+  - openmm
+  - openmmtools
+  - ipython
+  - ipykernel
+  - conda-forge::openff-toolkit
+  - parmed
+prefix: /opt/miniconda3/envs/blues
