@@ -21,7 +21,7 @@ import numpy
 import parmed
 from simtk import unit
 import tempfile
-
+import numpy as np 
 
 
 try:
@@ -195,12 +195,12 @@ class RandomLigandRotationMove(Move):
         self.resname = resname
         self.random_state = random_state
         self.atom_indices = self.getAtomIndices(structure, self.resname)
-        self.topology = structure[self.atom_indices].topology
+        atom_indices_1based = [i + 1 for i in self.atom_indices]
+        self.topology = structure[atom_indices_1based].topology
         self.totalmass = 0
         self.masses = []
-
         self.center_of_mass = None
-        self.positions = structure[self.atom_indices].positions
+        self.positions = structure[atom_indices_1based].positions
         self._calculateProperties()
 
     def getAtomIndices(self, structure, resname):
@@ -217,14 +217,14 @@ class RandomLigandRotationMove(Move):
         Returns
         -------
         atom_indices : list of ints
-            list of atoms in the coordinate file matching lig_resname
-        """
+            List of atoms in the coordinate file matching lig_resname.
+        """        
         # TODO: Add option for resnum to better select residue names
         atom_indices = []
-        topology = structure.topology
-        for atom in topology.atoms():
+        for i, atom in enumerate(structure.atoms):
             if str(resname) in atom.residue.name:
-                atom_indices.append(atom.index)
+                atom_indices.append(i) 
+
         return atom_indices
 
     def getMasses(self, topology):
@@ -244,10 +244,26 @@ class RandomLigandRotationMove(Move):
         totalmass: float * simtk.unit.dalton
             The sum of the mass found in masses
         """
-        masses = unit.Quantity(numpy.zeros([int(topology.getNumAtoms()), 1], numpy.float32), unit.dalton)
+
+        expected_atoms = topology.getNumAtoms()
+
+        masses = unit.Quantity(numpy.zeros([expected_atoms, 1], numpy.float32), unit.dalton)
+
+        atom_count = 0  # Track actual number of atoms processed
         for idx, atom in enumerate(topology.atoms()):
-            masses[idx] = atom.element._mass
+            if atom.element:
+                masses[idx] = atom.element._mass
+                atom_count += 1
+            else:
+                masses[idx] = 1.008 * unit.dalton  # Assign a default hydrogen mass
+                atom_count += 1
+
         totalmass = masses.sum()
+
+
+        if atom_count != expected_atoms:
+            raise ValueError("Mismatch in topology atom count!")
+
         return masses, totalmass
 
     def getCenterOfMass(self, positions, masses):
@@ -265,16 +281,25 @@ class RandomLigandRotationMove(Move):
         center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
             1x3 numpy.array of the center of mass of the given positions
         """
+
         coordinates = numpy.asarray(positions._value, numpy.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
+
+
+        # Ensure masses shape matches coordinates shape
+        if masses.shape[0] != coordinates.shape[0]:
+            print(f"Warning: Mass count ({masses.shape[0]}) does not match coordinate count ({coordinates.shape[0]}).")
+        
         return center_of_mass
 
     def _calculateProperties(self):
         """Calculate the masses and center of mass for the object. This function
         is called upon initailization of the class."""
         self.masses, self.totalmass = self.getMasses(self.topology)
-        self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
+        if len(self.masses) != len(self.atom_indices):
+            print(f"🚨 WARNING: Mass count ({len(self.masses)}) does not match atom count ({len(self.atom_indices)})!")
 
+        self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
     def move(self, context):
         """Function that performs a random rotation about the
         center of mass of the ligand.
@@ -290,7 +315,7 @@ class RandomLigandRotationMove(Move):
             The same input context, but whose positions were changed by this function.
         """
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
-
+        
         self.positions = positions[self.atom_indices]
         self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
         reduced_pos = self.positions - self.center_of_mass
@@ -397,7 +422,10 @@ class MoveEngine(object):
         context : openmm.Context
             OpenMM context whose positions have been moved.
         """
+        
         try:
+            # print(f"🔍 Selected Move: {self.selected_move}")
+            # print(f"🔍 Move type: {type(self.selected_move)}")
             new_context = self.selected_move.move(context)
         except Exception as e:
             #In case the move isn't properly implemented, print out useful info
@@ -479,7 +507,7 @@ class SideChainMove(Move):
         """Helper function for converting the parmed structure into an OEMolecule."""
         top = self.structure.topology
         pos = self.structure.positions
-        molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
+        molecule = oeommtools.openmmTop_to_oemol(top, pos)
         oechem.OEPerceiveResidues(molecule)
         oechem.OEFindRingAtomsAndBonds(molecule)
 
