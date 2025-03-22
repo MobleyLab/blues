@@ -122,7 +122,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         """Write one or more frames of data to the file
         This method saves data that is associated with one or more simulation
         frames. Note that all of the arguments can either be raw numpy arrays
-        or unitted arrays (with simtk.unit.Quantity). If the arrays are unittted,
+        or unitted arrays (with openmm.unit.Quantity). If the arrays are unittted,
         a unit conversion will be automatically done from the supplied units
         into the proper units for saving on disk. You won't have to worry about
         it.
@@ -184,9 +184,9 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         if cell_lengths is not None and cell_angles is None:
             raise ValueError('cell_angles were given, but no cell_lengths')
 
-        # if the input arrays are simtk.unit.Quantities, convert them
+        # if the input arrays are openmm.unit.Quantities, convert them
         # into md units. Note that this acts as a no-op if the user doesn't
-        # have simtk.unit installed (e.g. they didn't install OpenMM)
+        # have openmm.unit installed (e.g. they didn't install OpenMM)
         coordinates = in_units_of(coordinates, None, 'nanometers')
         time = in_units_of(time, None, 'picoseconds')
         cell_lengths = in_units_of(cell_lengths, None, 'nanometers')

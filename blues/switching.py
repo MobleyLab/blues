@@ -15,8 +15,8 @@ import copy
 import traceback
 
 import numpy as np
-from simtk import openmm, unit
-
+from openmm import unit 
+import openmm
 default_functions = {
     'lambda_sterics': '2*lambda * step(0.5 - lambda) + (1.0 - step(0.5 - lambda))',
     'lambda_electrostatics': '2*(lambda - 0.5) * step(lambda - 0.5)',
@@ -91,7 +91,7 @@ class NCMCEngine(object):
 
         Arguments
         ---------
-        temperature : simtk.unit.Quantity with units compatible with kelvin
+        temperature : openmm.unit.Quantity with units compatible with kelvin
             The temperature at which switching is to be run
         functions : dict of str:str, optional, default=default_functions
             functions[parameter] is the function (parameterized by 't' which switched from 0 to 1) that
@@ -100,11 +100,11 @@ class NCMCEngine(object):
             The number of steps to use for switching.
         steps_per_propagation : int, optional, default=1
             The number of intermediate propagation steps taken at each switching step
-        timestep : simtk.unit.Quantity with units compatible with femtoseconds, optional, default=1*femtosecond
+        timestep : openmm.unit.Quantity with units compatible with femtoseconds, optional, default=1*femtosecond
             The timestep to use for integration of switching velocity Verlet steps.
         constraint_tolerance : float, optional, default=None
             If not None, this relative constraint tolerance is used for position and velocity constraints.
-        platform : simtk.openmm.Platform, optional, default=None
+        platform : openmm.openmm.Platform, optional, default=None
             If specified, the platform to use for OpenMM simulations.
         write_ncmc_interval : int, optional, default=None
             If a positive integer is specified, a snapshot frame will be written to storage with the specified interval on NCMC switching.
@@ -157,7 +157,7 @@ class NCMCEngine(object):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.openmm.System
             The system for which available context parameters are to be determined
         prefix : str, optional, default='lambda'
             Prefix required for parameters to be returned.
@@ -191,11 +191,11 @@ class NCMCEngine(object):
             NCMC switching integrator to annihilate or introduce particles alchemically.
         context : openmm.Context
             Alchemical context
-        system : simtk.unit.System
+        system : openmm.unit.System
             Real fully-interacting system.
-        initial_positions : simtk.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
+        initial_positions : openmm.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
             The positions of the alchemical system at the start of the NCMC protocol
-        final_positions : simtk.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
+        final_positions : openmm.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
             The positions of the alchemical system at the end of the NCMC protocol
         direction : str, optional, default='insert'
             Direction of topology proposal to use for identifying alchemical atoms (allowed values: ['insert', 'delete'])
@@ -236,7 +236,7 @@ class NCMCEngine(object):
             Alchemical topology being modified
         indices : list(int)
             List of the indices of atoms that are turned on / off
-        unmodified_system : simtk.openmm.System
+        unmodified_system : openmm.openmm.System
             Unmodified real system corresponding to appropriate leg of transformation.
         """
         # Select reference topology, indices, and system based on whether we are deleting or inserting.
@@ -252,7 +252,7 @@ class NCMCEngine(object):
 
         Arguments
         ---------
-        unmodified_system : simtk.openmm.System
+        unmodified_system : openmm.openmm.System
             Unmodified real system corresponding to appropriate leg of transformation.
         alchemical_atoms : list(int)
             List of the indices of atoms that are turned on / off
@@ -261,7 +261,7 @@ class NCMCEngine(object):
 
         Returns
         -------
-        alchemical_system : simtk.openmm.System
+        alchemical_system : openmm.openmm.System
             The system with appropriate atoms alchemically modified
         """
         # Create an alchemical factory.
@@ -312,7 +312,7 @@ class NCMCEngine(object):
 
         Returns
         -------
-        final_positions : simtk.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
+        final_positions : openmm.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
             The final positions after `nsteps` steps of alchemical switching
         logP_NCMC : float
             The log acceptance probability of the NCMC moves
@@ -401,7 +401,7 @@ class NCMCEngine(object):
 
         Parameters
         ----------
-        alchemical_system : simtk.openmm.System
+        alchemical_system : openmm.openmm.System
             The system with appropriate atoms alchemically modified
         functions : dict
             functions[parameter] is the function (parameterized by 't' which switched from 0 to 1) that
@@ -413,7 +413,7 @@ class NCMCEngine(object):
 
         Returns
         -------
-        integrator : simtk.openmm.CustomIntegrator
+        integrator : openmm.openmm.CustomIntegrator
             NCMC switching integrator to annihilate or introduce particles alchemically.
         """
         # Create an NCMC velocity Verlet integrator.
@@ -450,11 +450,11 @@ class NCMCEngine(object):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.openmm.System
             The system with appropriate atoms alchemically modified
         itegrator : NCMCAlchemicalIntegrator subclasses
             NCMC switching integrator to annihilate or introduce particles alchemically.
-        positions : simtk.unit.Quantity with dimension [natoms, 3] with units of distance.
+        positions : openmm.unit.Quantity with dimension [natoms, 3] with units of distance.
             Positions of the atoms at the beginning of the NCMC switching.
 
         Returns
@@ -506,7 +506,7 @@ class NCMCEngine(object):
 
         Parameters
         ----------
-        system : simtk.openmm.System
+        system : openmm.openmm.System
             The system with appropriate atoms alchemically modified
 
         Returns
@@ -529,7 +529,7 @@ class NCMCEngine(object):
 
         Parameters
         ----------
-        alchemical_system : simtk.openmm.System
+        alchemical_system : openmm.openmm.System
             The system with appropriate atoms alchemically modified
         context : openmm.Context
             Alchemical context
@@ -558,20 +558,20 @@ class NCMCEngine(object):
         ----------
         topology_proposal : TopologyProposal
             Contains old/new Topology and System objects and atom mappings.
-        initial_positions : simtk.unit.Quantity with dimension [natoms, 3] with units of distance.
+        initial_positions : openmm.unit.Quantity with dimension [natoms, 3] with units of distance.
             Positions of the atoms at the beginning of the NCMC switching.
         direction : str, optional, default='insert'
             Direction of alchemical switching:
                 'insert' causes lambda to switch from 0 to 1 over nsteps steps of integration
                 'delete' causes lambda to switch from 1 to 0 over nsteps steps of integration
-        platform : simtk.openmm.Platform, optional, default=None
+        platform : openmm.openmm.Platform, optional, default=None
             If not None, this platform is used for integration.
         iteration : int, optional, default=None
             Iteration number, for storage purposes.
 
         Returns
         -------
-        final_positions : simtk.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
+        final_positions : openmm.unit.Quantity of dimensions [nparticles,3] with units compatible with angstroms
             The final positions after `nsteps` steps of alchemical switching
         logP_work : float
             The NCMC work contribution to the log acceptance probability (Eqs. 62 and 63)
@@ -643,7 +643,7 @@ class NCMCHybridEngine(NCMCEngine):
 
         Arguments
         ---------
-        temperature : simtk.unit.Quantity with units compatible with kelvin
+        temperature : openmm.unit.Quantity with units compatible with kelvin
             The temperature at which switching is to be run
         functions : dict of str:str, optional, default=default_functions
             functions[parameter] is the function (parameterized by 't' which
@@ -651,14 +651,14 @@ class NCMCHybridEngine(NCMCEngine):
             parameter 'parameter' is switched
         nsteps : int, optional, default=1
             The number of steps to use for switching.
-        timestep : simtk.unit.Quantity with units compatible with femtoseconds,
+        timestep : openmm.unit.Quantity with units compatible with femtoseconds,
             optional, default=1*femtosecond
             The timestep to use for integration of switching velocity
             Verlet steps.
         constraint_tolerance : float, optional, default=None
             If not None, this relative constraint tolerance is used for
             position and velocity constraints.
-        platform : simtk.openmm.Platform, optional, default=None
+        platform : openmm.openmm.Platform, optional, default=None
             If specified, the platform to use for OpenMM simulations.
         write_ncmc_interval : int, optional, default=None
             If a positive integer is specified, a PDB frame will be written
@@ -688,22 +688,22 @@ class NCMCHybridEngine(NCMCEngine):
         ---------
         topology_proposal : TopologyProposal namedtuple
             Contains old topology, proposed new topology, and atom mapping
-        old_positions : simtk.unit.Quantity with dimension [natoms, 3] with units of distance.
+        old_positions : openmm.unit.Quantity with dimension [natoms, 3] with units of distance.
             Positions of the atoms at the beginning of the NCMC switching.
-        new_positions : simtk.unit.Quantity with dimension [natoms, 3] with units of distance.
+        new_positions : openmm.unit.Quantity with dimension [natoms, 3] with units of distance.
             Positions of the atoms proposed by geometry engine.
 
         Returns
         -------
-        unmodified_old_system : simtk.openmm.System
+        unmodified_old_system : openmm.openmm.System
             Unmodified real system corresponding to old chemical state.
-        unmodified_new_system : simtk.openmm.System
+        unmodified_new_system : openmm.openmm.System
             Unmodified real system corresponding to new chemical state.
-        alchemical_system : simtk.openmm.System
+        alchemical_system : openmm.openmm.System
             The system with appropriate atoms alchemically modified
         alchemical_topology : openmm.app.Topology
             Topology which includes unique atoms of old and new states.
-        alchemical_positions : simtk.unit.Quantity of dimensions [nparticles,3]
+        alchemical_positions : openmm.unit.Quantity of dimensions [nparticles,3]
             with units compatible with angstroms
             Positions for the alchemical hybrid topology
         final_atom_map : dict(int : int)
@@ -756,17 +756,17 @@ class NCMCHybridEngine(NCMCEngine):
         ----------
         topology_proposal : TopologyProposal
             Contains old/new Topology and System objects and atom mappings.
-        initial_positions : simtk.unit.Quantity with dimension [natoms, 3] with units of distance.
+        initial_positions : openmm.unit.Quantity with dimension [natoms, 3] with units of distance.
             Positions of the atoms at the beginning of the NCMC switching.
-        proposed_positions : simtk.unit.Quantity with dimension [natoms, 3] with units of distance.
+        proposed_positions : openmm.unit.Quantity with dimension [natoms, 3] with units of distance.
             Positions of the new system atoms proposed by geometry engine.
-        platform : simtk.openmm.Platform, optional, default=None
+        platform : openmm.openmm.Platform, optional, default=None
             If not None, this platform is used for integration.
         Returns
         -------
-        final_positions : simtk.unit.Quantity of dimensions [natoms, 3] with units of distance
+        final_positions : openmm.unit.Quantity of dimensions [natoms, 3] with units of distance
             The final positions after `nsteps` steps of alchemical switching
-        new_old_positions : simtk.unit.Quantity of dimensions [natoms, 3] with units of distance.
+        new_old_positions : openmm.unit.Quantity of dimensions [natoms, 3] with units of distance.
             The final positions of the atoms of the old system after `nsteps`
             steps of alchemical switching
         logP_work : float
@@ -812,9 +812,9 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
 
         Parameters
         ----------
-        temperature : simtk.unit.Quantity with units compatible with kelvin
+        temperature : openmm.unit.Quantity with units compatible with kelvin
             The temperature to use for computing the NCMC acceptance probability.
-        system : simtk.openmm.System
+        system : openmm.openmm.System
             The system to be simulated.
         functions : dict of str : str
             functions[parameter] is the function (parameterized by 't' which switched from 0 to 1) that
@@ -823,7 +823,7 @@ class NCMCAlchemicalIntegrator(openmm.CustomIntegrator):
             The number of switching timesteps per call to integrator.step(1).
         steps_per_propagation : int
             The number of propagation steps taken at each value of lambda
-        timestep : simtk.unit.Quantity with units compatible with femtoseconds
+        timestep : openmm.unit.Quantity with units compatible with femtoseconds
             The timestep to use for each NCMC step.
         direction : str, optional, default='insert'
             One of ['insert', 'delete'].
@@ -1152,9 +1152,9 @@ class NCMCVVAlchemicalIntegrator(NCMCAlchemicalIntegrator):
 
         Parameters
         ----------
-        temperature : simtk.unit.Quantity with units compatible with kelvin
+        temperature : openmm.unit.Quantity with units compatible with kelvin
             The temperature to use for computing the NCMC acceptance probability.
-        system : simtk.openmm.System
+        system : openmm.openmm.System
             The system to be simulated.
         functions : dict of str : str
             functions[parameter] is the function (parameterized by 't' which switched from 0 to 1) that
@@ -1163,7 +1163,7 @@ class NCMCVVAlchemicalIntegrator(NCMCAlchemicalIntegrator):
             The number of switching timesteps per call to integrator.step(1).
         steps_per_propagation : int, optional, default=1
             The number of propagation steps taken at each value of lambda
-        timestep : simtk.unit.Quantity with units compatible with femtoseconds
+        timestep : openmm.unit.Quantity with units compatible with femtoseconds
             The timestep to use for each NCMC step.
         direction : str, optional, default='insert'
             One of ['insert', 'delete'].
@@ -1260,9 +1260,9 @@ class NCMCGHMCAlchemicalIntegrator(NCMCAlchemicalIntegrator):
 
         Parameters
         ----------
-        temperature : simtk.unit.Quantity with units compatible with kelvin
+        temperature : openmm.unit.Quantity with units compatible with kelvin
             The temperature to use for computing the NCMC acceptance probability.
-        system : simtk.openmm.System
+        system : openmm.openmm.System
             The system to be simulated.
         functions : dict of str : str
             functions[parameter] is the function (parameterized by 't' which switched from 0 to 1) that
@@ -1271,7 +1271,7 @@ class NCMCGHMCAlchemicalIntegrator(NCMCAlchemicalIntegrator):
             The number of switching timesteps per call to integrator.step(1).
         steps_per_propagation : int, optional, default=1
             The number of propagation steps taken at each value of lambda
-        timestep : simtk.unit.Quantity with units compatible with femtoseconds
+        timestep : openmm.unit.Quantity with units compatible with femtoseconds
             The timestep to use for each NCMC step.
         direction : str, optional, default='insert'
             One of ['insert', 'delete'].

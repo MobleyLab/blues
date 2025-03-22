@@ -1,7 +1,7 @@
 import unittest, parmed
 from blues import utils
 from blues.simulation import SystemFactory, SimulationFactory, BLUESSimulation
-from simtk.openmm import app
+from openmm import app
 from blues.moves import SideChainMove
 from blues.moves import MoveEngine
 from openmmtools import testsystems
@@ -34,7 +34,6 @@ class SideChainTester(unittest.TestCase):
         prmtop = utils.get_data_filename('blues', 'tests/data/vacDivaline.prmtop')
         inpcrd = utils.get_data_filename('blues', 'tests/data/vacDivaline.inpcrd')
         self.struct = parmed.load_file(prmtop, xyz=inpcrd)
-
         self.sidechain = SideChainMove(self.struct, [1])
         self.engine = MoveEngine(self.sidechain)
         self.engine.selectMove()

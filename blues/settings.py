@@ -4,8 +4,8 @@ import os
 
 import parmed
 import yaml
-from simtk import unit
-from simtk.openmm import app
+from openmm import unit
+from openmm import app
 
 from blues import reporters, utils
 
@@ -205,14 +205,14 @@ class Settings(object):
     @staticmethod
     def set_Apps(config):
         """
-        Check system parameters which require loading from the simtk.openmm.app namespace
+        Check system parameters which require loading from the openmm.openmm.app namespace
 
         nonbondedMethod : ['NoCutoff', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME', 'Ewald'],
         constraints : [None, 'HBonds', 'HAngles', 'AllBonds'],
         implicitSolvent : ['HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2']
         """
 
-        # System related parameters that require import from the simtk.openmm.app namesapce
+        # System related parameters that require import from the openmm.openmm.app namesapce
         valid_apps = {
             'nonbondedMethod': ['NoCutoff', 'CutoffNonPeriodic', 'CutoffPeriodic', 'PME', 'Ewald'],
             'constraints': [None, 'HBonds', 'HAngles', 'AllBonds'],

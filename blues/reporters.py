@@ -4,12 +4,12 @@ import time
 
 import numpy as np
 import parmed
-import simtk.unit as unit
+import openmm.unit as unit
 from mdtraj.reporters import HDF5Reporter
 from mdtraj.utils import unitcell
 from parmed import unit as u
 from parmed.geometry import box_vectors_to_lengths_and_angles
-from simtk.openmm import app
+from openmm import app
 
 import blues._version
 import blues.reporters
@@ -375,9 +375,9 @@ class BLUESHDF5Reporter(HDF5Reporter):
 
         Parameters
         ----------
-        simulation : simtk.openmm.app.Simulation
+        simulation : openmm.openmm.app.Simulation
             The Simulation to generate a report for
-        state : simtk.openmm.State
+        state : openmm.openmm.State
             The current state of the simulation
 
         """

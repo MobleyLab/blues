@@ -1,8 +1,8 @@
-import simtk
+import openmm
 from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 
 # Energy unit used by OpenMM unit system
-_OPENMM_ENERGY_UNIT = simtk.unit.kilojoules_per_mole
+_OPENMM_ENERGY_UNIT = openmm.unit.kilojoules_per_mole
 
 
 class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinIntegrator):
@@ -48,11 +48,11 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         Sequence of R, V, O (and optionally V{i}), and { }substeps to be executed each timestep. There is also an H option, which increments the global parameter `lambda` by 1/nsteps_neq for each step.
         Forces are only used in V-step. Handle multiple force groups by appending the force group index
         to V-steps, e.g. "V0" will only use forces from force group 0. "V" will perform a step using all forces.( will cause metropolization, and must be followed later by a ).
-    temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*simtk.unit.kelvin
+    temperature : numpy.unit.Quantity compatible with kelvin, default: 298.0*openmm.unit.kelvin
        Fictitious "bath" temperature
-    collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/simtk.unit.picoseconds
+    collision_rate : numpy.unit.Quantity compatible with 1/picoseconds, default: 91.0/openmm.unit.picoseconds
        Collision rate
-    timestep : numpy.unit.Quantity compatible with femtoseconds, default: 1.0*simtk.unit.femtoseconds
+    timestep : numpy.unit.Quantity compatible with femtoseconds, default: 1.0*openmm.unit.femtoseconds
        Integration timestep
     constraint_tolerance : float, default: 1.0e-8
         Tolerance for constraint solver
@@ -98,9 +98,9 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
     def __init__(self,
                  alchemical_functions,
                  splitting="R V O H O V R",
-                 temperature=298.0 * simtk.unit.kelvin,
-                 collision_rate=1.0 / simtk.unit.picoseconds,
-                 timestep=1.0 * simtk.unit.femtoseconds,
+                 temperature=298.0 * openmm.unit.kelvin,
+                 collision_rate=1.0 / openmm.unit.picoseconds,
+                 timestep=1.0 * openmm.unit.femtoseconds,
                  constraint_tolerance=1e-8,
                  measure_shadow_work=False,
                  measure_heat=True,
@@ -124,7 +124,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self._prop_lambda = self._get_prop_lambda(prop_lambda)
 
         # add some global variables relevant to the integrator
-        kB = simtk.unit.BOLTZMANN_CONSTANT_kB * simtk.unit.AVOGADRO_CONSTANT_NA
+        kB = openmm.unit.BOLTZMANN_CONSTANT_kB * openmm.unit.AVOGADRO_CONSTANT_NA
         kT = kB * temperature
         self.addGlobalVariable("perturbed_pe", 0)
         self.addGlobalVariable("unperturbed_pe", 0)

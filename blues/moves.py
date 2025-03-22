@@ -19,7 +19,7 @@ import traceback
 import mdtraj
 import numpy
 import parmed
-from simtk import unit
+from openmm import unit
 import tempfile
 import numpy as np 
 
@@ -238,10 +238,10 @@ class RandomLigandRotationMove(Move):
 
         Returns
         -------
-        masses: 1xn numpy.array * simtk.unit.dalton
+        masses: 1xn numpy.array * openmm.unit.dalton
             array of masses of len(self.atom_indices), denoting
             the masses of the atoms in self.atom_indices
-        totalmass: float * simtk.unit.dalton
+        totalmass: float * openmm.unit.dalton
             The sum of the mass found in masses
         """
 
@@ -271,14 +271,14 @@ class RandomLigandRotationMove(Move):
 
         Parameters
         ----------
-        positions: nx3 numpy array * simtk.unit compatible with simtk.unit.nanometers
+        positions: nx3 numpy array * openmm.unit compatible with openmm.unit.nanometers
             ParmEd positions of the atoms to be moved.
         masses : numpy.array
             numpy.array of particle masses
 
         Returns
         -------
-        center_of_mass: numpy array * simtk.unit compatible with simtk.unit.nanometers
+        center_of_mass: numpy array * openmm.unit compatible with openmm.unit.nanometers
             1x3 numpy.array of the center of mass of the given positions
         """
 
@@ -306,12 +306,12 @@ class RandomLigandRotationMove(Move):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             Context containing the positions to be moved.
 
         Returns
         -------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
         """
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
@@ -784,14 +784,14 @@ class SideChainMove(Move):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             Context containing the positions to be moved.
         verbose : bool, default=False
             Enable verbosity to print out detailed information of the rotation.
 
         Returns
         -------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
 
         """
@@ -884,7 +884,7 @@ class WaterTranslationMove(Move):
         protein_selection: str, option, default='protein'
             Expression in the MDTraj atom selection DSL to specify the desired protein atoms.
             The center of mass of this is used to translate the water molecules.
-        radius: float*unit compatible with simtk.unit.nanometers, optional, default=2.0*unit.nanometers
+        radius: float*unit compatible with openmm.unit.nanometers, optional, default=2.0*unit.nanometers
             Defines the radius within the protein center of mass to choose a water
             and the radius in which to randomly translate that water.
     """
@@ -986,7 +986,7 @@ class WaterTranslationMove(Move):
         alchemical region support.
         Parameters
         ----------
-        context: simtk.openmm Context object
+        context: openmm.openmm Context object
             The context which corresponds to the NCMC simulation.
         """
         start_state = context.getState(getPositions=True, getVelocities=True)
@@ -1083,11 +1083,11 @@ class WaterTranslationMove(Move):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             Context containing the positions to be moved.
         Returns
         -------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             The same inumpyut context, but whose context were changed by this function.
         """
         before_final_move_pos = context.getState(getPositions=True).getPositions(asNumpy=True)
@@ -1132,8 +1132,8 @@ class SmartDartMove(RandomLigandRotationMove):
     topology: str, optional, default=None
         A path specifying a topology file matching the files in coord_files. Not
         necessary if the coord_files already contain topologies (ex. PDBs).
-    dart_radius: simtk.unit float object compatible with simtk.unit.nanometers unit,
-        optional, default=0.2*simtk.unit.nanometers
+    dart_radius: openmm.unit float object compatible with openmm.unit.nanometers unit,
+        optional, default=0.2*openmm.unit.nanometers
         The radius of the darting region around each dart.
     self_dart: boolean, optional, default='False'
         When performing the center of mass darting in `SmartDartMove.move()`,this
@@ -1227,12 +1227,12 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             Context containing the positions to be moved.
 
         Returns
         -------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
 
         """
@@ -1277,15 +1277,15 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         --------
-        com: 1x3 numpy.array*simtk.unit.nanometers
+        com: 1x3 numpy.array*openmm.unit.nanometers
             Current center of mass coordinates of the ligand.
 
         Returns
         -------
-        selected_dart: simtk.unit.nanometers, or None
+        selected_dart: openmm.unit.nanometers, or None
             The distance of a dart to a center. Returns
             None if the distance is greater than the darting region.
-        changevec: 1x3 numpy.array*simtk.unit.nanometers,
+        changevec: 1x3 numpy.array*openmm.unit.nanometers,
             The vector from the ligand center of mass
             to the center of a darting region.
 
@@ -1331,7 +1331,7 @@ class SmartDartMove(RandomLigandRotationMove):
 
         Parameters
         ---------
-        context: Context object from simtk.openmm
+        context: Context object from openmm.openmm
             Context from the ncmc simulation.
 
         Returns
@@ -1367,14 +1367,14 @@ class SmartDartMove(RandomLigandRotationMove):
         Parameters
         ---------
         selected_dart :
-        changevec: 1x3 numpy.array * simtk.unit.nanometers
+        changevec: 1x3 numpy.array * openmm.unit.nanometers
             The vector difference of the ligand center of mass
             to the closest dart center (if within the dart region).
 
 
         Returns
         -------
-        dart_switch: 1x3 numpy.array * simtk.unit.nanometers
+        dart_switch: 1x3 numpy.array * openmm.unit.nanometers
 
         """
         dartindex = list(range(len(self.dartboard)))
@@ -1489,7 +1489,7 @@ class SmartDartMove(RandomLigandRotationMove):
         ----------
         particle1, particle2, particle3: 1x3 numpy.array
             numpy.array corresponding to a given particle's positions
-        center: 1x3 numpy.array * simtk.unit compatible with simtk.unit.nanometers
+        center: 1x3 numpy.array * openmm.unit compatible with openmm.unit.nanometers
             Coordinate of the center of mass in the standard basis set.
 
         Returns
@@ -1520,7 +1520,7 @@ class SmartDartMove(RandomLigandRotationMove):
         ----------
         particle1, particle2, particle3: 1x3 numpy.array
             numpy.array corresponding to a given particle's positions
-        center: 1x3 numpy.array * simtk.unit compatible with simtk.unit.nanometers
+        center: 1x3 numpy.array * openmm.unit compatible with openmm.unit.nanometers
             Coordinate of the center of mass in the non-standard basis set.
 
         Returns
@@ -1564,12 +1564,12 @@ class CombinationMove(Move):
 
         Parameters
         ----------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             Context containing the positions to be moved.
 
         Returns
         -------
-        context: simtk.openmm.Context object
+        context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
 
         """

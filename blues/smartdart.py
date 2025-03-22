@@ -8,10 +8,12 @@ Contributors: David L. Mobley
 
 import mdtraj as md
 import numpy as np
-import simtk.unit as unit
-from simtk.openmm import *
-from simtk.openmm.app import *
-from simtk.unit import *
+import openmm.unit as unit
+from openmm import *
+from openmm.app import *
+from openmm.unit import *
+
+from openmm import * 
 
 from blues.ncmc import SimNCMC
 
@@ -262,7 +264,7 @@ class SmartDarting(SimNCMC):
 
         Arguments
         ---------
-        system: simtk.openmm.system
+        system: openmm.openmm.system
             Openmm System corresponding to the system to smart dart.
         file_list: list of str
             List containing coordinate files of the system for smart darting.

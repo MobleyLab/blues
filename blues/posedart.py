@@ -8,10 +8,10 @@ Contributors: David L. Mobley
 
 import mdtraj as md
 import numpy as np
-import simtk.unit as unit
-from simtk.openmm import *
-from simtk.openmm.app import *
-from simtk.unit import *
+import openmm.unit as unit
+from openmm import *
+from openmm.app import *
+from openmm.unit import *
 
 from blues.ncmc import SimNCMC, get_lig_residues
 

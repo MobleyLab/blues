@@ -17,8 +17,9 @@ import sys
 import numpy as np
 import parmed
 from openmmtools import alchemy
-from simtk import openmm, unit
-from simtk.openmm import app
+from openmm import unit
+from openmm import app
+import openmm 
 
 from blues import utils
 from blues.integrators import AlchemicalExternalLangevinIntegrator
@@ -74,7 +75,7 @@ class SystemFactory(object):
         self.structure = structure
         self.atom_indices = atom_indices
         self._config = config
-
+        
         #If parameters for generating the openmm.System is given, make them.
         if self._config:
             if 'alchemical' in self._config.keys():
@@ -149,7 +150,7 @@ class SystemFactory(object):
         nonbondedMethod : cutoff method
             This is the cutoff method. It can be either the NoCutoff,
             CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald objects from the
-            simtk.openmm.app namespace
+            openmm.openmm.app namespace
         nonbondedCutoff : float or distance Quantity
             The nonbonded cutoff must be either a floating point number
             (interpreted as nanometers) or a Quantity with attached units. This
@@ -549,7 +550,7 @@ class SimulationFactory(object):
     After generating the Simulations, attach your own reporters by providing
     the reporters in a list. Be sure to attach to either the MD or NCMC simulation.
 
-    >>> from simtk.openmm.app import StateDataReporter
+    >>> from openmm.openmm.app import StateDataReporter
     >>> md_reporters = [ StateDataReporter('test.log', 5) ]
     >>> ncmc_reporters = [ StateDataReporter('test-ncmc.log', 5) ]
     >>> simulations.md = simulations.attachReporters( simulations.md, md_reporters)
@@ -564,12 +565,12 @@ class SimulationFactory(object):
     >>> print(simulations.md)
     >>> print(simulations.ncmc)
     <blues.simulation.SimulationFactory object at 0x7f461b7a8b00>
-    <simtk.openmm.app.simulation.Simulation object at 0x7f461b7a8780>
-    <simtk.openmm.app.simulation.Simulation object at 0x7f461b7a87b8>
+    <openmm.openmm.app.simulation.Simulation object at 0x7f461b7a8780>
+    <openmm.openmm.app.simulation.Simulation object at 0x7f461b7a87b8>
     >>> print(simulations.md.reporters)
     >>> print(simulations.ncmc.reporters)
-    [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cac8>]
-    [<simtk.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cb70>]
+    [<openmm.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cac8>]
+    [<openmm.openmm.app.statedatareporter.StateDataReporter object at 0x7f1b4d24cb70>]
 
     """
 
@@ -1037,66 +1038,63 @@ class BLUESSimulation(object):
         self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
 
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
-        """Advance the NCMC simulation.
-
-        Parameters
-        ----------
-        nstepsNC : int
-            The number of NCMC switching steps to advance by.
-        moveStep : int
-            The step number to perform the chosen move, which should be half
-            the number of nstepsNC.
-        move_engine : blues.moves.MoveEngine
-            The object that executes the chosen move.
-
-        """
-
+        """Advance the NCMC simulation."""
+        #print("Running _stepNCMC...")
+        #print(f"nsteps: {nstepsNC}, moveStep: {moveStep}")
         logger.info('Advancing %i NCMC switching steps...' % (nstepsNC))
+
         # Retrieve NCMC state before proposed move
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
+        #print("Captured ncmc_state0")
+        #print(ncmc_state0['positions'])
         self._setStateTable('ncmc', 'state0', ncmc_state0)
 
-        #choose a move to be performed according to move probabilities
-        #TODO: will have to change to work with multiple alch region
-        if not move_engine: move_engine = self._move_engine
+        # Select the move to perform
+        if not move_engine:
+            move_engine = self._move_engine
         self._ncmc_sim.currentIter = self.currentIter
+
         move_engine.selectMove()
+        #print(f"Selected move: {move_engine.move_name}")
 
         lastStep = nstepsNC - 1
         for step in range(int(nstepsNC)):
             try:
-                #Attempt anything related to the move before protocol is performed
                 if not step:
-                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
+                    #print("Calling beforeMove()")
+                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
 
-                # Attempt selected MoveEngine Move at the halfway point
-                #to ensure protocol is symmetric
                 if step == moveStep:
                     if hasattr(logger, 'report'):
                         logger.info = logger.report
-                    #Do move
                     logger.info('Performing %s...' % move_engine.move_name)
-                    self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
 
-                # Do 1 NCMC step with the integrator
+                    #print("Running move_engine.runEngine() at moveStep")
+                    self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+                    
+
                 self._ncmc_sim.step(1)
 
-                #Attempt anything related to the move after protocol is performed
                 if step == lastStep:
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+                    # Debug: print positions after afterMove                    
 
             except Exception as e:
                 import traceback
                 traceback.print_tb(e.__traceback__)
-
                 logger.error(e)
                 move_engine.selected_move._error(self._ncmc_sim.context)
                 break
 
-        # ncmc_state1 stores the state AFTER a proposed move.
+        # ncmc_state1 stores the state AFTER a proposed move
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
         self._setStateTable('ncmc', 'state1', ncmc_state1)
 
+        # # Optional: check difference
+        # import numpy as np
+        # delta = np.abs(ncmc_state1['positions'] - ncmc_state0['positions'])
+        # print("Max delta between state0 and state1:", np.max(delta))
+    
     def _computeAlchemicalCorrection(self):
         """Computes the alchemical correction term from switching between the NCMC
         and MD potentials."""
@@ -1246,16 +1244,21 @@ class BLUESSimulation(object):
             self.currentIter = N
             logger.info('BLUES Iteration: %s' % N)
             self._syncStatesMDtoNCMC()
+            #print("✅ _syncStatesMDtoNCMC")
             self._stepNCMC(nstepsNC, moveStep)
+            #print("✅ _stepNCMC")
             self._acceptRejectMove(write_move)
+            #print("✅ _acceptRejectMove")
+            #print(f'what is temperature: {temperature}')
             self._resetSimulations(temperature)
+            #print("✅ _resetSimulations")
             self._stepMD(nstepsMD)
-
+            #print("✅ _stepMD")
+            #print(f'NITER: {N}/{nIter}')
         # END OF NITER
         self.acceptRatio = self.accept / float(nIter)
         logger.info('Acceptance Ratio: %s' % self.acceptRatio)
         logger.info('nIter: %s ' % nIter)
-
 
 class MonteCarloSimulation(BLUESSimulation):
     """Simulation class provides the functions that perform the MonteCarlo run.

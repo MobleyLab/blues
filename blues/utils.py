@@ -12,7 +12,8 @@ from math import ceil, floor
 from platform import uname
 
 import parmed
-from simtk import openmm, unit
+from openmm import unit 
+import openmm
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +189,7 @@ def parse_unit_quantity(unit_quantity_str):
 
     Returns
     -------
-    unit_quantity : simtk.unit.Quantity
+    unit_quantity : openmm.unit.Quantity
         i.e `unit.Quantity(3.024, unit=dalton)`
 
     """
@@ -266,11 +267,16 @@ def get_data_filename(package_root, relative_path):
         Full path to file
     """
 
-    from pkg_resources import resource_filename
-    fn = resource_filename(package_root, os.path.join(relative_path))
-    if not os.path.exists(fn):
-        raise ValueError("Sorry! %s does not exist. If you just added it, you'll have to re-install" % fn)
-    return fn
+    from importlib.resources import files
+    try:
+        resource_path = files(package_root).joinpath(relative_path)
+    except ModuleNotFoundError as e:
+        raise ValueError(f"Package '{package_root}' not found.") from e
+
+    if not resource_path.is_file():
+        raise ValueError(f"Sorry! {resource_path} does not exist. If you just added it, you'll have to re-install.")
+
+    return str(resource_path)
 
 
 def spreadLambdaProtocol(switching_values, steps, switching_types='auto', kind='cubic', return_tab_function=True):
@@ -297,13 +303,13 @@ def spreadLambdaProtocol(switching_values, steps, switching_types='auto', kind='
 
     Returns
     -------
-    tab_steps : list or simtk.openmm.openmm.Discrete1DFunction
+    tab_steps : list or openmm.openmm.openmm.Discrete1DFunction
         List of length `steps` that corresponds to the tabulated-friendly version of the input switching_values.
         If return-tab_function=True
 
     Examples
     --------
-    >>> from simtk.openmm.openmm import Continuous1DFunction, Discrete1DFunction
+    >>> from openmm.openmm.openmm import Continuous1DFunction, Discrete1DFunction
     >>> sterics = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.95, 0.8848447462380346,
                     0.8428373352131427, 0.7928373352131427, 0.7490146003095886, 0.6934088361682191,
                     0.6515123083157823, 0.6088924298371354, 0.5588924298371354, 0.5088924298371353,
