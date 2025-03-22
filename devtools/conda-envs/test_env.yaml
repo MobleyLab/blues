@@ -5,7 +5,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python==3.11
+  - python==3.10
   - oeommtools
   - openeye-toolkits
   - cython
@@ -16,4 +16,7 @@ dependencies:
   - ipykernel
   - conda-forge::openff-toolkit
   - parmed
-prefix: /opt/miniconda3/envs/blues
+  - pip
+  - pip:
+      - openeye-toolkits
+      - git+https://github.com/openeye/oeommtools.git
