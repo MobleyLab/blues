@@ -1,12 +1,11 @@
 import json
 import logging
 import subprocess
-
 import mdtraj.version
 import netCDF4 as nc
 import numpy as np
 import parmed
-import simtk.openmm.version
+import openmm
 import yaml
 from mdtraj.formats.hdf5 import HDF5TrajectoryFile
 from mdtraj.utils import ensure_type, in_units_of
@@ -414,7 +413,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
 
         if not hasattr(self._handle.root._v_attrs, 'application'):
             self._handle.root._v_attrs.application = str('OpenMM')
-            self._handle.root._v_attrs.applicationVersion = str(simtk.openmm.version.full_version)
+            self._handle.root._v_attrs.applicationVersion = str(openmm.version.full_version.full_version)
 
         # create arrays that store frame level informat
         if set_coordinates:
