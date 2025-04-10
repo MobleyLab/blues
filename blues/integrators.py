@@ -1,6 +1,8 @@
 import openmm
 from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
+import logging
 
+logger = logging.getLogger(__name__)
 # Energy unit used by OpenMM unit system
 _OPENMM_ENERGY_UNIT = openmm.unit.kilojoules_per_mole
 
@@ -156,57 +158,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
 
         return prop_lambda_min, prop_lambda_max
 
-    def _add_integrator_steps(self):
-        """
-        Override the base class to insert reset steps around the integrator.
-        """
-
-        # First step: Constrain positions and velocities and reset work accumulators and alchemical integrators
-        self.beginIfBlock('step = 0')
-        self.addComputeGlobal("perturbed_pe", "energy")
-        self.addComputeGlobal("unperturbed_pe", "energy")
-        self.addConstrainPositions()
-        self.addConstrainVelocities()
-        self._add_reset_protocol_work_step()
-        self._add_alchemical_reset_step()
-        self.endBlock()
-
-        # Main body
-        if self._n_steps_neq == 0:
-            # If nsteps = 0, we need to force execution on the first step only.
-            self.beginIfBlock('step = 0')
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            self.addComputeGlobal("step", "step + 1")
-            self.endBlock()
-        else:
-            #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
-            self.beginIfBlock("step < nsteps")
-            self.addComputeGlobal("perturbed_pe", "energy")
-            self.beginIfBlock("first_step < 1")
-            #TODO write better test that checks that the initial work isn't gigantic
-            self.addComputeGlobal("first_step", "1")
-            self.addComputeGlobal("unperturbed_pe", "energy")
-            self.endBlock()
-            #initial iteration
-            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            #if more propogation steps are requested
-            self.beginIfBlock("lambda > prop_lambda_min")
-            self.beginIfBlock("lambda <= prop_lambda_max")
-
-            self.beginWhileBlock("prop < nprop")
-            self.addComputeGlobal("prop", "prop + 1")
-
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            self.endBlock()
-            self.endBlock()
-            self.endBlock()
-            #ending variables to reset
-            self.addComputeGlobal("unperturbed_pe", "energy")
-            self.addComputeGlobal("step", "step + 1")
-            self.addComputeGlobal("prop", "1")
-
-            self.endBlock()
+   
 
     def _add_alchemical_perturbation_step(self):
         """
@@ -235,6 +187,14 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         protocol = self.getGlobalVariableByName("protocol_work")
         shadow = self.getGlobalVariableByName("shadow_work")
         logp_accept = -1.0 * (protocol + shadow) * _OPENMM_ENERGY_UNIT / self.kT
+        
+        # sa 
+        import numpy as np 
+        logger.info(f"Protocol work: {protocol}")
+        logger.info(f"Shadow work: {shadow}")
+        logger.info(f"log_accept_prob: {logp_accept}")
+        logger.info(f"acceptance_prob: {np.exp(logp_accept)}")
+        
         return logp_accept
 
     def reset(self):
