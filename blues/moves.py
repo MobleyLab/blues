@@ -22,6 +22,13 @@ import parmed
 from openmm import unit
 import tempfile
 import numpy as np 
+from blues import utils
+
+from scipy.spatial.transform import Rotation 
+from typing import Tuple
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 try:
@@ -1152,6 +1159,7 @@ class SmartDartMove(RandomLigandRotationMove):
     def __init__(self,
                  structure,
                  basis_particles,
+                 ligand_col_atoms,
                  coord_files,
                  topology=None,
                  dart_radius=0.2 * unit.nanometers,
@@ -1168,108 +1176,302 @@ class SmartDartMove(RandomLigandRotationMove):
         self.particle_pairs = []
         self.particle_weights = []
         self.basis_particles = basis_particles
+        self.ligand_col_atoms = ligand_col_atoms
         self.dart_radius = dart_radius
-        self.calculateProperties()
+        self._calculateProperties()
         self.self_dart = self_dart
-        self.dartsFromParmEd(coord_files, topology)
+        self.buildQuaternionDarts(coord_files, topology)
 
-    def dartsFromParmEd(self, coord_files, topology=None):
+    
+    def buildQuaternionDarts(self, coord_files, topology=None):
         """
-        Used to setup darts from a generic coordinate file, through MDtraj using the basis_particles to define
-        new basis vectors, which allows dart centers to remain consistant through a simulation.
-        This adds to the self.n_dartboard, which defines the centers used for smart darting.
+        Construct quaternion-based darts for MolDarting from a set of coordinate files.
+
+        This method processes each coordinate file to:
+        - Build a local coordinate frame from specified protein anchor atoms
+        - Define ligand poses relative to this frame using quaternions and translations
+        - Store each pose (dart) for later MolDarting move proposals
 
         Parameters
         ----------
-        coord_files: list of str
-            List containing coordinate files of the whole system for smart darting.
-        topology: str, optional, default=None
-            A path specifying a topology file matching the files in coord_files. Not
-            necessary if the coord_files already contain topologies.
+        coord_files : list of str
+            List of coordinate file paths (e.g., docked poses, MD snapshots).
+        topology : str, optional
+            Optional topology file (needed if coord_files lack internal topology).
 
+        Notes
+        -----
+        - Each dart consists of a quaternion (rotation) and translation (center of mass).
+        - The resulting darts are stored in `self.n_dartboard` as a list of dictionaries.
+        - Assumes that `self.atom_indices`, `self.basis_particles`, and `self.ligand_col_atoms` 
+        are correctly set before calling this function.
         """
+        # Temporary list to hold darts locally
+        darts = []  
 
-        n_dartboard = []
-        dartboard = []
-        #loop over specified files and generate parmed structures from each
-        #then the center of masses of the ligand in each structureare found
-        #finally those center of masses are added to the `self.dartboard`s to
-        #be used in the actual smart darting move to define darting regions
         for coord_file in coord_files:
-            if topology == None:
-                #if coord_file contains topology info, just load coord file
+            if topology is None:
                 temp_md = parmed.load_file(coord_file)
             else:
-                #otherwise load file specified in topology
                 temp_md = parmed.load_file(topology, xyz=coord_file)
-            #get position values in terms of nanometers
+
+            # Extract coordinates (in nanometers)
             context_pos = temp_md.positions.in_units_of(unit.nanometers)
             lig_pos = numpy.asarray(context_pos._value)[self.atom_indices] * unit.nanometers
             particle_pos = numpy.asarray(context_pos._value)[self.basis_particles] * unit.nanometers
-            #calculate center of mass of ligand
-            self.calculateProperties()
+            ligand_col_pos = numpy.asarray(context_pos._value)[self.ligand_col_atoms] * unit.nanometers
+            logger.info(f'ligand positions: {ligand_col_pos}')
+            
+            # Compute center of mass for full ligand
+            self._calculateProperties()
             center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
-            #get particle positions
-            new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], center_of_mass)
-            #old_coord should be equal to com
-            old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
-            numpy.testing.assert_almost_equal(old_coord._value, center_of_mass._value, decimal=1)
-            #add the center of mass in euclidian and new basis set (defined by the basis_particles)
-            n_dartboard.append(new_coord)
-            dartboard.append(old_coord)
-        self.n_dartboard = n_dartboard
-        self.dartboard = dartboard
+
+            ligand_col_pos = numpy.asarray(ligand_col_pos.value_in_unit(unit.nanometers))
+            particle_pos = numpy.asarray(particle_pos.value_in_unit(unit.nanometers))
+            center_of_mass = numpy.asarray(center_of_mass.value_in_unit(unit.nanometers))
+            
+            
+            # Compute relative pose: (quaternion, translation)
+            quat, com_translation = self._computeRelativePose(
+                particle_pos[0], particle_pos[1], particle_pos[2],
+                ligand_col_pos, center_of_mass
+            )
+
+            # Build dart object
+            dart = {
+                "quaternion": quat,
+                "translation": com_translation,
+                "protein_anchor_atoms": [particle_pos[0], particle_pos[1], particle_pos[2]]
+            }
+            darts.append(dart)
+
+        # Final assignment: store built darts
+        self.n_dartboard = darts
+            
+    # def dartsFromParmEd(self, coord_files, topology=None):
+    #     """
+    #     Used to setup darts from a generic coordinate file, through MDtraj using the basis_particles to define
+    #     new basis vectors, which allows dart centers to remain consistant through a simulation.
+    #     This adds to the self.n_dartboard, which defines the centers used for smart darting.
+
+    #     Parameters
+    #     ----------
+    #     coord_files: list of str
+    #         List containing coordinate files of the whole system for smart darting.
+    #     topology: str, optional, default=None
+    #         A path specifying a topology file matching the files in coord_files. Not
+    #         necessary if the coord_files already contain topologies.
+
+    #     """
+
+    #     n_dartboard = []
+    #     dartboard = []
+    #     #loop over specified files and generate parmed structures from each
+    #     #then the center of masses of the ligand in each structureare found
+    #     #finally those center of masses are added to the `self.dartboard`s to
+    #     #be used in the actual smart darting move to define darting regions
+    #     for coord_file in coord_files:
+    #         if topology == None:
+    #             #if coord_file contains topology info, just load coord file
+    #             temp_md = parmed.load_file(coord_file)
+    #         else:
+    #             #otherwise load file specified in topology
+    #             temp_md = parmed.load_file(topology, xyz=coord_file)
+    #         #get position values in terms of nanometers
+    #         context_pos = temp_md.positions.in_units_of(unit.nanometers)
+    #         lig_pos = numpy.asarray(context_pos._value)[self.atom_indices] * unit.nanometers
+    #         particle_pos = numpy.asarray(context_pos._value)[self.basis_particles] * unit.nanometers
+    #         #calculate center of mass of ligand
+    #         self._calculateProperties()
+    #         center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
+    #         #get particle positions
+    #         new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], center_of_mass)
+    #         #old_coord should be equal to com
+    #         old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
+    #         numpy.testing.assert_almost_equal(old_coord._value, center_of_mass._value, decimal=1)
+    #         #add the center of mass in euclidian and new basis set (defined by the basis_particles)
+    #         n_dartboard.append(new_coord)
+    #         dartboard.append(old_coord)
+    #     self.n_dartboard = n_dartboard
+    #     self.dartboard = dartboard
 
     def move(self, context):
         """
-        Function for performing smart darting move with darts that
-        depend on particle positions in the system.
+        Perform a smart darting move based on current ligand and protein configuration.
+
+        This move:
+        - Extracts the current ligand and protein anchor positions
+        - Rebuilds the ligand's relative pose (quaternion and COM translation)
+        - Prepares for dart matching against precomputed darts
 
         Parameters
         ----------
-        context: openmm.openmm.Context object
+        context : openmm.openmm.Context
             Context containing the positions to be moved.
 
         Returns
         -------
-        context: openmm.openmm.Context object
-            The same input context, but whose positions were changed by this function.
-
+        context : openmm.openmm.Context
+            The same input context, but possibly with modified positions if darting succeeds.
         """
-
+        state = context.getState(getEnergy=True)
+        logger.info(f'Potential energy BEFORE darting: {state.getPotentialEnergy()}')
         atom_indices = self.atom_indices
+
         if len(self.n_dartboard) == 0:
-            raise ValueError('No darts are specified. Make sure you use ' +
-                             'SmartDartMove.dartsFromParmed() before using the move() function')
+            raise ValueError('No darts are specified. Make sure you use SmartDartMove.buildQuaternionDarts() before using move().')
 
-        #get state info from context
-        stateinfo = context.getState(True, True, False, True, True, False)
+        # Get current state info from OpenMM context
+        structure = self.structure
+        stateinfo = context.getState(getPositions=True, getVelocities=True, getEnergy=False, getForces=True, getParameters=True)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
-        #get the ligand positions
+        structure.positions = oldDartPos 
+        structure.save(f"/dfs9/dmobley-lab/ayoubsj/si_moldart/toluene/output/pre_dart.pdb", overwrite=True)
+        oldDartPos_array = numpy.asarray(oldDartPos.value_in_unit(unit.nanometers))
+        
+        logger.info(f'size of oldDartPos_array: {oldDartPos_array.shape}')
+        
+        # Extract ligand full atom positions
         lig_pos = numpy.asarray(oldDartPos._value)[self.atom_indices] * unit.nanometers
-        #updates the darting regions based on the current position of the basis particles
-        self._findDart(context)
-        #find the ligand's current center of mass position
-        center = self.getCenterOfMass(lig_pos, self.masses)
-        #calculate the distance of the center of mass to the center of each darting region
-        selected_dart, changevec = self._calc_from_center(com=center)
-        #selected_dart is the selected darting region
+        logger.info(f"size of ligand pose: {lig_pos.shape}")
+        # Compute center of mass of ligand
+        center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
+        logger.info(f'center of mass: {center_of_mass}')
+        # Extract the 3 colinear ligand atoms
+        col_ligand_pos = numpy.asarray(oldDartPos._value)[self.ligand_col_atoms] * unit.nanometers
+        # Extract the 3 protein anchor atoms
+        col_residues = numpy.asarray(oldDartPos._value)[self.basis_particles] * unit.nanometers
+        
+        col_ligand_pos = numpy.asarray(col_ligand_pos.value_in_unit(unit.nanometers))
+        col_residues = numpy.asarray(col_residues.value_in_unit(unit.nanometers))
+        center_of_mass = numpy.asarray(center_of_mass.value_in_unit(unit.nanometers))
+        logger.info(f'col ligand of current step: {col_ligand_pos}')
+        # Compute the ligand's relative pose in the protein's local frame
+        current_quat, current_translation = self._computeRelativePose(
+            particle1=col_residues[0], 
+            particle2=col_residues[1], 
+            particle3=col_residues[2],
+            ligand_col_atoms=col_ligand_pos,
+            ligand_com=center_of_mass
+        )
 
-        #if the center of mass was within one darting region, move the ligand to another region
+        # Ligand still in a dart region? 
+        selected_dart  = self._findDartNeighbors(current_quat, current_translation)
+        
         if selected_dart != None:
-            newDartPos = numpy.copy(oldDartPos)
-            #find the center of mass in the new darting region
-            dart_switch = self._reDart(selected_dart, changevec)
-            #find the vector that will translate the ligand to the new darting region
-            vecMove = dart_switch - center
-            #apply that vector to the ligand to actually translate the coordinates
-            for atom in atom_indices:
-                newDartPos[atom] = newDartPos[atom] + vecMove._value
+            logger.info('Found a dart!')
+            # move ligand to the origin 
+            newDartPos = self._applyDartMove(selected_dart, current_quat,center_of_mass, oldDartPos_array, atom_indices=atom_indices)
+            structure.positions = newDartPos 
+            structure.save(f"/dfs9/dmobley-lab/ayoubsj/si_moldart/toluene/output/post_dart.pdb", overwrite=True)
             #set the positions after darting
             context.setPositions(newDartPos)
+        
+            state = context.getState(getEnergy=True)
+            logger.info(f'Potential energy after darting: {state.getPotentialEnergy()}')
+        return context
 
-            return context
+    # def move(self, context):
+    #     """
+    #     Function for performing smart darting move with darts that
+    #     depend on particle positions in the system.
 
+    #     Parameters
+    #     ----------
+    #     context: openmm.openmm.Context object
+    #         Context containing the positions to be moved.
+
+    #     Returns
+    #     -------
+    #     context: openmm.openmm.Context object
+    #         The same input context, but whose positions were changed by this function.
+
+    #     """
+
+    #     atom_indices = self.atom_indices
+    #     if len(self.n_dartboard) == 0:
+    #         raise ValueError('No darts are specified. Make sure you use ' +
+    #                          'SmartDartMove.dartsFromParmed() before using the move() function')
+
+    #     #get state info from context
+    #     stateinfo = context.getState(True, True, False, True, True, False)
+    #     oldDartPos = stateinfo.getPositions(asNumpy=True)
+    #     #get the ligand positions
+    #     lig_pos = numpy.asarray(oldDartPos._value)[self.atom_indices] * unit.nanometers
+    #     #updates the darting regions based on the current position of the basis particles
+    #     self._findDart(context)
+    #     #find the ligand's current center of mass position
+    #     center = self.getCenterOfMass(lig_pos, self.masses)
+    #     #calculate the distance of the center of mass to the center of each darting region
+    #     selected_dart, changevec = self._calc_from_center(com=center)
+    #     #selected_dart is the selected darting region
+
+    #     #if the center of mass was within one darting region, move the ligand to another region
+    #     if selected_dart != None:
+    #         logger.info('Selected a dart!')
+    #         newDartPos = numpy.copy(oldDartPos)
+    #         #find the center of mass in the new darting region
+    #         dart_switch = self._reDart(selected_dart, changevec)
+    #         #find the vector that will translate the ligand to the new darting region
+    #         vecMove = dart_switch - center
+    #         #apply that vector to the ligand to actually translate the coordinates
+    #         for atom in atom_indices:
+    #             newDartPos[atom] = newDartPos[atom] + vecMove._value
+    #         #set the positions after darting
+    #         context.setPositions(newDartPos)
+        
+    #     logger.info('Did not find a dart!')
+    #     return context
+    
+    def _findDartNeighbors(self, current_quat, current_com):
+        """
+        Identify nearby darts based on orientation and translation match.
+        
+        Parameters
+        ----------
+        current_quat : np.ndarray
+            The current ligand quaternion relative to protein anchors.
+        current_com : np.ndarray
+            The current ligand center of mass in protein frame.
+        
+        Returns
+        -------
+        selected_darts : list
+            List of indices of darts that are close in orientation and translation.
+        """
+
+        angles = []
+        norm_distances = []
+        selected_darts = []
+
+        for i, dart in enumerate(self.n_dartboard):
+            # Compute quaternion angular deviation
+            quat_dot = np.dot(dart['quaternion'], current_quat)
+            abs_quat = np.abs(quat_dot)  # ensure positive due to q vs -q
+            angle_rotation = 2 * np.arccos(abs_quat)
+            angles.append(angle_rotation)
+
+            # Compute COM translation distance
+            translation_distance = np.linalg.norm(dart['translation'] - current_com)
+            norm_distances.append(translation_distance)
+
+            # Check if both orientation and translation are within thresholds
+            if angle_rotation <= (15 * np.pi / 180):  # 15 degrees converted to radians
+                dart_radius_nm = self.dart_radius.value_in_unit(unit.nanometers)
+                if translation_distance <= dart_radius_nm:
+                    selected_darts.append(i)  # store the dart index
+
+        if len(selected_darts) == 1:
+            return selected_darts[0]
+          
+        elif len(selected_darts) == 0:
+            logger.info("No darts were selected :/ ")
+            return None
+        elif len(selected_darts) >= 2:
+            raise ValueError("Overlapping darts detected. Simulation must terminate.")
+            
+        return selected_darts
+            
     def _calc_from_center(self, com):
         """
         Helper function that finds the distance of the current center of
@@ -1357,7 +1559,74 @@ class SmartDartMove(RandomLigandRotationMove):
         self.dartboard = dart_list[:]
         return dart_list
 
-    def _reDart(self, selected_dart, changevec):
+    def _applyDartMove(self, selected_dart_index, current_quat, ligand_com, system_pos, atom_indices):
+        """
+        Apply a MolDarting move by rotating and translating the ligand 
+        to a new darting region based on the selected target dart.
+
+        This function:
+        - Recenters the ligand COM to the origin.
+        - Applies the necessary rotation to align the ligand with the target dart pose.
+        - Translates the ligand to the target COM position.
+
+        Parameters
+        ----------
+        selected_dart_index : int
+            Index of the currently selected dart to move from.
+        current_quat : np.ndarray
+            Quaternion representing the ligand's current orientation relative to the protein anchors.
+        ligand_com : np.ndarray
+            3D vector representing the ligand's center of mass in the global frame.
+        system_pos : np.ndarray
+            Full atomic positions of the system before darting (shape: [n_atoms, 3]).
+        atom_indices : list of int
+            Indices of ligand atoms involved in the darting move.
+
+        Returns
+        -------
+        newDartPos : np.ndarray
+            Updated ligand atom positions after the darting move, ready to be set in the OpenMM context.
+        """
+        # Step 1: Recenter ligand around the origin (COM → (0, 0, 0))
+        recentered_ligand_pos = self._recenter_ligand(system_pos, atom_indices, ligand_com)
+        
+        ligand_com_check = recentered_ligand_pos[atom_indices].mean(axis=0)
+        print("Recentered ligand COM:", ligand_com_check)
+        print("Current ligand COM:", ligand_com)
+        # Step 2: Apply rotation and translation toward the new dart target
+        newDartPos_array = self._reDart(selected_dart_index, current_quat, recentered_ligand_pos, atom_indices, ligand_com)
+        logger.info(f'size of newDartPos_array: {newDartPos_array.shape}')
+        newDartPos = unit.Quantity(newDartPos_array, unit.nanometers)
+        logger.info(f"newDartPos {newDartPos}")
+        return newDartPos
+    
+    def _recenter_ligand(self, ligand_pos, ligand_atoms, ligand_com):
+        """
+        Recenters the ligand coordinates so that its center of mass (COM) is at the origin (0, 0, 0).
+
+        This step ensures that rotation operations are performed around the ligand's COM,
+        which is critical for accurate darting moves without introducing translation artifacts.
+
+        Parameters
+        ----------
+        ligand_pos : np.ndarray
+            Full atomic positions of the ligand (shape: [n_atoms, 3]).
+        ligand_atoms : list of int
+            Indices of ligand atoms to be moved.
+        ligand_com : np.ndarray
+            3D vector of the ligand center of mass in global coordinates.
+
+        Returns
+        -------
+        recentered_positions : np.ndarray
+            Ligand positions shifted so that the COM is exactly at (0, 0, 0).
+        """
+        recentered_positions = numpy.copy(ligand_pos)
+        for atom in ligand_atoms:
+            recentered_positions[atom] -= ligand_com
+        return recentered_positions
+    
+    def _reDart(self, selected_dart_index, current_quat, recenter_ligand_pos, ligand_atoms, ligand_com):
         """
         Helper function to choose a random dart and determine the vector
         that would translate the COM to that dart center + changevec.
@@ -1375,15 +1644,72 @@ class SmartDartMove(RandomLigandRotationMove):
         Returns
         -------
         dart_switch: 1x3 numpy.array * openmm.unit.nanometers
-
         """
-        dartindex = list(range(len(self.dartboard)))
+        # Apply rotation 
+        newDartPos = numpy.copy(recenter_ligand_pos)
+        dartindex = list(range(len(self.n_dartboard)))
         if self.self_dart == False:
-            dartindex.pop(selected_dart)
+            dartindex.pop(selected_dart_index)
         dartindex = numpy.random.choice(dartindex)
-        dvector = self.dartboard[dartindex]
-        dart_switch = dvector + changevec
-        return dart_switch
+        
+        chosen_dart = self.n_dartboard[dartindex]
+        
+        quat_target = chosen_dart['quaternion']
+        
+        # compute necessary rotation (i.e how to rotate the ligand atoms to match the dart)
+        relative_rotation = Rotation.from_quat(quat_target) * Rotation.from_quat(current_quat).inv()
+        
+        # apply rotation
+        ligand_rotated = np.copy(newDartPos)
+        ligand_rotated[ligand_atoms] = relative_rotation.apply(newDartPos[ligand_atoms])
+        
+        # translate dart to target COM
+        com_target =  chosen_dart['translation']
+        
+        final_dart_position = numpy.copy(ligand_rotated)
+        
+
+        current_basis_matrix = Rotation.from_quat(quat=current_quat).as_matrix()
+        
+        reference_basis_matrix = Rotation.from_quat(quat=quat_target).as_matrix()
+        
+        ligand_com_world = (current_basis_matrix @ com_target) + chosen_dart['protein_anchor_atoms'][0]
+        
+        logger.info(f'com_target, {com_target}')
+        for atom in ligand_atoms:
+            final_dart_position[atom] += ligand_com
+        
+        
+        return final_dart_position
+        
+
+    # def _reDart(self, selected_dart, changevec):
+    #     """
+    #     Helper function to choose a random dart and determine the vector
+    #     that would translate the COM to that dart center + changevec.
+    #     This is called reDart in the sense that it helps to switch
+    #     the ligand to another darting region.
+
+    #     Parameters
+    #     ---------
+    #     selected_dart :
+    #     changevec: 1x3 numpy.array * openmm.unit.nanometers
+    #         The vector difference of the ligand center of mass
+    #         to the closest dart center (if within the dart region).
+
+
+    #     Returns
+    #     -------
+    #     dart_switch: 1x3 numpy.array * openmm.unit.nanometers
+
+    #     """
+    #     dartindex = list(range(len(self.dartboard)))
+    #     if self.self_dart == False:
+    #         dartindex.pop(selected_dart)
+    #     dartindex = numpy.random.choice(dartindex)
+    #     dvector = self.dartboard[dartindex]
+    #     dart_switch = dvector + changevec
+    #     return dart_switch
 
     def _changeBasis(self, a, b):
         """
@@ -1454,7 +1780,130 @@ class SmartDartMove(RandomLigandRotationMove):
         magnitude = numpy.sqrt(numpy.sum(vector * vector))
         unit_vec = vector / magnitude
         return unit_vec
+    
 
+    def _computeRelativePose(
+        self,
+        particle1: np.ndarray,
+        particle2: np.ndarray,
+        particle3: np.ndarray,
+        ligand_col_atoms: np.ndarray,
+        ligand_com: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Compute the relative pose of a ligand with respect to a protein-based local coordinate frame.
+        
+        This function constructs local orthonormal frames from three protein atoms (as anchors)
+        and three non-collinear ligand atoms. It returns the relative orientation as a quaternion 
+        and the ligand's center of mass projected into the protein's local coordinate system.
+
+        Parameters
+        ----------
+        particle1 : np.ndarray
+            Coordinates of the first protein anchor atom (defines the origin of the protein frame).
+        particle2 : np.ndarray
+            Coordinates of the second protein anchor atom (defines the X-axis direction).
+        particle3 : np.ndarray
+            Coordinates of the third protein anchor atom (used to define the plane for the frame).
+        ligand_col_atoms : np.ndarray
+            Array of coordinates (at least 3) for ligand atoms used to define the ligand's local frame.
+        ligand_com : np.ndarray
+            The center of mass of the ligand in global coordinates.
+
+        Returns
+        -------
+        quat : np.ndarray
+            A 4D quaternion (x, y, z, w) representing the ligand's orientation relative to the protein frame.
+        relative_translation : np.ndarray
+            A 3D vector representing the ligand's center of mass translated into the protein's local frame.
+
+        Notes
+        -----
+        - Requires the `_buildLocalFrameFromAnchors` method to return orthonormal basis vectors.
+        - Assumes both input frames are consistently built (same handedness and stacking convention).
+        - Resulting data can be stored in a MolDarting dart object for pose tracking.
+        """
+        # Build protein frame and rotation matrix
+        logger.info(f'particle one: {particle1}')
+        logger.info(f'ligand atom 1 : {ligand_col_atoms[0]}')
+        logger.info(f'type(particle1), {type(particle1)}')
+        vec1, vec2, vec3 = self._buildLocalFrameFromAnchors(particle1, particle2, particle3)
+        logger.info(f"x coordinate: {vec1}")
+        logger.info(f"y coordinate: {vec2}")
+        logger.info(f"z coordinate: {vec3}")
+        protein_matrix = np.column_stack((vec1, vec2, vec3))
+        protein_rotation = Rotation.from_matrix(protein_matrix)
+
+        # Build ligand frame and rotation matrix
+        lig_vec1, lig_vec2, lig_vec3 = self._buildLocalFrameFromAnchors(
+            ligand_col_atoms[0], ligand_col_atoms[1], ligand_col_atoms[2]
+        )
+        
+        ligand_matrix = np.column_stack((lig_vec1, lig_vec2, lig_vec3))
+        logger.info(f'LIGAND MATRIX: {ligand_matrix}')
+        ligand_rotation = Rotation.from_matrix(ligand_matrix)
+        logger.info(f'LIGAND rotation: {ligand_rotation}')
+
+        # Compute relative orientation as quaternion
+        relative_rotation = protein_rotation.inv() * ligand_rotation
+        # returns (x, y, z, w)
+        quat = relative_rotation.as_quat()  
+        logger.info(f'quat: {quat}')
+        # Compute relative translation (ligand COM in protein frame)
+        relative_translation = protein_matrix.T @ (ligand_com - particle1)
+
+        return quat, relative_translation
+         
+    
+    def _buildLocalFrameFromAnchors(self, particle1, particle2, particle3):
+        """
+        Constructs a local right-handed, orthonormal coordinate frame 
+        from three reference atoms (e.g., protein anchor atoms).
+
+        Parameters
+        ----------
+        particle1 : np.ndarray
+            Coordinates of the first anchor atom (used as the frame origin).
+        particle2 : np.ndarray
+            Coordinates of the second anchor atom (defines X-axis direction).
+        particle3 : np.ndarray
+            Coordinates of the third anchor atom (used to define the XY plane).
+
+        Returns
+        -------
+        vec1 : np.ndarray
+            Unit vector defining the X-axis of the local frame.
+        vec2 : np.ndarray
+            Unit vector defining the Y-axis (orthogonal to X and Z).
+        vec3 : np.ndarray
+            Unit vector defining the Z-axis (normal to the plane formed by the three atoms).
+
+        Notes
+        -----
+        The resulting frame is:
+        - Origin-centered at `particle1`
+        - Right-handed
+        - Orthonormal
+        Useful for computing relative poses, rotation matrices, or quaternions.
+        """
+        # Define the X-axis from particle1 to particle2
+        vec1 = particle2 - particle1
+        vec1 = vec1 / np.linalg.norm(vec1)
+
+        # Temporary vector from particle1 to particle3 (used to define plane)
+        plane_vector = particle3 - particle1
+
+        # Z-axis: perpendicular to plane formed by vec1 and plane_vector
+        vec3 = np.cross(vec1, plane_vector)
+        vec3 = vec3 / np.linalg.norm(vec3)
+
+        # Y-axis: orthogonal to both X and Z to complete right-handed frame
+        vec2 = np.cross(vec3, vec1)
+        vec2 = vec2 / np.linalg.norm(vec2)
+
+        return vec1, vec2, vec3
+    
+        
     def _localCoord(self, particle1, particle2, particle3):
         """
         Defines a new coordinate system using 3 particles
@@ -1480,6 +1929,8 @@ class SmartDartMove(RandomLigandRotationMove):
         vec3 = numpy.cross(vec1, vec2) * unit.nanometers
         return vec1, vec2, vec3
 
+
+    
     def _findNewCoord(self, particle1, particle2, particle3, center):
         """
         Finds the coordinates of a given center in the standard basis
