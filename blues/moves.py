@@ -1241,7 +1241,8 @@ class SmartDartMove(RandomLigandRotationMove):
             dart = {
                 "quaternion": quat,
                 "translation": com_translation,
-                "protein_anchor_atoms": [particle_pos[0], particle_pos[1], particle_pos[2]]
+                "protein_anchor_atoms": [particle_pos[0], particle_pos[1], particle_pos[2]],
+                "ligand_anchor_coords": [ligand_col_pos[0], ligand_col_pos[1], ligand_col_pos[2]]
             }
             darts.append(dart)
 
@@ -1361,7 +1362,7 @@ class SmartDartMove(RandomLigandRotationMove):
         if selected_dart != None:
             logger.info('Found a dart!')
             # move ligand to the origin 
-            newDartPos = self._applyDartMove(selected_dart, current_quat,center_of_mass, oldDartPos_array, atom_indices=atom_indices)
+            newDartPos = self._applyDartMove(selected_dart, current_quat,center_of_mass, oldDartPos_array, atom_indices=atom_indices, current_protein_anchor_atoms=col_residues)
             structure.positions = newDartPos 
             structure.save(f"/dfs9/dmobley-lab/ayoubsj/si_moldart/toluene/output/post_dart.pdb", overwrite=True)
             #set the positions after darting
@@ -1559,7 +1560,7 @@ class SmartDartMove(RandomLigandRotationMove):
         self.dartboard = dart_list[:]
         return dart_list
 
-    def _applyDartMove(self, selected_dart_index, current_quat, ligand_com, system_pos, atom_indices):
+    def _applyDartMove(self, selected_dart_index, current_quat, ligand_com, system_pos, atom_indices, current_protein_anchor_atoms):
         """
         Apply a MolDarting move by rotating and translating the ligand 
         to a new darting region based on the selected target dart.
@@ -1594,7 +1595,7 @@ class SmartDartMove(RandomLigandRotationMove):
         print("Recentered ligand COM:", ligand_com_check)
         print("Current ligand COM:", ligand_com)
         # Step 2: Apply rotation and translation toward the new dart target
-        newDartPos_array = self._reDart(selected_dart_index, current_quat, recentered_ligand_pos, atom_indices, ligand_com)
+        newDartPos_array = self._reDart(selected_dart_index, current_quat, recentered_ligand_pos, atom_indices, current_protein_anchor_atoms)
         logger.info(f'size of newDartPos_array: {newDartPos_array.shape}')
         newDartPos = unit.Quantity(newDartPos_array, unit.nanometers)
         logger.info(f"newDartPos {newDartPos}")
@@ -1626,7 +1627,7 @@ class SmartDartMove(RandomLigandRotationMove):
             recentered_positions[atom] -= ligand_com
         return recentered_positions
     
-    def _reDart(self, selected_dart_index, current_quat, recenter_ligand_pos, ligand_atoms, ligand_com):
+    def _reDart(self, selected_dart_index, current_quat, recenter_ligand_pos, ligand_atoms, current_protein_anchor_atoms):
         """
         Helper function to choose a random dart and determine the vector
         that would translate the COM to that dart center + changevec.
@@ -1657,7 +1658,14 @@ class SmartDartMove(RandomLigandRotationMove):
         quat_target = chosen_dart['quaternion']
         
         # compute necessary rotation (i.e how to rotate the ligand atoms to match the dart)
-        relative_rotation = Rotation.from_quat(quat_target) * Rotation.from_quat(current_quat).inv()
+        relative_rotation = Rotation.from_quat(quat_target) * Rotation.from_quat(current_quat).inv() 
+        # compute the rotation that aligns the ligand atoms to the dart atoms
+        # maybe delete this after testing
+        #ligand_current_coords = newDartPos[self.ligand_col_atoms]
+        # relative_rotation, rmsd = Rotation.align_vectors(
+        #     chosen_dart['ligand_anchor_coords'], 
+        #     ligand_current_coords
+        # )
         
         # apply rotation
         ligand_rotated = np.copy(newDartPos)
@@ -1667,17 +1675,42 @@ class SmartDartMove(RandomLigandRotationMove):
         com_target =  chosen_dart['translation']
         
         final_dart_position = numpy.copy(ligand_rotated)
+       
+        # q_current = Rotation.from_quat(current_quat)
+       
+        # ## delete this after testing
+        # # ligand_current_coords = newDartPos[self.ligand_col_atoms]
+        # # rot, rmsd = Rotation.align_vectors(chosen_dart['ligand_anchor_coords'], ligand_current_coords)
+        # # print("Corrected quaternion:", rot.as_quat())
+        # q_target = Rotation.from_quat(quat_target)
+        # # print("Angle (deg):", np.degrees(rot.magnitude()))
+        # # print("Rotation axis:", rot.as_rotvec() / np.linalg.norm(rot.as_rotvec()))
+
+        # dot = np.dot(q_current.as_quat(), q_target.as_quat())
+        # print("Dot product:", dot)
+        # axis, angle = relative_rotation.as_rotvec(), relative_rotation.magnitude()
+        # print("Rotation axis:", axis / np.linalg.norm(axis))
+        # print("Angle (degrees):", np.degrees(angle))
         
 
-        current_basis_matrix = Rotation.from_quat(quat=current_quat).as_matrix()
-        
-        reference_basis_matrix = Rotation.from_quat(quat=quat_target).as_matrix()
-        
-        ligand_com_world = (current_basis_matrix @ com_target) + chosen_dart['protein_anchor_atoms'][0]
-        
         logger.info(f'com_target, {com_target}')
+        # Step 1: Extract current protein anchor coordinates
+        p1, p2, p3 = current_protein_anchor_atoms[0], \
+                    current_protein_anchor_atoms[1], \
+                    current_protein_anchor_atoms[2]
+
+        # Step 2: Build local protein frame from anchors
+        x, y, z = self._buildLocalFrameFromAnchors(p1, p2, p3)
+        protein_frame = np.column_stack((x, y, z))
+
+        # Step 3: Compute target COM in global coordinates
+        target_com_global = p1 + (protein_frame @ chosen_dart['translation'])
+        logger.info(f'chosen_dart["translation"]: {chosen_dart["translation"]}')
+        logger.info(f'target_com_global: {target_com_global}')
+    
+        # Step 5: Translate ligand
         for atom in ligand_atoms:
-            final_dart_position[atom] += ligand_com
+            final_dart_position[atom] += target_com_global
         
         
         return final_dart_position
