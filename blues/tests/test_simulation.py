@@ -33,6 +33,7 @@ def sim_cfg():
         'nIter': 1,
         'nstepsMD': 10,
         'nstepsNC': 10,
+        'splitting': 'H V R O R V H',
         'platform': PLATFORM
     }
     return sim_cfg
@@ -401,6 +402,9 @@ class TestBLUESSimulation(object):
         # Compare ligand only
         assert not np.allclose(lig0, lig1)
 
+        #assert np.not_equal(ncmc_state0, ncmc_state1).any()
+
+
     def test_computeAlchemicalCorrection(self, blues_sim):
         correction_factor = blues_sim._computeAlchemicalCorrection()
         assert isinstance(correction_factor, float)
@@ -409,6 +413,7 @@ class TestBLUESSimulation(object):
         # Check ligand atoms moved in NCMC before accept/reject
         md_state = BLUESSimulation.getStateFromContext(blues_sim._md_sim.context, state_keys)
         ncmc_state = BLUESSimulation.getStateFromContext(blues_sim._ncmc_sim.context, state_keys)
+        assert np.not_equal(md_state['positions'], ncmc_state['positions']).any()
 
         md_ligand_pos_before = md_state['positions'][tol_atom_indices]
         ncmc_ligand_pos_before = ncmc_state['positions'][tol_atom_indices]

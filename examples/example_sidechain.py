@@ -1,5 +1,4 @@
-from blues.moves import SideChainMove
-from blues.engine import MoveEngine
+from blues.moves import SideChainMove, MoveEngine
 from blues.simulation import *
 import json
 from blues.settings import *
