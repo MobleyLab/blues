@@ -110,12 +110,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             measure_shadow_work=measure_shadow_work,
             measure_heat=measure_heat,
             nsteps_neq=nsteps_neq)
-
         self._prop_lambda = self._get_prop_lambda(prop_lambda)
-        frame = inspect.currentframe()
-        args, _, _, values = inspect.getargvalues(frame)
-        inputs = dict([(i, values[i]) for i in args if i is not 'self'])
-        self.int_kwargs = inputs
 
         # add some global variables relevant to the integrator
         kB = openmm.unit.BOLTZMANN_CONSTANT_kB * openmm.unit.AVOGADRO_CONSTANT_NA
