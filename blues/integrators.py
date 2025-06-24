@@ -1,7 +1,7 @@
 import openmm
 from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 import logging
-
+from openmm import unit
 logger = logging.getLogger(__name__)
 # Energy unit used by OpenMM unit system
 _OPENMM_ENERGY_UNIT = openmm.unit.kilojoules_per_mole
@@ -140,7 +140,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         #$self._registered_step_types['H'] = (
         #    self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
-
+        logger.info(f'splitting: {splitting}')
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
@@ -207,3 +207,69 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
         self.setGlobalVariableByName("prop", 1)
         super(AlchemicalExternalLangevinIntegrator, self).reset()
+
+#TODO: Add a class for the restrained integrator
+# Still need to test the restrained integrator
+class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator):
+    def __init__(self,
+                 alchemical_functions,
+                 restraint_group,
+                 splitting="V R O H O V R",
+                 temperature=298.0 * unit.kelvin,
+                 collision_rate=1.0 / unit.picoseconds,
+                 timestep=1.0 * unit.femtoseconds,
+                 constraint_tolerance=1e-8,
+                 measure_shadow_work=False,
+                 measure_heat=True,
+                 nsteps_neq=100,
+                 nprop=1,
+                 prop_lambda=0.3,
+                 lambda_restraints = 'max(0, 1-(1/0.10)*abs(lambda-0.5))', #'max(0, 1-(1/0.10)*abs(lambda-0.5))', #"3*lambda^2 - 2*lambda^3", # old: 'max(0, 1-(1/0.10)*abs(lambda-0.5))'
+                 *args, **kwargs):
+
+        super(AlchemicalExternalRestrainedLangevinIntegrator, self).__init__(
+                     alchemical_functions,
+                     splitting,
+                     temperature,
+                     collision_rate,
+                     timestep,
+                     constraint_tolerance,
+                     measure_shadow_work,
+                     measure_heat,
+                     nsteps_neq,
+                     nprop,
+                     prop_lambda,
+                     *args, **kwargs)
+        self.lambda_restraints = lambda_restraints
+        self.restraint_energy = "energy"+str(restraint_group)
+        # Only declare NEW variables
+        self.addGlobalVariable("debug_lambda", 0.0)
+        self.addGlobalVariable("restraint_energy", 0.0)
+
+        # Set existing globals from parent
+        self.setGlobalVariableByName("lambda_step", 0.0)
+        self.setGlobalVariableByName("lambda", 0.0)
+
+        # Optional debug
+        self.addComputeGlobal("debug_lambda", "lambda")
+
+        # Now safe to use lambda_restraints in update
+        self.updateRestraints()
+
+        logger.info(f"Current nnsteps_neq: {nsteps_neq}")
+        logger.info(f'lambda_restraints selected: {self.lambda_restraints}')
+    
+    def updateRestraints(self):
+        logger.info(f"UPDATE RESTAINTS: {self.lambda_restraints}")
+        self.addComputeGlobal('lambda_restraints', self.lambda_restraints)
+
+    def _add_perturbation_step(self):
+        """
+        Perform a single alchemical perturbation step.
+        This is where the lambda variable is incremented during NCMC.
+        """
+        # Advance lambda by the precomputed step size
+        self.addComputeGlobal("lambda", "lambda + lambda_step")
+
+        # Optionally update the restraint lambda (if restraint strength depends on lambda)
+        self.updateRestraints()
