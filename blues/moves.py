@@ -23,10 +23,16 @@ from openmm import unit
 import tempfile
 import numpy as np 
 from blues import utils
-
+import openmm
 from scipy.spatial.transform import Rotation 
 from typing import Tuple
+from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalExternalRestrainedLangevinIntegrator
+from blues.restraints import add_rmsd_restraints, add_boresch_restraints
+from pathlib import Path
+#from yank.yank import Topography
 
+
+import os 
 import logging
 logger = logging.getLogger(__name__)
 
@@ -229,7 +235,7 @@ class RandomLigandRotationMove(Move):
         # TODO: Add option for resnum to better select residue names
         atom_indices = []
         for i, atom in enumerate(structure.atoms):
-            if str(resname) in atom.residue.name:
+            if str(resname) == atom.residue.name:
                 atom_indices.append(i) 
 
         return atom_indices
@@ -291,7 +297,6 @@ class RandomLigandRotationMove(Move):
 
         coordinates = numpy.asarray(positions._value, numpy.float32)
         center_of_mass = parmed.geometry.center_of_mass(coordinates, masses) * positions.unit
-
 
         # Ensure masses shape matches coordinates shape
         if masses.shape[0] != coordinates.shape[0]:
@@ -1139,6 +1144,18 @@ class SmartDartMove(RandomLigandRotationMove):
     topology: str, optional, default=None
         A path specifying a topology file matching the files in coord_files. Not
         necessary if the coord_files already contain topologies (ex. PDBs).
+    fit_atoms: list of ints, optional, default=None
+        A list of ints corresponding to the atoms of the protein to be fitted,
+        to remove rotations/translations changes from interfering with the darting procedure.
+    receptor_cutoff: float, optional, default=0.5
+        The cutoff distance for the receptor atoms to be used for fitting.
+    restrained_receptor_atoms: list of ints, optional, default=None
+        A list of ints corresponding to the atoms of the protein to be fitted,
+        to remove rotations/translations changes from interfering
+        with the darting procedure. Only used if restraints=True.
+    restrained_ligand_atoms: list of ints, optional, default=None
+        A list of ints corresponding to the atoms of the ligand to be used
+        for restraints.
     dart_radius: openmm.unit float object compatible with openmm.unit.nanometers unit,
         optional, default=0.2*openmm.unit.nanometers
         The radius of the darting region around each dart.
@@ -1148,6 +1165,35 @@ class SmartDartMove(RandomLigandRotationMove):
         of mass currently resides as an option to dart to.
     resname : str, optional, default='LIG'
         String specifying the residue name of the ligand.
+    restraints: {'rmsd', 'boresch', None}, optional, default='rmsd'
+        Applies restrains so that the ligand remains close to the specified poses
+        during the course of the simulation. If this is not used, the probability
+        of darting can be greatly diminished, since the ligand can be much more
+        mobile in the binding site with it's interactions turned off.
+        'rmsd' specifies the use of RMSD restraints on the selected receptor and ligand atoms,
+        'boresch' specifies the use of boresch-style restraints, and None causes no restraints
+        to be used.
+    restrained_receptor_atom: list, optional, default=None
+        The three atoms of the receptor to use for boresch style restraints.
+        If unspecified uses a random selection through a heuristic process
+        via Yank. This is only necessary when `restraints==True`
+    K_r: float, optional, default=10
+        The value of the bond restraint portion of the boresch restraints
+        (given in units of kcal/(mol*angstrom**2)).
+        Only used if restraints=True.
+    K_angle: float, optional, default=10
+        The value of the angle and dihedral restraint portion of the boresh restraints
+        (given in units of kcal/(mol*rad**2)).
+        Only used if restraints=True.
+    lambda_restraints: str, optional, default='max(0, 1-(1/0.10)*abs(lambda-0.5))'
+        The Lepton-compatible string specifying how the restraint lambda parameters
+        are handled.
+    K_RMSD: float, optional, default=0.6
+        The value of the RMSD restraint (given in units of kcal/(mol*angstrom**2)).
+        Only used if restraints=True.
+    RMSD0: float, optional, default=2.0
+        The value of the RMSD0 restraint (given in units of angstrom).
+        Only used if restraints=True.
 
     References
     ----------
@@ -1164,7 +1210,20 @@ class SmartDartMove(RandomLigandRotationMove):
                  topology=None,
                  dart_radius=0.2 * unit.nanometers,
                  self_dart=False,
-                 resname='LIG'):
+                 resname='LIG',
+                 restraints='rmsd',
+                 receptor_cutoff=0.5,
+                 fit_atoms=None,
+                 restrained_receptor_atoms=None,
+                 restrained_ligand_atoms=None,
+                 K_r=10,
+                 K_angle=10,
+                 lambda_restraints='max(0, 1-(1/0.10)*abs(lambda-0.5))',
+                 K_RMSD=0.6,
+                 RMSD0=2.0,
+                 K_com=150,
+                 pdb_output_dir=None
+                 ):
 
         super(SmartDartMove, self).__init__(structure, resname=resname)
 
@@ -1178,11 +1237,35 @@ class SmartDartMove(RandomLigandRotationMove):
         self.basis_particles = basis_particles
         self.ligand_col_atoms = ligand_col_atoms
         self.dart_radius = dart_radius
+        self.restraints = restraints
+        self.fit_atoms = fit_atoms
+        self.restrained_receptor_atoms = restrained_receptor_atoms
+        self.restrained_ligand_atoms = restrained_ligand_atoms
+        self.receptor_cutoff = receptor_cutoff
+        self.K_r = K_r
+        self.K_angle = K_angle
+        self.lambda_restraints = lambda_restraints
+        self.K_RMSD = K_RMSD
+        self.RMSD0 = RMSD0
+        self.K_com = K_com
+        self.coord_files = coord_files
         self._calculateProperties()
         self.self_dart = self_dart
         self.buildQuaternionDarts(coord_files, topology)
+        self.binding_mode_traj = []
+        self.dart_proposed = False 
+        self.num_accepted_darts = 0 
+        self.num_proposed_darts = 0 
+        self.pdb_output_dir = pdb_output_dir
+        self._load_binding_mode_traj(coord_files)
+    def _load_binding_mode_traj(self, coord_files):
+        """
+        Load the binding mode trajectory from the coord_files
+        """
+        #TODO: Add fitting of the receptor atoms
+        self.binding_mode_traj = [mdtraj.load(traj) for traj in coord_files]
 
-    
+            
     def buildQuaternionDarts(self, coord_files, topology=None):
         """
         Construct quaternion-based darts for MolDarting from a set of coordinate files.
@@ -1220,7 +1303,6 @@ class SmartDartMove(RandomLigandRotationMove):
             lig_pos = numpy.asarray(context_pos._value)[self.atom_indices] * unit.nanometers
             particle_pos = numpy.asarray(context_pos._value)[self.basis_particles] * unit.nanometers
             ligand_col_pos = numpy.asarray(context_pos._value)[self.ligand_col_atoms] * unit.nanometers
-            logger.info(f'ligand positions: {ligand_col_pos}')
             
             # Compute center of mass for full ligand
             self._calculateProperties()
@@ -1247,54 +1329,150 @@ class SmartDartMove(RandomLigandRotationMove):
             darts.append(dart)
 
         # Final assignment: store built darts
+        ## TODO: Have checks if the darts are non-overlapping before creating the dartboard 
         self.n_dartboard = darts
+    
+    def initializeRestraints(self, system: openmm.System, integrator: openmm.Integrator, config:dict):
+        """
+        Initialize the restraint forces for the system.
+
+        Parameters
+        ----------
+        system : openmm.System
+            The OpenMM system to be modified
+        integrator : openmm.Integrator
+            The current integrator to be replaced with a restrained version
+
+        Returns
+        -------
+        None
+        """
+        # if self.restrained_receptor_atoms is None:
+        #     self.restrained_receptor_atoms = self.basis_particles
+
+        new_sys = system
+        old_int = integrator
+
+        # Get available force group
+        force_list = new_sys.getForces()
+        group_list = list(set([force.getForceGroup() for force in force_list]))
+        group_avail = [j for j in list(range(32)) if j not in group_list]
+        
+        if not group_avail:
+            raise ValueError("No available force groups for restraints")
+        
+        self.restraint_group = group_avail[0]
+        logger.info(f"[initializeRestraints()] Restraint will be assigned to force group {self.restraint_group}")
+        
+        # Verify the old integrator has the required attributes
+        if not hasattr(old_int, '_alchemical_functions'):
+            raise AttributeError("Old integrator missing _alchemical_functions")
+
+        # Get system parameters from old integrator
+        old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
+        logger.info(f"OLD Integrator FUNCTIONS: {old_int._alchemical_functions}")
+        # Extract kwargs for the new integrator
+        integrator_kwargs = config or {}
+        logger.info(f"Passed config to integrator: {integrator_kwargs}")
+
+        # Get integrator kwargs if available, otherwise use defaults
+        # Create new integrator with restraints
+        logger.info(f'[init-Restraints]self.lambda_restraints: {self.lambda_restraints}')
+        new_int = AlchemicalExternalRestrainedLangevinIntegrator(
+            restraint_group=self.restraint_group,
+            lambda_restraints=self.lambda_restraints, 
+            alchemical_functions = old_int._alchemical_functions,
+            nsteps_neq=integrator_kwargs['nstepsNC'],
+            nprop=integrator_kwargs['nprop'],
+            prop_lambda=integrator_kwargs['propLambda'],
+            splitting=integrator_kwargs['splitting'],)
+
+        logger.info(f"[Main] Using splitting: {new_int._splitting}")
+        logger.info(f"NEW ALCHEMICAL FUNCTIONS: {new_int._alchemical_functions}")
+        #new_int.reset()
+
+        # Verify we have the required trajectory data
+        if not hasattr(self, 'binding_mode_traj') or len(self.binding_mode_traj) == 0:
+            raise ValueError("No binding mode trajectory available for restraints")
+
+        initial_traj = self.binding_mode_traj[0].openmm_positions(0).value_in_unit(unit.nanometers)
+        
+        for index, pose in enumerate(self.binding_mode_traj):
+            pose_pos = numpy.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))[self.atom_indices]
+            pose_allpos = numpy.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))*unit.nanometers
+            new_pos = numpy.copy(initial_traj)
+            new_pos = numpy.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))
+            new_pos[self.atom_indices] = pose_pos
+            new_pos= new_pos * unit.nanometers
+
+            # Initialize the appropriate restraint type
+            if self.restraints == 'rmsd':
+                # Only validate force constants, allow atoms to be None
+                if not all(x is not None for x in [self.K_RMSD, self.RMSD0]):
+                    raise ValueError("Missing required force constants for RMSD restraints (K_RMSD, RMSD0)")
+                logger.info(f'running add_rmsd_restraints: pos num {index}')
+                new_sys = add_rmsd_restraints( new_sys, self.structure, new_pos, self.atom_indices, index, self.restraint_group,
+                    restrained_receptor_atoms=self.restrained_receptor_atoms, 
+                    restrained_ligand_atoms=self.restrained_ligand_atoms, 
+                    K_RMSD=self.K_RMSD, 
+                    RMSD0=self.RMSD0,
+                    K_com_value=self.K_com    
+                )
+
             
-    # def dartsFromParmEd(self, coord_files, topology=None):
-    #     """
-    #     Used to setup darts from a generic coordinate file, through MDtraj using the basis_particles to define
-    #     new basis vectors, which allows dart centers to remain consistant through a simulation.
-    #     This adds to the self.n_dartboard, which defines the centers used for smart darting.
+            elif self.restraints == 'boresch':
+                logger.info("RUNNING boresch")
+                # Only validate force constants, allow atoms to be None
+                if not all(x is not None for x in [self.K_r, self.K_angle]):
+                    raise ValueError("Missing required force constants for Boresch restraints (K_r, K_angle)")
+                
+                new_sys = add_boresch_restraints(sys=new_sys, struct=self.structure, pos=pose_allpos, ligand_atoms=self.atom_indices, 
+                                                 pose_num=index, force_group=self.restraint_group,
+                                            restrained_receptor_atoms=self.restrained_receptor_atoms, restrained_ligand_atoms=self.restrained_ligand_atoms,
+                                            K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0)
+                
+            else:
+                raise ValueError(f'Invalid restraint type: {self.restraints}')
+        
 
-    #     Parameters
-    #     ----------
-    #     coord_files: list of str
-    #         List containing coordinate files of the whole system for smart darting.
-    #     topology: str, optional, default=None
-    #         A path specifying a topology file matching the files in coord_files. Not
-    #         necessary if the coord_files already contain topologies.
+        def find_force_group(system, force_type):
+            """Returns the force group number for the first force of the given type."""
+            for force in system.getForces():
+                if isinstance(force, force_type):
+                    return force.getForceGroup()
+            raise ValueError(f"No force of type {force_type.__name__} found in system.")
+        
+        steric_group = find_force_group(new_sys, openmm.NonbondedForce)
+        logger.info(f"[DEBUG] NonbondedForce assigned to group {steric_group}")
+        self.steric_group = steric_group
+        return new_sys, new_int
+    
+    def initializeSystem(self, system, integrator, config):
+        """
+        Changes the system by adding forces corresponding to restraints (if specified)
+        and freeze protein and/or waters, if specified in __init__()
 
-    #     """
 
-    #     n_dartboard = []
-    #     dartboard = []
-    #     #loop over specified files and generate parmed structures from each
-    #     #then the center of masses of the ligand in each structureare found
-    #     #finally those center of masses are added to the `self.dartboard`s to
-    #     #be used in the actual smart darting move to define darting regions
-    #     for coord_file in coord_files:
-    #         if topology == None:
-    #             #if coord_file contains topology info, just load coord file
-    #             temp_md = parmed.load_file(coord_file)
-    #         else:
-    #             #otherwise load file specified in topology
-    #             temp_md = parmed.load_file(topology, xyz=coord_file)
-    #         #get position values in terms of nanometers
-    #         context_pos = temp_md.positions.in_units_of(unit.nanometers)
-    #         lig_pos = numpy.asarray(context_pos._value)[self.atom_indices] * unit.nanometers
-    #         particle_pos = numpy.asarray(context_pos._value)[self.basis_particles] * unit.nanometers
-    #         #calculate center of mass of ligand
-    #         self._calculateProperties()
-    #         center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
-    #         #get particle positions
-    #         new_coord = self._findNewCoord(particle_pos[0], particle_pos[1], particle_pos[2], center_of_mass)
-    #         #old_coord should be equal to com
-    #         old_coord = self._findOldCoord(particle_pos[0], particle_pos[1], particle_pos[2], new_coord)
-    #         numpy.testing.assert_almost_equal(old_coord._value, center_of_mass._value, decimal=1)
-    #         #add the center of mass in euclidian and new basis set (defined by the basis_particles)
-    #         n_dartboard.append(new_coord)
-    #         dartboard.append(old_coord)
-    #     self.n_dartboard = n_dartboard
-    #     self.dartboard = dartboard
+        Parameters
+        ----------
+        system : simtk.openmm.System object
+            System to be modified.
+        integrator : simtk.openmm.Integrator object
+            Integrator to be modified.
+        Returns
+        -------
+        system : simtk.openmm.System object
+            The modified System object.
+        integrator : simtk.openmm.Integrator object
+            The modified Integrator object.
+
+        """
+        new_sys = system
+        
+        if self.restraints:
+            return self.initializeRestraints(new_sys, integrator, config)
+        logger.info("Finished initializeRestraints")
+        return new_sys, integrator
 
     def move(self, context):
         """
@@ -1315,6 +1493,11 @@ class SmartDartMove(RandomLigandRotationMove):
         context : openmm.openmm.Context
             The same input context, but possibly with modified positions if darting succeeds.
         """
+        logger.info("PERFORMING MOVE():\n")
+        
+        predart_filename = self._create_filename(os.path.join(self.pdb_output_dir, "pre_dart"))
+
+
         state = context.getState(getEnergy=True)
         logger.info(f'Potential energy BEFORE darting: {state.getPotentialEnergy()}')
         atom_indices = self.atom_indices
@@ -1323,21 +1506,20 @@ class SmartDartMove(RandomLigandRotationMove):
             raise ValueError('No darts are specified. Make sure you use SmartDartMove.buildQuaternionDarts() before using move().')
 
         # Get current state info from OpenMM context
-        structure = self.structure
+        tmp_structure = self.structure.copy(parmed.Structure)  # Convert to generic Structure
         stateinfo = context.getState(getPositions=True, getVelocities=True, getEnergy=False, getForces=True, getParameters=True)
         oldDartPos = stateinfo.getPositions(asNumpy=True)
-        structure.positions = oldDartPos 
-        structure.save(f"/dfs9/dmobley-lab/ayoubsj/si_moldart/toluene/output/pre_dart.pdb", overwrite=True)
+        tmp_structure.positions = oldDartPos 
+        tmp_structure.save(str(predart_filename), overwrite=True)
         oldDartPos_array = numpy.asarray(oldDartPos.value_in_unit(unit.nanometers))
         
-        logger.info(f'size of oldDartPos_array: {oldDartPos_array.shape}')
+        #logger.info(f'size of oldDartPos_array: {oldDartPos_array.shape}')
         
-        # Extract ligand full atom positions
         lig_pos = numpy.asarray(oldDartPos._value)[self.atom_indices] * unit.nanometers
-        logger.info(f"size of ligand pose: {lig_pos.shape}")
-        # Compute center of mass of ligand
-        center_of_mass = self.getCenterOfMass(lig_pos, self.masses)
-        logger.info(f'center of mass: {center_of_mass}')
+        lig_masses = np.array([atom.mass for atom in self.structure.atoms])[self.atom_indices]  # ensure this is from full structure
+        center_of_mass = self.getCenterOfMass(lig_pos, lig_masses)
+        
+        #logger.info(f'center of mass: {center_of_mass}')
         # Extract the 3 colinear ligand atoms
         col_ligand_pos = numpy.asarray(oldDartPos._value)[self.ligand_col_atoms] * unit.nanometers
         # Extract the 3 protein anchor atoms
@@ -1346,7 +1528,7 @@ class SmartDartMove(RandomLigandRotationMove):
         col_ligand_pos = numpy.asarray(col_ligand_pos.value_in_unit(unit.nanometers))
         col_residues = numpy.asarray(col_residues.value_in_unit(unit.nanometers))
         center_of_mass = numpy.asarray(center_of_mass.value_in_unit(unit.nanometers))
-        logger.info(f'col ligand of current step: {col_ligand_pos}')
+        #logger.info(f'col ligand of current step: {col_ligand_pos}')
         # Compute the ligand's relative pose in the protein's local frame
         current_quat, current_translation = self._computeRelativePose(
             particle1=col_residues[0], 
@@ -1358,120 +1540,276 @@ class SmartDartMove(RandomLigandRotationMove):
 
         # Ligand still in a dart region? 
         selected_dart  = self._findDartNeighbors(current_quat, current_translation)
-        
+        self.dart_proposed = False 
         if selected_dart != None:
             logger.info('Found a dart!')
+            logger.info(f'The selected Dart is: {selected_dart}\n')
+            self.num_proposed_darts += 1 
             # move ligand to the origin 
             newDartPos = self._applyDartMove(selected_dart, current_quat,center_of_mass, oldDartPos_array, atom_indices=atom_indices, current_protein_anchor_atoms=col_residues)
-            structure.positions = newDartPos 
-            structure.save(f"/dfs9/dmobley-lab/ayoubsj/si_moldart/toluene/output/post_dart.pdb", overwrite=True)
+            tmp_structure.positions = newDartPos 
+            darted_filename = self._create_filename(os.path.join(self.pdb_output_dir, "post_dart"))
+            tmp_structure.save(darted_filename, overwrite=True)
             #set the positions after darting
             context.setPositions(newDartPos)
         
             state = context.getState(getEnergy=True)
             logger.info(f'Potential energy after darting: {state.getPotentialEnergy()}')
+            self.dart_proposed = True
+            
+        else:
+            self.skip_ncmc = True
+            self.acceptance_ratio = None
+
+        if self.dart_proposed:
+            logger.info(f"Move was performed: switching restraints")
+
+            if self.current_pose is not None:
+                context.setParameter(f'restraint_pose_{self.current_pose}', 0.0)
+                logger.info(f"Turned OFF restraint_pose_{self.current_pose}")
+
+            if self.target_pose is not None:
+                context.setParameter(f'restraint_pose_{self.target_pose}', 1.0)
+                logger.info(f"Turned ON restraint_pose_{self.target_pose}")
+                context.setParameter('lambda_restraints', 1.0)
+
+                # Update pose for next move
+                self.current_pose = self.target_pose
+                
+                
         return context
-
-    # def move(self, context):
-    #     """
-    #     Function for performing smart darting move with darts that
-    #     depend on particle positions in the system.
-
-    #     Parameters
-    #     ----------
-    #     context: openmm.openmm.Context object
-    #         Context containing the positions to be moved.
-
-    #     Returns
-    #     -------
-    #     context: openmm.openmm.Context object
-    #         The same input context, but whose positions were changed by this function.
-
-    #     """
-
-    #     atom_indices = self.atom_indices
-    #     if len(self.n_dartboard) == 0:
-    #         raise ValueError('No darts are specified. Make sure you use ' +
-    #                          'SmartDartMove.dartsFromParmed() before using the move() function')
-
-    #     #get state info from context
-    #     stateinfo = context.getState(True, True, False, True, True, False)
-    #     oldDartPos = stateinfo.getPositions(asNumpy=True)
-    #     #get the ligand positions
-    #     lig_pos = numpy.asarray(oldDartPos._value)[self.atom_indices] * unit.nanometers
-    #     #updates the darting regions based on the current position of the basis particles
-    #     self._findDart(context)
-    #     #find the ligand's current center of mass position
-    #     center = self.getCenterOfMass(lig_pos, self.masses)
-    #     #calculate the distance of the center of mass to the center of each darting region
-    #     selected_dart, changevec = self._calc_from_center(com=center)
-    #     #selected_dart is the selected darting region
-
-    #     #if the center of mass was within one darting region, move the ligand to another region
-    #     if selected_dart != None:
-    #         logger.info('Selected a dart!')
-    #         newDartPos = numpy.copy(oldDartPos)
-    #         #find the center of mass in the new darting region
-    #         dart_switch = self._reDart(selected_dart, changevec)
-    #         #find the vector that will translate the ligand to the new darting region
-    #         vecMove = dart_switch - center
-    #         #apply that vector to the ligand to actually translate the coordinates
-    #         for atom in atom_indices:
-    #             newDartPos[atom] = newDartPos[atom] + vecMove._value
-    #         #set the positions after darting
-    #         context.setPositions(newDartPos)
-        
-    #     logger.info('Did not find a dart!')
-    #     return context
     
-    def _findDartNeighbors(self, current_quat, current_com):
+    def _create_filename(self, filename):
+
+        count = 0 
+        filepath = Path(f"{filename}_{count}.pdb")
+
+        while filepath.exists():
+            filepath = Path(f"{filename}_{count}.pdb")
+            count+=1
+
+        return str(filepath)
+    def _update_pose_membership(self, context, after_move=False):
+        """
+        Compute the current ligand pose and determine which darts it's near.
+        Update `target_pose` and `num_poses_begin_restraints`.
+
+        Sets:
+            self.target_pose: int or None
+            self.num_poses_begin_restraints: int
+        """
+        # Get current positions from context
+        state = context.getState(getPositions=True)
+        pos = state.getPositions(asNumpy=True)
+
+        # Extract relevant atoms
+        col_ligand_pos = pos[self.ligand_col_atoms].value_in_unit(unit.nanometers)
+        col_residues = pos[self.basis_particles].value_in_unit(unit.nanometers)
+        lig_pos = pos[self.atom_indices]
+        center_of_mass = self.getCenterOfMass(lig_pos, self.masses).value_in_unit(unit.nanometers)
+
+        # Compute current pose
+        current_quat, current_translation = self._computeRelativePose(
+            particle1=col_residues[0],
+            particle2=col_residues[1],
+            particle3=col_residues[2],
+            ligand_col_atoms=col_ligand_pos,
+            ligand_com=center_of_mass
+        )
+
+        # Identify which dart (if any) matches the current ligand pose
+        current_pose_index = self._findDartNeighbors(current_quat, current_translation)
+
+        if after_move:
+            return current_pose_index
+        # Store where we're starting from
+        self.current_pose = current_pose_index
+
+        logger.info(f"UPDATE pose MEM: The CURRENT ligand POSE: {self.current_pose}")
+        # Build list of valid dart indices to propose as the next pose
+        available_dart_indices = list(range(len(self.n_dartboard)))
+
+        # Optionally exclude the current pose (no self-darting)
+        if not self.self_dart and current_pose_index is not None:
+            available_dart_indices.remove(current_pose_index)
+            logger.info(f"REMOVING DART: {current_pose_index}")
+            logger.info(f"Darts avialable: {available_dart_indices}")
+
+        # Randomly choose a new dart index from available ones
+        self.target_pose = numpy.random.choice(available_dart_indices)
+        logger.info(f"UPDATE pose MEM: The TARGET POSE: {self.target_pose}")
+        # Save the proposed dart pose dictionary
+        self.proposed_dart = self.n_dartboard[self.target_pose]
+
+    def beforeMove(self, context):
+        """
+        Called before NCMC begins. Checks if ligand is in a predefined dart region,
+        and sets context parameters accordingly. If not, NCMC will be skipped.
+        """
+        logger.info("BEFORE MOVE:\n")
+        # Check for NaNs in coordinates
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        if np.any(np.isnan(positions)):
+            raise ValueError("NaN detected in positions before starting NCMC.")
+        # reset default
+        self.skip_ncmc = False  
+        # default: assume acceptance unless overridden
+        self.acceptance_ratio = 1
+        
+        if not self.restraints:
+            return context
+        
+
+        # Logic to check current pose:
+        self._update_pose_membership(context)
+
+        # Case: current pose is not in any dart region → skip NCMC
+        if self.current_pose is None:
+            logger.info("No active dart pose found (NO Current Pose). Skipping NCMC move.")
+            self.skip_ncmc = True
+            self.acceptance_ratio = None  # optional, signifies no move attempted
+            context.setParameter('lambda_restraints', 0.0)
+            for i in range(len(self.binding_mode_traj)):
+                context.setParameter(f'restraint_pose_{i}', 0.0)
+            return context
+
+        # Case: pose is valid, enable restraints
+        if self.current_pose is not None:
+            context.setParameter(f'restraint_pose_{self.current_pose}', 1.0)
+            logger.info(f"Turning ON restraint for current pose: restraint_pose_{self.current_pose}")
+            context.setParameter('lambda_restraints', 1.0)
+        # Deactivate the target pose (pose we are rotating towards)
+        context.setParameter(f'restraint_pose_{self.target_pose}', 0.0)
+        
+
+        logger.info(f"Restraint pose turned OFF: restraint_pose_{self.target_pose}")
+        tmp_structure = self.structure.copy(parmed.Structure)  # Convert to generic Structure
+        stateinfo = context.getState(getPositions=True, getVelocities=True, getEnergy=False, getForces=True, getParameters=True)
+        oldDartPos = stateinfo.getPositions(asNumpy=True)
+        tmp_structure.positions = oldDartPos
+
+
+        count = 0 
+        filepath = Path(os.path.join(self.pdb_output_dir, f"before_move_position_{count}.pdb"))
+
+        while filepath.exists():
+            filepath = Path(os.path.join(self.pdb_output_dir, f"before_move_position_{count}.pdb"))
+            count+=1
+        tmp_structure.save(str(filepath), overwrite=True)
+
+        return context
+    
+    def afterMove(self, context):
+        """
+        If restraints were specified,Check if current positions are in
+        the same pose as the specified restraint.
+        If not, reject the move (to maintain detailed balance).
+
+        This method is called at the end of the NCMC portion if the
+        context needs to be checked or modified before performing the move
+        at the halfway point.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose context were changed by this function.
+
+        """
+        logger.info("AFTER MOVE:\n")
+        count = 0 
+        filepath = Path(os.path.join(self.pdb_output_dir, f"after_move_position_{count}.pdb"))
+        tmp_structure = self.structure.copy(parmed.Structure)  # Convert to generic Structure
+        stateinfo = context.getState(getPositions=True, getVelocities=True, getEnergy=False, getForces=True, getParameters=True)
+        oldDartPos = stateinfo.getPositions(asNumpy=True)
+        tmp_structure.positions = oldDartPos
+
+        while filepath.exists():
+            filepath = Path(os.path.join(self.pdb_output_dir, f"after_move_position_{count}.pdb"))
+            count+=1
+        tmp_structure.save(str(filepath), overwrite=True)
+
+        if self.restraints:
+            matched_pose = self._update_pose_membership(context, after_move=True)
+            
+            if matched_pose != self.target_pose:
+                logger.info(f"Move rejected: landed in pose {matched_pose}, expected {self.target_pose}")
+
+                self.acceptance_ratio = None
+
+            # Turn off all restraints after move
+            for i in range(len(self.binding_mode_traj)):
+                context.setParameter(f'restraint_pose_{i}', 0.0)
+            context.setParameter('lambda_restraints', 0.0)
+        
+
+        return context
+    
+    def _findDartNeighbors(self, current_quat, current_com, angle_threshold=None, angle_tol=0.15, trans_tol=0.2):
         """
         Identify nearby darts based on orientation and translation match.
-        
+
         Parameters
         ----------
         current_quat : np.ndarray
             The current ligand quaternion relative to protein anchors.
         current_com : np.ndarray
             The current ligand center of mass in protein frame.
-        
+        angle_threshold : float, optional
+            Maximum allowed angle difference in radians (default: 15 degrees).
+        angle_tol : float
+            Additional angular tolerance (default: 4e-2 radians).
+        trans_tol : float
+            Additional translation tolerance (default: 1e-4 nm).
+
         Returns
         -------
-        selected_darts : list
-            List of indices of darts that are close in orientation and translation.
+        int or None
+            The index of the matched dart, or None if not found.
         """
 
-        angles = []
-        norm_distances = []
+        if angle_threshold is None:
+            angle_threshold = 15 * np.pi / 180  # convert degrees to radians
+
+        effective_angle_threshold = angle_threshold + angle_tol
+        effective_trans_threshold = self.dart_radius.value_in_unit(unit.nanometers) + trans_tol
+
         selected_darts = []
+        current_rotations = []
+        current_translations = []
 
         for i, dart in enumerate(self.n_dartboard):
             # Compute quaternion angular deviation
             quat_dot = np.dot(dart['quaternion'], current_quat)
-            abs_quat = np.abs(quat_dot)  # ensure positive due to q vs -q
+            abs_quat = np.abs(quat_dot)  # account for q vs -q equivalence
             angle_rotation = 2 * np.arccos(abs_quat)
-            angles.append(angle_rotation)
+            current_rotations.append(angle_rotation)
 
             # Compute COM translation distance
             translation_distance = np.linalg.norm(dart['translation'] - current_com)
-            norm_distances.append(translation_distance)
+            current_translations.append(translation_distance)
 
-            # Check if both orientation and translation are within thresholds
-            if angle_rotation <= (15 * np.pi / 180):  # 15 degrees converted to radians
-                dart_radius_nm = self.dart_radius.value_in_unit(unit.nanometers)
-                if translation_distance <= dart_radius_nm:
-                    selected_darts.append(i)  # store the dart index
+            logger.info(f"Checking binding mode: {i} and current translation is: {translation_distance}")
+            logger.info(f"Checking if {angle_rotation:.6f} <= {effective_angle_threshold:.6f}")
+
+            # Apply effective thresholds
+            if angle_rotation <= effective_angle_threshold:
+                if translation_distance <= effective_trans_threshold:
+                    selected_darts.append(i)
 
         if len(selected_darts) == 1:
             return selected_darts[0]
-          
         elif len(selected_darts) == 0:
-            logger.info("No darts were selected :/ ")
+            logger.info("No darts were selected :(")
+            logger.info(f"Checked angles: {current_rotations}")
+            logger.info(f"Checked translations: {current_translations}")
             return None
-        elif len(selected_darts) >= 2:
+        else:
             raise ValueError("Overlapping darts detected. Simulation must terminate.")
-            
-        return selected_darts
+
             
     def _calc_from_center(self, com):
         """
@@ -1592,13 +1930,12 @@ class SmartDartMove(RandomLigandRotationMove):
         recentered_ligand_pos = self._recenter_ligand(system_pos, atom_indices, ligand_com)
         
         ligand_com_check = recentered_ligand_pos[atom_indices].mean(axis=0)
-        print("Recentered ligand COM:", ligand_com_check)
-        print("Current ligand COM:", ligand_com)
+        logger.info(f"[DEBUG] COM after recentering: {ligand_com_check}")
         # Step 2: Apply rotation and translation toward the new dart target
         newDartPos_array = self._reDart(selected_dart_index, current_quat, recentered_ligand_pos, atom_indices, current_protein_anchor_atoms)
-        logger.info(f'size of newDartPos_array: {newDartPos_array.shape}')
+        #logger.info(f'size of newDartPos_array: {newDartPos_array.shape}')
         newDartPos = unit.Quantity(newDartPos_array, unit.nanometers)
-        logger.info(f"newDartPos {newDartPos}")
+        #logger.info(f"newDartPos {newDartPos}")
         return newDartPos
     
     def _recenter_ligand(self, ligand_pos, ligand_atoms, ligand_com):
@@ -1653,47 +1990,24 @@ class SmartDartMove(RandomLigandRotationMove):
             dartindex.pop(selected_dart_index)
         dartindex = numpy.random.choice(dartindex)
         
+        logger.info(f"[DEBUG-REDART]: dart chosen index is: {os.path.basename(self.coord_files[dartindex])}")
+
         chosen_dart = self.n_dartboard[dartindex]
         
         quat_target = chosen_dart['quaternion']
         
         # compute necessary rotation (i.e how to rotate the ligand atoms to match the dart)
         relative_rotation = Rotation.from_quat(quat_target) * Rotation.from_quat(current_quat).inv() 
-        # compute the rotation that aligns the ligand atoms to the dart atoms
-        # maybe delete this after testing
-        #ligand_current_coords = newDartPos[self.ligand_col_atoms]
-        # relative_rotation, rmsd = Rotation.align_vectors(
-        #     chosen_dart['ligand_anchor_coords'], 
-        #     ligand_current_coords
-        # )
+
         
         # apply rotation
         ligand_rotated = np.copy(newDartPos)
         ligand_rotated[ligand_atoms] = relative_rotation.apply(newDartPos[ligand_atoms])
-        
-        # translate dart to target COM
-        com_target =  chosen_dart['translation']
-        
+                
         final_dart_position = numpy.copy(ligand_rotated)
-       
-        # q_current = Rotation.from_quat(current_quat)
-       
-        # ## delete this after testing
-        # # ligand_current_coords = newDartPos[self.ligand_col_atoms]
-        # # rot, rmsd = Rotation.align_vectors(chosen_dart['ligand_anchor_coords'], ligand_current_coords)
-        # # print("Corrected quaternion:", rot.as_quat())
-        # q_target = Rotation.from_quat(quat_target)
-        # # print("Angle (deg):", np.degrees(rot.magnitude()))
-        # # print("Rotation axis:", rot.as_rotvec() / np.linalg.norm(rot.as_rotvec()))
+               
 
-        # dot = np.dot(q_current.as_quat(), q_target.as_quat())
-        # print("Dot product:", dot)
-        # axis, angle = relative_rotation.as_rotvec(), relative_rotation.magnitude()
-        # print("Rotation axis:", axis / np.linalg.norm(axis))
-        # print("Angle (degrees):", np.degrees(angle))
-        
-
-        logger.info(f'com_target, {com_target}')
+        #logger.info(f'com_target, {com_target}')
         # Step 1: Extract current protein anchor coordinates
         p1, p2, p3 = current_protein_anchor_atoms[0], \
                     current_protein_anchor_atoms[1], \
@@ -1704,15 +2018,53 @@ class SmartDartMove(RandomLigandRotationMove):
         protein_frame = np.column_stack((x, y, z))
 
         # Step 3: Compute target COM in global coordinates
-        target_com_global = p1 + (protein_frame @ chosen_dart['translation'])
-        logger.info(f'chosen_dart["translation"]: {chosen_dart["translation"]}')
-        logger.info(f'target_com_global: {target_com_global}')
-    
-        # Step 5: Translate ligand
+        com_target =  chosen_dart['translation']
+        target_com_global = p1 + (protein_frame @ com_target)
+
+        # Translate ligand
+        ligand_com_rotated = ligand_rotated[ligand_atoms].mean(axis=0)
+        translation_offset = target_com_global - ligand_com_rotated
+        
         for atom in ligand_atoms:
             final_dart_position[atom] += target_com_global
         
         
+        # Debug log (optional)
+        final_com = final_dart_position[ligand_atoms].mean(axis=0)
+        print(f"[DEBUG] Target COM: {target_com_global}")
+        print(f"[DEBUG] Final ligand COM: {final_com}")
+        print(f"[DEBUG] COM shift error: {np.linalg.norm(final_com - target_com_global):.4f}")
+
+
+        # Wrap rotated ligand into an MDTraj Trajectory
+        rotated_traj = mdtraj.Trajectory(
+            xyz=final_dart_position[ligand_atoms].reshape((1, -1, 3)),
+            topology=self.binding_mode_traj[dartindex].top.subset(ligand_atoms)
+        )
+
+        # Reference ligand pose from dart (already MDTraj object)
+        reference_traj = self.binding_mode_traj[dartindex].atom_slice(ligand_atoms)
+
+        # Compute RMSD
+        rmsd_val = mdtraj.rmsd(rotated_traj, reference_traj)[0]  # returns an array of 1 element
+
+        logger.info(f"[DEBUG] Quaternion+Translation RMSD to dart {dartindex}: {rmsd_val:.4f} nm")
+        col_ligand_pos = numpy.asarray(final_dart_position)[self.ligand_col_atoms] * unit.nanometers
+        col_ligand_pos = numpy.asarray(col_ligand_pos.value_in_unit(unit.nanometers))
+        rotated_quat, rotated_translation = self._computeRelativePose(
+            particle1=p1, 
+            particle2=p2, 
+            particle3=p3,
+            ligand_col_atoms=col_ligand_pos,
+            ligand_com=final_com
+        )
+        quat_dot =np.dot(rotated_quat, quat_target)
+
+        angle = 2 * np.arccos(np.abs(quat_dot))
+        angle_deg = np.degrees(angle)
+        logger.info(f"[REDART-DEBUG] Angular deviation in protein frame: {angle_deg:.2f}°")
+
+
         return final_dart_position
         
 
@@ -1857,13 +2209,13 @@ class SmartDartMove(RandomLigandRotationMove):
         - Resulting data can be stored in a MolDarting dart object for pose tracking.
         """
         # Build protein frame and rotation matrix
-        logger.info(f'particle one: {particle1}')
-        logger.info(f'ligand atom 1 : {ligand_col_atoms[0]}')
-        logger.info(f'type(particle1), {type(particle1)}')
+        # logger.info(f'particle one: {particle1}')
+        # logger.info(f'ligand atom 1 : {ligand_col_atoms[0]}')
+        # logger.info(f'type(particle1), {type(particle1)}')
         vec1, vec2, vec3 = self._buildLocalFrameFromAnchors(particle1, particle2, particle3)
-        logger.info(f"x coordinate: {vec1}")
-        logger.info(f"y coordinate: {vec2}")
-        logger.info(f"z coordinate: {vec3}")
+        # logger.info(f"x coordinate: {vec1}")
+        # logger.info(f"y coordinate: {vec2}")
+        # logger.info(f"z coordinate: {vec3}")
         protein_matrix = np.column_stack((vec1, vec2, vec3))
         protein_rotation = Rotation.from_matrix(protein_matrix)
 
@@ -1873,15 +2225,15 @@ class SmartDartMove(RandomLigandRotationMove):
         )
         
         ligand_matrix = np.column_stack((lig_vec1, lig_vec2, lig_vec3))
-        logger.info(f'LIGAND MATRIX: {ligand_matrix}')
+        # logger.info(f'LIGAND MATRIX: {ligand_matrix}')
         ligand_rotation = Rotation.from_matrix(ligand_matrix)
-        logger.info(f'LIGAND rotation: {ligand_rotation}')
+        # logger.info(f'LIGAND rotation: {ligand_rotation}')
 
         # Compute relative orientation as quaternion
         relative_rotation = protein_rotation.inv() * ligand_rotation
         # returns (x, y, z, w)
         quat = relative_rotation.as_quat()  
-        logger.info(f'quat: {quat}')
+        # logger.info(f'quat: {quat}')
         # Compute relative translation (ligand COM in protein frame)
         relative_translation = protein_matrix.T @ (ligand_com - particle1)
 
@@ -2066,3 +2418,4 @@ class CombinationMove(Move):
         else:
             for single_move in reverse(self.move_list):
                 single_move.move(context)
+
