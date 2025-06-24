@@ -23,7 +23,8 @@ import openmm
 
 from blues import utils
 from blues.integrators import AlchemicalExternalLangevinIntegrator
-
+from blues.moves import SmartDartMove
+import time 
 finfo = np.finfo(np.float32)
 rtol = finfo.precision
 logger = logging.getLogger(__name__)
@@ -599,7 +600,7 @@ class SimulationFactory(object):
         if ncmc_reporters:
             self._ncmc_reporters = ncmc_reporters
             self.ncmc = SimulationFactory.attachReporters(self.ncmc, self._ncmc_reporters)
-
+        logger.info(f'System Factory config: {config}')
     @classmethod
     def addBarostat(cls, system, temperature=300 * unit.kelvin, pressure=1 * unit.atmospheres, frequency=25, **kwargs):
         """
@@ -805,7 +806,7 @@ class SimulationFactory(object):
 
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self._move_engine.moves:
-            self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
+            self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator, self.config)
         self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **config)
         utils.print_host_info(self.ncmc)
 
@@ -1063,19 +1064,66 @@ class BLUESSimulation(object):
                 if not step:
                     #print("Calling beforeMove()")
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
-
+                        # NEW: check if move should be skipped
+                    logger.info(f"MOVE SHOULD BE SKIPPED? : {move_engine.selected_move.skip_ncmc}")
+                    
+                    if move_engine.selected_move.skip_ncmc:
+                        logger.info("Skipping NCMC steps because no valid move was proposed.\n")
+                        logger.info(f"[DEBUG]: the restraint pose is: restraint_pose_{move_engine.selected_move.current_pose}")
+                        lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+                        logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")
+                        positions = self._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+                        move = self._move_engine.selected_move
+                        ligand_coords = positions[move.atom_indices]
+                        ligand_com = ligand_coords.mean(axis=0)
+                        logger.info(f"[DEBUG] Ligand COM before MD (skipped NCMC): {ligand_com}")
+                        break
                 if step == moveStep:
                     if hasattr(logger, 'report'):
                         logger.info = logger.report
                     logger.info('Performing %s...' % move_engine.move_name)
+                    restraint_pose = self._ncmc_sim.context.getParameter(f"restraint_pose_{move_engine.selected_move.current_pose}")
+                    lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+                    logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")
+                    logger.info(f"[Step {step}] restraint_pose_{move_engine.selected_move.current_pose} = {restraint_pose}")
+                    state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.restraint_group})
+                    energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+                    logger.info(f"[Step {step}] Restraint Energy (group {move_engine.selected_move.restraint_group}): {energy:.4f} kJ/mol")
 
-                    #print("Running move_engine.runEngine() at moveStep")
+                    try:
+                        steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
+                        steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+                        logger.info(f"[Step {step}]Steric Energy During Move Proposal: {steric_energy:.4f} kJ/mol")
+                    except Exception as e:
+                        logger.warning(f"[Step {step}] Could not retrieve steric energy: {e}")      
+                    # Perform the NCMC move (lambda 0 → 0.5 and apply move)
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
-                    
+
+                    if move_engine.move.selected_move.skip_ncmc == None:
+                        logger.info("No valid dart region found. Skipping reverse NCMC and rejecting move.")
+                        # Call afterMove to clean up / reset lambda
+                        self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+                        # skip remainder of NCMC (e.g., 0.5 → 1.0)
+                        break 
+
 
                 self._ncmc_sim.step(1)
-
+                # if step % 50 == 0:
+                #     lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
+                #     logger.info(f"NCMC step {step}: lambda = {lambda_val}")
                 if step == lastStep:
+                    logger.info("AFTER MOVE WILL BE CALLED")
+                    lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
+                    logger.info(f"NCMC step {step}: lambda = {lambda_val}")
+
+                    # Log sterics after move
+                    try:
+                        steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
+                        steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+                        logger.info(f"[Step {step}] Steric Energy AFTER MOVE (group {move_engine.selected_move.steric_group}): {steric_energy:.4f} kJ/mol")
+                    except Exception as e:
+                        logger.warning(f"[Step {step}] Could not retrieve steric energy after move: {e}")
+                        
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
                     # Debug: print positions after afterMove                    
 
@@ -1090,10 +1138,7 @@ class BLUESSimulation(object):
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
         self._setStateTable('ncmc', 'state1', ncmc_state1)
 
-        # # Optional: check difference
-        # import numpy as np
-        # delta = np.abs(ncmc_state1['positions'] - ncmc_state0['positions'])
-        # print("Max delta between state0 and state1:", np.max(delta))
+
     
     def _computeAlchemicalCorrection(self):
         """Computes the alchemical correction term from switching between the NCMC
@@ -1125,44 +1170,94 @@ class BLUESSimulation(object):
         write_move : bool, default=False
             If True, writes the proposed NCMC move to a PDB file.
         """
+        move = self._move_engine.selected_move
+        acceptance_ratio = move.acceptance_ratio
+
+        # Case 1: NCMC move was skipped entirely
+        if acceptance_ratio is None:
+            self.reject += 1
+            logger.info("NCMC MOVE REJECTED: No valid dart region, skipped move.")
+            self._validate_potential_energy_consistency(
+                self.stateTable['md']['state0'], self._md_sim.context
+            )
+            return
+
+        # Get raw log acceptance probability
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
         randnum = math.log(np.random.random())
+        logger.info(f'Protocol of work: {work_ncmc}')
+        if np.isnan(work_ncmc):
+            self.reject += 1
+            logger.warning("NCMC MOVE REJECTED: work_ncmc is NaN.")
+            self._validate_potential_energy_consistency(
+                self.stateTable['md']['state0'], self._md_sim.context
+            )
+            return
 
-        # Compute correction if work_ncmc is not NaN
-        if not np.isnan(work_ncmc):
-            correction_factor = self._computeAlchemicalCorrection()
-            logger.debug(
-                'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
-            work_ncmc = work_ncmc + correction_factor
+        # Apply alchemical correction
+        correction_factor = self._computeAlchemicalCorrection()
+        logger.info(f"Correcion Factor: {correction_factor}")
+        work_ncmc += correction_factor
 
+        # Optional: apply statistical restraint correction
+        # if acceptance_ratio != 1.0:
+        #     work_ncmc += math.log(acceptance_ratio)
+
+        # Metropolis acceptance criterion
         if work_ncmc > randnum:
             self.accept += 1
-            logger.info('NCMC MOVE ACCEPTED: work_ncmc {} > randnum {}'.format(work_ncmc, randnum))
+            logger.info(f"NCMC MOVE ACCEPTED: work_ncmc {work_ncmc:.4f} > randnum {randnum:.4f}")
+            for move in self._move_engine.moves:
+                if isinstance(move, SmartDartMove):
+                    move.num_accepted_darts += 1 
 
-            # If accept move, sync NCMC state to MD context
+            # Sync NCMC state to MD context
             ncmc_state1 = self.stateTable['ncmc']['state1']
-            self._md_sim.context = self.setContextFromState(self._md_sim.context, ncmc_state1, velocities=False)
+            self._md_sim.context = self.setContextFromState(
+                self._md_sim.context, ncmc_state1, velocities=False
+            )
 
             if write_move:
-                utils.saveSimulationFrame(self._md_sim, '{}acc-it{}.pdb'.format(self._config['outfname'],
-                                                                                self.currentIter))
-
+                utils.saveSimulationFrame(
+                    self._md_sim, f"{self._config['outfname']}acc-it{self.currentIter}.pdb"
+                )
         else:
             self.reject += 1
-            logger.info('NCMC MOVE REJECTED: work_ncmc {} < {}'.format(work_ncmc, randnum))
+            logger.info(f"NCMC MOVE REJECTED: work_ncmc {work_ncmc:.4f} < randnum {randnum:.4f}")
+            self._validate_potential_energy_consistency(
+                self.stateTable['md']['state0'], self._md_sim.context
+            )
 
-            # If reject move, do nothing,
-            # NCMC simulation be updated from MD Simulation next iteration.
+    def _validate_potential_energy_consistency(self, md_state0, md_context, rtol=5):
+        """
+        Validates that the MD potential energy has not drifted after a rejected NCMC move.
 
-            # Potential energy should be from last MD step in the previous iteration
-            md_state0 = self.stateTable['md']['state0']
-            md_PE = self._md_sim.context.getState(getEnergy=True).getPotentialEnergy()
-            if not math.isclose(md_state0['potential_energy']._value, md_PE._value, rel_tol=float('1e-%s' % rtol)):
-                logger.error(
-                    'Last MD potential energy %s != Current MD potential energy %s. Potential energy should match the prior state.'
-                    % (md_state0['potential_energy'], md_PE))
-                sys.exit(1)
+        Parameters
+        ----------
+        md_state0 : dict
+            Stored MD state (before the NCMC move) from self.stateTable['md']['state0'].
+        md_context : openmm.Context
+            The current OpenMM context for the MD simulation.
+        rtol : int, optional
+            Relative tolerance for comparing potential energies (default is 1e-8).
 
+        Raises
+        ------
+        RuntimeError
+            If the current MD potential energy does not match the stored value within tolerance.
+        """
+        md_PE_current = md_context.getState(getEnergy=True).getPotentialEnergy()
+        md_PE_stored = md_state0['potential_energy']
+
+        if not math.isclose(md_PE_stored._value, md_PE_current._value, rel_tol=10**(-rtol)):
+            logger.error(
+                f"Potential energy mismatch after rejected move:\n"
+                f"Stored MD PE:    {md_PE_stored}\n"
+                f"Current MD PE:   {md_PE_current}\n"
+                f"Relative diff:   {abs(md_PE_stored._value - md_PE_current._value)}"
+            )
+            raise RuntimeError("Potential energy mismatch: MD state was not preserved correctly after rejection.")
+        
     def _resetSimulations(self, temperature=None):
         """At the end of each iteration:
 
@@ -1194,6 +1289,16 @@ class BLUESSimulation(object):
         """
         logger.info('Advancing %i MD steps...' % (nstepsMD))
         self._md_sim.currentIter = self.currentIter
+        
+        move = self._move_engine.selected_move
+        if move.skip_ncmc:
+            positions = self._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+            ligand_com_pre = positions[move.atom_indices].mean(axis=0)
+            logger.info(f"[DEBUG] Ligand COM BEFORE MD (iter {self.currentIter}): {ligand_com_pre}")
+            lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+            logger.info(f"[SKIP-NCMC]: restraints should be off")
+            logger.info(f"[DEBUG] lambda_restraints before MD (iter {self.currentIter}): {lambda_rest}")
+
         # Retrieve MD state before proposed move
         # Helps determine if previous iteration placed ligand poorly
         md_state0 = self.stateTable['md']['state0']
@@ -1210,6 +1315,14 @@ class BLUESSimulation(object):
                                           'MD-fail-it%s-md%i.pdb' % (self.currentIter, self._md_sim.currentStep))
                 sys.exit(1)
 
+        # Log ligand COM after MD 
+        if move.skip_ncmc:
+            positions = self._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+            ligand_com_post = positions[move.atom_indices].mean(axis=0)
+            logger.info(f"[DEBUG] Ligand COM AFTER MD (iter {self.currentIter}): {ligand_com_post}")
+            lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+            logger.info(f"[DEBUG] lambda_restraints AFTER MD (iter {self.currentIter}): {lambda_rest}")
+            
     def run(self, nIter=0, nstepsNC=0, moveStep=0, nstepsMD=0, temperature=300, write_move=False, **config):
         """Executes the BLUES engine to iterate over the actions:
         Perform NCMC simulation, perform proposed move, accepts/rejects move,
@@ -1244,21 +1357,19 @@ class BLUESSimulation(object):
             self.currentIter = N
             logger.info('BLUES Iteration: %s' % N)
             self._syncStatesMDtoNCMC()
-            #print("✅ _syncStatesMDtoNCMC")
             self._stepNCMC(nstepsNC, moveStep)
-            #print("✅ _stepNCMC")
             self._acceptRejectMove(write_move)
-            #print("✅ _acceptRejectMove")
-            #print(f'what is temperature: {temperature}')
             self._resetSimulations(temperature)
-            #print("✅ _resetSimulations")
             self._stepMD(nstepsMD)
-            #print("✅ _stepMD")
-            #print(f'NITER: {N}/{nIter}')
         # END OF NITER
         self.acceptRatio = self.accept / float(nIter)
         logger.info('Acceptance Ratio: %s' % self.acceptRatio)
         logger.info('nIter: %s ' % nIter)
+        for move in self._move_engine.moves:
+            if isinstance(move, SmartDartMove):
+                acceptance_ratio = move.num_accepted_darts / float(move.num_proposed_darts)
+                logger.info(f"[SmartDartMove] Accepted {move.num_accepted_darts} / {move.num_proposed_darts} darts")
+                logger.info(f"[SmartDartMove] Dart acceptance ratio: {acceptance_ratio:.3f}")
 
 class MonteCarloSimulation(BLUESSimulation):
     """Simulation class provides the functions that perform the MonteCarlo run.
@@ -1298,6 +1409,9 @@ class MonteCarloSimulation(BLUESSimulation):
             self.accept += 1
             logger.info('MC MOVE ACCEPTED: work_mc {} > randnum {}'.format(work_mc, randnum))
             self._md_sim.context.setPositions(md_state1['positions'])
+            for move in self._move_engine.moves:
+                if isinstance(move, SmartDartMove):
+                    move.num_accepted_darts += 1 
         else:
             self.reject += 1
             logger.info('MC MOVE REJECTED: work_mc {} < {}'.format(work_mc, randnum))
@@ -1329,6 +1443,7 @@ class MonteCarloSimulation(BLUESSimulation):
 
         self._syncStatesMDtoNCMC()
         for N in range(nIter):
+            iter_start = time.time()
             self.currentIter = N
             logger.info('MonteCarlo Iteration: %s' % N)
             for i in range(mc_per_iter):
@@ -1336,3 +1451,15 @@ class MonteCarloSimulation(BLUESSimulation):
                 self._stepMC_()
                 self._acceptRejectMove(temperature)
             self._stepMD(nstepsMD)
+            iter_end = time.time()
+            logger.info(f"Iteration {N} took {iter_end - iter_start:.2f} sec")
+        
+        self.acceptRatio = self.accept / float(nIter)
+        logger.info('Acceptance Ratio: %s' % self.acceptRatio)
+        logger.info('nIter: %s ' % nIter)
+         # After move, access found_dart
+        for move in self._move_engine.moves:
+            if isinstance(move, SmartDartMove):
+                acceptance_ratio = move.num_accepted_darts / float(move.num_proposed_darts)
+                logger.info(f"[SmartDartMove] Accepted {move.num_accepted_darts} / {move.num_proposed_darts} darts")
+                logger.info(f"[SmartDartMove] Dart acceptance ratio: {acceptance_ratio:.3f}")
