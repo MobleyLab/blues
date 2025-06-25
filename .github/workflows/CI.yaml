@@ -53,7 +53,7 @@ jobs:
       shell: bash -l {0}
 
       run: |
-        pytest -v --cov=blues --cov-report=xml --color=yes  blues/tests/test_propane.py blues/tests/test_randomrotation.py  blues/tests/test_randomrotation.py blues/tests/test_watertranslation.py
+        pytest -v --cov=blues --cov-report=xml --color=yes  blues/tests/test_propane.py  blues/tests/test_randomrotation.py blues/tests/test_watertranslation.py
 
     - name: CodeCov
       uses: codecov/codecov-action@v4
