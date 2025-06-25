@@ -68,7 +68,7 @@ def runPropaneTest(N, preferred_platform):
     structure = parmed.load_file(structure_pdb)
 
     # Initialize Move Proposal Class
-    rot_move = RandomLigandRotationMove(structure, 'LIG')  # Propane ligand
+    rot_move = RandomLigandRotationMove(structure, 'LIG', ligand_indices=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])  # Propane ligand
     mover = MoveEngine(rot_move)
 
     # Load OpenMM System and Integrator
