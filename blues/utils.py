@@ -14,6 +14,12 @@ from platform import uname
 import parmed
 from openmm import unit 
 import openmm
+from openeye import oechem
+from openmm import app
+from openmm.openmm import Discrete1DFunction
+import itertools
+import numpy as np
+from scipy.interpolate import interp1d  
 
 logger = logging.getLogger(__name__)
 
@@ -373,3 +379,129 @@ def spreadLambdaProtocol(switching_values, steps, switching_types='auto', kind='
     if return_tab_function:
         tab_steps = Discrete1DFunction(tab_steps)
     return tab_steps
+
+
+### NEW ADDITION
+
+proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS',
+                   'LEU', 'MET', 'PRO', 'THR', 'TYR',
+                   'ARG', 'ASP', 'GLN', 'GLY', 'ILE',
+                   'LYS', 'PHE', 'SER', 'TRP', 'VAL']
+
+rnaResidues = ['A', 'G', 'C', 'U', 'I']
+dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
+
+def openmmTop_to_oemol(topology, positions, verbose=False):
+    """
+    This function converts an OpenMM topology in an OEMol
+
+    Parameters:
+    -----------
+    topology : OpenMM Topology
+        The OpenMM topology
+    positions : OpenMM Quantity
+        The molecule atom positions associated with the
+        topology
+
+    Return:
+    -------
+    oe_mol : OEMol
+        The generated OEMol molecule
+    """
+
+    # Create an empty OEMol
+    oe_mol = oechem.OEMol()
+
+    # Mapping dictionary between openmm atoms and oe atoms
+    openmm_atom_to_oe_atom = {}
+
+    # Python set used to identify atoms that are not in protein residues
+    keep = set(proteinResidues).union(dnaResidues).union(rnaResidues)
+
+    for chain in topology.chains():
+        for res in chain.residues():
+            # Create an OEResidue
+            oe_res = oechem.OEResidue()
+            # Set OEResidue name
+            oe_res.SetName(res.name)
+            # If the atom is not a protein atom then set its heteroatom
+            # flag to True
+            if res.name not in keep:
+                oe_res.SetFragmentNumber(chain.index + 1)
+                oe_res.SetHetAtom(True)
+            # Set OEResidue Chain ID
+            oe_res.SetChainID(chain.id)
+            # res_idx = int(res.id) - chain.index * len(chain._residues)
+            # Set OEResidue number
+            oe_res.SetResidueNumber(int(res.id))
+
+            for openmm_at in res.atoms():
+                # Create an OEAtom  based on the atomic number
+                oe_atom = oe_mol.NewAtom(openmm_at.element._atomic_number)
+                # Set atom name
+                oe_atom.SetName(openmm_at.name)
+                # Set Symbol
+                oe_atom.SetType(openmm_at.element.symbol)
+                # Set Atom index
+                oe_res.SetSerialNumber(openmm_at.index + 1)
+                # Commit the changes
+                oechem.OEAtomSetResidue(oe_atom, oe_res)
+                # Update the dictionary OpenMM to OE
+                openmm_atom_to_oe_atom[openmm_at] = oe_atom
+
+    if topology.getNumAtoms() != oe_mol.NumAtoms():
+        raise ValueError("OpenMM topology and OEMol number of atoms mismatching: "
+                         "OpenMM = {} vs OEMol  = {}".format(topology.getNumAtoms(), oe_mol.NumAtoms()))
+
+    # Count the number of bonds in the openmm topology
+    omm_bond_count = 0
+
+    # Create the bonds
+    bond_mapping = {app.Single: "Single",
+                    app.Double: "Double",
+                    app.Triple: "Triple",
+                    app.Amide: "Amide",
+                    app.Aromatic: "Aromatic"}
+
+    for omm_bond in topology.bonds():
+
+        omm_bond_count += 1
+
+        at0 = omm_bond[0]
+        at1 = omm_bond[1]
+
+        oe_bond_order = omm_bond.order
+
+        # If bond order info are not present set the bond order temporary to one
+        if not omm_bond.order:
+            oe_bond_order = 1
+
+        # OE atoms
+        oe_atom0 = openmm_atom_to_oe_atom[at0]
+        oe_atom1 = openmm_atom_to_oe_atom[at1]
+
+        # Create the bond
+        oe_bond = oe_mol.NewBond(oe_atom0, oe_atom1, oe_bond_order)
+
+        if omm_bond.type:
+            if omm_bond.type == app.Aromatic:
+                oe_atom0.SetAromatic(True)
+                oe_atom1.SetAromatic(True)
+                oe_bond.SetAromatic(True)
+                oe_bond.SetType(bond_mapping[omm_bond.type])
+            elif omm_bond.type in bond_mapping:
+                oe_bond.SetType(bond_mapping[omm_bond.type])
+            else:
+                oe_bond.SetType("")
+
+    if omm_bond_count != oe_mol.NumBonds():
+        raise ValueError("OpenMM topology and OEMol number of bonds mismatching: "
+                         "OpenMM = {} vs OEMol  = {}".format(omm_bond_count, oe_mol.NumBonds()))
+
+    # Set the OEMol positions
+    pos = positions.in_units_of(unit.angstrom) / unit.angstrom
+    pos = list(itertools.chain.from_iterable(pos))
+    oe_mol.SetCoords(pos)
+    oechem.OESetDimensionFromCoords(oe_mol)
+
+    return oe_mol

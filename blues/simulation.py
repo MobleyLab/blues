@@ -72,6 +72,7 @@ class SystemFactory(object):
     """
 
     def __init__(self, structure, atom_indices, config=None):
+
         self.structure = structure
         self.atom_indices = atom_indices
         self._config = config
@@ -1011,6 +1012,33 @@ class BLUESSimulation(object):
 
         logger.info(msg)
 
+    def _print_energy_contributions(self, simulation):
+        """
+        Prints individual potential energy contributions for each force in an OpenMM simulation.
+        """
+        system = simulation.system
+    
+        # Assign a unique force group to each force
+        for i, force in enumerate(system.getForces()):
+            force.setForceGroup(i)
+    
+   
+        force_values = dict()
+        # Loop over forces and get energy per group
+        for i, force in enumerate(system.getForces()):
+            state = simulation.context.getState(getEnergy=True, groups={i})
+            energy = state.getPotentialEnergy()
+            energy_kj = energy.value_in_unit(unit.kilojoule_per_mole)
+            force_values[type(force).__name__] = energy_kj
+    
+        # Total potential energy
+        total_energy = simulation.context.getState(getEnergy=True).getPotentialEnergy()
+        force_values['potential'] = total_energy
+        force_values['kinetic'] = simulation.context.getState(getEnergy=True).getKineticEnergy()
+        return force_values
+
+
+
     def _setStateTable(self, simkey, stateidx, stateinfo):
         """Updates `stateTable` (dict) containing:  Positions, Velocities, Potential/Kinetic energies
         of the state before and after a NCMC step or iteration.
@@ -1045,8 +1073,8 @@ class BLUESSimulation(object):
 
         # Retrieve NCMC state before proposed move
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
-        #print("Captured ncmc_state0")
-        #print(ncmc_state0['positions'])
+        print("Captured ncmc_state0")
+        print(ncmc_state0['positions'])
         self._setStateTable('ncmc', 'state0', ncmc_state0)
 
         # Select the move to perform
@@ -1055,13 +1083,15 @@ class BLUESSimulation(object):
         self._ncmc_sim.currentIter = self.currentIter
 
         move_engine.selectMove()
-        #print(f"Selected move: {move_engine.move_name}")
+        print(f"Selected move: {move_engine.move_name}")
+
+        energies = list()
 
         lastStep = nstepsNC - 1
         for step in range(int(nstepsNC)):
             try:
                 if not step:
-                    #print("Calling beforeMove()")
+                    print("Calling beforeMove()")
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
 
                 if step == moveStep:
@@ -1071,7 +1101,20 @@ class BLUESSimulation(object):
 
                     #print("Running move_engine.runEngine() at moveStep")
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+                    state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True)
                     
+                print("STEPPPPP:", step)
+                state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
+                print("    PE:", state.getPotentialEnergy())
+                print("    KE:", state.getKineticEnergy())
+                energies.append(self._print_energy_contributions(self._ncmc_sim))
+                positions = state.getPositions()
+                box_vectors = state.getPeriodicBoxVectors()
+                from openmm.app import PDBFile
+                with open(f"output_{step}.pdb", "w") as f:
+                    PDBFile.writeFile(self._ncmc_sim.topology, positions, f, keepIds=True)
+
+                system = self._ncmc_sim.system
 
                 self._ncmc_sim.step(1)
 
@@ -1084,6 +1127,18 @@ class BLUESSimulation(object):
                 traceback.print_tb(e.__traceback__)
                 logger.error(e)
                 move_engine.selected_move._error(self._ncmc_sim.context)
+                
+                fieldnames = ["step"] + [k for k in energies[0]]
+                with open("simulation_log.csv", "w", newline="") as csvfile:
+                    import csv
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    writer.writeheader()
+                    for i,r in enumerate(energies):
+                        r['step'] = i
+                        writer.writerow(r)
+
+                
+
                 break
 
         # ncmc_state1 stores the state AFTER a proposed move
