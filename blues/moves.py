@@ -195,12 +195,12 @@ class RandomLigandRotationMove(Move):
         self.resname = resname
         self.random_state = random_state
         self.atom_indices = self.getAtomIndices(structure, self.resname)
-        atom_indices_1based = [i + 1 for i in self.atom_indices]
-        self.topology = structure[atom_indices_1based].topology
+        #atom_indices_1based = [i + 1 for i in self.atom_indices]
+        self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
         self.masses = []
         self.center_of_mass = None
-        self.positions = structure[atom_indices_1based].positions
+        self.positions = structure[self.atom_indices].positions
         self._calculateProperties()
 
     def getAtomIndices(self, structure, resname):

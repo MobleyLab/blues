@@ -99,7 +99,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
 
     def __init__(self,
                  alchemical_functions,
-                 splitting="R V O H O V R",
+                 splitting="H V R O V R H",
                  temperature=298.0 * openmm.unit.kelvin,
                  collision_rate=1.0 / openmm.unit.picoseconds,
                  timestep=1.0 * openmm.unit.femtoseconds,
