@@ -1,7 +1,7 @@
 import openmm
 from openmmtools.integrators import AlchemicalNonequilibriumLangevinIntegrator
 import logging
-
+from openmm import unit
 logger = logging.getLogger(__name__)
 # Energy unit used by OpenMM unit system
 _OPENMM_ENERGY_UNIT = openmm.unit.kilojoules_per_mole
@@ -140,11 +140,12 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         #$self._registered_step_types['H'] = (
         #    self._add_alchemical_perturbation_step, False)
         self.addGlobalVariable("debug", 0)
-
+        logger.info(f'splitting: {splitting}')
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
             self.addGlobalVariable('shadow_work', 0)
+
 
     def _get_prop_lambda(self, prop_lambda):
         prop_lambda_max = round(prop_lambda + 0.5, 4)
@@ -157,8 +158,61 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             prop_lambda_max = -1.0
 
         return prop_lambda_min, prop_lambda_max
+    
 
-   
+    def _add_integrator_steps(self):
+        """
+        Override the base class to insert reset steps around the integrator.
+        """
+
+        # First step: Constrain positions and velocities and reset work accumulators and alchemical integrators
+        self.beginIfBlock('step = 0')
+        self.addComputeGlobal("perturbed_pe", "energy")
+        self.addComputeGlobal("unperturbed_pe", "energy")
+        self.addConstrainPositions()
+        self.addConstrainVelocities()
+        self._add_reset_protocol_work_step()
+        self._add_alchemical_reset_step()
+        self.endBlock()
+
+        # Main body
+        if self._n_steps_neq == 0:
+            # If nsteps = 0, we need to force execution on the first step only.
+            self.beginIfBlock('step = 0')
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.addComputeGlobal("step", "step + 1")
+            self.endBlock()
+        else:
+            #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
+            self.beginIfBlock("step < n_lambda_steps")
+            self.addComputeGlobal("perturbed_pe", "energy")
+            self.beginIfBlock("first_step < 1")
+            #TODO write better test that checks that the initial work isn't gigantic
+            self.addComputeGlobal("first_step", "1")
+            self.addComputeGlobal("unperturbed_pe", "energy")
+            self.endBlock()
+            #initial iteration
+            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            #if more propogation steps are requested
+            self.beginIfBlock("lambda > prop_lambda_min")
+            self.beginIfBlock("lambda <= prop_lambda_max")
+
+            self.beginWhileBlock("prop < nprop")
+            self.addComputeGlobal("prop", "prop + 1")
+
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.endBlock()
+            self.endBlock()
+            self.endBlock()
+            #ending variables to reset
+            self.addComputeGlobal("unperturbed_pe", "energy")
+            self.addComputeGlobal("step", "step + 1")
+            self.addComputeGlobal("prop", "1")
+
+            self.endBlock()
+    
+
 
     def _add_alchemical_perturbation_step(self):
         """
@@ -187,14 +241,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         protocol = self.getGlobalVariableByName("protocol_work")
         shadow = self.getGlobalVariableByName("shadow_work")
         logp_accept = -1.0 * (protocol + shadow) * _OPENMM_ENERGY_UNIT / self.kT
-        
-        # sa 
-        import numpy as np 
-        logger.info(f"Protocol work: {protocol}")
-        logger.info(f"Shadow work: {shadow}")
-        logger.info(f"log_accept_prob: {logp_accept}")
-        logger.info(f"acceptance_prob: {np.exp(logp_accept)}")
-        
+        logger.info(f'[WORK] protocol work: {protocol}')
+        logger.info(f'[shadow] shadow: {shadow}')
         return logp_accept
 
     def reset(self):
@@ -207,3 +255,138 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
         self.setGlobalVariableByName("prop", 1)
         super(AlchemicalExternalLangevinIntegrator, self).reset()
+
+
+#TODO: Add a class for the restrained integrator
+# Still need to test the restrained integrator
+class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator):
+    def __init__(self,
+                 alchemical_functions,
+                 restraint_group,
+                 splitting="R V O H O V R",
+                 temperature=298.0 * unit.kelvin,
+                 collision_rate=1.0 / unit.picoseconds,
+                 timestep=1.0 * unit.femtoseconds,
+                 constraint_tolerance=1e-8,
+                 measure_shadow_work=False,
+                 measure_heat=True,
+                 nsteps_neq=0,
+                 nprop=1,
+                 prop_lambda=0.3,
+                 lambda_restraints = 'max(0, 1-(1/0.10)*abs(lambda-0.5))',
+                #relax_steps=500, #'max(0, 1-(1/0.10)*abs(lambda-0.5))', #"3*lambda^2 - 2*lambda^3", # old: 'max(0, 1-(1/0.10)*abs(lambda-0.5))'
+                 relax_steps=50,
+                 *args, **kwargs):
+        
+        self.lambda_restraints = lambda_restraints
+        self.restraint_energy = "energy"+str(restraint_group)
+
+        super(AlchemicalExternalRestrainedLangevinIntegrator, self).__init__(
+                     alchemical_functions,
+                     splitting,
+                     temperature,
+                     collision_rate,
+                     timestep,
+                     constraint_tolerance,
+                     measure_shadow_work,
+                     measure_heat,
+                     nsteps_neq,
+                     nprop,
+                     prop_lambda,
+                     *args, **kwargs)
+        
+        try:
+            self.addGlobalVariable("restraint_energy", 0)
+        except:
+            pass
+        logger.info(f'[LAMBDA STEPS] N_lambda_steps: {self._n_lambda_steps}')
+        # Only declare NEW variables
+        self.addGlobalVariable("debug_lambda", 0.0)
+        #self.addGlobalVariable("restraint_energy", 0.0)
+
+        # Set existing globals from parent
+        # self.setGlobalVariableByName("lambda_step", 0.0)
+        # self.setGlobalVariableByName("lambda", 0.0)
+
+        # Optional debug
+        self.addComputeGlobal("debug_lambda", "lambda")
+
+        # Now safe to use lambda_restraints in update
+        #self.updateRestraints()
+
+        logger.info(f"Current nsteps_neq: {nsteps_neq}")
+        logger.info(f'lambda_restraints selected: {self.lambda_restraints}')
+        # compute the mid‐point slice index once
+        mid = int(self._n_lambda_steps/2)
+        self.addGlobalVariable("mid_step", float(mid))
+        self.addGlobalVariable("relax_counter", 0.0)
+        self.addGlobalVariable("relax_steps", float(relax_steps))
+
+    def updateRestraints(self):
+        logger.info(f"UPDATE RESTAINTS: {self.lambda_restraints}")
+        self.addComputeGlobal('lambda_restraints', self.lambda_restraints)
+
+
+    def _add_integrator_steps(self):
+        """
+        Override the base class to insert reset steps around the integrator.
+        """
+        
+        # First step: Constrain positions and velocities and reset work accumulators and alchemical integrators
+        logger.info("sams protocol")
+        self.beginIfBlock('step = 0')
+        self.addComputeGlobal("restraint_energy", self.restraint_energy)
+        self.addComputeGlobal("perturbed_pe", "energy - restraint_energy")
+        self.addComputeGlobal("unperturbed_pe", "energy - restraint_energy")
+        self.addConstrainPositions()
+        self.addConstrainVelocities()
+        self._add_reset_protocol_work_step()
+        self._add_alchemical_reset_step()
+        self.endBlock()
+
+        # Main body
+
+        if self._n_steps_neq == 0:
+            # If nsteps = 0, we need to force execution on the first step only.
+            self.beginIfBlock('step = 0')
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.addComputeGlobal("step", "step + 1")
+            self.endBlock()
+        else:
+            #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
+            self.beginIfBlock("step < n_lambda_steps")#
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("perturbed_pe", "energy - restraint_energy")
+            self.beginIfBlock("first_step < 1")##
+            #TODO write better test that checks that the initial work isn't gigantic
+            self.addComputeGlobal("first_step", "1")
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
+            self.endBlock()##
+            #initial iteration
+            # Gill put this first: 
+            self.addComputeGlobal("protocol_work", 
+                                  "protocol_work + (perturbed_pe - unperturbed_pe)"
+            )
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            logger.info("COMPUTE WORKSSSS")
+            #if more propogation steps are requested
+            self.beginIfBlock("lambda > prop_lambda_min")###
+            self.beginIfBlock("lambda <= prop_lambda_max")####
+
+            self.beginWhileBlock("prop < nprop")#####
+            self.addComputeGlobal("prop", "prop + 1")
+
+            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            self.endBlock()#####
+            self.endBlock()####
+            self.endBlock()###
+            #ending variables to reset
+            self.updateRestraints()
+            self.addComputeGlobal("restraint_energy", self.restraint_energy)
+            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
+            self.addComputeGlobal("step", "step + 1")
+            self.addComputeGlobal("prop", "1")
+
+            self.endBlock()#
+
