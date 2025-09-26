@@ -60,8 +60,8 @@ def state_keys():
 @pytest.fixture(scope='session')
 def structure():
     # Load the waterbox with toluene into a structure.
-    prmtop = utils.get_data_filename('blues', 'tests/data/TOL-parm.prmtop')
-    inpcrd = utils.get_data_filename('blues', 'tests/data/TOL-parm.inpcrd')
+    prmtop = utils.get_data_filename('blues', 'tests/data/toluene.prmtop')
+    inpcrd = utils.get_data_filename('blues', 'tests/data/toluene.inpcrd')
     structure = parmed.load_file(prmtop, xyz=inpcrd)
     return structure
 
@@ -457,118 +457,118 @@ class TestBLUESSimulation(object):
         # Check positions have changed
         assert np.not_equal(md_state0['positions'], md_state1['positions']).all()
 
-    # def test_blues_simulationRunYAML(self, tmpdir, structure, tol_atom_indices, system_cfg, engine):
-    #     yaml_cfg = """
-    #         output_dir: .
-    #         outfname: tol-test
-    #         logger:
-    #           level: info
-    #           stream: True
+    def test_blues_simulationRunYAML(self, tmpdir, structure, tol_atom_indices, system_cfg, engine):
+        yaml_cfg = """
+            output_dir: .
+            outfname: tol-test
+            logger:
+              level: info
+              stream: True
 
-    #         system:
-    #           nonbondedMethod: PME
-    #           nonbondedCutoff: 8.0 * angstroms
-    #           constraints: HBonds
+            system:
+              nonbondedMethod: PME
+              nonbondedCutoff: 8.0 * angstroms
+              constraints: HBonds
 
-    #         simulation:
-    #           dt: 0.002 * picoseconds
-    #           friction: 1 * 1/picoseconds
-    #           temperature: 300 * kelvin
-    #           nIter: 1
-    #           nstepsMD: 2
-    #           nstepsNC: 2
-    #           platform: CPU
+            simulation:
+              dt: 0.002 * picoseconds
+              friction: 1 * 1/picoseconds
+              temperature: 300 * kelvin
+              nIter: 1
+              nstepsMD: 2
+              nstepsNC: 2
+              platform: CPU
 
-    #         md_reporters:
-    #           stream:
-    #             title: md
-    #             reportInterval: 1
-    #             totalSteps: 2 # nIter * nstepsMD
-    #             step: True
-    #             speed: True
-    #             progress: True
-    #             remainingTime: True
-    #             currentIter : True
-    #         ncmc_reporters:
-    #           stream:
-    #             title: ncmc
-    #             reportInterval: 1
-    #             totalSteps: 2 # Use nstepsNC
-    #             step: True
-    #             speed: True
-    #             progress: True
-    #             remainingTime: True
-    #             protocolWork : True
-    #             alchemicalLambda : True
-    #             currentIter : True
-    #     """
-    #     print('Testing Simulation.run() from YAML')
-    #     yaml_cfg = Settings(yaml_cfg)
-    #     cfg = yaml_cfg.asDict()
-    #     cfg['output_dir'] = tmpdir
-    #     # os.getenv is equivalent, and can also give a default value instead of `None`
-    #     PLATFORM = os.getenv('OMM_PLATFORM', 'CPU')
-    #     cfg['simulation']['platform'] = PLATFORM
-    #     systems = SystemFactory(structure, tol_atom_indices, cfg['system'])
-    #     simulations = SimulationFactory(systems, engine, cfg['simulation'], cfg['md_reporters'], cfg['ncmc_reporters'])
+            md_reporters:
+              stream:
+                title: md
+                reportInterval: 1
+                totalSteps: 2 # nIter * nstepsMD
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                currentIter : True
+            ncmc_reporters:
+              stream:
+                title: ncmc
+                reportInterval: 1
+                totalSteps: 2 # Use nstepsNC
+                step: True
+                speed: True
+                progress: True
+                remainingTime: True
+                protocolWork : True
+                alchemicalLambda : True
+                currentIter : True
+        """
+        print('Testing Simulation.run() from YAML')
+        yaml_cfg = Settings(yaml_cfg)
+        cfg = yaml_cfg.asDict()
+        cfg['output_dir'] = tmpdir
+        # os.getenv is equivalent, and can also give a default value instead of `None`
+        PLATFORM = os.getenv('OMM_PLATFORM', 'CPU')
+        cfg['simulation']['platform'] = PLATFORM
+        systems = SystemFactory(structure, tol_atom_indices, cfg['system'])
+        simulations = SimulationFactory(systems, engine, cfg['simulation'], cfg['md_reporters'], cfg['ncmc_reporters'])
 
-    #     blues = BLUESSimulation(simulations)
-    #     blues._md_sim.minimizeEnergy()
-    #     blues._alch_sim.minimizeEnergy()
-    #     blues._ncmc_sim.minimizeEnergy()
-    #     before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-    #     blues.run()
-    #     after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-    #     #Check that our system has run dynamics
-    #     #pos_compare = np.not_equal(before_iter, after_iter).all() # .all() expects every single atom coordinate to be different — which is extremely unlikely,
-    #     # This will pass if some atoms moved enough that their positions are no longer “close”
-    #     print(f'before iter {before_iter}')
-    #     print(f'after_iter  {after_iter}')
-    #     assert not np.allclose(before_iter, after_iter) 
+        blues = BLUESSimulation(simulations)
+        blues._md_sim.minimizeEnergy()
+        blues._alch_sim.minimizeEnergy()
+        blues._ncmc_sim.minimizeEnergy()
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        blues.run()
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        #Check that our system has run dynamics
+        #pos_compare = np.not_equal(before_iter, after_iter).all() # .all() expects every single atom coordinate to be different — which is extremely unlikely,
+        # This will pass if some atoms moved enough that their positions are no longer “close”
+        print(f'before iter {before_iter}')
+        print(f'after_iter  {after_iter}')
+        assert not np.allclose(before_iter, after_iter) 
 
-    # def test_blues_simulationRunPython(self, systems, simulations, engine, tmpdir, sim_cfg):
-    #     print('Testing BLUESSimulation.run() from pure python')
-    #     md_rep_cfg = {
-    #         'stream': {
-    #             'title': 'md',
-    #             'reportInterval': 1,
-    #             'totalSteps': 2,
-    #             'step': True,
-    #             'speed': True,
-    #             'progress': True,
-    #             'remainingTime': True,
-    #             'currentIter': True
-    #         }
-    #     }
-    #     ncmc_rep_cfg = {
-    #         'stream': {
-    #             'title': 'ncmc',
-    #             'reportInterval': 1,
-    #             'totalSteps': 2,
-    #             'step': True,
-    #             'speed': True,
-    #             'progress': True,
-    #             'remainingTime': True,
-    #             'currentIter': True
-    #         }
-    #     }
+    def test_blues_simulationRunPython(self, systems, simulations, engine, tmpdir, sim_cfg):
+        print('Testing BLUESSimulation.run() from pure python')
+        md_rep_cfg = {
+            'stream': {
+                'title': 'md',
+                'reportInterval': 1,
+                'totalSteps': 2,
+                'step': True,
+                'speed': True,
+                'progress': True,
+                'remainingTime': True,
+                'currentIter': True
+            }
+        }
+        ncmc_rep_cfg = {
+            'stream': {
+                'title': 'ncmc',
+                'reportInterval': 1,
+                'totalSteps': 2,
+                'step': True,
+                'speed': True,
+                'progress': True,
+                'remainingTime': True,
+                'currentIter': True
+            }
+        }
 
-    #     md_reporters = ReporterConfig(tmpdir.join('tol-test'), md_rep_cfg).makeReporters()
-    #     ncmc_reporters = ReporterConfig(tmpdir.join('tol-test-ncmc'), ncmc_rep_cfg).makeReporters()
+        md_reporters = ReporterConfig(tmpdir.join('tol-test'), md_rep_cfg).makeReporters()
+        ncmc_reporters = ReporterConfig(tmpdir.join('tol-test-ncmc'), ncmc_rep_cfg).makeReporters()
 
-    #     simulations = SimulationFactory(systems,
-    #                                     engine,
-    #                                     sim_cfg,
-    #                                     md_reporters=md_reporters,
-    #                                     ncmc_reporters=ncmc_reporters)
+        simulations = SimulationFactory(systems,
+                                        engine,
+                                        sim_cfg,
+                                        md_reporters=md_reporters,
+                                        ncmc_reporters=ncmc_reporters)
 
-    #     blues = BLUESSimulation(simulations)
-    #     blues._md_sim.minimizeEnergy()
-    #     blues._alch_sim.minimizeEnergy()
-    #     blues._ncmc_sim.minimizeEnergy()
-    #     before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-    #     blues.run()
-    #     after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
-    #     #Check that our system has run dynamics
-    #     pos_compare = np.not_equal(before_iter, after_iter).all()
-    #     assert pos_compare
+        blues = BLUESSimulation(simulations)
+        blues._md_sim.minimizeEnergy()
+        blues._alch_sim.minimizeEnergy()
+        blues._ncmc_sim.minimizeEnergy()
+        before_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        blues.run()
+        after_iter = blues._md_sim.context.getState(getPositions=True).getPositions(asNumpy=True)
+        #Check that our system has run dynamics
+        pos_compare = np.not_equal(before_iter, after_iter).all()
+        assert pos_compare

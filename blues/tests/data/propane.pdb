@@ -1,12 +1,25 @@
-HETATM    1  C1  LIG     1       1.236  -0.188   0.286  1.00  0.00           C  
-HETATM    2  C2  LIG     1      -0.010  -0.181  -0.595  1.00  0.00           C  
-HETATM    3  C3  LIG     1      -1.228   0.327   0.171  1.00  0.00           C  
-HETATM    4  H1  LIG     1       2.102  -0.562  -0.299  1.00  0.00           H  
-HETATM    5  H2  LIG     1       1.085  -0.854   1.162  1.00  0.00           H  
-HETATM    6  H3  LIG     1       1.463   0.840   0.640  1.00  0.00           H  
-HETATM    7  H4  LIG     1      -0.209  -1.213  -0.958  1.00  0.00           H  
-HETATM    8  H5  LIG     1       0.168   0.472  -1.477  1.00  0.00           H  
-HETATM    9  H6  LIG     1      -2.116   0.320  -0.496  1.00  0.00           H  
-HETATM   10  H7  LIG     1      -1.056   1.366   0.523  1.00  0.00           H  
-HETATM   11  H8  LIG     1      -1.435  -0.327   1.044  1.00  0.00           H  
+REMARK   1 PDBFIXER FROM: propane.pdb
+REMARK   1 CREATED WITH OPENMM 8.2, 2025-06-25
+HETATM    1  C1  LIG     1       1.236  -0.188   0.286  1.00  0.00           C
+HETATM    2  C2  LIG     1      -0.010  -0.181  -0.595  1.00  0.00           C
+HETATM    3  C3  LIG     1      -1.228   0.327   0.171  1.00  0.00           C
+HETATM    4  H1  LIG     1       2.102  -0.562  -0.299  1.00  0.00           H
+HETATM    5  H2  LIG     1       1.085  -0.854   1.162  1.00  0.00           H
+HETATM    6  H3  LIG     1       1.463   0.840   0.640  1.00  0.00           H
+HETATM    7  H4  LIG     1      -0.209  -1.213  -0.958  1.00  0.00           H
+HETATM    8  H5  LIG     1       0.168   0.472  -1.477  1.00  0.00           H
+HETATM    9  H6  LIG     1      -2.116   0.320  -0.496  1.00  0.00           H
+HETATM   10  H7  LIG     1      -1.056   1.366   0.523  1.00  0.00           H
+HETATM   11  H8  LIG     1      -1.435  -0.327   1.044  1.00  0.00           H
+CONECT    1    5    6    2    4
+CONECT    2    7    1    8    3
+CONECT    3    2    9   10   11
+CONECT    4    1
+CONECT    5    1
+CONECT    6    1
+CONECT    7    2
+CONECT    8    2
+CONECT    9    3
+CONECT   10    3
+CONECT   11    3
 END

@@ -160,7 +160,8 @@ class RandomLigandRotationMove(Move):
         ParmEd Structure object of the relevant system to be moved.
     random_state : integer or numpy.RandomState, optional
         The generator used for random numbers. If an integer is given, it fixes the seed. Defaults to the global numpy random number generator.
-
+    ligand_indices : list of int, optional
+        List of atom indices identifying the ligand to be rotated. If provided, overrides `resname` selection.
     Attributes
     ----------
     structure : parmed.Structure
@@ -190,17 +191,21 @@ class RandomLigandRotationMove(Move):
         'LIG'
     """
 
-    def __init__(self, structure, resname='LIG', random_state=None):
+    def __init__(self, structure, resname='LIG', ligand_indices=None, random_state=None):
         self.structure = structure
         self.resname = resname
         self.random_state = random_state
         self.atom_indices = self.getAtomIndices(structure, self.resname)
-        #atom_indices_1based = [i + 1 for i in self.atom_indices]
+        self.ligand_indices = ligand_indices
         self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
         self.masses = []
         self.center_of_mass = None
         self.positions = structure[self.atom_indices].positions
+        if self.ligand_indices:
+            self.topology = structure[self.ligand_indices].topology
+            self.positions = structure[self.ligand_indices].positions
+
         self._calculateProperties()
 
     def getAtomIndices(self, structure, resname):
