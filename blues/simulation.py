@@ -1072,7 +1072,14 @@ class BLUESSimulation(object):
                     #print("Running move_engine.runEngine() at moveStep")
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
                     
-
+                lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
+                # if lambda val is near 0.0
+                if lambda_val < 0.000100 or  step == 0 or abs(lambda_val - 0.5) < 1e-4 or abs(lambda_val - 1.0) < 1e-4:
+                    state = self._ncmc_sim.context.getState(getPositions=True, getEnergy=True)
+                    logger.info(f"[λ={lambda_val:.6f} and Step={step}] Total potential energy: {state.getPotentialEnergy()}")
+                    lambda_s = self._ncmc_sim.context.getParameter("lambda_sterics")
+                    lambda_e = self._ncmc_sim.context.getParameter("lambda_electrostatics")
+                    logger.info(f"[Step {step}] λ_sterics = {lambda_s}, λ_electrostatics = {lambda_e}")
                 self._ncmc_sim.step(1)
 
                 if step == lastStep:
@@ -1090,6 +1097,7 @@ class BLUESSimulation(object):
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
         self._setStateTable('ncmc', 'state1', ncmc_state1)
 
+        
         # # Optional: check difference
         # import numpy as np
         # delta = np.abs(ncmc_state1['positions'] - ncmc_state0['positions'])

@@ -135,6 +135,9 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.addGlobalVariable("prop", 1)
         self.addGlobalVariable("prop_lambda_min", self._prop_lambda[0])
         self.addGlobalVariable("prop_lambda_max", self._prop_lambda[1])
+        self.addGlobalVariable("debug_work", 0.0)
+        self.addGlobalVariable("work_0_to_05", 0.0)
+        self.addGlobalVariable("work_05_to_1", 0.0)
         # Behavior changed in https://github.com/choderalab/openmmtools/commit/7c2630050631e126d61b67f56e941de429b2d643#diff-5ce4bc8893e544833c827299a5d48b0d
         self._step_dispatch_table['H'] = (self._add_alchemical_perturbation_step, False)
         #$self._registered_step_types['H'] = (
@@ -192,7 +195,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
             self.addComputeGlobal("unperturbed_pe", "energy")
             self.endBlock()
             #initial iteration
-            self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
+            # Work accumulation is handled in _add_alchemical_perturbation_step()
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
             #if more propogation steps are requested
             self.beginIfBlock("lambda > prop_lambda_min")
@@ -200,8 +203,10 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
 
             self.beginWhileBlock("prop < nprop")
             self.addComputeGlobal("prop", "prop + 1")
-
             super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            # Propagation steps - just do additional integration without lambda changes
+            # The parent's integrator steps are already called above, so we don't need to call them again
+            # This prevents double work accumulation
             self.endBlock()
             self.endBlock()
             self.endBlock()
@@ -234,6 +239,20 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         # Accumulate protocol work
         self.addComputeGlobal("Enew", "energy")
         self.addComputeGlobal("protocol_work", "protocol_work + (Enew-Eold)")
+        
+        # Track work in different phases
+        self.beginIfBlock("lambda <= 0.5")
+        self.addComputeGlobal("work_0_to_05", "work_0_to_05 + (Enew-Eold)")
+        self.endBlock()
+        
+        self.beginIfBlock("lambda > 0.5")
+        self.addComputeGlobal("work_05_to_1", "work_05_to_1 + (Enew-Eold)")
+        self.endBlock()
+        
+        # Debug: Print work at move step (λ=0.5)
+        self.beginIfBlock("abs(lambda - 0.5) < 0.001")
+        self.addComputeGlobal("debug_work", "Enew - Eold")
+        self.endBlock()
         self.endBlock()
 
     def getLogAcceptanceProbability(self, context):
@@ -243,17 +262,33 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         logp_accept = -1.0 * (protocol + shadow) * _OPENMM_ENERGY_UNIT / self.kT
         logger.info(f'[WORK] protocol work: {protocol}')
         logger.info(f'[shadow] shadow: {shadow}')
+        
+        # Debug: Print work in different phases
+        try:
+            work_0_to_05 = self.getGlobalVariableByName("work_0_to_05")
+            work_05_to_1 = self.getGlobalVariableByName("work_05_to_1")
+            debug_work = self.getGlobalVariableByName("debug_work")
+            logger.info(f'[DEBUG] Work 0→0.5: {work_0_to_05}')
+            logger.info(f'[DEBUG] Work 0.5→1.0: {work_05_to_1}')
+            logger.info(f'[DEBUG] Work at λ=0.5: {debug_work}')
+        except:
+            pass
+        
         return logp_accept
 
     def reset(self):
         self.setGlobalVariableByName("step", 0)
         self.setGlobalVariableByName("lambda", 0.0)
+        self.setGlobalVariableByName("lambda_step", 0.0)
         self.setGlobalVariableByName("protocol_work", 0.0)
         self.setGlobalVariableByName("shadow_work", 0.0)
         self.setGlobalVariableByName("first_step", 0)
         self.setGlobalVariableByName("perturbed_pe", 0.0)
         self.setGlobalVariableByName("unperturbed_pe", 0.0)
         self.setGlobalVariableByName("prop", 1)
+        self.setGlobalVariableByName("debug_work", 0.0)
+        self.setGlobalVariableByName("work_0_to_05", 0.0)
+        self.setGlobalVariableByName("work_05_to_1", 0.0)
         super(AlchemicalExternalLangevinIntegrator, self).reset()
 
 
