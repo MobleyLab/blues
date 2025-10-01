@@ -250,7 +250,7 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         self.endBlock()
         
         # Debug: Print work at move step (λ=0.5)
-        self.beginIfBlock("abs(lambda - 0.5) < 0.001")
+        self.beginIfBlock("lambda = 0.5")
         self.addComputeGlobal("debug_work", "Enew - Eold")
         self.endBlock()
         self.endBlock()
