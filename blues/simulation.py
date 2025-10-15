@@ -1093,6 +1093,7 @@ class BLUESSimulation(object):
         lastStep = nstepsNC - 1
         for step in range(int(nstepsNC)):
             try:
+                prevstate = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
                 if not step:
                     print("Calling beforeMove()")
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
@@ -1107,7 +1108,16 @@ class BLUESSimulation(object):
                     state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True)
                     
                 #print("STEPPPPP:", step)
-                #state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
+                current_state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
+                positions = state.getPositions(asNumpy=True)
+                positions = positions.value_in_unit(nanometer)
+                has_nan = np.isnan(pos).any()
+                if has_nan: 
+                    with open(f"output_{step}.pdb", "w") as f:
+                        prevpositions = prevstate.getPositions(asNumpy=True)
+                        PDBFile.writeFile(self._ncmc_sim.topology, positions, f, keepIds=True)
+
+
                 #print("    PE:", state.getPotentialEnergy())
                 #print("    KE:", state.getKineticEnergy())
                 energies.append(self._print_energy_contributions(self._ncmc_sim))
