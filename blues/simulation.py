@@ -71,11 +71,14 @@ class SystemFactory(object):
         and `generateAlchSystem`
     """
 
-    def __init__(self, structure, atom_indices, config=None):
+    def __init__(self, ommsystem, structure, atom_indices, config=None):
 
         self.structure = structure
+        self.system = ommsystem
         self.atom_indices = atom_indices
         self._config = config
+
+        print(self._config)
         
         #If parameters for generating the openmm.System is given, make them.
         if self._config:
@@ -84,7 +87,7 @@ class SystemFactory(object):
             else:
                 #Use function defaults if none is provided
                 self.alch_config = {}
-            self.md = SystemFactory.generateSystem(self.structure, **self._config)
+            self.md = ommsystem
             self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
 
     @staticmethod
@@ -1103,16 +1106,16 @@ class BLUESSimulation(object):
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
                     state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True)
                     
-                print("STEPPPPP:", step)
-                state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
-                print("    PE:", state.getPotentialEnergy())
-                print("    KE:", state.getKineticEnergy())
+                #print("STEPPPPP:", step)
+                #state = self._ncmc_sim.context.getState(getEnergy=True, getPositions=True, enforcePeriodicBox=True)
+                #print("    PE:", state.getPotentialEnergy())
+                #print("    KE:", state.getKineticEnergy())
                 energies.append(self._print_energy_contributions(self._ncmc_sim))
-                positions = state.getPositions()
-                box_vectors = state.getPeriodicBoxVectors()
-                from openmm.app import PDBFile
-                with open(f"output_{step}.pdb", "w") as f:
-                    PDBFile.writeFile(self._ncmc_sim.topology, positions, f, keepIds=True)
+                #positions = state.getPositions()
+                #box_vectors = state.getPeriodicBoxVectors()
+                #from openmm.app import PDBFile
+                #with open(f"output_{step}.pdb", "w") as f:
+                #    PDBFile.writeFile(self._ncmc_sim.topology, positions, f, keepIds=True)
 
                 system = self._ncmc_sim.system
 

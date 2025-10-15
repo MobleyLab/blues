@@ -510,12 +510,27 @@ class SideChainMove(Move):
         self.verbose = verbose
         self.write_move = write_move
 
+    #def _pmdStructureToOEMol(self):
+    #    """Helper function for converting the parmed structure into an OEMolecule."""
+    #    top = self.structure.topology
+    #    pos = self.structure.positions
+    #    molecule = oeommtools.openmmTop_to_oemol(top, pos)
+    #    oechem.OEPerceiveResidues(molecule)
+    #    oechem.OEFindRingAtomsAndBonds(molecule)
+
+    #    return molecule
+
     def _pmdStructureToOEMol(self):
         """Helper function for converting the parmed structure into an OEMolecule."""
+        #structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
         top = self.structure.topology
         pos = self.structure.positions
-        molecule = oeommtools.openmmTop_to_oemol(top, pos)
-        oechem.OEPerceiveResidues(molecule)
+
+        molecule = utils.openmmTop_to_oemol(top, pos, verbose=False)
+
+        # Extract coordinates (in Å) and add as conformer
+        oechem.OEPerceiveBondOrders(molecule)
+        oechem.OEAssignAromaticFlags(molecule)
         oechem.OEFindRingAtomsAndBonds(molecule)
 
         return molecule
@@ -1654,11 +1669,12 @@ class SideChainMove(Move):
         self.verbose = verbose
         self.write_move = write_move
 
+
     def _pmdStructureToOEMol(self):
         """Helper function for converting the parmed structure into an OEMolecule."""
         top = self.structure.topology
         pos = self.structure.positions
-        molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
+        molecule = utils.openmmTop_to_oemol(top, pos, verbose=False)
         oechem.OEPerceiveResidues(molecule)
         oechem.OEFindRingAtomsAndBonds(molecule)
 
@@ -2075,11 +2091,28 @@ class RandomRotatableBondMove(Move):
         print("AIL:", self.atom_indices_ligand)
         self.dihedral_atoms = dihedral_atoms
         self.positions = structure[self.atom_indices_ligand].positions
+        
         self.molecule = self._pmdStructureToOEMol(prmtop, inpcrd, resname)
 
     def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
         """Helper function for converting the parmed structure into an OEMolecule."""
-        structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
+        from openmm import XmlSerializer
+        from openmm.app import PDBFile
+   
+        # Load system
+        with open(prmtop) as f:
+            system = XmlSerializer.deserialize(f.read())
+        pdb = PDBFile(inpcrd)
+        topology = pdb.topology
+        positions = pdb.getPositions()
+      
+    
+        structure_LIG = parmed.openmm.load_topology(
+            topology,
+            system=system,
+            xyz=positions
+        )
+        #structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
         mask = "!(:%s)" %resname
         structure_LIG.strip(mask)
         top = structure_LIG.topology
