@@ -805,7 +805,10 @@ class SimulationFactory(object):
 
         #Initialize the Move Engine with the Alchemical System and NCMC Integrator
         for move in self._move_engine.moves:
-            self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
+            try:
+                self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator)
+            except TypeError:
+                self._alch_system, self.ncmc_integrator = move.initializeSystem(self._alch_system, self.ncmc_integrator, config=config)
         self.ncmc = self.generateSimFromStruct(self._structure, self._alch_system, self.ncmc_integrator, **config)
         utils.print_host_info(self.ncmc)
 

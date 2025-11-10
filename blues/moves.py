@@ -195,7 +195,16 @@ class RandomLigandRotationMove(Move):
         'LIG'
     """
 
-    def __init__(self, structure, resname='LIG', ligand_indices=None, random_state=None):
+    def __init__(self, 
+        structure, 
+        resname='LIG', 
+        ligand_indices=None, 
+        random_state=None, ligand_pdb_file=None,
+        restraints=None, K_r=None, K_angle=None,
+        restrained_receptor_atoms=None, restrained_ligand_atoms=None,
+        lambda_restraints = "max(0, 1-(1/0.10)*abs(lambda-0.5))",
+        no_move=False,
+        ):
         self.structure = structure
         self.resname = resname
         self.random_state = random_state
@@ -203,15 +212,33 @@ class RandomLigandRotationMove(Move):
         self.ligand_indices = ligand_indices
         self.topology = structure[self.atom_indices].topology
         self.totalmass = 0
+        self.restraints = restraints
         self.masses = []
         self.center_of_mass = None
+        self.K_r = K_r
+        self.K_angle = K_angle
+        self.lambda_restraints = lambda_restraints
+        self.restrained_receptor_atoms = restrained_receptor_atoms
+        self.restrained_ligand_atoms = restrained_ligand_atoms
         self.positions = structure[self.atom_indices].positions
+        self.no_move = no_move
         if self.ligand_indices:
             self.topology = structure[self.ligand_indices].topology
             self.positions = structure[self.ligand_indices].positions
-
+        
+        if ligand_pdb_file is not None:
+            self._loadBindingModeTraj(ligand_pdb_file)
         self._calculateProperties()
 
+    
+    def _loadBindingModeTraj(self, ligand_pdb_file):
+        """
+        Load the binding mode trajectory from the file.
+        """
+        import mdtraj as md
+        binding_mode_traj = []
+        binding_mode_traj.append(md.load(ligand_pdb_file))
+        self.binding_mode_traj = binding_mode_traj
     
     def initializeSystem(self, system, integrator, config):
         """
@@ -299,30 +326,17 @@ class RandomLigandRotationMove(Move):
         integrator_kwargs = config or {}
 
         # Get integrator kwargs if available, otherwise use defaults
-        # Create new integrator with restraints
+        new_int = AlchemicalExternalLangevinIntegrator(
+            restraint_group=set(self.restraint_groups.values()),
+            lambda_restraints=self.lambda_restraints, 
+            alchemical_functions = old_int._alchemical_functions,
+            nsteps_neq=integrator_kwargs['nstepsNC'],
+            nprop=integrator_kwargs['nprop'],
+            prop_lambda=integrator_kwargs['propLambda'],
+            splitting=integrator_kwargs['splitting'])
+            #**old_int.int_kwargs)
 
-        if self.old_restraint:
-            new_int = AlchemicalExternalRestrainedLangevinIntegrator(
-                restraint_group=set(self.restraint_groups.values()),
-                lambda_restraints=self.lambda_restraints, 
-                alchemical_functions = old_int._alchemical_functions,
-                nsteps_neq=integrator_kwargs['nstepsNC'],
-                nprop=integrator_kwargs['nprop'],
-                prop_lambda=integrator_kwargs['propLambda'],
-                splitting=integrator_kwargs['splitting'],)
-        
-        else:
-            new_int = AlchemicalExternalLangevinIntegrator(
-                restraint_group=set(self.restraint_groups.values()),
-                lambda_restraints=self.lambda_restraints, 
-                alchemical_functions = old_int._alchemical_functions,
-                nsteps_neq=integrator_kwargs['nstepsNC'],
-                nprop=integrator_kwargs['nprop'],
-                prop_lambda=integrator_kwargs['propLambda'],
-                splitting=integrator_kwargs['splitting'])
-                #**old_int.int_kwargs)
-
-        new_int.reset()
+        #new_int.reset()
 
         # Verify we have the required trajectory data
         if not hasattr(self, 'binding_mode_traj') or len(self.binding_mode_traj) == 0:
@@ -350,8 +364,7 @@ class RandomLigandRotationMove(Move):
                 new_sys = add_boresch_restraints(sys=new_sys, struct=self.structure, pos=pose_allpos, ligand_atoms=self.atom_indices, 
                                                  pose_num=index, force_group=self.restraint_groups['boresch'],
                                             restrained_receptor_atoms=self.restrained_receptor_atoms, restrained_ligand_atoms=self.restrained_ligand_atoms,
-                                            K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0,
-                                            K_com=self.K_com)
+                                            K_r=self.K_r, K_angle=self.K_angle)
                 
             if 'boresch' not in self.restraints and 'rmsd' not in self.restraints:
                 raise ValueError(f'Invalid restraint type: {self.restraints}')
@@ -469,6 +482,8 @@ class RandomLigandRotationMove(Move):
         context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
         """
+        if self.no_move: 
+            return context
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         
         self.positions = positions[self.atom_indices]
