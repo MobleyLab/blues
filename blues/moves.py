@@ -22,6 +22,10 @@ import parmed
 from openmm import unit
 import tempfile
 import numpy as np 
+import openmm
+
+from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalExternalRestrainedLangevinIntegrator
+from blues.restraints import  add_boresch_restraints
 
 
 try:
@@ -207,6 +211,152 @@ class RandomLigandRotationMove(Move):
             self.positions = structure[self.ligand_indices].positions
 
         self._calculateProperties()
+
+    
+    def initializeSystem(self, system, integrator, config):
+        """
+        Changes the system by adding forces corresponding to restraints (if specified)
+        and freeze protein and/or waters, if specified in __init__()
+
+
+        Parameters
+        ----------
+        system : simtk.openmm.System object
+            System to be modified.
+        integrator : simtk.openmm.Integrator object
+            Integrator to be modified.
+        Returns
+        -------
+        system : simtk.openmm.System object
+            The modified System object.
+        integrator : simtk.openmm.Integrator object
+            The modified Integrator object.
+
+        """
+        new_sys = system
+        
+        def find_force_group(system, force_type):
+            """Returns the force group number for the first force of the given type."""
+            for force in system.getForces():
+                if isinstance(force, force_type):
+                    return force.getForceGroup()
+            raise ValueError(f"No force of type {force_type.__name__} found in system.")
+
+        steric_group = find_force_group(new_sys, openmm.NonbondedForce)
+        self.steric_group = steric_group
+
+        if self.restraints:
+            return self.initializeRestraints(new_sys, integrator, config)
+
+        return new_sys, integrator
+
+
+    def initializeRestraints(self, system: openmm.System, integrator: openmm.Integrator, config:dict):
+        """
+        Initialize the restraint forces for the system.
+
+        Parameters
+        ----------
+        system : openmm.System
+            The OpenMM system to be modified
+        integrator : openmm.Integrator
+            The current integrator to be replaced with a restrained version
+
+        Returns
+        -------
+        system : openmm.System
+            The modified System object.
+        integrator : openmm.Integrator
+            The modified Integrator object.
+        """
+        # if self.restrained_receptor_atoms is None:
+        #     self.restrained_receptor_atoms = self.basis_particles
+
+        new_sys = system
+        old_int = integrator
+
+        # Get available force group
+        force_list = new_sys.getForces()
+        group_list = list(set([force.getForceGroup() for force in force_list]))
+        group_avail = [j for j in list(range(32)) if j not in group_list]
+        
+        if len(group_avail) < len(self.restraints):
+            raise ValueError("Not enough available force groups for all requested restraints.")
+        
+        self.restraint_groups = {}  # Dict to store group for each restraint type
+
+        for i, restraint_type in enumerate(sorted(self.restraints)):
+            self.restraint_groups[restraint_type] = group_avail[i]
+
+        
+        # Verify the old integrator has the required attributes
+        if not hasattr(old_int, '_alchemical_functions'):
+            raise AttributeError("Old integrator missing _alchemical_functions")
+
+        # Get system parameters from old integrator
+        old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
+        # Extract kwargs for the new integrator
+        integrator_kwargs = config or {}
+
+        # Get integrator kwargs if available, otherwise use defaults
+        # Create new integrator with restraints
+
+        if self.old_restraint:
+            new_int = AlchemicalExternalRestrainedLangevinIntegrator(
+                restraint_group=set(self.restraint_groups.values()),
+                lambda_restraints=self.lambda_restraints, 
+                alchemical_functions = old_int._alchemical_functions,
+                nsteps_neq=integrator_kwargs['nstepsNC'],
+                nprop=integrator_kwargs['nprop'],
+                prop_lambda=integrator_kwargs['propLambda'],
+                splitting=integrator_kwargs['splitting'],)
+        
+        else:
+            new_int = AlchemicalExternalLangevinIntegrator(
+                restraint_group=set(self.restraint_groups.values()),
+                lambda_restraints=self.lambda_restraints, 
+                alchemical_functions = old_int._alchemical_functions,
+                nsteps_neq=integrator_kwargs['nstepsNC'],
+                nprop=integrator_kwargs['nprop'],
+                prop_lambda=integrator_kwargs['propLambda'],
+                splitting=integrator_kwargs['splitting'])
+                #**old_int.int_kwargs)
+
+        new_int.reset()
+
+        # Verify we have the required trajectory data
+        if not hasattr(self, 'binding_mode_traj') or len(self.binding_mode_traj) == 0:
+            raise ValueError("No binding mode trajectory available for restraints")
+        
+        for index, pose in enumerate(self.binding_mode_traj):
+
+            # Cache the positions once
+            pose_nm = numpy.array(pose.openmm_positions(0).value_in_unit(unit.nanometers))
+
+            pose_pos = pose_nm[self.atom_indices]
+            pose_allpos = pose_nm * unit.nanometers
+
+            # Optional: update just the ligand portion of a shared template
+            new_pos = pose_nm.copy()
+            new_pos[self.atom_indices] = pose_pos
+            new_pos = new_pos * unit.nanometers
+
+            if 'boresch' in self.restraints:
+                # Only validate force constants, allow atoms to be None
+                if not all(x is not None for x in [self.K_r, self.K_angle]):
+                    raise ValueError("Missing required force constants for Boresch restraints (K_r, K_angle)")
+                
+
+                new_sys = add_boresch_restraints(sys=new_sys, struct=self.structure, pos=pose_allpos, ligand_atoms=self.atom_indices, 
+                                                 pose_num=index, force_group=self.restraint_groups['boresch'],
+                                            restrained_receptor_atoms=self.restrained_receptor_atoms, restrained_ligand_atoms=self.restrained_ligand_atoms,
+                                            K_r=self.K_r, K_angle=self.K_angle, K_RMSD=self.K_RMSD, RMSD0=self.RMSD0,
+                                            K_com=self.K_com)
+                
+            if 'boresch' not in self.restraints and 'rmsd' not in self.restraints:
+                raise ValueError(f'Invalid restraint type: {self.restraints}')
+        
+        return new_sys, new_int
 
     def getAtomIndices(self, structure, resname):
         """
