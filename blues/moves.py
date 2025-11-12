@@ -687,14 +687,14 @@ class SideChainMove(Move):
 
         return molecule
 
-    #def _pmdStructureToOEMol(self):
-    #    """Helper function for converting the parmed structure into an OEMolecule."""
-    #    top = self.structure.topology
-    #    pos = self.structure.positions
-    #    molecule = oeommtools.openmmTop_to_oemol(top, pos)
-    #    oechem.OEPerceiveResidues(molecule)
-    #    oechem.OEFindRingAtomsAndBonds(molecule)
-    #    return molecule
+     #def _pmdStructureToOEMol(self):
+     #    """Helper function for converting the parmed structure into an OEMolecule."""
+     #    top = self.structure.topology
+     #    pos = self.structure.positions
+     #    molecule = oeommtools.openmmTop_to_oemol(top, pos)
+     #    oechem.OEPerceiveResidues(molecule)
+     #    oechem.OEFindRingAtomsAndBonds(molecule)
+     #    return molecule
 
     def getBackboneAtoms(self, molecule):
         """Takes an OpenEye Molecule, finds the backbone atoms and
@@ -1818,20 +1818,32 @@ class RandomRotatableBondMove(Move):
         self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
         self.dihedral_atoms = dihedral_atoms
         self.positions = structure[self.atom_indices_ligand].positions
-        self.molecule = self._pmdStructureToOEMol(prmtop, inpcrd, resname)
+        self.molecule = self._pmdStructureToOEMol()
 
-    def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
+     #def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
+     #    """Helper function for converting the parmed structure into an OEMolecule."""
+     #    structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
+     #    mask = "!(:%s)" %resname
+     #    structure_LIG.strip(mask)
+     #    top = structure_LIG.topology
+     #    pos = structure_LIG.positions
+     #    molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
+     #    oechem.OEPerceiveBondOrders(molecule)
+     #    oechem.OEAssignAromaticFlags(molecule)
+     #    oechem.OEFindRingAtomsAndBonds(molecule)
+     #                                                                                  
+     #    return molecule
+
+    def _pmdStructureToOEMol(self):
         """Helper function for converting the parmed structure into an OEMolecule."""
-        structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
-        mask = "!(:%s)" %resname
-        structure_LIG.strip(mask)
-        top = structure_LIG.topology
-        pos = structure_LIG.positions
-        molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
+        #structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
+        top = self.structure.topology
+        pos = self.structure.positions
+        molecule = utils.openmmTop_to_oemol(top, pos, verbose=False)
+        # Extract coordinates (in Å) and add as conformer
         oechem.OEPerceiveBondOrders(molecule)
         oechem.OEAssignAromaticFlags(molecule)
         oechem.OEFindRingAtomsAndBonds(molecule)
-                                                                                      
         return molecule
 
     def getAtomIndices(self, structure, resname, alch_list):
