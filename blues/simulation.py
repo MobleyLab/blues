@@ -1062,7 +1062,12 @@ class BLUESSimulation(object):
             try:
                 if not step:
                     logger.info("Calling beforeMove()")
-                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
+                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context) 
+                    try:            
+                        lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+                        logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")               
+                    except Exception as e:
+                        logger.warning(f"[Step {step}] Could not retrieve lambda_restraints: {e}")
                 if step == moveStep:
                     if hasattr(logger, 'report'):
                         logger.info = logger.report
@@ -1076,13 +1081,7 @@ class BLUESSimulation(object):
                         logger.warning(f"[Step {step}] Could not retrieve steric energy: {e}")      
                     # Perform the NCMC move (lambda 0 → 0.5 and apply move)
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
-                    if move_engine.selected_move.acceptance_ratio == None:
-                        logger.info("No valid dart region found. Skipping reverse NCMC and rejecting move.")
-                        # Call afterMove to clean up / reset lambda
-                        self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
-                        # skip remainder of NCMC (e.g., 0.5 → 1.0)
-                        break 
-                # 
+
                 # state = self._ncmc_sim.context.getState(getPositions=True, getEnergy=True)
                 # steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
                 # steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
@@ -1096,8 +1095,11 @@ class BLUESSimulation(object):
                     lambda_s = self._ncmc_sim.context.getParameter("lambda_sterics")
                     lambda_e = self._ncmc_sim.context.getParameter("lambda_electrostatics")
                     logger.info(f"[Step {step}] λ_sterics = {lambda_s}, λ_electrostatics = {lambda_e}")
-                    #self._log_restraint_energies(step=step, move_engine = move_engine)
-               
+                    try:
+                        lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+                        logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")               
+                    except Exception as e:
+                        logger.warning(f"[Step {step}] Could not retrieve lambda_restraints: {e}")
                 self._ncmc_sim.step(1)
 
                 integrator = self._ncmc_sim.context._integrator
@@ -1122,6 +1124,12 @@ class BLUESSimulation(object):
                         logger.info(f"[Step {step}] Steric Energy AFTER MOVE (group {move_engine.selected_move.steric_group}): {steric_energy:.4f} kJ/mol")
                     except Exception as e:
                         logger.warning(f"[Step {step}] Could not retrieve steric energy after move: {e}")
+
+                    try:
+                        lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+                        logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")               
+                    except Exception as e:
+                        logger.warning(f"[Step {step}] Could not retrieve lambda_restraints: {e}")
                         
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
                     # Debug: print positions after afterMove                    

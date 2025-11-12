@@ -294,6 +294,8 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
 
 #TODO: Add a class for the restrained integrator
 # Still need to test the restrained integrator
+
+
 class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinIntegrator):
     def __init__(self,
                  alchemical_functions,
@@ -308,120 +310,140 @@ class AlchemicalExternalRestrainedLangevinIntegrator(AlchemicalExternalLangevinI
                  nsteps_neq=0,
                  nprop=1,
                  prop_lambda=0.3,
-                 lambda_restraints = 'max(0, 1-(1/0.10)*abs(lambda-0.5))',
-                #relax_steps=500, #'max(0, 1-(1/0.10)*abs(lambda-0.5))', #"3*lambda^2 - 2*lambda^3", # old: 'max(0, 1-(1/0.10)*abs(lambda-0.5))'
+                 lambda_restraints='max(0, 1 - 2*abs(lambda - 0.5))',  # tent fn (0→1 at 0.5→0)
                  relax_steps=50,
                  *args, **kwargs):
-        
-        self.lambda_restraints = lambda_restraints
-        self.restraint_energy = "energy"+str(restraint_group)
 
-        super(AlchemicalExternalRestrainedLangevinIntegrator, self).__init__(
-                     alchemical_functions,
-                     splitting,
-                     temperature,
-                     collision_rate,
-                     timestep,
-                     constraint_tolerance,
-                     measure_shadow_work,
-                     measure_heat,
-                     nsteps_neq,
-                     nprop,
-                     prop_lambda,
-                     *args, **kwargs)
-        
-        try:
-            self.addGlobalVariable("restraint_energy", 0)
-        except:
-            pass
+        # Store the expression string separately to avoid name collisions
+        self.lambda_restraints_expr = lambda_restraints
+
+        # Which energy group holds the restraint energy (so we can subtract it cleanly)
+        self.restraint_energy_group = str(restraint_group)
+        self.restraint_energy_ref = f"energy{self.restraint_energy_group}"
+
+        super().__init__(
+            alchemical_functions=alchemical_functions,
+            splitting=splitting,
+            temperature=temperature,
+            collision_rate=collision_rate,
+            timestep=timestep,
+            constraint_tolerance=constraint_tolerance,
+            measure_shadow_work=measure_shadow_work,
+            measure_heat=measure_heat,
+            nsteps_neq=nsteps_neq,
+            nprop=nprop,
+            prop_lambda=prop_lambda,
+            *args, **kwargs
+        )
+
         logger.info(f'[LAMBDA STEPS] N_lambda_steps: {self._n_lambda_steps}')
-        # Only declare NEW variables
-        self.addGlobalVariable("debug_lambda", 0.0)
-        #self.addGlobalVariable("restraint_energy", 0.0)
 
-        # Set existing globals from parent
-        # self.setGlobalVariableByName("lambda_step", 0.0)
-        # self.setGlobalVariableByName("lambda", 0.0)
+        # === Declare NEW integrator globals (names MUST match force globals if you want propagation) ===
+        self.addGlobalVariable("debug_lambda", 0.0)
+        self.addGlobalVariable("restraint_energy", 0.0)      # running value read via energy group
+
 
         # Optional debug
         self.addComputeGlobal("debug_lambda", "lambda")
 
-        # Now safe to use lambda_restraints in update
-        #self.updateRestraints()
-
         logger.info(f"Current nsteps_neq: {nsteps_neq}")
-        logger.info(f'lambda_restraints selected: {self.lambda_restraints}')
-        # compute the mid‐point slice index once
-        mid = int(self._n_lambda_steps/2)
-        self.addGlobalVariable("mid_step", float(mid))
-        self.addGlobalVariable("relax_counter", 0.0)
-        self.addGlobalVariable("relax_steps", float(relax_steps))
+        logger.info(f'lambda_restraints expression: {self.lambda_restraints_expr}')
 
-    def updateRestraints(self):
-        logger.info(f"UPDATE RESTAINTS: {self.lambda_restraints}")
-        self.addComputeGlobal('lambda_restraints', self.lambda_restraints)
 
+
+    # ---- Helper: recompute + propagate lambda_restraints each time lambda changes ----
+    def _recompute_and_push_lambda_restraints(self):
+        # 1) Recompute integrator global from current 'lambda'
+        self.addComputeGlobal('lambda_restraints', self.lambda_restraints_expr)
+        # 2) Propagate integrator globals -> Context parameters (names must match in forces)
+        self.addUpdateContextState()
+
+    # ---- Helper: refresh restraint energy and split PE bookkeeping ----
+    def _refresh_restraint_and_pes(self):
+        self.addComputeGlobal("restraint_energy", self.restraint_energy_ref)
+        # Exclude restraint energy so protocol work uses only alchemical parts
+        self.addComputeGlobal("perturbed_pe",   "energy - restraint_energy")
+        self.addComputeGlobal("unperturbed_pe", "energy - restraint_energy")
 
     def _add_integrator_steps(self):
         """
-        Override the base class to insert reset steps around the integrator.
+        Override to insert (a) consistent initialization and (b) frequent
+        lambda_restraints recompute + propagation around each propagation call.
         """
-        
-        # First step: Constrain positions and velocities and reset work accumulators and alchemical integrators
-        logger.info("sams protocol")
+
+        # =========================
+        # Initialization (step == 0)
+        # =========================
         self.beginIfBlock('step = 0')
-        self.addComputeGlobal("restraint_energy", self.restraint_energy)
-        self.addComputeGlobal("perturbed_pe", "energy - restraint_energy")
-        self.addComputeGlobal("unperturbed_pe", "energy - restraint_energy")
+
+        # Make sure restraints start consistent with lambda=0
+        self._recompute_and_push_lambda_restraints()
+        self._refresh_restraint_and_pes()
+
+        # Usual initialization: constrain and reset accumulators
         self.addConstrainPositions()
         self.addConstrainVelocities()
         self._add_reset_protocol_work_step()
         self._add_alchemical_reset_step()
-        self.endBlock()
 
+        self.endBlock()  # end init
+
+        # =========================
         # Main body
-
+        # =========================
         if self._n_steps_neq == 0:
-            # If nsteps = 0, we need to force execution on the first step only.
+            # Force a single execution on first step
             self.beginIfBlock('step = 0')
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
+            # Track lambda_restraints before the parent propagation
+            self._recompute_and_push_lambda_restraints()
+            self._refresh_restraint_and_pes()
+            super()._add_integrator_steps()   # call parent’s propagation
             self.addComputeGlobal("step", "step + 1")
             self.endBlock()
-        else:
-            #call the superclass function to insert the appropriate steps, provided the step number is less than n_steps
-            self.beginIfBlock("step < n_lambda_steps")#
-            self.addComputeGlobal("restraint_energy", self.restraint_energy)
-            self.addComputeGlobal("perturbed_pe", "energy - restraint_energy")
-            self.beginIfBlock("first_step < 1")##
-            #TODO write better test that checks that the initial work isn't gigantic
-            self.addComputeGlobal("first_step", "1")
-            self.addComputeGlobal("restraint_energy", self.restraint_energy)
-            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
-            self.endBlock()##
-            #initial iteration
-            # Gill put this first: 
-            self.addComputeGlobal("protocol_work", 
-                                  "protocol_work + (perturbed_pe - unperturbed_pe)"
-            )
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            logger.info("COMPUTE WORKSSSS")
-            #if more propogation steps are requested
-            self.beginIfBlock("lambda > prop_lambda_min")###
-            self.beginIfBlock("lambda <= prop_lambda_max")####
+            return
 
-            self.beginWhileBlock("prop < nprop")#####
-            self.addComputeGlobal("prop", "prop + 1")
+        # NEQ loop
+        self.beginIfBlock("step < n_lambda_steps")
 
-            super(AlchemicalNonequilibriumLangevinIntegrator, self)._add_integrator_steps()
-            self.endBlock()#####
-            self.endBlock()####
-            self.endBlock()###
-            #ending variables to reset
-            self.updateRestraints()
-            self.addComputeGlobal("restraint_energy", self.restraint_energy)
-            self.addComputeGlobal("unperturbed_pe", "energy-restraint_energy")
-            self.addComputeGlobal("step", "step + 1")
-            self.addComputeGlobal("prop", "1")
+        # --- First substep at this NEQ step ---
+        # Update lambda_restraints to track the *new* lambda for this substep
+        self._recompute_and_push_lambda_restraints()
+        self._refresh_restraint_and_pes()
 
-            self.endBlock()#
+        # First-step bookkeeping (only once)
+        self.beginIfBlock("first_step < 1")
+        self.addComputeGlobal("first_step", "1")
+        self._refresh_restraint_and_pes()
+        self.endBlock()
+
+        # Protocol work increment (before propagation) using split PEs
+        self.addComputeGlobal("protocol_work", "protocol_work + (perturbed_pe - unperturbed_pe)")
+
+        # === Primary propagation for this lambda value ===
+        self._recompute_and_push_lambda_restraints()
+        super()._add_integrator_steps()   # parent does the actual R/V/O/H... steps
+
+        # ============ Optional extra propagation windows at same lambda ============
+        self.beginIfBlock("lambda > prop_lambda_min")
+        self.beginIfBlock("lambda <= prop_lambda_max")
+
+        self.beginWhileBlock("prop < nprop")
+        self.addComputeGlobal("prop", "prop + 1")
+
+        self._recompute_and_push_lambda_restraints()
+        super()._add_integrator_steps()
+
+        self.endBlock()  # while
+        self.endBlock()  # if <= prop_lambda_max
+        self.endBlock()  # if > prop_lambda_min
+
+        # ---- End-of-step bookkeeping ----
+        # Recompute to ensure end-of-step energies are coherent
+        self._recompute_and_push_lambda_restraints()
+        self._refresh_restraint_and_pes()
+
+        self.addComputeGlobal("step", "step + 1")
+        self.addComputeGlobal("prop", "1")
+
+        self.endBlock()  # if step < n_lambda_steps
 

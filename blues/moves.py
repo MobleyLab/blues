@@ -26,6 +26,8 @@ import openmm
 
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalExternalRestrainedLangevinIntegrator
 from blues.restraints import  add_boresch_restraints
+import logging
+logger = logging.getLogger(__name__)
 
 
 try:
@@ -273,8 +275,10 @@ class RandomLigandRotationMove(Move):
         self.steric_group = steric_group
 
         if self.restraints:
+            logger.info("Initializing restraints")
             return self.initializeRestraints(new_sys, integrator, config)
-
+        
+        logger.info("No restraints to initialize")
         return new_sys, integrator
 
 
@@ -324,10 +328,11 @@ class RandomLigandRotationMove(Move):
         old_int._system_parameters = {system_parameter for system_parameter in old_int._alchemical_functions.keys()}
         # Extract kwargs for the new integrator
         integrator_kwargs = config or {}
-
+        logger.info(f'lambda restraints: {self.lambda_restraints}')
+        logger.info(f'restraint group: {set(self.restraint_groups.values())}')
         # Get integrator kwargs if available, otherwise use defaults
-        new_int = AlchemicalExternalLangevinIntegrator(
-            restraint_group=set(self.restraint_groups.values()),
+        new_int = AlchemicalExternalRestrainedLangevinIntegrator(
+            restraint_group=0,
             lambda_restraints=self.lambda_restraints, 
             alchemical_functions = old_int._alchemical_functions,
             nsteps_neq=integrator_kwargs['nstepsNC'],
@@ -478,7 +483,7 @@ class RandomLigandRotationMove(Move):
         if not self.restraints:
             return context
         for i in range(len(self.binding_mode_traj)):
-            context.setParameter(f'restraint_pose_{i}', 1.0)
+            context.setParameter(f'restraint_pose_{i}', 0.0)
 
         return context
     
@@ -528,7 +533,7 @@ class RandomLigandRotationMove(Move):
         context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
         """
-        if not self.skip_move: 
+        if self.skip_move: 
             return context
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         

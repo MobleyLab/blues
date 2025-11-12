@@ -84,7 +84,7 @@ class BoreschBLUES(Boresch):
         # Create the force
         n_particles = 6  # number of particles involved in restraint: p1 ... p6
         restraint_force = openmm.CustomCompoundBondForce(n_particles, energy_function)
-        restraint_force.addGlobalParameter('lambda_restraints', 1.0)
+        restraint_force.addGlobalParameter('lambda_restraints', 0.0)
         restraint_force.addGlobalParameter('restraint_pose_'+str(pose_num), 0)
         restraint_force.addBond(self.restrained_receptor_atoms + self.restrained_ligand_atoms, [])
         restraint_force.setUsesPeriodicBoundaryConditions(thermodynamic_state.is_periodic)
