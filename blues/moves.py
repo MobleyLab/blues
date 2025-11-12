@@ -483,7 +483,7 @@ class RandomLigandRotationMove(Move):
         if not self.restraints:
             return context
         for i in range(len(self.binding_mode_traj)):
-            context.setParameter(f'restraint_pose_{i}', 0.0)
+            context.setParameter(f'restraint_pose_{i}', 1.0)
 
         return context
     

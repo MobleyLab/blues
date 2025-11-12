@@ -1043,7 +1043,19 @@ class BLUESSimulation(object):
 
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
         """Advance the NCMC simulation."""
+        #print("Running _stepNCMC...")
+        #print(f"nsteps: {nstepsNC}, moveStep: {moveStep}")
 
+        self.worker_tracker[self.currentIter] = []
+        self.lambda_tracker[self.currentIter] = []
+        self.steric_tracker[self.currentIter] = []
+        self.restraint_tracker[self.currentIter] = []
+
+        logger.info('Advancing %i NCMC switching steps...' % (nstepsNC))
+
+
+        # Retrieve NCMC state before proposed move
+        logger.info('running getStateFromContext')
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
         #print(ncmc_state0['positions'])
         self._setStateTable('ncmc', 'state0', ncmc_state0)
@@ -1062,12 +1074,8 @@ class BLUESSimulation(object):
             try:
                 if not step:
                     logger.info("Calling beforeMove()")
-                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context) 
-                    try:            
-                        lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
-                        logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")               
-                    except Exception as e:
-                        logger.warning(f"[Step {step}] Could not retrieve lambda_restraints: {e}")
+                    self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
+
                 if step == moveStep:
                     if hasattr(logger, 'report'):
                         logger.info = logger.report
@@ -1082,9 +1090,7 @@ class BLUESSimulation(object):
                     # Perform the NCMC move (lambda 0 → 0.5 and apply move)
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
 
-                # state = self._ncmc_sim.context.getState(getPositions=True, getEnergy=True)
-                # steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
-                # steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+
                 lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
                 if abs(lambda_val - 0.0) < 1e-4 or abs(lambda_val - 0.5) < 1e-4 or abs(lambda_val - 0.9) < 1e-4:
                     steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
@@ -1095,17 +1101,19 @@ class BLUESSimulation(object):
                     lambda_s = self._ncmc_sim.context.getParameter("lambda_sterics")
                     lambda_e = self._ncmc_sim.context.getParameter("lambda_electrostatics")
                     logger.info(f"[Step {step}] λ_sterics = {lambda_s}, λ_electrostatics = {lambda_e}")
-                    try:
-                        lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
-                        logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")               
-                    except Exception as e:
-                        logger.warning(f"[Step {step}] Could not retrieve lambda_restraints: {e}")
+                    self._log_restraint_energies(step=step, move_engine = move_engine)
+               
                 self._ncmc_sim.step(1)
 
                 integrator = self._ncmc_sim.context._integrator
                 lambda_val = integrator.getGlobalVariableByName("lambda")
+                protocol_work = integrator.getGlobalVariableByName("protocol_work")
                 #logger.info(f"[NCMC step {step}] lambda = {lambda_val:.6f} | protocol_work = {protocol_work:.4f}")
-                #self._log_restraint_energies(step=step, move_engine = move_engine, print_output=False)
+                self.worker_tracker[self.currentIter].append(protocol_work)
+                self.lambda_tracker[self.currentIter].append(lambda_val)
+                steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
+                steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+                self.steric_tracker[self.currentIter].append(steric_energy)
 
                 if step == lastStep:
                     logger.info("AFTER MOVE WILL BE CALLED")
@@ -1116,7 +1124,7 @@ class BLUESSimulation(object):
                     lambda_s = self._ncmc_sim.context.getParameter("lambda_sterics")
                     lambda_e = self._ncmc_sim.context.getParameter("lambda_electrostatics")
                     logger.info(f"[Step {step}] λ_sterics = {lambda_s}, λ_electrostatics = {lambda_e}")
-                    #self._log_restraint_energies(step=step, move_engine = move_engine)
+                    self._log_restraint_energies(step=step, move_engine = move_engine)
                     # Log sterics after move
                     try:
                         steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
@@ -1124,12 +1132,6 @@ class BLUESSimulation(object):
                         logger.info(f"[Step {step}] Steric Energy AFTER MOVE (group {move_engine.selected_move.steric_group}): {steric_energy:.4f} kJ/mol")
                     except Exception as e:
                         logger.warning(f"[Step {step}] Could not retrieve steric energy after move: {e}")
-
-                    try:
-                        lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
-                        logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")               
-                    except Exception as e:
-                        logger.warning(f"[Step {step}] Could not retrieve lambda_restraints: {e}")
                         
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
                     # Debug: print positions after afterMove                    
@@ -1145,6 +1147,26 @@ class BLUESSimulation(object):
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
         self._setStateTable('ncmc', 'state1', ncmc_state1)
 
+
+    def _log_restraint_energies(self, step, move_engine, print_output=True):
+
+        try:
+            for name, group in move_engine.selected_move.restraint_groups.items():
+                state = self._ncmc_sim.context.getState(getEnergy=True, groups={group})
+                energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+                if print_output:
+                    logger.info(f"[Step {step}] {name} restraint energy (group {group}): {energy:.4f} kJ/mol")
+                else:
+                    self.restraint_tracker[self.currentIter].append(energy)
+            
+            lambda_rest = self._ncmc_sim.context.getParameter("lambda_restraints")
+            logger.info(f"[Step {step}] lambda_restraints = {lambda_rest}")
+        
+        except Exception as e:
+            pass
+            #  logger.warning(f"[Step {step}] Could not retrieve lambda_restraints: {e}")
+
+        
     # def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
     #     """Advance the NCMC simulation."""
     #     #print("Running _stepNCMC...")
@@ -1354,6 +1376,11 @@ class BLUESSimulation(object):
         if not nstepsNC: nstepsNC = self._config['nstepsNC']
         if not nstepsMD: nstepsMD = self._config['nstepsMD']
         if not moveStep: moveStep = self._config['moveStep']
+
+        self.worker_tracker = {}
+        self.lambda_tracker = {}
+        self.steric_tracker = {}
+        self.restraint_tracker = {}
 
         logger.info('Running %i BLUES iterations...' % (nIter))
         for N in range(int(nIter)):
