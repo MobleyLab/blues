@@ -673,15 +673,28 @@ class SideChainMove(Move):
         self.verbose = verbose
         self.write_move = write_move
 
-    def _pmdStructureToOEMol(self):
+    def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
         """Helper function for converting the parmed structure into an OEMolecule."""
-        top = self.structure.topology
-        pos = self.structure.positions
-        molecule = oeommtools.openmmTop_to_oemol(top, pos)
-        oechem.OEPerceiveResidues(molecule)
+        structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
+        mask = "!(:%s)" %resname
+        structure_LIG.strip(mask)
+        top = structure_LIG.topology
+        pos = structure_LIG.positions
+        molecule = oeommtools.openmmTop_to_oemol(top, pos, verbose=False)
+        oechem.OEPerceiveBondOrders(molecule)
+        oechem.OEAssignAromaticFlags(molecule)
         oechem.OEFindRingAtomsAndBonds(molecule)
 
         return molecule
+
+    #def _pmdStructureToOEMol(self):
+    #    """Helper function for converting the parmed structure into an OEMolecule."""
+    #    top = self.structure.topology
+    #    pos = self.structure.positions
+    #    molecule = oeommtools.openmmTop_to_oemol(top, pos)
+    #    oechem.OEPerceiveResidues(molecule)
+    #    oechem.OEFindRingAtomsAndBonds(molecule)
+    #    return molecule
 
     def getBackboneAtoms(self, molecule):
         """Takes an OpenEye Molecule, finds the backbone atoms and
@@ -1818,7 +1831,7 @@ class RandomRotatableBondMove(Move):
         oechem.OEPerceiveBondOrders(molecule)
         oechem.OEAssignAromaticFlags(molecule)
         oechem.OEFindRingAtomsAndBonds(molecule)
-
+                                                                                      
         return molecule
 
     def getAtomIndices(self, structure, resname, alch_list):
