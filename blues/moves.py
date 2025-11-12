@@ -203,7 +203,7 @@ class RandomLigandRotationMove(Move):
         restraints=None, K_r=None, K_angle=None,
         restrained_receptor_atoms=None, restrained_ligand_atoms=None,
         lambda_restraints = "max(0, 1-(1/0.10)*abs(lambda-0.5))",
-        no_move=False,
+        skip_move=False,
         ):
         self.structure = structure
         self.resname = resname
@@ -221,7 +221,7 @@ class RandomLigandRotationMove(Move):
         self.restrained_receptor_atoms = restrained_receptor_atoms
         self.restrained_ligand_atoms = restrained_ligand_atoms
         self.positions = structure[self.atom_indices].positions
-        self.no_move = no_move
+        self.skip_move = skip_move
         if self.ligand_indices:
             self.topology = structure[self.ligand_indices].topology
             self.positions = structure[self.ligand_indices].positions
@@ -468,6 +468,52 @@ class RandomLigandRotationMove(Move):
             print(f"🚨 WARNING: Mass count ({len(self.masses)}) does not match atom count ({len(self.atom_indices)})!")
 
         self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
+    
+    def beforeMove(self, context):
+
+        """
+        Called before NCMC begins. Checks if ligand is in a predefined dart region,
+        and sets context parameters accordingly. If not, NCMC will be skipped.
+        """
+        if not self.restraints:
+            return context
+        for i in range(len(self.binding_mode_traj)):
+            context.setParameter(f'restraint_pose_{i}', 1.0)
+
+        return context
+    
+    def afterMove(self, context):
+        """
+        If restraints were specified,Check if current positions are in
+        the same pose as the specified restraint.
+        If not, reject the move (to maintain detailed balance).
+
+        This method is called at the end of the NCMC portion if the
+        context needs to be checked or modified before performing the move
+        at the halfway point.
+
+        Parameters
+        ----------
+        context: simtk.openmm.Context object
+            Context containing the positions to be moved.
+        Returns
+        -------
+        context: simtk.openmm.Context object
+            The same input context, but whose context were changed by this function.
+
+        """
+        if not self.restraints:
+            return context
+
+        # Turn off all restraints after move
+        for i in range(len(self.binding_mode_traj)):
+            context.setParameter(f'restraint_pose_{i}', 0.0)
+        context.setParameter('lambda_restraints', 0.0)
+        context.setParameter("lambda_sterics", 1.0)
+        context.setParameter('lambda_electrostatics', 1.0)
+        
+        return context
+        
     def move(self, context):
         """Function that performs a random rotation about the
         center of mass of the ligand.
@@ -482,7 +528,7 @@ class RandomLigandRotationMove(Move):
         context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
         """
-        if self.no_move: 
+        if not self.skip_move: 
             return context
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         

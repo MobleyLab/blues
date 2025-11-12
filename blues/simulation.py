@@ -1040,52 +1040,89 @@ class BLUESSimulation(object):
         # Sync MD state to the NCMC context
         self._ncmc_sim.context = self.setContextFromState(self._ncmc_sim.context, md_state0)
 
+
     def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
         """Advance the NCMC simulation."""
-        #print("Running _stepNCMC...")
-        #print(f"nsteps: {nstepsNC}, moveStep: {moveStep}")
-        logger.info('Advancing %i NCMC switching steps...' % (nstepsNC))
 
-        # Retrieve NCMC state before proposed move
         ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
-        #print("Captured ncmc_state0")
         #print(ncmc_state0['positions'])
         self._setStateTable('ncmc', 'state0', ncmc_state0)
-
+        logger.info(f"SetTable ncmc_state0")
         # Select the move to perform
         if not move_engine:
             move_engine = self._move_engine
         self._ncmc_sim.currentIter = self.currentIter
-
+        logger.info(f'move engine selected: {move_engine}')
         move_engine.selectMove()
         #print(f"Selected move: {move_engine.move_name}")
 
         lastStep = nstepsNC - 1
+        logger.info(f"LOOPING: nstepsNC: {nstepsNC}")
         for step in range(int(nstepsNC)):
             try:
                 if not step:
-                    #print("Calling beforeMove()")
+                    logger.info("Calling beforeMove()")
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
-
                 if step == moveStep:
                     if hasattr(logger, 'report'):
                         logger.info = logger.report
                     logger.info('Performing %s...' % move_engine.move_name)
 
-                    #print("Running move_engine.runEngine() at moveStep")
+                    try:
+                        steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
+                        steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+                        logger.info(f"[Step {step}]Steric Energy During Move Proposal: {steric_energy:.4f} kJ/mol")
+                    except Exception as e:
+                        logger.warning(f"[Step {step}] Could not retrieve steric energy: {e}")      
+                    # Perform the NCMC move (lambda 0 → 0.5 and apply move)
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
-                    
+                    if move_engine.selected_move.acceptance_ratio == None:
+                        logger.info("No valid dart region found. Skipping reverse NCMC and rejecting move.")
+                        # Call afterMove to clean up / reset lambda
+                        self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+                        # skip remainder of NCMC (e.g., 0.5 → 1.0)
+                        break 
+                # 
+                # state = self._ncmc_sim.context.getState(getPositions=True, getEnergy=True)
+                # steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
+                # steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
                 lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
-                # if lambda val is near 0.0
-                if lambda_val < 0.000100 or  step == 0 or abs(lambda_val - 0.5) < 1e-4 or abs(lambda_val - 1.0) < 1e-4:
+                if abs(lambda_val - 0.0) < 1e-4 or abs(lambda_val - 0.5) < 1e-4 or abs(lambda_val - 0.9) < 1e-4:
+                    steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
+                    steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
                     state = self._ncmc_sim.context.getState(getPositions=True, getEnergy=True)
                     logger.info(f"[λ={lambda_val:.6f} and Step={step}] Total potential energy: {state.getPotentialEnergy()}")
+                    logger.info(f"[λ={lambda_val:.6f} and Step={step}] Steric Energy: {steric_energy:.4f} kJ/mol and Total potential energy: {state.getPotentialEnergy()} ")
                     lambda_s = self._ncmc_sim.context.getParameter("lambda_sterics")
                     lambda_e = self._ncmc_sim.context.getParameter("lambda_electrostatics")
                     logger.info(f"[Step {step}] λ_sterics = {lambda_s}, λ_electrostatics = {lambda_e}")
+                    #self._log_restraint_energies(step=step, move_engine = move_engine)
+               
                 self._ncmc_sim.step(1)
 
+                integrator = self._ncmc_sim.context._integrator
+                lambda_val = integrator.getGlobalVariableByName("lambda")
+                #logger.info(f"[NCMC step {step}] lambda = {lambda_val:.6f} | protocol_work = {protocol_work:.4f}")
+                #self._log_restraint_energies(step=step, move_engine = move_engine, print_output=False)
+
                 if step == lastStep:
+                    logger.info("AFTER MOVE WILL BE CALLED")
+                    lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
+                    logger.info(f"NCMC step {step}: lambda = {lambda_val}")
+                    state = self._ncmc_sim.context.getState(getEnergy=True)
+                    logger.info(f"[λ={lambda_val:.6f}  and Step={step}] Total potential energy: {state.getPotentialEnergy()}")
+                    lambda_s = self._ncmc_sim.context.getParameter("lambda_sterics")
+                    lambda_e = self._ncmc_sim.context.getParameter("lambda_electrostatics")
+                    logger.info(f"[Step {step}] λ_sterics = {lambda_s}, λ_electrostatics = {lambda_e}")
+                    #self._log_restraint_energies(step=step, move_engine = move_engine)
+                    # Log sterics after move
+                    try:
+                        steric_state = self._ncmc_sim.context.getState(getEnergy=True, groups={move_engine.selected_move.steric_group})
+                        steric_energy = steric_state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+                        logger.info(f"[Step {step}] Steric Energy AFTER MOVE (group {move_engine.selected_move.steric_group}): {steric_energy:.4f} kJ/mol")
+                    except Exception as e:
+                        logger.warning(f"[Step {step}] Could not retrieve steric energy after move: {e}")
+                        
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
                     # Debug: print positions after afterMove                    
 
@@ -1100,11 +1137,71 @@ class BLUESSimulation(object):
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
         self._setStateTable('ncmc', 'state1', ncmc_state1)
 
+    # def _stepNCMC(self, nstepsNC, moveStep, move_engine=None):
+    #     """Advance the NCMC simulation."""
+    #     #print("Running _stepNCMC...")
+    #     #print(f"nsteps: {nstepsNC}, moveStep: {moveStep}")
+    #     logger.info('Advancing %i NCMC switching steps...' % (nstepsNC))
+
+    #     # Retrieve NCMC state before proposed move
+    #     ncmc_state0 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
+    #     #print("Captured ncmc_state0")
+    #     #print(ncmc_state0['positions'])
+    #     self._setStateTable('ncmc', 'state0', ncmc_state0)
+
+    #     # Select the move to perform
+    #     if not move_engine:
+    #         move_engine = self._move_engine
+    #     self._ncmc_sim.currentIter = self.currentIter
+
+    #     move_engine.selectMove()
+    #     #print(f"Selected move: {move_engine.move_name}")
+
+    #     lastStep = nstepsNC - 1
+    #     for step in range(int(nstepsNC)):
+    #         try:
+    #             if not step:
+    #                 #print("Calling beforeMove()")
+    #                 self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
+
+    #             if step == moveStep:
+    #                 if hasattr(logger, 'report'):
+    #                     logger.info = logger.report
+    #                 logger.info('Performing %s...' % move_engine.move_name)
+
+    #                 #print("Running move_engine.runEngine() at moveStep")
+    #                 self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+                    
+    #             lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
+    #             # if lambda val is near 0.0
+    #             if lambda_val < 0.000100 or  step == 0 or abs(lambda_val - 0.5) < 1e-4 or abs(lambda_val - 1.0) < 1e-4:
+    #                 state = self._ncmc_sim.context.getState(getPositions=True, getEnergy=True)
+    #                 logger.info(f"[λ={lambda_val:.6f} and Step={step}] Total potential energy: {state.getPotentialEnergy()}")
+    #                 lambda_s = self._ncmc_sim.context.getParameter("lambda_sterics")
+    #                 lambda_e = self._ncmc_sim.context.getParameter("lambda_electrostatics")
+    #                 logger.info(f"[Step {step}] λ_sterics = {lambda_s}, λ_electrostatics = {lambda_e}")
+    #             self._ncmc_sim.step(1)
+
+    #             if step == lastStep:
+    #                 self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+    #                 # Debug: print positions after afterMove                    
+
+    #         except Exception as e:
+    #             import traceback
+    #             traceback.print_tb(e.__traceback__)
+    #             logger.error(e)
+    #             move_engine.selected_move._error(self._ncmc_sim.context)
+    #             break
+
+    #     # ncmc_state1 stores the state AFTER a proposed move
+    #     ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
+    #     self._setStateTable('ncmc', 'state1', ncmc_state1)
+
         
-        # # Optional: check difference
-        # import numpy as np
-        # delta = np.abs(ncmc_state1['positions'] - ncmc_state0['positions'])
-        # print("Max delta between state0 and state1:", np.max(delta))
+    #     # # Optional: check difference
+    #     # import numpy as np
+    #     # delta = np.abs(ncmc_state1['positions'] - ncmc_state0['positions'])
+    #     # print("Max delta between state0 and state1:", np.max(delta))
     
     def _computeAlchemicalCorrection(self):
         """Computes the alchemical correction term from switching between the NCMC
