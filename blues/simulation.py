@@ -71,7 +71,7 @@ class SystemFactory(object):
         and `generateAlchSystem`
     """
 
-    def __init__(self, structure, atom_indices, config=None):
+    def __init__(self, structure, system, atom_indices, config=None):
         self.structure = structure
         self.atom_indices = atom_indices
         self._config = config
@@ -83,7 +83,7 @@ class SystemFactory(object):
             else:
                 #Use function defaults if none is provided
                 self.alch_config = {}
-            self.md = SystemFactory.generateSystem(self.structure, **self._config)
+            self.md = system #SystemFactory.generateSystem(self.structure, **self._config)
             self.alch = SystemFactory.generateAlchSystem(self.md, self.atom_indices, **self.alch_config)
 
     @staticmethod
