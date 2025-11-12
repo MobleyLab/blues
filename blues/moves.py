@@ -25,6 +25,7 @@ import numpy as np
 import openmm
 
 from blues.integrators import AlchemicalExternalLangevinIntegrator, AlchemicalExternalRestrainedLangevinIntegrator
+from blues import utils
 #from blues.restraints import  add_boresch_restraints
 
 
