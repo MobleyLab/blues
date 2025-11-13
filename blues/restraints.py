@@ -1,7 +1,5 @@
-#from yank.restraints import Boresch, RMSD
+from yank.restraints import Boresch, RMSD
 import collections
-import collections.abc
-collections.MutableMapping = collections.abc.MutableMapping
 import numpy as np
 from simtk import openmm, unit
 import parmed
