@@ -1910,9 +1910,9 @@ class RandomRotatableBondMove(Move):
         atom3 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[2]))
         atom4 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[3]))
 
-        prev_angle = oechem.OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4)
-        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, prev_angle ) == False:
-        #if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False :
+        #prev_angle = oechem.OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4)
+        #if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, prev_angle ) == False:
+        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False :
            print("Torsional bond couldn't be rotated. Please enter correct atoms!");
 
         # Update ligand positions in nc_sim

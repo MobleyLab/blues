@@ -1060,9 +1060,35 @@ class BLUESSimulation(object):
         move_engine.selectMove()
         #print(f"Selected move: {move_engine.move_name}")
 
+        all_energies = []
         lastStep = nstepsNC - 1
         for step in range(int(nstepsNC)):
             try:
+                integrator = self._ncmc_sim.integrator
+                energies = {'step': step}
+                for i in range(integrator.getNumGlobalVariables()):
+                    name = integrator.getGlobalVariableName(i)
+                    val = integrator.getGlobalVariable(i)
+                    energies[name] = val 
+ 
+                for i, force in enumerate(self._ncmc_sim.system.getForces()):
+                    force.setForceGroup(i)
+                    state = self._ncmc_sim.context.getState(getEnergy=True, groups={i})
+                    E = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+                    #if force.__class__.__name__ in ["HarmonicBondForce", "HarmonicAngleForce", "PeriodicTorsionForce"]:
+                    energies[force.__class__.__name__] = E 
+                    if hasattr(force, 'getNumGlobalParameters') and force.getNumGlobalParameters() > 0:
+                        for j in range(force.getNumGlobalParameters()):
+                            name = force.getGlobalParameterName(j)
+                            val = self._ncmc_sim.context.getParameter(name)
+ 
+                            energies[f'{force.__class__.__name__}_{i}_{name}'] = val 
+ 
+ 
+                all_energies.append(energies)
+
+
+
                 if not step:
                     #print("Calling beforeMove()")
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)             
@@ -1095,6 +1121,15 @@ class BLUESSimulation(object):
                 logger.error(e)
                 move_engine.selected_move._error(self._ncmc_sim.context)
                 break
+
+        import csv
+        filename = f"energies_{self.currentIter}.csv"
+        with open(filename, mode="w", newline="") as f:
+            fieldnames = all_energies[0].keys()
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_energies)
+
 
         # ncmc_state1 stores the state AFTER a proposed move
         ncmc_state1 = self.getStateFromContext(self._ncmc_sim.context, self._state_keys)
