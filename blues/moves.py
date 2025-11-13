@@ -1816,12 +1816,14 @@ class RandomRotatableBondMove(Move):
 
     def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, alch_list, resname='LIG'):
         self.structure = structure
+        self.resname = resname
         self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
         self.dihedral_atoms = dihedral_atoms
         self.positions = structure[self.atom_indices_ligand].positions
         self.molecule = self._pmdStructureToOEMol()
 
      #def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
+     
      #    """Helper function for converting the parmed structure into an OEMolecule."""
      #    structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
      #    mask = "!(:%s)" %resname
@@ -1837,9 +1839,12 @@ class RandomRotatableBondMove(Move):
 
     def _pmdStructureToOEMol(self):
         """Helper function for converting the parmed structure into an OEMolecule."""
-        #structure_LIG = parmed.load_file(prmtop, xyz = inpcrd)
-        top = self.structure.topology
-        pos = self.structure.positions
+        from copy import deepcopy
+        structure_LIG = deepcopy(self.structure)
+        mask = "!(:%s)" %self.resname
+        structure_LIG.strip(mask)
+        top = structure_LIG.topology
+        pos = structure_LIG.positions
         molecule = utils.openmmTop_to_oemol(top, pos, verbose=False)
         # Extract coordinates (in Å) and add as conformer
         oechem.OEPerceiveBondOrders(molecule)
@@ -1893,6 +1898,10 @@ class RandomRotatableBondMove(Move):
         """
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
         self.molecule.SetCoords( positions[self.atom_indices_ligand].ravel() )
+        print(positions[self.atom_indices_ligand])
+        print(len(positions[self.atom_indices_ligand]))
+        print(self.molecule.NumAtoms())
+        #self.molecule.SetCoords( positions[self.atom_indices_ligand])
 
         # Define random torsional move on the ligand
         rand_torsion = random.uniform ( - math.pi, math.pi )
@@ -1900,7 +1909,10 @@ class RandomRotatableBondMove(Move):
         atom2 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[1]))
         atom3 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[2]))
         atom4 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[3]))
-        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False :
+
+        prev_angle = oechem.OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4)
+        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, prev_angle ) == False:
+        #if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False :
            print("Torsional bond couldn't be rotated. Please enter correct atoms!");
 
         # Update ligand positions in nc_sim

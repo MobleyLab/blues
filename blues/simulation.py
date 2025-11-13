@@ -71,7 +71,7 @@ class SystemFactory(object):
         and `generateAlchSystem`
     """
 
-    def __init__(self, structure, system, atom_indices, config=None):
+    def __init__(self, system, structure, atom_indices, config=None):
         self.structure = structure
         self.atom_indices = atom_indices
         self._config = config
