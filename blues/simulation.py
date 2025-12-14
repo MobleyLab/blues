@@ -1062,6 +1062,13 @@ class BLUESSimulation(object):
 
         all_energies = []
         lastStep = nstepsNC - 1
+        from simtk.openmm.app import PDBFile
+        state = self._ncmc_sim.context.getState(getPositions=True)
+        positions = state.getPositions()
+        with open(f"{self.currentIter}_0.pdb", "w") as f:
+            PDBFile.writeFile(self._ncmc_sim.topology, positions, f)
+
+
         for step in range(int(nstepsNC)):
             try:
                 integrator = self._ncmc_sim.integrator
@@ -1100,6 +1107,19 @@ class BLUESSimulation(object):
 
                     #print("Running move_engine.runEngine() at moveStep")
                     self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+                    state = self._ncmc_sim.context.getState(getPositions=True)
+                    positions = state.getPositions()
+                    with open(f"{self.currentIter}_{step}.pdb", "w") as f:
+                        PDBFile.writeFile(self._ncmc_sim.topology, positions, f)
+
+                if step == 1884:
+                    self._ncmc_sim.context = move_engine.runEngine(self._ncmc_sim.context)
+                    state = self._ncmc_sim.context.getState(getPositions=True)
+                    positions = state.getPositions()
+
+                    with open(f"{self.currentIter}_{step}.pdb", "w") as f:
+                        PDBFile.writeFile(self._ncmc_sim.topology, positions, f)
+
                     
                 lambda_val = self._ncmc_sim.context._integrator.getGlobalVariableByName("lambda")
                 # if lambda val is near 0.0

@@ -483,26 +483,26 @@ class RandomLigandRotationMove(Move):
         context: openmm.openmm.Context object
             The same input context, but whose positions were changed by this function.
         """
-        if self.no_move: 
-            return context
-        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
-        
-        self.positions = positions[self.atom_indices]
-        self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
-        reduced_pos = self.positions - self.center_of_mass
+        #if self.no_move: 
+        #    return context
+        #positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        #
+        #self.positions = positions[self.atom_indices]
+        #self.center_of_mass = self.getCenterOfMass(self.positions, self.masses)
+        #reduced_pos = self.positions - self.center_of_mass
 
-        # Define random rotational move on the ligand
-        rand_quat = mdtraj.utils.uniform_quaternion(size=None, random_state=self.random_state)
-        rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
-        #multiply lig coordinates by rot matrix and add back COM translation from origin
-        rot_move = numpy.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
+        ## Define random rotational move on the ligand
+        #rand_quat = mdtraj.utils.uniform_quaternion(size=None, random_state=self.random_state)
+        #rand_rotation_matrix = mdtraj.utils.rotation_matrix_from_quaternion(rand_quat)
+        ##multiply lig coordinates by rot matrix and add back COM translation from origin
+        #rot_move = numpy.dot(reduced_pos, rand_rotation_matrix) * positions.unit + self.center_of_mass
 
-        # Update ligand positions in nc_sim
-        for index, atomidx in enumerate(self.atom_indices):
-            positions[atomidx] = rot_move[index]
-        context.setPositions(positions)
-        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
-        self.positions = positions[self.atom_indices]
+        ## Update ligand positions in nc_sim
+        #for index, atomidx in enumerate(self.atom_indices):
+        #    positions[atomidx] = rot_move[index]
+        #context.setPositions(positions)
+        #positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        #self.positions = positions[self.atom_indices]
         return context
 
 
@@ -1814,13 +1814,17 @@ class RandomRotatableBondMove(Move):
     >>> ligand = RandomRotatableBondMove(structure, prmtopFileName, inpcrdFileName, dihedral_atoms, alch_list, 'LIG')
     """
 
-    def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, alch_list, resname='LIG'):
+    def __init__(self, structure, prmtop, inpcrd, dihedral_atoms, alch_list, resname='LIG', null=False):
         self.structure = structure
         self.resname = resname
         self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
+        print("ATOM INDICES:", self.atom_indices)
+        print("ATOM INDICES LIG:", self.atom_indices_ligand)
+        print("alch_list:", alch_list)
         self.dihedral_atoms = dihedral_atoms
         self.positions = structure[self.atom_indices_ligand].positions
         self.molecule = self._pmdStructureToOEMol()
+        self.null=null
 
      #def _pmdStructureToOEMol(self, prmtop, inpcrd, resname):
      
@@ -1877,8 +1881,10 @@ class RandomRotatableBondMove(Move):
         for atom in topology.atoms():
            if str(resname) in atom.residue.name:
               atom_indices_ligand.append(atom.index)
+              print("LIG:", resname, atom.name, atom.index)
               if atom.name in alch_list:
                   atom_indices.append(atom.index)
+                  print("ALCH:", resname, atom.name, atom.index)
 
         return atom_indices, atom_indices_ligand
 
@@ -1902,6 +1908,10 @@ class RandomRotatableBondMove(Move):
         print(len(positions[self.atom_indices_ligand]))
         print(self.molecule.NumAtoms())
         #self.molecule.SetCoords( positions[self.atom_indices_ligand])
+        import time
+
+        #ofs = oechem.oemolostream(f"before_move_{time.time()}.mol2")
+        #oechem.OEWriteMolecule(ofs, self.molecule)
 
         # Define random torsional move on the ligand
         rand_torsion = random.uniform ( - math.pi, math.pi )
@@ -1910,16 +1920,34 @@ class RandomRotatableBondMove(Move):
         atom3 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[2]))
         atom4 = self.molecule.GetAtom(oechem.OEHasAtomName(self.dihedral_atoms[3]))
 
-        #prev_angle = oechem.OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4)
-        #if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, prev_angle ) == False:
-        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False :
+        prev_angle = oechem.OEGetTorsion(self.molecule, atom1, atom2, atom3, atom4)
+        if self.null:
+            angle = prev_angle
+        else:
+            angle = rand_torsion
+        if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, angle ) == False:
+        #if oechem.OESetTorsion(self.molecule, atom1, atom2, atom3, atom4, rand_torsion ) == False :
            print("Torsional bond couldn't be rotated. Please enter correct atoms!");
+
+
+        #ofs = oechem.oemolostream(f"after_move_{time.time()}.mol2")
+        #oechem.OEWriteMolecule(ofs, self.molecule)
+
+        angle_diff = ((prev_angle - angle + math.pi) % (2 * math.pi)) - math.pi
+        print("ANGLE DIFFERENCE:", angle_diff*180/math.pi)
+
 
         # Update ligand positions in nc_sim
         updated_pos = self.molecule.GetCoords()
+
 
         for index, atomidx in enumerate(self.atom_indices_ligand):
             positions[atomidx] = numpy.array(updated_pos[index])*unit.nanometers
         context.setPositions(positions)
         self.positions = positions[self.atom_indices_ligand]
+        
+
+
+
+
         return context
