@@ -405,7 +405,9 @@ def openmmTop_to_oemol(topology, positions, verbose=False):
     """
 
     # Create an empty OEMol
-    oe_mol = oechem.OEMol()
+    #oe_mol = oechem.OEMol()
+    oe_mol = oechem.OEGraphMol()
+
 
     # Mapping dictionary between openmm atoms and oe atoms
     openmm_atom_to_oe_atom = {}

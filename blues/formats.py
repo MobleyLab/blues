@@ -1,7 +1,7 @@
 import json
 import logging
 import subprocess
-import mdtraj.version
+import mdtraj._version
 import netCDF4 as nc
 import numpy as np
 import parmed
@@ -406,7 +406,7 @@ class BLUESHDF5TrajectoryFile(HDF5TrajectoryFile):
         self._handle.root._v_attrs.conventions = str('Pande')
         self._handle.root._v_attrs.conventionVersion = str('1.1')
         self._handle.root._v_attrs.program = str('MDTraj')
-        self._handle.root._v_attrs.programVersion = str(mdtraj.version.full_version)
+        self._handle.root._v_attrs.programVersion = str(mdtraj.__version__)
         self._handle.root._v_attrs.method = str('BLUES')
         self._handle.root._v_attrs.methodVersion = str(blues.__version__)
         self._handle.root._v_attrs.reference = str('DOI: 10.1021/acs.jpcb.7b11820')
