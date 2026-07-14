@@ -2542,13 +2542,6 @@ class MixedGaussianRotatableBondMove(Move):
         return np.argmin(np.abs(d))
         
 
-    def get_angle(self, means, sigma):
-        mu = np.random.choice(means)
-        angle = np.random.normal(mu, sigma)
-        angle = angle % 360
-        return angle
-
-
     def wrapped_gaussian(self, theta, means, sigma):
         means = np.array(means)
         diff = (theta - means + 180) % 360 - 180
@@ -2812,14 +2805,6 @@ class NoStateMixedGaussianRotatableBondMove(Move):
         return np.argmin(np.abs(d))
         
 
-    def get_angle(self, means, sigma):
-        mu = np.random.choice(means)
-        angle = np.random.normal(mu, sigma)
-        angle = angle % 360
-        return angle
-
-
-
     def get_hastings(self, theta1, theta2, stateid1, stateid2, means, sigma):
         forward = self.mixture_weight(theta1, stateid1, means, sigma)
         reverse = self.mixture_weight(theta2, stateid2, means, sigma)
@@ -2895,6 +2880,276 @@ class NoStateMixedGaussianRotatableBondMove(Move):
         print(self.positions)
         blues.globalvar.HASTINGSVAL = hastings
         return context
+
+
+
+class GaussianMeanDisplacementRotatableBondMove(Move):
+    """RandomRotatableBondMove that provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+    Current methods calculates the properties needed to randomly rotate a rotatable
+    bond of a structure in the NCMC simulation and then executes a rotation of
+    a user-specified 'rotatable' bond in the designated small molecule by a random
+    angle of rotation 'theta'.
+
+    Parameters
+    ----------
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    prmtop: str
+        String specifying the name of the parameter file.
+    inpcrd: str
+        String specifying the name of the restart file.
+    smiles: str
+        smiles of the ligand to be enhanced
+    dihedral_atoms: list
+        List containing the four atomnames describing the rotatable bond of interest.
+    alch_list: list
+        List containing atomnames corresponding to the atoms considered to be
+        in the alchemical region during NCMC move.
+    resname : str
+        String specifying the residue name of the ligand.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of atoms present in the alchemical region of the ligand.
+    atom_indices_ligand :
+        Atom indicies of all atoms present in the ligand.
+    dihedral_atoms : list
+        Atomnames corresponding to the atoms describing the rotatable bond
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+    molecule : OEMol
+        OEChem Molecule describing the ligand
+
+    Examples
+    --------
+    >>> from blues.move import RandomRotatableBondMove
+    >>> ligand = RandomRotatableBondMove(structure, prmtopFileName, inpcrdFileName, smiles, dihedral_atoms, alch_list, 'LIG')
+    """
+
+    def __init__(self, structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname='LIG', nstates=1, theta=0, peak_locations=[], sigma=None, null=False):
+        self.structure = structure
+        self.resname = resname
+        self.atom_indices, self.atom_indices_ligand = self.getAtomIndices(structure, resname, alch_list)
+        self.smiles = smiles
+        self.dihedral_atoms = dihedral_atoms
+        self.dihedral_indices = self.getDihedralIndices(structure, resname, dihedral_atoms)
+        self.adj_dihedral_indices = [i - self.getFirstAtomIndex(structure, resname) for i in self.dihedral_indices]
+        self.positions = structure[self.atom_indices_ligand].positions
+        self.molecule = self.get_molecule_from_pdb(pdb,smiles,resname)
+        self.null = null
+
+        if len(peak_locations) == 0:
+            self.nstates=nstates
+            self.theta=theta
+            self.peak_locations = self.getPeakLocations(self.theta, self.nstates)
+        else:
+            self.peak_locations = peak_locations
+            self.nstates = len(peak_locations)
+        if not sigma:
+            self.sigma = self.getSigma(nstates)
+        else:
+            self.sigma = sigma
+
+        self.beforeangle=None
+
+
+        conf = self.molecule.GetConformer()
+
+        blues.globalvar.HASHASTINGS = True
+        #rdkit_coords = np.array(conf.GetPositions())
+        #omm_coords = self.positions
+        #omm_coords = (
+        #    self.positions[self.atom_indices_ligand]
+        #        .value_in_unit(unit.nanometer)
+        #)
+
+        #assert np.allclose(rdkit_coords, omm_coords, atol=1e-4)
+
+
+
+    def get_molecule_from_pdb(self, pdb, smiles, resname):
+        topology = topology_from_pdb(
+            pdb,
+            additional_definitions=[
+                ResidueDefinition.anon_from_smiles(
+                    smiles
+                )
+            ]
+        )
+        for m in topology.molecules:
+            for a in m.atoms:
+                if a.metadata['residue_name'] == resname:
+                    if m.conformers[0].units == 'angstrom':
+                        m.conformers[0] = pint.Quantity(m.conformers[0]/10, 'nanometer')
+
+                    return m.to_rdkit()
+
+
+
+    def convert_idx_to_map(self,idx_list):
+        maplist = []
+        for i in idx_list:
+            for atom in self.molecule.GetAtoms():
+
+                if atom.GetAtomMapNum() == i + 1:
+                    maplist.append(atom.GetAtomMapNum())
+        print("MAPLIST LEN", len(maplist))
+        return maplist
+
+
+
+    def getAtomIndices(self, structure, resname, alch_list):
+        """
+        Get atom indices of a ligand from ParmEd Structure.
+        Arguments
+        ---------
+        structure: parmed.Structure
+            ParmEd Structure object of the atoms to be moved.
+        resname : str
+            String specifying the resiue name of the ligand.
+        alch_list: list
+            List containing atomnames corresponding to the atoms considered to be
+            in the alchemical region during NCMC move.
+        Returns
+        -------
+        atom_indices : list of ints
+            list of atoms in the coordinate file matching alch_list
+        atom_indices_ligand :
+            Atom indicies of all atoms present in the ligand.
+        """
+        atom_indices = []
+        atom_indices_ligand = []
+        topology = structure.topology
+        for atom in topology.atoms():
+           if str(resname) in atom.residue.name:
+              atom_indices_ligand.append(atom.index)
+              print("LIG:", resname, atom.name, atom.index)
+              if atom.name in alch_list:
+                  atom_indices.append(atom.index)
+                  print("ALCH:", resname, atom.name, atom.index)
+
+        return atom_indices, atom_indices_ligand
+
+    def getDihedralIndices(self, structure, resname, dihedral_atoms):
+        atom_indices = []
+        topology = structure.topology
+        for atom_name in self.dihedral_atoms:
+            for atom in topology.atoms():
+                if str(resname) in atom.residue.name and atom.name == atom_name:
+                    atom_indices.append(atom.index)
+        return atom_indices
+
+    def getFirstAtomIndex(self, structure, resname):
+        for res in structure.residues:
+            if res.name == resname:
+                return res.atoms[0].idx
+
+
+    def wrap_180(self, angle):
+        return ((angle + 180) % 360) - 180
+
+
+
+    def getPeakLocations(self, theta, N):
+        step = 360.0 / N
+        return [self.wrap_180(theta + k * step) for k in range(N)]
+
+    def getSigma(self, N, alpha=0.12):
+        r = 180.0 / N
+        return r / np.sqrt(-2 * np.log(alpha))
+
+
+    def getState(self, theta, peaks):
+        peaks = np.asarray(peaks)
+        d = np.angle(np.exp(1j*(theta - peaks)))
+        return np.argmin(np.abs(d))
+        
+
+    def get_hastings(self, theta1, theta2, stateid1, stateid2, means, sigma):
+        forward = self.mixture_weight(theta1, stateid1, means, sigma)
+        reverse = self.mixture_weight(theta2, stateid2, means, sigma)
+        return reverse/forward
+
+    def wrapped_gaussian(self, theta, mu, sigma, n_wraps=1):
+        total = 0.0
+        for k in range(-n_wraps, n_wraps + 1):
+            total += norm.pdf(theta, mu + 360.0*k, sigma)
+        return total
+
+    def wrapped_gmm_density(self, theta,  means, n_wraps=1):
+        return sum(1/len(means) * self.wrapped_gaussian(theta, mu, self.sigma, n_wraps)
+               for mu in means)
+
+    def getAngle(self, context):
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.positions = positions[self.atom_indices_ligand].value_in_unit(unit.nanometer)
+        conf = self.molecule.GetConformer()
+        conf.SetPositions(np.array(self.positions))
+        a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
+        theta =  GetDihedralDeg(self.molecule.GetConformer(), a1, a2, a3, a4)
+        return theta
+
+    def move(self, context):
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.positions = positions[self.atom_indices_ligand].value_in_unit(unit.nanometer)
+
+        conf = self.molecule.GetConformer()
+        conf.SetPositions(np.array(self.positions))
+
+        a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
+
+        theta1 = self.beforeangle
+        densities = self.wrapped_gaussian(theta1, self.peak_locations, self.sigma)
+        weights = densities / densities.sum()
+        stateid1 = np.random.choice(len(self.peak_locations), p=weights)
+
+        print("theta1:", theta1)
+
+
+        stateid2 = np.random.randint(len(self.peak_locations))
+
+        theta2 = (theta + (self.peak_locations[stateid2] - self.peak_locations[stateid1])) % 360
+
+        d_fwd = self.wrapped_gaussian(theta, means, sigmas)
+        w_fwd = d_fwd / d_fwd.sum()
+
+        d_rev = self.wrapped_gaussian(theta_prime, means, sigmas)
+        w_rev = d_rev / d_rev.sum()
+
+
+        hastings = w_rev[stateid2] / w_fwd[stateid1]
+
+        if self.null:
+            return context
+        else:
+            new_angle = theta2
+
+        angle_diff = ((theta1 - theta2 + 180) % 360 - 180)
+        print('ANGLEDIFF:', angle_diff)
+
+        mol_coords = positions[self.atom_indices_ligand]
+
+        mol_coords = set_torsion(self.molecule, mol_coords, a1, a2, a3, a4, theta2)
+
+
+        for index, atomidx in enumerate(self.atom_indices_ligand):
+            positions[atomidx] = numpy.array(mol_coords[index])*unit.nanometers
+
+        context.setPositions(positions)
+        self.positions = positions[self.atom_indices_ligand]
+        print(self.positions)
+        blues.globalvar.HASTINGSVAL = hastings
+        return context
+
+
+
+
+
 
 #class RandomRotatableBondMove(Move):
 #    """RandomRotatableBondMove that provides methods for calculating properties on the
