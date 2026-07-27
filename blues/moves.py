@@ -2020,7 +2020,14 @@ class RandomRotatableBondMove(Move):
         print("MAPLIST LEN", len(maplist))
         return maplist
 
-
+    def getAngle(self, context):
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.positions = positions[self.atom_indices_ligand].value_in_unit(unit.nanometer)
+        conf = self.molecule.GetConformer()
+        conf.SetPositions(np.array(self.positions))
+        a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
+        theta =  GetDihedralDeg(self.molecule.GetConformer(), a1, a2, a3, a4)
+        return theta
 
     def getAtomIndices(self, structure, resname, alch_list):
         """
@@ -2814,7 +2821,7 @@ class NoStateMixedGaussianRotatableBondMove(Move):
 
     def wrapped_gaussian(self, theta, mu, sigma, n_wraps=1):
         total = 0.0
-        for k in range(-n_wraps, n_wraps + 1):
+        for k in range(int(-n_wraps), int(n_wraps + 1)):
             total += norm.pdf(theta, mu + 2*np.pi*k, sigma)
         return total
 
@@ -3077,9 +3084,13 @@ class GaussianMeanDisplacementRotatableBondMove(Move):
 
     def wrapped_gaussian(self, theta, mu, sigma, n_wraps=1):
         total = 0.0
-        for k in range(-n_wraps, n_wraps + 1):
+        for k in range(int(-n_wraps), int(n_wraps + 1)):
             total += norm.pdf(theta, mu + 360.0*k, sigma)
         return total
+
+    def wrapped_gaussian_per_peak(self, theta, means, sigma, n_wraps=1):
+        return np.array([self.wrapped_gaussian(theta, mu, sigma, n_wraps) for mu in means])
+
 
     def wrapped_gmm_density(self, theta,  means, n_wraps=1):
         return sum(1/len(means) * self.wrapped_gaussian(theta, mu, self.sigma, n_wraps)
@@ -3104,21 +3115,24 @@ class GaussianMeanDisplacementRotatableBondMove(Move):
         a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
 
         theta1 = self.beforeangle
-        densities = self.wrapped_gaussian(theta1, self.peak_locations, self.sigma)
-        weights = densities / densities.sum()
-        stateid1 = np.random.choice(len(self.peak_locations), p=weights)
+        #densities = self.wrapped_gmm_density(theta1, self.peak_locations, self.sigma)
+        #weights = densities / densities.sum()
+        #print("WEIGHTS:", weights)
+        d_fwd = self.wrapped_gaussian_per_peak(theta1, self.peak_locations, self.sigma)
+        w_fwd = d_fwd / d_fwd.sum()
+        stateid1 = np.random.choice(len(self.peak_locations), p=w_fwd)
 
         print("theta1:", theta1)
 
 
         stateid2 = np.random.randint(len(self.peak_locations))
+        print("stateid2:", stateid2)
 
-        theta2 = (theta + (self.peak_locations[stateid2] - self.peak_locations[stateid1])) % 360
+        theta2 = (theta1 + (self.peak_locations[stateid2] - self.peak_locations[stateid1])) % 360
+        print("theta2:", theta2)
 
-        d_fwd = self.wrapped_gaussian(theta, means, sigmas)
-        w_fwd = d_fwd / d_fwd.sum()
 
-        d_rev = self.wrapped_gaussian(theta_prime, means, sigmas)
+        d_rev = self.wrapped_gaussian_per_peak(theta2,self.peak_locations, self.sigma)
         w_rev = d_rev / d_rev.sum()
 
 
