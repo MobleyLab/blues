@@ -1104,14 +1104,9 @@ class BLUESSimulation(object):
 
 
                 if not step:
-                    #print("Calling beforeMove()")
+                    print("Calling beforeMove()")
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
-                    angle = move_engine.moves[0].getAngle(self._ncmc_sim.context)
-                    print('BEFORE ANGLE')
-                    move_engine.moves[0].beforeangle = angle
-                    blues.globalvar.BEFOREANGLE = angle
-                    #except Exception as e:
-                    #    print(e)
+
 
                 if step == moveStep:
                     if hasattr(logger, 'report'):
