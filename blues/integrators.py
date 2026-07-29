@@ -147,7 +147,9 @@ class AlchemicalExternalLangevinIntegrator(AlchemicalNonequilibriumLangevinInteg
         try:
             self.getGlobalVariableByName("shadow_work")
         except:
-            self.addGlobalVariable('shadow_work', 0)
+            self.addGlobalVariable("shadow_work", 0)
+
+        self.addGlobalVariable("log_hastimgs", 0.0)
 
 
     def _get_prop_lambda(self, prop_lambda):

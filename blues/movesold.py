@@ -3136,12 +3136,12 @@ class GaussianMeanDisplacementRotatableBondMove(Move):
         w_rev = d_rev / d_rev.sum()
 
 
-        hastings = w_rev[stateid2] / w_fwd[stateid1]
+        log_hastings = np.log(w_rev[stateid2] / w_fwd[stateid1])
+        integrator = context.getIntegrator()
+        log_hastings = integrator.setGlobalVariableByName("log_hastings", log_hastings)
 
         if self.null:
             return context
-        else:
-            new_angle = theta2
 
         angle_diff = ((theta1 - theta2 + 180) % 360 - 180)
         print('ANGLEDIFF:', angle_diff)
@@ -3150,14 +3150,11 @@ class GaussianMeanDisplacementRotatableBondMove(Move):
 
         mol_coords = set_torsion(self.molecule, mol_coords, a1, a2, a3, a4, theta2)
 
-
         for index, atomidx in enumerate(self.atom_indices_ligand):
             positions[atomidx] = numpy.array(mol_coords[index])*unit.nanometers
 
         context.setPositions(positions)
         self.positions = positions[self.atom_indices_ligand]
-        print(self.positions)
-        blues.globalvar.HASTINGSVAL = hastings
         return context
 
 

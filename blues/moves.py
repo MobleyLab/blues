@@ -2095,5 +2095,153 @@ class RandomRotatableBondMove(Move):
 
 
 
+class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
+    """RandomRotatableBondMove that provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+    Current methods calculates the properties needed to randomly rotate a rotatable
+    bond of a structure in the NCMC simulation and then executes a rotation of
+    a user-specified 'rotatable' bond in the designated small molecule by a random
+    angle of rotation 'theta'.
 
+    Parameters
+    ----------
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    prmtop: str
+        String specifying the name of the parameter file.
+    inpcrd: str
+        String specifying the name of the restart file.
+    smiles: str
+        smiles of the ligand to be enhanced
+    dihedral_atoms: list
+        List containing the four atomnames describing the rotatable bond of interest.
+    alch_list: list
+        List containing atomnames corresponding to the atoms considered to be
+        in the alchemical region during NCMC move.
+    resname : str
+        String specifying the residue name of the ligand.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of atoms present in the alchemical region of the ligand.
+    atom_indices_ligand :
+        Atom indicies of all atoms present in the ligand.
+    dihedral_atoms : list
+        Atomnames corresponding to the atoms describing the rotatable bond
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+    molecule : OEMol
+        OEChem Molecule describing the ligand
+
+    Examples
+    --------
+    >>> from blues.move import RandomRotatableBondMove
+    >>> ligand = RandomRotatableBondMove(structure, prmtopFileName, inpcrdFileName, smiles, dihedral_atoms, alch_list, 'LIG')
+    """
+
+    def __init__(self, structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname='LIG', nstates=1, theta=0, peak_locations=None, sigma=None, null=False):
+
+        super().__init__(structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname, nstates, theta, null)
+
+        if peak_locations is None:
+            self.nstates=nstates
+            self.theta=theta
+            self.peak_locations = self.getPeakLocations(self.theta, self.nstates)
+        else:
+            self.peak_locations = peak_locations
+            self.nstates = len(peak_locations)
+        if sigma is None:
+            self.sigma = self.getSigma(self.nstates)
+        else:
+            self.sigma = sigma
+
+        self.current_hastings = None
+
+
+        conf = self.molecule.GetConformer()
+
+    def wrap180(self, angle):
+        return ((angle + 180) % 360) - 180
+
+    def getPeakLocations(self, theta, N):
+        step = 360.0 / N
+        return [self.wrap180(theta + k * step) for k in range(N)]
+
+    def getSigma(self, N, alpha=0.12):
+        r = 180.0 / N
+        return r / np.sqrt(-2 * np.log(alpha))
+
+
+    def getState(self, theta, peaks):
+        peaks = np.asarray(peaks)
+        d = np.angle(np.exp(1j*(theta - peaks)))
+        return np.argmin(np.abs(d))
+        
+    def wrappedGaussian(self, theta, mu, sigma, n_wraps=1):
+        total = 0.0
+        for k in range(int(-n_wraps), int(n_wraps + 1)):
+            total += norm.pdf(theta, mu + 360.0*k, sigma)
+        return total
+
+    def wrappedGaussianPerPeak(self, theta, means, sigma, n_wraps=1):
+        return np.array([self.wrappedGaussian(theta, mu, sigma, n_wraps) for mu in means])
+
+    def getAngle(self, context):
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.positions = positions[self.atom_indices_ligand].value_in_unit(unit.nanometer)
+        conf = self.molecule.GetConformer()
+        conf.SetPositions(np.array(self.positions))
+        a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
+        theta =  GetDihedralDeg(self.molecule.GetConformer(), a1, a2, a3, a4)
+        return theta
+
+    def move(self, context):
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.positions = positions[self.atom_indices_ligand].value_in_unit(unit.nanometer)
+
+        conf = self.molecule.GetConformer()
+        conf.SetPositions(np.array(self.positions))
+
+        a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
+
+        theta0 = self.before_angle
+
+        d_fwd = self.wrappedGaussianPerPeak(theta1, self.peak_locations, self.sigma)
+        w_fwd = d_fwd / d_fwd.sum()
+        stateid1 = np.random.choice(len(self.peak_locations), p=w_fwd)
+
+        stateid2 = np.random.randint(len(self.peak_locations))
+
+        theta2 = (theta1 + (self.peak_locations[stateid2] - self.peak_locations[stateid1])) % 360
+        print("theta0:", theta0)
+        print("stateid1:", stateid1)
+
+        print("theta1:", theta1)
+        print("stateid2:", stateid2)
+
+        d_rev = self.wrappedGaussianPerPeak(theta1,self.peak_locations, self.sigma)
+        w_rev = d_rev / d_rev.sum()
+        hastings = w_rev[stateid2] / w_fwd[stateid1]
+
+        if self.null:
+            return context
+
+        angle_diff = ((theta1 - theta2 + 180) % 360 - 180)
+        print('ANGLEDIFF:', angle_diff)
+
+        mol_coords = positions[self.atom_indices_ligand]
+
+        mol_coords = set_torsion(self.molecule, mol_coords, a1, a2, a3, a4, theta2)
+
+        for index, atomidx in enumerate(self.atom_indices_ligand):
+            positions[atomidx] = numpy.array(mol_coords[index])*unit.nanometers
+
+        context.setPositions(positions)
+        self.positions = positions[self.atom_indices_ligand]
+        self.current_hastings = hastings
+        return context
 

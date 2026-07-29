@@ -1097,8 +1097,6 @@ class BLUESSimulation(object):
                             val = self._ncmc_sim.context.getParameter(name)
 
                             energies[f'{force.__class__.__name__}_{i}_{name}'] = val
-
-
                 all_energies.append(energies)
 
 
@@ -1106,7 +1104,6 @@ class BLUESSimulation(object):
                 if not step:
                     print("Calling beforeMove()")
                     self._ncmc_sim.context = move_engine.selected_move.beforeMove(self._ncmc_sim.context)
-
 
                 if step == moveStep:
                     if hasattr(logger, 'report'):
@@ -1124,12 +1121,11 @@ class BLUESSimulation(object):
                     with open(f"{self.currentIter}_{step}_after.pdb", "w") as f:
                         PDBFile.writeFile(self._ncmc_sim.topology, positions, f)
 
-
-
                 self._ncmc_sim.step(1)
 
                 if step == lastStep:
                     self._ncmc_sim.context = move_engine.selected_move.afterMove(self._ncmc_sim.context)
+
                     # Debug: print positions after afterMove
 
             except Exception as e:
@@ -1393,7 +1389,10 @@ class BLUESSimulation(object):
             If True, writes the proposed NCMC move to a PDB file.
         """
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
+        log_hastings = self._ncmc_sim.context._integrator..getGlobalVariableByName("log_hastings")
         print('WORK NCMC:', work_ncmc)
+        print('LOG HASTINGS:', log_hastings)
+
         randnum = math.log(np.random.random())
 
         # Compute correction if work_ncmc is not NaN
@@ -1401,12 +1400,7 @@ class BLUESSimulation(object):
             correction_factor = self._computeAlchemicalCorrection()
             logger.debug(
                 'NCMCLogAcceptanceProbability = %.6f + Alchemical Correction = %.6f' % (work_ncmc, correction_factor))
-
-            if blues.globalvar.HASHASTINGS:
-                work_ncmc = work_ncmc + correction_factor + np.log(blues.globalvar.HASTINGSVAL)
-                print('log hastings =', np.log(blues.globalvar.HASTINGSVAL))
-            else:
-                work_ncmc = work_ncmc + correction_factor 
+            work_ncmc = work_ncmc + correction_factor + log_hastings
 
         if work_ncmc > randnum:
             self.accept += 1
