@@ -1976,13 +1976,14 @@ class RandomRotatableBondMove(Move):
         self.positions = structure[self.atom_indices_ligand].positions
         self.molecule = self.getMoleculeFromPDB(pdb,smiles,resname)
         self.null = null
-        self.beforeAngle = None
+        self.before_angle = None
 
         conf = self.molecule.GetConformer()
 
 
     def beforeMove(self, context):
         self.before_angle = self.getAngle(context)
+        return context
 
 
     def getMoleculeFromPDB(self, pdb, smiles, resname):
@@ -2067,7 +2068,7 @@ class RandomRotatableBondMove(Move):
         a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
 
         theta1 = random.uniform( - math.pi, math.pi ) * 180 / math.pi
-        theta0 = self.beforeMove
+        theta0 = self.before_angle
         print('PREVANGLE:', theta1)
         print('NEWANGLE:', theta0)
         
