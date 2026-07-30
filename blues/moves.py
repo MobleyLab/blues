@@ -2094,8 +2094,7 @@ class RandomRotatableBondMove(Move):
 
 
 
-
-class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
+class MixedGaussianRotatableBondMove(Move):
     """RandomRotatableBondMove that provides methods for calculating properties on the
     object 'model' (i.e ligand) being perturbed in the NCMC simulation.
     Current methods calculates the properties needed to randomly rotate a rotatable
@@ -2159,9 +2158,8 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
         else:
             self.sigma = sigma
 
-
-
         conf = self.molecule.GetConformer()
+
 
     def wrap180(self, angle):
         return ((angle + 180) % 360) - 180
@@ -2185,8 +2183,9 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
             total += norm.pdf(theta, mu + 360.0*k, sigma)
         return total
 
-    def wrappedGaussianPerPeak(self, theta, means, sigma, n_wraps=1):
-        return np.array([self.wrappedGaussian(theta, mu, sigma, n_wraps) for mu in means])
+    def wrappedGMMDensity(self, theta,  means, n_wraps=1):
+        return sum(1/len(means) * self.wrappedGaussian(theta, mu, self.sigma, n_wraps)
+               for mu in means)
 
     def getAngle(self, context):
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
@@ -2196,6 +2195,105 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
         a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
         theta =  GetDihedralDeg(self.molecule.GetConformer(), a1, a2, a3, a4)
         return theta
+
+
+    def move(self, context):
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True)
+        self.positions = positions[self.atom_indices_ligand].value_in_unit(unit.nanometer)
+
+        conf = self.molecule.GetConformer()
+        conf.SetPositions(np.array(self.positions))
+
+        a1, a2, a3, a4 = tuple(self.adj_dihedral_indices)
+
+        theta0 = self.beforeangle
+        print("theta0:", theta0)
+
+        stateid1 = np.random.randint(len(self.peak_locations))
+        theta1 = np.random.normal(self.peak_locations[stateid2], self.sigma)
+        print("theta1:", theta1)
+
+        q_old = self.wrappedGMMDensity(theta0, self.peak_locations)
+        q_new = self.wrappedGMMDensity(theta1, self.peak_locations)
+
+        log_hastings = np.log(q_old / q_new)
+        integrator = context.getIntegrator()
+        integrator.setGlobalVariableByName("log_hastings", log_hastings)
+        print(integrator.getGlobalVariableByName('log_hastings'))
+
+        if self.null:
+            print('ANGLEDIFF:', 0)
+            return context
+
+        angle_diff = ((theta0 - theta1 + 180) % 360 - 180)
+        print('ANGLEDIFF:', angle_diff)
+
+        mol_coords = positions[self.atom_indices_ligand]
+
+        mol_coords = setTorsion(self.molecule, mol_coords, a1, a2, a3, a4, theta1)
+
+        for index, atomidx in enumerate(self.atom_indices_ligand):
+            positions[atomidx] = numpy.array(mol_coords[index])*unit.nanometers
+
+        context.setPositions(positions)
+        self.positions = positions[self.atom_indices_ligand]
+
+        return context
+
+
+class MixedGaussianMeanDisplacementRotatableBondMove(MixedGaussianRotatableBondMove):
+    """RandomRotatableBondMove that provides methods for calculating properties on the
+    object 'model' (i.e ligand) being perturbed in the NCMC simulation.
+    Current methods calculates the properties needed to randomly rotate a rotatable
+    bond of a structure in the NCMC simulation and then executes a rotation of
+    a user-specified 'rotatable' bond in the designated small molecule by a random
+    angle of rotation 'theta'.
+
+    Parameters
+    ----------
+    structure: parmed.Structure
+        ParmEd Structure object of the relevant system to be moved.
+    prmtop: str
+        String specifying the name of the parameter file.
+    inpcrd: str
+        String specifying the name of the restart file.
+    smiles: str
+        smiles of the ligand to be enhanced
+    dihedral_atoms: list
+        List containing the four atomnames describing the rotatable bond of interest.
+    alch_list: list
+        List containing atomnames corresponding to the atoms considered to be
+        in the alchemical region during NCMC move.
+    resname : str
+        String specifying the residue name of the ligand.
+
+    Attributes
+    ----------
+    structure : parmed.Structure
+        The structure of the ligand or selected atoms to be rotated.
+    atom_indices : list
+        Atom indicies of atoms present in the alchemical region of the ligand.
+    atom_indices_ligand :
+        Atom indicies of all atoms present in the ligand.
+    dihedral_atoms : list
+        Atomnames corresponding to the atoms describing the rotatable bond
+    positions : numpy.array
+        Ligands positions in XYZ coordinates. This should be updated
+        every iteration.
+    molecule : OEMol
+        OEChem Molecule describing the ligand
+
+    Examples
+    --------
+    >>> from blues.move import RandomRotatableBondMove
+    >>> ligand = RandomRotatableBondMove(structure, prmtopFileName, inpcrdFileName, smiles, dihedral_atoms, alch_list, 'LIG')
+    """
+
+    def __init__(self, structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname='LIG', nstates=1, theta=0, peak_locations=None, sigma=None, null=False):
+        super().__init__(structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname, nstates, theta, peak_locations, sigma, null)
+
+    def wrappedGaussianPerPeak(self, theta, means, sigma, n_wraps=1):
+        return np.array([self.wrappedGaussian(theta, mu, sigma, n_wraps) for mu in means])
 
     def move(self, context):
         positions = context.getState(getPositions=True).getPositions(asNumpy=True)
@@ -2210,16 +2308,16 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
 
         d_fwd = self.wrappedGaussianPerPeak(theta0, self.peak_locations, self.sigma)
         w_fwd = d_fwd / d_fwd.sum()
-        stateid1 = np.random.choice(len(self.peak_locations), p=w_fwd)
+        stateid0 = np.random.choice(len(self.peak_locations), p=w_fwd)
 
-        stateid2 = np.random.randint(len(self.peak_locations))
+        stateid1 = np.random.randint(len(self.peak_locations))
 
         theta1 = (theta0 + (self.peak_locations[stateid2] - self.peak_locations[stateid1])) % 360
         print("theta0:", theta0)
-        print("stateid1:", stateid1)
+        print("stateid1:", stateid0)
 
         print("theta1:", theta1)
-        print("stateid2:", stateid2)
+        print("stateid2:", stateid1)
 
         d_rev = self.wrappedGaussianPerPeak(theta0,self.peak_locations, self.sigma)
         w_rev = d_rev / d_rev.sum()
@@ -2244,4 +2342,3 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
         context.setPositions(positions)
         self.positions = positions[self.atom_indices_ligand]
         return context
-

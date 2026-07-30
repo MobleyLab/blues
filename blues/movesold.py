@@ -2864,6 +2864,7 @@ class NoStateMixedGaussianRotatableBondMove(Move):
 
 
         hastings = q_old / q_new
+        
 
         if self.null:
             print('1ANGLEDIFF:', 0)
@@ -3138,7 +3139,7 @@ class GaussianMeanDisplacementRotatableBondMove(Move):
 
         log_hastings = np.log(w_rev[stateid2] / w_fwd[stateid1])
         integrator = context.getIntegrator()
-        log_hastings = integrator.setGlobalVariableByName("log_hastings", log_hastings)
+        integrator.setGlobalVariableByName("log_hastings", log_hastings)
 
         if self.null:
             return context
