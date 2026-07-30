@@ -2145,7 +2145,7 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
 
     def __init__(self, structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname='LIG', nstates=1, theta=0, peak_locations=None, sigma=None, null=False):
 
-        super().__init__(structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname, nstates, theta, null)
+        super().__init__(structure, xml, pdb, dihedral_atoms, alch_list, smiles, resname, null)
 
         if peak_locations is None:
             self.nstates=nstates
@@ -2159,7 +2159,6 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
         else:
             self.sigma = sigma
 
-        self.current_hastings = None
 
 
         conf = self.molecule.GetConformer()
@@ -2174,7 +2173,6 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
     def getSigma(self, N, alpha=0.12):
         r = 180.0 / N
         return r / np.sqrt(-2 * np.log(alpha))
-
 
     def getState(self, theta, peaks):
         peaks = np.asarray(peaks)
@@ -2210,38 +2208,40 @@ class GaussianMeanDisplacementRotatableBondMove(RandomRotatableBondMove):
 
         theta0 = self.before_angle
 
-        d_fwd = self.wrappedGaussianPerPeak(theta1, self.peak_locations, self.sigma)
+        d_fwd = self.wrappedGaussianPerPeak(theta0, self.peak_locations, self.sigma)
         w_fwd = d_fwd / d_fwd.sum()
         stateid1 = np.random.choice(len(self.peak_locations), p=w_fwd)
 
         stateid2 = np.random.randint(len(self.peak_locations))
 
-        theta2 = (theta1 + (self.peak_locations[stateid2] - self.peak_locations[stateid1])) % 360
+        theta1 = (theta0 + (self.peak_locations[stateid2] - self.peak_locations[stateid1])) % 360
         print("theta0:", theta0)
         print("stateid1:", stateid1)
 
         print("theta1:", theta1)
         print("stateid2:", stateid2)
 
-        d_rev = self.wrappedGaussianPerPeak(theta1,self.peak_locations, self.sigma)
+        d_rev = self.wrappedGaussianPerPeak(theta0,self.peak_locations, self.sigma)
         w_rev = d_rev / d_rev.sum()
-        hastings = w_rev[stateid2] / w_fwd[stateid1]
+        log_hastings = np.log(w_rev[stateid2] / w_fwd[stateid1])
+        integrator = integrator = context.getIntegrator()
+        integrator.setGlobalVariableByName("log_hastings", log_hastings)
+        print(integrator.getGlobalVariableByName('log_hastings'))
 
         if self.null:
             return context
 
-        angle_diff = ((theta1 - theta2 + 180) % 360 - 180)
+        angle_diff = ((theta0 - theta1 + 180) % 360 - 180)
         print('ANGLEDIFF:', angle_diff)
 
         mol_coords = positions[self.atom_indices_ligand]
 
-        mol_coords = set_torsion(self.molecule, mol_coords, a1, a2, a3, a4, theta2)
+        mol_coords = setTorsion(self.molecule, mol_coords, a1, a2, a3, a4, theta1)
 
         for index, atomidx in enumerate(self.atom_indices_ligand):
             positions[atomidx] = numpy.array(mol_coords[index])*unit.nanometers
 
         context.setPositions(positions)
         self.positions = positions[self.atom_indices_ligand]
-        self.current_hastings = hastings
         return context
 

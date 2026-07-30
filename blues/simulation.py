@@ -1389,7 +1389,7 @@ class BLUESSimulation(object):
             If True, writes the proposed NCMC move to a PDB file.
         """
         work_ncmc = self._ncmc_sim.context._integrator.getLogAcceptanceProbability(self._ncmc_sim.context)
-        log_hastings = self._ncmc_sim.context._integrator..getGlobalVariableByName("log_hastings")
+        log_hastings = self._ncmc_sim.context._integrator.getGlobalVariableByName("log_hastings")
         print('WORK NCMC:', work_ncmc)
         print('LOG HASTINGS:', log_hastings)
 
